@@ -1,0 +1,114 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+/build/
+/dist/
+.venv/
+venv/
+/env/
+.python-version
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+/_site/
+/.quarto/
+
+# C and C++
+*.o
+*.obj
+*.dylib
+*.dll
+*.exe
+*.gcda
+*.gcno
+*.gcov
+*.dSYM/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+/cmake-build-*/
+_deps/
+
+# Rust
+/target/
+*.rs.bk
+
+# Data
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.dta
+*.sas7bdat
+*.sav
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+
+# Models and experiments
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+/mlruns/
+/wandb/
+/lightning_logs/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Editors
+.vscode/
+.idea/
+*.iml
+.zed/
+.helix/
+*.sublime-workspace
+.ccls-cache/
+.clangd/
+*.sw[a-p]
+Session.vim
+.netrwhist
+\#*\#
+.\#*
+*.orig
+*.rej
+*~
+
+# OS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.directory
+.Trash-*
+*.kate-swp
