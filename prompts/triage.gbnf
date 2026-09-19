@@ -1,0 +1,26 @@
+# Forces valid triage JSON at the sampler, so the pipeline has no parse-failure path.
+# Pass to llama.cpp with --grammar-file prompts/triage.gbnf
+# Validate against a handful of filings before the production run.
+
+root ::= "{" ws
+         "\"material\":"   ws bool       "," ws
+         "\"direction\":"  ws direction  "," ws
+         "\"confidence\":" ws confidence "," ws
+         "\"item\":"       ws item       "," ws
+         "\"evidence\":"   ws evidence   ws "}"
+
+bool       ::= "true" | "false"
+
+direction  ::= "-1" | "0" | "1"
+
+confidence ::= "0.0" | "0.1" | "0.2" | "0.3" | "0.4" | "0.5"
+             | "0.6" | "0.7" | "0.8" | "0.9" | "1.0"
+
+# An 8-K item code such as "4.02", or "none" when nothing material is present.
+item       ::= "\"" [1-9] "." [0-9] [0-9] "\"" | "\"none\""
+
+# One sentence, capped so a long filing cannot produce a long generation.
+evidence   ::= "\"" char{1,300} "\""
+char       ::= [^"\\\x00-\x1F\x7F] | "\\" ["\\/bfnrt]
+
+ws         ::= " "?
