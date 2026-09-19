@@ -1,5 +1,8 @@
-Everything above FILING is byte-identical on every call so llama.cpp reuses the KV cache for it.
-Only the last two lines change. Do not reorder.
+<!-- What: the prompt sent to the local model for every 8-K it triages.
+     Use: the pipeline fills {items} and {text} and sends everything below the ---.
+     Everything above FILING must stay byte-identical on every call so llama.cpp
+     reuses the cached prefix. Do not reorder. Editing this file changes its hash,
+     which invalidates the cached responses for it. -->
 
 ---
 

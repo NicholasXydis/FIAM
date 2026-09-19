@@ -1,11 +1,9 @@
-Run in Claude Code, once, on the 20 names that make the deck: top 10 long and top 10 short averaged over
-the 68 out-of-sample months. Roughly 20 exchanges, not a loop.
-
-Output is narrative. It feeds no signal, no weight, no return, and is not part of `MAIN.py`. Save the
-transcript to `submission/devils_advocate_transcript.md` for the appendix.
-
-Say this in the deck: the local layer is deterministic and reproduces exactly; this layer is a documented
-manual research step producing commentary only.
+<!-- What: the prompt that argues against our own positions, to find what we missed.
+     Use: paste everything below the --- into Claude Code with one position filled in,
+     once for each of the 20 names in the deck (top 10 long, top 10 short, averaged
+     over the 68 OOS months). About 20 exchanges, by hand, not a loop.
+     Save the transcript to submission/devils_advocate_transcript.md for the appendix.
+     Output is commentary only. It feeds no signal, weight or return, and is not in MAIN.py. -->
 
 ---
 
