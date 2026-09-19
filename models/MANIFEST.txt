@@ -1,0 +1,21 @@
+# What: a record of which model files produced our numbers. The weights themselves are
+#       gitignored (too large), so this is the only thing pinning them.
+# Use:  on download, run `sha256sum models/<file>` and paste the result over <pending>.
+
+PRIMARY (event triage)
+  file       Qwen3-14B-Q5_K_M.gguf
+  source     https://huggingface.co/Qwen/Qwen3-14B-GGUF
+  sha256     <pending>
+  sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf
+  note       Run non-thinking; the grammar forces JSON from the first token anyway.
+
+SECOND FAMILY (dual-family agreement)
+  file       Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
+  source     https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+  sha256     <pending>
+  sampling   identical to primary
+  note       Different vendor is the point. Week-one gate may promote it to primary.
+
+RUNTIME
+  llama.cpp  <commit sha pending>
+  backend    Vulkan, RX 9070 XT 16GB, -np 8 --cache-reuse

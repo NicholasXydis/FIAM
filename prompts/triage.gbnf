@@ -1,6 +1,8 @@
-# Forces valid triage JSON at the sampler, so the pipeline has no parse-failure path.
-# Pass to llama.cpp with --grammar-file prompts/triage.gbnf
-# Validate against a handful of filings before the production run.
+# What: a grammar that forces the model's output into valid triage JSON as it generates,
+#       so there is no parse-failure path and no retry loop.
+# Use:  llama.cpp --grammar-file prompts/triage.gbnf
+#       Validate on a handful of real filings first. A grammar that cannot emit a token
+#       the model needs degrades output silently rather than erroring.
 
 root ::= "{" ws
          "\"material\":"   ws bool       "," ws
