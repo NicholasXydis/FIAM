@@ -14,12 +14,13 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "generated_utc": "2026-09-20T22:58:59+00:00",
-    "git_commit": "5bc8164",
+    "generated_utc": "2026-09-20T23:30:07+00:00",
+    "git_commit": "5932261",
     "working_tree_dirty": 1,
-    "src_sha256": "6026d0f61b489cd7",
+    "src_sha256": "c5ee2b1561ac688e",
     "src_files": [
       "charts.py",
+      "check_docs.py",
       "features.py",
       "pipeline.py",
       "report.py"
