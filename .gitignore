@@ -6,6 +6,7 @@ __pycache__/
 /build/
 /dist/
 .venv/
+.venv-*/
 venv/
 /env/
 .python-version
@@ -96,3 +97,8 @@ Desktop.ini
 .directory
 .Trash-*
 *.kate-swp
+
+# Generated outputs
+/submission/figures/
+/submission/*.csv
+/submission/*.pdf
