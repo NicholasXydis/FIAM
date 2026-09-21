@@ -40,7 +40,7 @@ No network, no API key, no model files, no randomness.
 | Costs as share of gross | 25% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_Generated 2026-09-20T23:30:07+00:00 from commit `5932261`._
+_Generated 2026-09-20T23:34:32+00:00 from commit `3e251cd`._
 
 <!--/AUTO:headline-->
 
