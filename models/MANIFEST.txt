@@ -1,21 +1,65 @@
-# What: a record of which model files produced our numbers. The weights themselves are
-#       gitignored (too large), so this is the only thing pinning them.
-# Use:  on download, run `sha256sum models/<file>` and paste the result over <pending>.
+# WHAT THIS FILE IS
+#
+# A record of exactly which model file produced which piece of research.
+#
+# Why it exists: the model weights are multi-gigabyte files we cannot commit to git, and are
+# not ours to redistribute anyway. So they live on disk and never in the repo. Without this
+# file, nothing would say WHICH version of a model produced a given result. "We used Qwen"
+# is not reproducible. A SHA-256 hash is.
+#
+# What you need to know before touching it:
+#   - None of this affects our submitted numbers. src/pipeline.py uses no models at all.
+#     requirements.txt is the only setup file you need to reproduce the book.
+#   - No hardware requirements. Any machine that can load the weights gets the same output.
+#   - If you download one of these models, run `sha256sum models/<file>` and paste the result
+#     over the matching <pending>. That is the whole job.
+#
+# A SHA-256 is a fingerprint of a file's contents. Two people with the same hash have
+# byte-identical files, which is how a judge can verify they ran what we ran.
 
-PRIMARY (event triage)
-  file       Qwen3-14B-Q5_K_M.gguf
-  source     https://huggingface.co/Qwen/Qwen3-14B-GGUF
+
+# ---------------------------------------------------------------------------------------
+# TEXT ENCODER
+# A BERT-style model that turns filing text into numbers. Research only: its output has
+# never moved a portfolio weight, and it only would if it first cleared the gate below.
+# ---------------------------------------------------------------------------------------
+  base       nlpaueb/sec-bert-base, trained on filings that predate our test window
+             (which is what stops it having seen the answers)
+  revision   <pending, pin the commit sha, not the branch, or it changes under you>
+  sha256     <pending>
+  training   more MLM on training-window filings, then a return-prediction head
+  gate       Must beat the Loughran-McDonald word list on validation folds. That list scores
+             t=0.44 once sector and beta come out, so the bar is near zero, and filing tone
+             still missed it. Any text signal that moves weights has to come from a fixed
+             encoder like this, never from a model that writes text.
+  needs      ~8GB VRAM, or CPU if you are patient, or LightningAI free hours
+
+
+# ---------------------------------------------------------------------------------------
+# RESEARCH AGENTS
+# Local language models that read filings and write commentary. They criticise our picks,
+# look up evidence and check labels. They never produce a number that reaches the book.
+# Two different vendors on purpose, so when they agree it tells us something.
+# ---------------------------------------------------------------------------------------
+  primary    <pending, a current dense ~27B at Q4>
+  source     <pending>
+  sha256     <pending>
+  second     <pending, a different vendor so agreement between them means something>
   sha256     <pending>
   sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf
-  note       Run non-thinking; the grammar forces JSON from the first token anyway.
+             (temperature 0 and a fixed seed mean the same prompt gives the same answer
+             every time, which is what lets a judge rerun it)
+  excluded   Harmony models (gpt-oss-*). Their control tokens break the grammar sampler, and
+             forcing valid JSON is what makes a run repeatable.
+  note       Two models agreeing shows the output is stable, not that either is correct.
+  needs      ~16GB VRAM for a dense 27B at Q4, less for smaller quantizations
 
-SECOND FAMILY (dual-family agreement)
-  file       Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
-  source     https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
-  sha256     <pending>
-  sampling   identical to primary
-  note       Different vendor is the point. Week-one gate may promote it to primary.
 
-RUNTIME
+# ---------------------------------------------------------------------------------------
+# RUNTIME
+# The program that actually runs the models above. Pinned because a different version can
+# produce different output from identical weights.
+# ---------------------------------------------------------------------------------------
   llama.cpp  <commit sha pending>
-  backend    Vulkan, RX 9070 XT 16GB, -np 8 --cache-reuse
+  flags      -np 8 --cache-reuse
+  backend    whichever is faster on the machine running it. Changes speed, not output.

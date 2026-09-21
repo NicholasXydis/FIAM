@@ -1,0 +1,74 @@
+{
+  "_about": {
+    "what": "One run of src/pipeline.py. The source of truth for every number.",
+    "regenerate": "python run.py",
+    "sections": {
+      "run": "when this was made, from which code",
+      "performance": "returns, risk, and the market regression",
+      "costs": "what trading and borrowing took out",
+      "compliance": "competition limits, measured after rounding to whole shares",
+      "robustness": "what happens if our assumptions are wrong",
+      "notes": "caveats that belong next to the numbers",
+      "basis": "IR and Sharpe on excess return. CAGR and drawdown on total return."
+    },
+    "rounding": "6 decimals, applied once on write. Maths runs at full precision."
+  },
+  "run": {
+    "generated_utc": "2026-09-21T00:32:47+00:00",
+    "git_commit": "5cb3bc3",
+    "working_tree_dirty": 1,
+    "src_sha256": "c7f1b0bc803096a1",
+    "src_files": [
+      "charts.py",
+      "check_docs.py",
+      "features.py",
+      "pipeline.py",
+      "report.py"
+    ],
+    "holding_months": 68,
+    "window": "2021-01 to 2026-08"
+  },
+  "performance": {
+    "return_gross_annual": 0.190256,
+    "return_net_annual": 0.143181,
+    "return_total_cagr": 0.179813,
+    "volatility_annual": 0.142082,
+    "information_ratio": 0.726212,
+    "sharpe_ratio": 1.007741,
+    "max_drawdown_total": -0.14066,
+    "max_drawdown_spread": -0.20534,
+    "hit_rate_positive_active_months": 0.529412,
+    "alpha_annual": 0.160695,
+    "alpha_tstat": 2.275182,
+    "beta_realized": -0.097711,
+    "beta_stderr": 0.101249,
+    "correlation_with_market": -0.105729
+  },
+  "costs": {
+    "cost_annual": 0.047074,
+    "cost_share_of_gross": 0.247427,
+    "turnover_monthly_one_way": 0.661322,
+    "hard_to_borrow_share_of_short_book": 0.209401
+  },
+  "compliance": {
+    "positions_average": 253.161765,
+    "net_exposure_max_abs": 0.000867,
+    "gross_exposure_max": 1.99959,
+    "sector_tilt_max": 0.010907,
+    "position_weight_max": 0.016178,
+    "beta_exante_weighted_mean": 0.019993
+  },
+  "robustness": {
+    "deflated_sharpe_60_design_choices": 0.521966,
+    "deflated_sharpe_860_all_configurations": 0.201525,
+    "sharpe_a_lucky_manager_would_post_at_860": 1.349302,
+    "ir_if_missing_returns_cost_30pct": 0.708318,
+    "missing_long_weight_monthly": 0.000768,
+    "missing_short_weight_monthly": 0.002612
+  },
+  "notes": {
+    "market_series": "Ken French CRSP value-weighted market, NOT the S&P 500",
+    "regression_months": 67,
+    "status": "research backtest, not a sealed out-of-sample record"
+  }
+}
