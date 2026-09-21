@@ -78,9 +78,7 @@ granted, and nothing else is waiting on it.
 
 ## Running it
 
-    python src/pipeline.py    # the holdings, the returns, every statistic
-    python src/report.py      # copies those numbers into RESULTS.md
-    python src/charts.py      # the seven charts the rules ask for
+    python run.py    # builds the portfolio, updates RESULTS.md, draws the charts
 
 The pipeline stops if any competition limit breaks, so a clean run means the book is compliant.
 `MAIN.py`, the single file the rules want, is assembled from `src/` at the end.

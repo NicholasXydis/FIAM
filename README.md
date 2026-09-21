@@ -23,11 +23,11 @@ Neither needs a key. `.env` is optional and the pipeline never reads it.
 
 ## Running it
 
-    python src/pipeline.py    # holdings.csv, returns.csv, metrics.json
-    python src/report.py      # copies those numbers into RESULTS.md
-    python src/charts.py      # the seven required charts
+    python run.py
 
-Run all three in order. The second keeps the documents matching the output so nothing drifts.
+That runs all four steps in order: builds the portfolio, copies the numbers into `RESULTS.md`,
+draws the charts, then checks nothing is out of date. Use it instead of calling the scripts by
+hand, so the write-up can never disagree with the output.
 
 The pipeline stops if any competition limit breaks, so a clean run means the book is compliant.
 
@@ -35,9 +35,11 @@ The pipeline stops if any competition limit breaks, so a clean run means the boo
 
 | | |
 |---|---|
+| `run.py` | runs everything below in order. This is the one to use |
 | `src/pipeline.py` | screen, score, neutralize, optimize, round to whole shares, charge costs |
 | `src/report.py` | copies `metrics.json` into `RESULTS.md` |
 | `src/charts.py` | the seven required charts |
+| `src/check_docs.py` | flags any hand-typed number that no longer matches |
 | `src/features.py` | join seam, so a new feature block does not mean rebuilding everything |
 | `prompts/` | what we send the local models, word for word. Part of the submission |
 | `models/MANIFEST.txt` | model hashes for the research layer. Weights stay out of git |

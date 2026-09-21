@@ -1,7 +1,7 @@
 {
   "_about": {
     "what": "One run of src/pipeline.py. The source of truth for every number.",
-    "regenerate": "python src/pipeline.py, then python src/report.py",
+    "regenerate": "python run.py",
     "sections": {
       "run": "when this was made, from which code",
       "performance": "returns, risk, and the market regression",
@@ -14,10 +14,10 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "generated_utc": "2026-09-20T23:34:32+00:00",
-    "git_commit": "3e251cd",
+    "generated_utc": "2026-09-21T00:32:47+00:00",
+    "git_commit": "5cb3bc3",
     "working_tree_dirty": 1,
-    "src_sha256": "5e5900d358d9feba",
+    "src_sha256": "c7f1b0bc803096a1",
     "src_files": [
       "charts.py",
       "check_docs.py",
