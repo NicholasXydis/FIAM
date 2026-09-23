@@ -1,0 +1,13 @@
+# Ruff settings.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E and F catch real bugs. I keeps everyone's imports in the same order.
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.format]
+# Match what src/ already uses.
+quote-style = "double"

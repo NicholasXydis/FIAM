@@ -41,7 +41,7 @@ htmlcov/
 /data/
 
 # Cached LLM & encoder output
-/cache/
+cache/
 
 # Models & experiments
 *.pt

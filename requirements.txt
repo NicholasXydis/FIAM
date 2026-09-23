@@ -9,13 +9,16 @@ numpy==2.5.1           # the arithmetic under pandas
 scipy==1.18.1          # the deflated Sharpe
 cvxpy==1.9.3           # the portfolio optimizer
 statsmodels==0.15.0    # alpha and beta with HAC standard errors
-matplotlib==3.11.0     # the six required charts
+matplotlib==3.11.0     # every chart
 
 # The comparison exhibits, the models we built and rejected. Not part of the book.
 scikit-learn==1.9.1    # ElasticNet, the competition's own baseline
-lightgbm==4.7.0        # gradient-boosted trees, IR -1.80
-torch==2.14.0+cpu      # PyTorch, the neural network, IR -1.75
+lightgbm==4.7.0        # gradient-boosted trees, IR -0.37
+torch==2.14.0+cpu      # PyTorch, the neural network, IR -0.24
 transformers==5.17.0   # Hugging Face, for the SEC-BERT text encoder if it ever clears its gate
+
+# Style only, not imported by anything that produces a number.
+ruff==0.15.17          # lint and format, configured in pyproject.toml
 
 # torch here is CPU-only and that is deliberate. The GPU build lives in .venv-gpu on Python
 # 3.12, because AMD only ships ROCm wheels for 3.12, and only the text encoder needs it.
