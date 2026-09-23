@@ -1,0 +1,37 @@
+{
+  "lambda_0": {
+    "turnover": 0.5033031113639707,
+    "cost_annual": 0.03884786609686336,
+    "net_annual": 0.16298454610046514,
+    "information_ratio": 0.846124683645717,
+    "positions": 316.36764705882354
+  },
+  "lambda_0.25": {
+    "turnover": 0.16157860162132354,
+    "cost_annual": 0.01891871734408418,
+    "net_annual": 0.11716884858303561,
+    "information_ratio": 0.5364007905384139,
+    "positions": 361.1617647058824
+  },
+  "lambda_0.5": {
+    "turnover": 0.11115974722058823,
+    "cost_annual": 0.015230004497336386,
+    "net_annual": 0.10981361201609804,
+    "information_ratio": 0.5145673740008909,
+    "positions": 342.86764705882354
+  },
+  "lambda_1": {
+    "turnover": 0.08645427452205881,
+    "cost_annual": 0.012679118142031293,
+    "net_annual": 0.1021985078734175,
+    "information_ratio": 0.4902971455456558,
+    "positions": 284.0147058823529
+  },
+  "lambda_2": {
+    "turnover": 0.06232818451838235,
+    "cost_annual": 0.00923506690183561,
+    "net_annual": 0.09341862672531409,
+    "information_ratio": 0.5132789268431986,
+    "positions": 215.66176470588235
+  }
+}

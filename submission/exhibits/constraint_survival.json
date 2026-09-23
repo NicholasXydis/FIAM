@@ -1,0 +1,352 @@
+{
+  "what": "Panel A is prediction, panel B is portfolio; the two are different metrics and are never drawn as one line. Each panel-B row adds one construction choice on top of the row above it. It is not one isolated restriction per row: the score entering row one is already sector-demeaned and beta-residualized, and moving from equal-weight to the optimizer also introduces the per-name cap.",
+  "predictive_stages": [
+    "raw",
+    "sector",
+    "beta",
+    "vol"
+  ],
+  "portfolio_stages": [
+    "equal_weight",
+    "optimizer",
+    "constrained",
+    "whole_shares",
+    "after_costs"
+  ],
+  "code": {
+    "git_commit": "64b6a3e",
+    "working_tree_dirty": true,
+    "src_sha256": "60d8261529fca6a2",
+    "src_files": [
+      "src/agents/devils_advocate.py",
+      "src/agents/event_triage.py",
+      "src/agents/reproducibility.py",
+      "src/agents/signal_discovery.py",
+      "src/charts.py",
+      "src/check_docs.py",
+      "src/exhibit_charts.py",
+      "src/exhibits/completeness.py",
+      "src/exhibits/config_log.py",
+      "src/exhibits/constraint_survival.py",
+      "src/exhibits/costs.py",
+      "src/exhibits/freeze.py",
+      "src/exhibits/label_repair.py",
+      "src/exhibits/placebo_lab.py",
+      "src/exhibits/risk_decomposition.py",
+      "src/exhibits/subperiod.py",
+      "src/exhibits/turnover_sweep.py",
+      "src/features.py",
+      "src/ml/collect.py",
+      "src/ml/cost_aware.py",
+      "src/ml/dataset.py",
+      "src/ml/decile_tables.py",
+      "src/ml/nn3_seeds.py",
+      "src/ml/run_through_optimizer.py",
+      "src/ml/signal_decay.py",
+      "src/ml/subset_sweep.py",
+      "src/ml/train_enet.py",
+      "src/ml/train_lgbm.py",
+      "src/ml/train_nn3.py",
+      "src/pipeline.py",
+      "src/report.py"
+    ]
+  },
+  "models": {
+    "composite": {
+      "predictive": {
+        "raw": {
+          "ic_mean": 0.050274212871186906,
+          "ic_t": 3.315829044358444,
+          "decile_spread_annual": 0.12942653707226653,
+          "months": 68,
+          "decile_months": 68
+        },
+        "sector": {
+          "ic_mean": 0.045364895802919185,
+          "ic_t": 3.239974523698101,
+          "decile_spread_annual": 0.10423443956128547,
+          "months": 68,
+          "decile_months": 68
+        },
+        "beta": {
+          "ic_mean": 0.044497826932004776,
+          "ic_t": 3.696519017764929,
+          "decile_spread_annual": 0.128638114647142,
+          "months": 68,
+          "decile_months": 68
+        },
+        "vol": {
+          "ic_mean": 0.03511193654472422,
+          "ic_t": 4.010163278204739,
+          "decile_spread_annual": 0.1572747200996312,
+          "months": 68,
+          "decile_months": 68
+        }
+      },
+      "portfolio": {
+        "equal_weight": {
+          "gross_annual": 0.15181414729537157,
+          "net_annual": 0.15181414729537157,
+          "turnover": null,
+          "positions": 400.0,
+          "net_ir": 0.6918889347850669,
+          "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
+        },
+        "optimizer": {
+          "gross_annual": 0.18411297916192892,
+          "net_annual": 0.18411297916192892,
+          "turnover": 0.5516657513428728,
+          "positions": 358.19117647058823,
+          "net_ir": 0.6983093350167303,
+          "note": "convex optimizer, budget and per-name cap"
+        },
+        "constrained": {
+          "gross_annual": 0.20211796192845988,
+          "net_annual": 0.20211796192845988,
+          "turnover": 0.5028394234928116,
+          "positions": 316.63235294117646,
+          "net_ir": 1.114963875046311,
+          "note": "plus the portfolio exposure constraints: sector, beta, volatility"
+        },
+        "whole_shares": {
+          "gross_annual": 0.20183241219732856,
+          "net_annual": 0.20183241219732856,
+          "turnover": 0.5033031113639707,
+          "positions": 316.36764705882354,
+          "net_ir": 1.1134364888197703,
+          "note": "plus whole-share rounding against a $10m NAV"
+        },
+        "after_costs": {
+          "gross_annual": 0.20183241219732856,
+          "net_annual": 0.16298454610046514,
+          "turnover": 0.5033031113639707,
+          "positions": 316.36764705882354,
+          "net_ir": 0.846124683645717,
+          "note": "plus the full cost model, this row is the shipped book"
+        }
+      }
+    },
+    "lgbm": {
+      "predictive": {
+        "raw": {
+          "ic_mean": 0.03432913049915527,
+          "ic_t": 2.39852782902572,
+          "decile_spread_annual": 0.03864537249583671,
+          "months": 68,
+          "decile_months": 68
+        },
+        "sector": {
+          "ic_mean": 0.02871451839041991,
+          "ic_t": 2.3845487212057477,
+          "decile_spread_annual": -0.002220510034575886,
+          "months": 68,
+          "decile_months": 68
+        },
+        "beta": {
+          "ic_mean": 0.02665867116868026,
+          "ic_t": 2.7028965259746904,
+          "decile_spread_annual": 0.010045304234790987,
+          "months": 68,
+          "decile_months": 68
+        },
+        "vol": {
+          "ic_mean": 0.01659252779308141,
+          "ic_t": 2.0270604683161264,
+          "decile_spread_annual": 0.036759550773289906,
+          "months": 68,
+          "decile_months": 68
+        }
+      },
+      "portfolio": {
+        "equal_weight": {
+          "gross_annual": 0.010965592872588017,
+          "net_annual": 0.010965592872588017,
+          "turnover": null,
+          "positions": 400.0,
+          "net_ir": -0.25304370240040613,
+          "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
+        },
+        "optimizer": {
+          "gross_annual": 0.026810552968574645,
+          "net_annual": 0.026810552968574645,
+          "turnover": 1.249704606940409,
+          "positions": 264.5147058823529,
+          "net_ir": -0.08933529226079812,
+          "note": "convex optimizer, budget and per-name cap"
+        },
+        "constrained": {
+          "gross_annual": 0.07413027092073185,
+          "net_annual": 0.07413027092073185,
+          "turnover": 1.2116756066670553,
+          "positions": 269.05882352941177,
+          "net_ir": 0.27168780825586275,
+          "note": "plus the portfolio exposure constraints: sector, beta, volatility"
+        },
+        "whole_shares": {
+          "gross_annual": 0.07445093742773437,
+          "net_annual": 0.07445093742773437,
+          "turnover": 1.2114673340295588,
+          "positions": 268.94117647058823,
+          "net_ir": 0.2744560875053675,
+          "note": "plus whole-share rounding against a $10m NAV"
+        },
+        "after_costs": {
+          "gross_annual": 0.07445093742773437,
+          "net_annual": -0.0053239208422123175,
+          "turnover": 1.2114673340295588,
+          "positions": 268.94117647058823,
+          "net_ir": -0.36525403033052184,
+          "note": "plus the full cost model, this row is the shipped book"
+        }
+      }
+    },
+    "nn3": {
+      "predictive": {
+        "raw": {
+          "ic_mean": 0.03889137552508246,
+          "ic_t": 2.9126604547794623,
+          "decile_spread_annual": 0.04732173759371393,
+          "months": 68,
+          "decile_months": 68
+        },
+        "sector": {
+          "ic_mean": 0.03404084900485224,
+          "ic_t": 2.858895791256309,
+          "decile_spread_annual": 0.014981808738527518,
+          "months": 68,
+          "decile_months": 68
+        },
+        "beta": {
+          "ic_mean": 0.032967454810952,
+          "ic_t": 3.4897031575039343,
+          "decile_spread_annual": 0.04517530054032032,
+          "months": 68,
+          "decile_months": 68
+        },
+        "vol": {
+          "ic_mean": 0.0243187066823049,
+          "ic_t": 3.3569314876643386,
+          "decile_spread_annual": 0.07463254878361528,
+          "months": 68,
+          "decile_months": 68
+        }
+      },
+      "portfolio": {
+        "equal_weight": {
+          "gross_annual": 0.04458939691651771,
+          "net_annual": 0.04458939691651771,
+          "turnover": null,
+          "positions": 400.0,
+          "net_ir": 0.047916156399524845,
+          "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
+        },
+        "optimizer": {
+          "gross_annual": 0.07198936621850806,
+          "net_annual": 0.07198936621850806,
+          "turnover": 1.0533746323491344,
+          "positions": 267.75,
+          "net_ir": 0.3183254543282412,
+          "note": "convex optimizer, budget and per-name cap"
+        },
+        "constrained": {
+          "gross_annual": 0.07582349547268587,
+          "net_annual": 0.07582349547268587,
+          "turnover": 0.9909350427169237,
+          "positions": 284.6617647058824,
+          "net_ir": 0.301350857260316,
+          "note": "plus the portfolio exposure constraints: sector, beta, volatility"
+        },
+        "whole_shares": {
+          "gross_annual": 0.07575093243604192,
+          "net_annual": 0.07575093243604192,
+          "turnover": 0.9908304494055882,
+          "positions": 284.54411764705884,
+          "net_ir": 0.30079025300246315,
+          "note": "plus whole-share rounding against a $10m NAV"
+        },
+        "after_costs": {
+          "gross_annual": 0.07575093243604192,
+          "net_annual": 0.012072037449706892,
+          "turnover": 0.9908304494055882,
+          "positions": 284.54411764705884,
+          "net_ir": -0.2354011879869538,
+          "note": "plus the full cost model, this row is the shipped book"
+        }
+      }
+    },
+    "enet": {
+      "predictive": {
+        "raw": {
+          "ic_mean": 0.029257557958613095,
+          "ic_t": 1.86524869793656,
+          "decile_spread_annual": -0.010377245788315986,
+          "months": 56,
+          "decile_months": 56
+        },
+        "sector": {
+          "ic_mean": 0.0274387154175986,
+          "ic_t": 1.9247272786568985,
+          "decile_spread_annual": 0.020877979777939284,
+          "months": 56,
+          "decile_months": 56
+        },
+        "beta": {
+          "ic_mean": 0.025027376698896275,
+          "ic_t": 2.0167289838684828,
+          "decile_spread_annual": 0.0241884298028935,
+          "months": 56,
+          "decile_months": 56
+        },
+        "vol": {
+          "ic_mean": 0.016077174283997915,
+          "ic_t": 1.5393559303183897,
+          "decile_spread_annual": 0.05117640694244015,
+          "months": 56,
+          "decile_months": 56
+        }
+      },
+      "portfolio": {
+        "equal_weight": {
+          "gross_annual": 0.0181741797833925,
+          "net_annual": 0.0181741797833925,
+          "turnover": null,
+          "positions": 400.0,
+          "net_ir": -0.19846703114324205,
+          "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
+        },
+        "optimizer": {
+          "gross_annual": 0.017920938348315707,
+          "net_annual": 0.017920938348315707,
+          "turnover": 1.2410223612942952,
+          "positions": 273.4642857142857,
+          "net_ir": -0.14121204695883768,
+          "note": "convex optimizer, budget and per-name cap"
+        },
+        "constrained": {
+          "gross_annual": 0.04108721400845318,
+          "net_annual": 0.04108721400845318,
+          "turnover": 1.130726954491477,
+          "positions": 281.48214285714283,
+          "net_ir": 0.007775806876917596,
+          "note": "plus the portfolio exposure constraints: sector, beta, volatility"
+        },
+        "whole_shares": {
+          "gross_annual": 0.041241262421468944,
+          "net_annual": 0.041241262421468944,
+          "turnover": 1.13067913909375,
+          "positions": 281.35714285714283,
+          "net_ir": 0.008883366611344146,
+          "note": "plus whole-share rounding against a $10m NAV"
+        },
+        "after_costs": {
+          "gross_annual": 0.041241262421468944,
+          "net_annual": -0.0320568924655299,
+          "turnover": 1.13067913909375,
+          "positions": 281.35714285714283,
+          "net_ir": -0.5161624584990995,
+          "note": "plus the full cost model, this row is the shipped book"
+        }
+      }
+    }
+  }
+}

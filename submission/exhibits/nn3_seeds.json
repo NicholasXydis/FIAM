@@ -1,0 +1,195 @@
+{
+  "what": "NN3 refitted on a fixed consecutive five-seed sweep, everything else held fixed.",
+  "rule": "Reported in full, every seed, whatever it says. Seed 42 was already known when 43-46 were chosen, so this is a robustness sweep, not a predeclaration. Never averaged into a production model: an ensemble is a different model.",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "environment": {
+    "python": "3.14.5",
+    "torch": "2.14.0+cpu",
+    "numpy": "2.5.1",
+    "device": "cpu",
+    "threads": 8
+  },
+  "code": {
+    "git_commit": "64b6a3e",
+    "working_tree_dirty": true,
+    "src_sha256": "ca144c7cd6c42d1d",
+    "src_files": [
+      "src/agents/devils_advocate.py",
+      "src/agents/event_triage.py",
+      "src/agents/reproducibility.py",
+      "src/agents/signal_discovery.py",
+      "src/charts.py",
+      "src/check_docs.py",
+      "src/exhibit_charts.py",
+      "src/exhibits/completeness.py",
+      "src/exhibits/config_log.py",
+      "src/exhibits/constraint_survival.py",
+      "src/exhibits/costs.py",
+      "src/exhibits/freeze.py",
+      "src/exhibits/label_repair.py",
+      "src/exhibits/placebo_lab.py",
+      "src/exhibits/risk_decomposition.py",
+      "src/exhibits/subperiod.py",
+      "src/exhibits/turnover_sweep.py",
+      "src/features.py",
+      "src/ml/collect.py",
+      "src/ml/cost_aware.py",
+      "src/ml/dataset.py",
+      "src/ml/decile_tables.py",
+      "src/ml/nn3_seeds.py",
+      "src/ml/run_through_optimizer.py",
+      "src/ml/signal_decay.py",
+      "src/ml/subset_sweep.py",
+      "src/ml/train_enet.py",
+      "src/ml/train_lgbm.py",
+      "src/ml/train_nn3.py",
+      "src/pipeline.py",
+      "src/report.py"
+    ]
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "best_epoch_per_fold": [
+        60,
+        44,
+        21,
+        26,
+        21,
+        28
+      ],
+      "ic_mean": 0.05765799031673863,
+      "ic_t": 3.8923951557830243,
+      "ic_months": 68,
+      "information_ratio": -0.2354011879869538,
+      "gross_annual": 0.07575093243604192,
+      "net_annual": 0.012072037449706892,
+      "turnover": 0.9908304494055882,
+      "positions": 284.54411764705884,
+      "months": 68
+    },
+    {
+      "seed": 43,
+      "best_epoch_per_fold": [
+        56,
+        40,
+        27,
+        29,
+        32,
+        25
+      ],
+      "ic_mean": 0.05366308698255091,
+      "ic_t": 3.8253213455722266,
+      "ic_months": 68,
+      "information_ratio": -0.6724690958681401,
+      "gross_annual": 0.006539923576930201,
+      "net_annual": -0.05998043238606236,
+      "turnover": 1.016317784132353,
+      "positions": 292.72058823529414,
+      "months": 68
+    },
+    {
+      "seed": 44,
+      "best_epoch_per_fold": [
+        36,
+        44,
+        33,
+        37,
+        29,
+        37
+      ],
+      "ic_mean": 0.027812191192065946,
+      "ic_t": 2.4995795761404094,
+      "ic_months": 68,
+      "information_ratio": -1.376920562231798,
+      "gross_annual": -0.04657430962049671,
+      "net_annual": -0.10821441814674063,
+      "turnover": 0.9110517530582354,
+      "positions": 308.6617647058824,
+      "months": 68
+    },
+    {
+      "seed": 45,
+      "best_epoch_per_fold": [
+        11,
+        21,
+        12,
+        18,
+        22,
+        18
+      ],
+      "ic_mean": 0.049271352906819804,
+      "ic_t": 3.8830660417412894,
+      "ic_months": 68,
+      "information_ratio": -0.9053369447624671,
+      "gross_annual": 0.015535702878984828,
+      "net_annual": -0.059206999066515914,
+      "turnover": 1.1848643194375,
+      "positions": 298.0735294117647,
+      "months": 68
+    },
+    {
+      "seed": 46,
+      "best_epoch_per_fold": [
+        52,
+        43,
+        37,
+        38,
+        27,
+        28
+      ],
+      "ic_mean": 0.024936228552873,
+      "ic_t": 2.4985738711297376,
+      "ic_months": 68,
+      "information_ratio": -0.793750938556838,
+      "gross_annual": 0.01985113115915979,
+      "net_annual": -0.04458073505521121,
+      "turnover": 0.9481832851874998,
+      "positions": 300.6029411764706,
+      "months": 68
+    }
+  ],
+  "spread": {
+    "ic_mean": {
+      "mean": 0.042668169990209656,
+      "median": 0.049271352906819804,
+      "min": 0.024936228552873,
+      "max": 0.05765799031673863,
+      "range": 0.032721761763865626
+    },
+    "ic_t": {
+      "mean": 3.3197871980733376,
+      "median": 3.8253213455722266,
+      "min": 2.4985738711297376,
+      "max": 3.8923951557830243,
+      "range": 1.3938212846532867
+    },
+    "information_ratio": {
+      "mean": -0.7967757458812393,
+      "median": -0.793750938556838,
+      "min": -1.376920562231798,
+      "max": -0.2354011879869538,
+      "range": 1.1415193742448442
+    },
+    "gross_annual": {
+      "mean": 0.014220676086124007,
+      "median": 0.015535702878984828,
+      "min": -0.04657430962049671,
+      "max": 0.07575093243604192,
+      "range": 0.12232524205653864
+    },
+    "net_annual": {
+      "mean": -0.05198210944096464,
+      "median": -0.059206999066515914,
+      "min": -0.10821441814674063,
+      "max": 0.012072037449706892,
+      "range": 0.12028645559644752
+    }
+  }
+}

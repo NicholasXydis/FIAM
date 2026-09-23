@@ -22,25 +22,25 @@ No network, no API key, no model files, no randomness.
 
 | | |
 |---|---:|
-| Gross return (annualized) | 19.0% |
-| **Net return (annualized)** | **14.3%** |
-| CAGR (total return) | 18.0% |
-| Volatility | 14.2% |
-| **Information ratio vs TB3MS + 4%** | **0.73** |
-| Sharpe ratio | 1.01 |
-| Max drawdown (total return) | -14.1% |
-| Hit rate | 52.9% |
-| **Annualized alpha** | **16.1%** (t = 2.28, HAC) |
-| **Realized beta** | **-0.10** (se 0.10) |
+| Gross return (annualized) | 20.2% |
+| **Net return (annualized)** | **16.3%** |
+| CAGR (total return) | 20.3% |
+| Volatility | 14.5% |
+| **Information ratio vs TB3MS + 4%** | **0.85** |
+| Sharpe ratio | 1.12 |
+| Max drawdown (total return) | -12.5% |
+| Hit rate | 57.4% |
+| **Annualized alpha** | **18.2%** (t = 2.57, HAC) |
+| **Realized beta** | **-0.11** (se 0.11) |
 | Correlation with market | -0.11 |
-| Positions | 253 |
-| Max single-sector tilt | 1.09% |
-| Max single position | 1.62% |
-| Turnover, one-way monthly | 66% |
-| Costs as share of gross | 25% |
+| Positions | 316 |
+| Max single-sector tilt | 1.10% |
+| Max single position | 1.64% |
+| Turnover, one-way monthly | 50% |
+| Costs as share of gross | 19% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_Generated 2026-09-21T00:32:47+00:00 from commit `5cb3bc3`._
+_Generated 2026-09-23T03:14:30+00:00 from commit `d304a6e`._
 
 <!--/AUTO:headline-->
 
@@ -58,37 +58,32 @@ Ken French publishes a month in arrears.
 
 ## Why realized beta is the whole story
 
-The first working pipeline reported an ex-ante beta of −0.002 and looked compliant. **Its
-realized beta was −0.52.** It made +17.7% in April 2022 when the market fell 9.4%, and lost in
-the market's best months, a directional short, which the rules evaluate as directional.
+The first working pipeline reported an ex-ante beta of -0.002 and looked compliant. **Its
+realized beta was -0.52.** It made +17.7% in April 2022 when the market fell 9.4%, a
+directional short, which the rules evaluate as directional.
 
-The book was flat on `beta_60m` but carried a **−0.41 tilt to idiosyncratic volatility**, and
-volatile stocks *are* market exposure:
+The book was flat on `beta_60m` but carried a **-0.41 tilt to idiosyncratic volatility**, and
+volatile stocks *are* market exposure. A long-high/short-low book on those measures has a
+realized beta of +1.02 (`betabab_1260d`), +0.88 (`betadown_252d`), +0.80 (`rvol_21d`) and
++0.57 (`ivol_capm_21d`).
 
-| long-high / short-low book | realized beta |
-|---|---:|
-| `betabab_1260d` | +1.02 |
-| `betadown_252d` | +0.88 |
-| `rvol_21d` | +0.80 |
-| `ivol_capm_21d` | +0.57 |
-
-Constraining that complex alongside `beta_60m` moved realized beta to −0.10 and improved
-everything at once: IR 0.47 → 0.73, Sharpe 0.66 → 1.01, max drawdown −35% → −20%.
+Constraining that complex alongside `beta_60m` moved realized beta to -0.10 and improved
+everything at once: IR 0.47 to 0.73, Sharpe 0.66 to 1.01, spread-basis drawdown -35% to -20%.
+Those are figures of the time; the carry-in rule below improved them again.
 
 **An ex-ante check tells you what you intended. Only the regression tells you what you own.**
 
-**And the full-period beta hides a drift**, which the rolling chart shows and we state rather than
-let a judge find:
+**The full-period beta also hides a drift**, which we state rather than let a judge find:
 
 | period | beta | se | t |
 |---|---:|---:|---:|
-| 2021–23 | −0.02 | 0.12 | −0.13 |
-| **2024–26** | **−0.21** | **0.08** | **−2.71** |
-| full period | −0.09 | 0.10 | −0.87 |
+| 2021-23 | -0.02 | 0.12 | -0.13 |
+| **2024-26** | **-0.21** | **0.08** | **-2.71** |
+| full period | -0.09 | 0.10 | -0.87 |
 
-The second half is more negative and 36% of rolling 12-month windows sit outside ±0.2. Same
-low-volatility exposure that cost us 2024-25: when speculative stocks rally, a book tilted away
-from them looks short. We show both figures.
+The second half is more negative and 36% of rolling 12-month windows sit outside +/-0.2. It is
+the same low-volatility exposure that cost us 2024-25: when speculative stocks rally, a book
+tilted away from them looks short.
 
 <!-- Two judgment calls live here, the spread scale and the HTB flag. Both are disclosed
      because both move the numbers in our favour. -->
@@ -118,9 +113,9 @@ assumption.
 
 | rule | limit | measured |
 |---|---|---|
-| Positions | 100–500 | ~253 |
+| Positions | 100–500 | ~316 |
 | Gross exposure | ≤ 200% | ≤ 200% |
-| Net exposure | −50% to +50% | 0.0%, max abs 0.13% |
+| Net exposure | −50% to +50% | 0.0%, max abs 0.09% |
 | Realized beta | close to zero | −0.10 (se 0.10) |
 | Rebalance | ≥ semi-annual | monthly |
 
@@ -134,7 +129,7 @@ exactly before rounding and just inside after.
 
 | | enforced | measured |
 |---|---|---|
-| Dollar | hard, `Σw = 0` | max abs 0.13% |
+| Dollar | hard, `Σw = 0` | max abs 0.09% |
 | Beta | hard, on `beta_60m` **and** the volatility complex | realized −0.10 (se 0.10) |
 | Sector | hard, 1% cap on 11 GICS sectors + `XX` for nulls | max 1.09% |
 | Factor | **reported, not enforced** | size, value, momentum disclosed |
@@ -142,32 +137,311 @@ exactly before rounding and just inside after.
 Constraining every factor leaves nothing to earn. "Alpha neutral" is not a thing, alpha is the
 residual we are trying to keep.
 
+<!-- The headline originality exhibit. Every number regenerates from src/ml/. -->
+
+## The machine-learning comparison
+
+Three model families on all 147 characteristics, on the schedule the rules prescribe: expanding
+window, two-year rolling validation, annual refit, splits assigned by target month. Every one of
+them runs through the **same** optimizer as the book, carry-in included, so the comparison is not
+rigged in our favour.
+
+**They all predict at least as well as our composite. They all lose money.**
+
+| | IC t | gross | cost | net | turnover | **net IR** |
+|---|---:|---:|---:|---:|---:|---:|
+| **12-signal composite** | 3.77 | 20.2% | 3.9% | **+16.3%** | 50% | **+0.85** |
+| LightGBM | 3.60 | 7.4% | 8.0% | -0.5% | 121% | -0.37 |
+| NN3 | **3.89** | 7.6% | 6.4% | +1.2% | 99% | -0.24 |
+| ElasticNet | 2.55 | 4.1% | 7.3% | -3.2% | 113% | -0.52 |
+
+**Why they lose, measured one step at a time.** We have been wrong about this twice, so the
+third answer comes from an exhibit rather than an argument. `constraint_survival.json` adds one
+construction choice per row and reports net IR at each:
+
+| | equal-weight | optimizer | + neutrality | + whole shares | **+ costs** |
+|---|---:|---:|---:|---:|---:|
+| **12-signal composite** | +0.69 | +0.70 | +1.11 | +1.11 | **+0.85** |
+| LightGBM | -0.25 | -0.09 | +0.27 | +0.27 | **-0.37** |
+| NN3 | +0.05 | +0.32 | +0.30 | +0.30 | **-0.24** |
+| ElasticNet | -0.20 | -0.14 | +0.01 | +0.01 | **-0.52** |
+
+**Neutralization is not what kills them, it helps all three.** They die one column later, at
+costs. The composite has **three times the gross return and half the turnover**, and 4-8% of
+gross cannot carry a 6-8% cost bill.
+
+**Two earlier claims are withdrawn.** That model skill sat in the middle deciles came from folds
+running February to January; the folds are fixed. That model rankings did not survive
+neutralization is contradicted by the table above. Both stay on the record, because the
+corrections are why the current claim can be trusted.
+
+**We then tried to fix it, and could not.** If the models churn without earning, slowing them
+down should help. First we checked whether their signals actually go stale faster than ours:
+
+| | fresh IC | after one month | retained |
+|---|---:|---:|---:|
+| **12-signal composite** | +0.0449 | +0.0408 | 91% |
+| NN3 | +0.0389 | +0.0376 | **97%** |
+| LightGBM | +0.0343 | +0.0284 | 83% |
+
+They do not. NN3 holds up **better than ours** after a month, so its 99% turnover buys it
+nothing. We blended each model's score toward last month's at five weights, 15 runs in all:
+
+| | turnover | gross | net | net IR |
+|---|---:|---:|---:|---:|
+| NN3, as shipped | 99% | 7.6% | +1.2% | -0.24 |
+| NN3, blend 0.7 | **82%** | 7.7% | +2.2% | **-0.15** |
+| **12-signal composite** | 50% | 20.2% | **+16.3%** | **+0.85** |
+
+**It works and it is not enough.** NN3 gives up nothing in gross while turnover falls
+17 points, and net nearly doubles. The best of
+all 15 runs is still **-0.15**. The gap is gross, not turnover:
+NN3 earns 7.6% against our 20.2%, and 12 points of gross cannot be
+recovered by trading less. All 15 count as eligible attempts, so running this lowered our own
+deflated-Sharpe probability.
+
+**NN3's number is also seed-dependent, and ours is the kindest seed.** A fixed consecutive
+five-seed sweep gives IR -1.38 to -0.24, mean -0.80. Seed 42, the one in the tables above, is
+the best of the five. The range is quoted wherever the point estimate is, and the seeds are
+never averaged into a model.
+
+**ElasticNet, the family the supplied scripts are built on, is weakest**: OOS R-squared
+**-0.012**, and in 12 of 68 months the penalty zeroes every coefficient so it holds nothing. We
+score those months flat rather than dropping them, since dropping months is survivorship by
+another route.
+
+Regenerate with `python src/ml/collect.py`, `signal_decay.py` and `cost_aware.py`.
+
+## The carry-in rule
+
+The optimizer picks from the 200 best and 200 worst names each month. A stock we already hold
+that drifts out of that window used to be **sold automatically**, whether or not selling was
+worth the spread. That is an artifact of how the candidate list was built, not a decision.
+
+Carrying those names back in at a target of zero lets the optimizer choose. One condition, one
+forced trade removed, and every measure improves at once:
+
+| | before | after |
+|---|---:|---:|
+| Information ratio | 0.73 | **0.85** |
+| Sharpe | 1.01 | **1.12** |
+| Net return | 14.3% | **16.3%** |
+| Turnover, one-way monthly | 66% | **50%** |
+| Costs as share of gross | 25% | **19%** |
+| Max drawdown | -14.1% | **-12.5%** |
+| Positions | 253 | 316 |
+| **2023-26 information ratio** | **-0.15** | **+0.08** |
+
+**Adopted after seeing the record**, so it counts as a design choice in the deflation above.
+What makes it defensible is that the reasoning does not depend on the result: a book should not
+be forced to liquidate because of where a ranking cut-off falls.
+
+**What it is not.** Not a sealed out-of-sample result. It was tested on the same 2021-2026
+window as everything else, and it is one of **twelve construction variants tried in the same
+sitting**. Nine changed nothing or hurt, and two that beat it were left unadopted because two
+winners in twelve is chance. Read the 0.85 as a research backtest with a post-hoc improvement
+in it, not as evidence the strategy generalises.
+
+## What the record looks like split in half
+
+A judge will split the sample, so we do it first. The intervals are block bootstraps over
+6-month blocks, which keep whatever autocorrelation the series carries. Gross, cost and net are
+mean monthly rates scaled by 12, so a cost rate and a gross rate are comparable.
+
+| period | months | gross | cost | net | IR | 95% interval |
+|---|---:|---:|---:|---:|---:|---:|
+| **Full, 2021-2026** | 68 | 20.2% | 3.9% | 16.3% | **0.85** | [-0.08, 1.76] |
+| 2021-2022 | 24 | 41.2% | 4.0% | 37.2% | 1.87 | [1.21, 3.41] |
+| **2023-2026** | 44 | 8.7% | 3.8% | 4.9% | **0.08** | [-1.15, 0.91] |
+
+**The full-period interval includes zero.** Sixty-eight months is a short sample and the point
+estimate carries more precision than the data supports. We show the interval rather than the
+point alone.
+
+**The record is front-loaded, and the signal did not break.** Gross opportunity collapsed from
+41.2% to 8.7% a year. Over the same period the low-volatility premium inverted, and our book
+is structurally short it, so the two are consistent; we have not run an exhibit that isolates
+that channel from the others, so we state it as an association rather than a cause. Costs did
+not move. So frictions went from 10% of gross to 44% of it. The regime shift is the
+cause; unchanged trading costs are what turned a thin gross return into a flat net one.
+
+We then tested the obvious fix, trading less, inside the shipped optimizer. It fails at every
+setting, because signal decay outruns the saving. That table is in `submission/exhibits/`.
+
+<!-- This year's rubric leads on agentic AI. Both agents ship with their code; neither
+     can reach a portfolio weight. -->
+
+## The research layer, and what it is allowed to touch
+
+**Nothing here is an input to the book.** The chain from data to weight is panel → 12-signal
+composite → neutralization → convex optimizer → whole shares → costs, arithmetic end to end.
+A hallucinated model output cannot corrupt it, because there is no path from one to the other.
+Two of the four are deterministic controls, not agents, and are labelled that way. The two that
+would use a model have not been run at submission time.
+
+**The signal-discovery control.** The rules warn that an agent searching freely finds spurious
+patterns faster than any human. We measured that with a **deterministic random search, not an
+LLM**: 200 five-signal combinations scored on holding months through 2023, with 2024 onward
+sealed until it committed.
+
+| | information ratio |
+|---|---:|
+| Where it was allowed to look | **+1.78** |
+| The period it never saw | **+0.33** |
+| Median of all 200, sealed period | +0.11 |
+
+Its pick ranked **54 of 200** in the sealed period, and search-vs-sealed correlation was
+**-0.30**. That is the multiple-testing failure the rules describe, measured on our own menu,
+and it is why we equal-weight all twelve signals and decline to select.
+
+**The reproducibility audit.** Seventeen checks re-run the look-ahead list against the code and
+the output before every submission, covering provenance columns, target shifting, predictor
+membership, holding months, survivorship, missing returns, label dating, carry-in ordering,
+fold ordering and calendar alignment, plus four on the research exhibits themselves. It exits
+non-zero so it can fail a build, and has caught three real regressions, one of them twice.
+
+**The event-triage control.** The 373,139-filing corpus joined onto the screened panel gives
+**136,450 stock-months**, each scored on the signed item codes an analyst stops at. **No model
+runs here**, it is the floor the prompt in `prompts/triage.md` would have to beat. It fires on
+**25%** of stock-months at raw t = **-0.20**, which becomes **+0.06** after neutralization.
+**Rejected**, the third text signal to die that way after filing tone and filing intensity.
+
+<!-- The exhibit a risk committee asks for first: not what we earned, but what explains it.
+     It is also the least flattering thing in this file, which is why it is here. -->
+
+## Where the risk and the return actually come from
+
+The single-factor beta says we are market neutral. It does not say we are risk neutral. A
+three-factor regression, HAC standard errors at 6 lags, over **67 monthly observations**.
+That is one short of the 68 we hold, because Ken French publishes a month in arrears, so
+the window ends in July 2026:
+
+| | loading | t | own squared-beta contribution |
+|---|---:|---:|---:|
+| Market (`Mkt-RF`) | +0.050 | +0.60 | 0.3% |
+| **Size (`SMB`)** | **-0.692** | **-4.95** | 22.0% |
+| **Value (`HML`)** | **+0.347** | **+3.79** | 11.5% |
+
+**The three factors together explain 30.5% of our variance; 69.5% is residual.** The
+per-factor column above is each factor's own squared-beta term. Those do not add to
+30.5%, because the factors are correlated and the cross terms belong to no single one of
+them, so we report them as individual contributions and take the explained/residual split from
+the regression itself rather than from a sum that omits covariance.
+
+**Two exposures we do not constrain are statistically real.** Short size and long value, a
+deliberate consequence of neutralizing on sector, beta and volatility and nothing else. We
+report them rather than constrain them, because constraining every factor leaves nothing to
+earn, but a judge is entitled to know they are there.
+
+**Alpha after those three factors is 10.0% a year at t = 1.77**, lower and less significant
+than the headline figure. Part of what the headline calls alpha is a tilt anyone can buy.
+
+**Tails and consistency**, which monthly volatility hides:
+
+| | |
+|---|---:|
+| 95% VaR, monthly | -5.11% |
+| 95% CVaR, monthly | -6.63% |
+| Skew | +0.37 |
+| Excess kurtosis | +0.24 |
+| Rolling 12-month windows with a negative IR | **40%** of 57 |
+
+Two in five twelve-month windows lose to the benchmark. That belongs next to the information
+ratio, not behind it.
+
+<!-- The cost question a desk asks: not what you assumed, but how wrong you can be. -->
+
+## How wrong the cost model can be
+
+Annualized, by component, under our modelled cost schedule:
+
+| | % of NAV a year |
+|---|---:|
+| Commission, exchange, regulatory | 0.60% |
+| Market impact | 0.97% |
+| Borrow, general collateral | 0.50% |
+| Borrow, hard-to-borrow surcharge | 0.53% |
+| Half-spread (scaled Corwin-Schultz) | 1.28% |
+| **Total** | **3.88%** |
+
+**Under our modelled cost schedule, annual costs would need to rise from 3.9% to
+16.2% — 4.17 times what we assume — before expected active return reaches
+zero.** The ladder in `submission/exhibits/cost_ladder.json` runs past that point, so the chart
+crosses zero rather than stopping short of the number the caption quotes.
+
+**These are modelled costs, not observed execution.** No borrow rate here is data we hold, the
+hard-to-borrow flag is a proxy, impact is an assumption, and the spread is a Corwin-Schultz
+estimator scaled by 0.20. The headroom above is a statement about our own schedule, not a
+promise about a broker's.
+
 <!-- Defensive, not persuasive. Appendix material. The point is that we computed it at all
      and published the unflattering count. -->
 
+## Trying to make our own result disappear
+
+Three controls, each answering a different question, all through the identical optimizer, cost
+model and rounding. **Named separately because they predict different things**, and calling
+them all placebos would be a category error.
+
+| control | what changes | what it should do | what happened |
+|---|---|---|---|
+| **Permutation null** | scores shuffled within sector and liquidity, 200 draws | earn nothing before costs | gross **+0.36%/yr** |
+| **Inversion** | every score multiplied by -1 | lose roughly what we make | gross **-20.2%/yr** vs our +20.2% |
+| **Stale scores** | last month's ranking, traded this month | degrade | net IR **+0.47** vs +0.94 matched |
+
+**The null earns nothing, which is the point.** Shuffling inside sector and liquidity breaks
+only the link between score and return, leaving the structure the constraints act on intact.
+Across 200 draws gross centres on **+0.36% a year** (sd 2.91%) against the book's 20.2%. The
+pipeline does not manufacture return from structure alone.
+
+**An initial acceptance rule of ours was wrong, and we report it rather than quietly fix it.**
+`freeze.json` said the null's *net IR* should centre near zero. It centres on **-2.06**, because
+a random ranking re-sorts the book every month, trades at **179% turnover** against our 50% and
+pays our cost rates for it. Gross is the only place a null can be zero, so gross is what the
+rule should have tested. The amendment sits beside the original in `freeze.json`.
+
+**Inversion is a falsification test, not a placebo.** Negating the score gives gross **-20.2%**,
+almost exactly the mirror of ours, which is what genuine directional content must do. A result
+near zero would have meant our score had no direction at all.
+
+**Stale scores are the least flattering and the most useful.** Last month's ranking keeps **81%
+of the gross** and about half the IR (+0.47 against +0.94 matched). The signal is slow-moving,
+as value and quality should be, but **roughly half the record does not depend on this month's
+information**. Turnover rises to 77%, because a month-old ranking fights the carry-in rule.
+
 ## Multiple testing
 
-Try enough variants and one looks good by luck. The deflated Sharpe asks whether our Sharpe
-beats the best a manager with no skill would have posted, given how many things we tried.
+Try enough variants and one looks good by luck. The **deflated-Sharpe probability** (Bailey and
+López de Prado) asks how likely it is that our true Sharpe is above zero, given how many
+attempts came before it. **It is a probability, not a Sharpe ratio**, and we label it that way
+because the two are easy to confuse.
 
-| trials counted | Sharpe a lucky manager posts | deflated Sharpe |
+| attempts deflated by | Sharpe luck alone produces | deflated-Sharpe probability |
 |---|---:|---:|
-| **60, design choices that could have become the book** | 0.99 | **0.52** |
-| 860, every configuration we ever ran | 1.35 | 0.20 |
+| **At 85 eligible attempts** | 1.09 | **0.58** |
+| At 1,328, every fit we ever ran | 1.40 | 0.25 |
 
-**Why 60, and why 860 is still shown.** The statistic asks how many *attempts to find a winner*
-came first. Our 60 are real: neutralization schemes, constructions, position and ridge settings,
-coverage thresholds, cost treatments. The 792-subset sweep is not. We ran it to show selection is
-harmful, then declined to select, and counting a control group as treatments overstates the
-search.
+**Both counts are reconstructible from the ledger.** `submission/exhibits/config_log.csv` lists
+52 experiment families with an **`attempts` column**, because one row is often many fits: `ridge
+15/20/30/45/60` is five, the subset sweep is 792, the permutation null is 200. The eligible
+attempts sum to **85** and all attempts to **1,328**, which are exactly the two numbers
+`src/pipeline.py` deflates by. A reproducibility check fails the build if the ledger and the
+code ever disagree, because a trial count nobody can rebuild is not evidence.
 
-Neither number settles it. Encouraging under the narrow count, inconclusive under the broad one.
-A deflated Sharpe of 0.52 is not confirmation the strategy is real, it says 68 months is a short
-sample and we cannot rule out luck.
+**Why two counts.** The statistic asks how many *attempts to find a winner* came first. The 85
+are real candidates: neutralization schemes, constructions, optimizer settings, signal
+additions, cost treatments, the carry-in rule. The 792-subset sweep and the placebo draws are
+not candidates: we ran them to show that selection is harmful and then declined to select.
+Counting a control as a treatment overstates the search, so both are shown and neither is
+hidden.
+
+Neither number settles it. **0.58 is not confirmation the strategy is real.** It says 68 months is a
+short sample and luck cannot be ruled out. Under the broad count it falls to 0.25, which is
+inconclusive, and we report that rather than quoting only the kinder figure.
 
 **These are research backtests, not a sealed out-of-sample record.** Design choices were made
-while able to see 2021-2026 outcomes. A configuration log and a deflated Sharpe help, they do not
-restore a test set already used for selection. Every configuration tried is below.
+while able to see 2021-2026 outcomes. A ledger and a deflation help; they do not restore a test
+set already used for selection. Every experiment is listed below.
 
 <!-- Nine experiments that failed. The rules say a candid account of what did not work is
      worth more than a polished account of what supposedly did. -->
@@ -176,21 +450,46 @@ restore a test set already used for selection. Every configuration tried is belo
 
 | tried | result |
 |---|---|
-| LightGBM and PyTorch NN3 on all 147 characteristics | IC t = 2.99 and 4.47; IR **−1.80 / −1.75** |
-| Picking the best 5-signal subset | IR 0.03–0.96 across 792 subsets; past-vs-future IR correlation **−0.48** |
+| ElasticNet, LightGBM and PyTorch NN3 on all 147 characteristics | IC t = 2.55, 3.60 and **3.89**; IR **-0.52 / -0.37 / -0.24** |
+| Picking the best 5-signal subset | IR 0.45–1.26 across 792 subsets; early-vs-late IR correlation **−0.36**, and the subset that looked best early then earned **−0.05** against a median of +0.14 |
 | Adding any single profitability signal | 6 of 12 improved IR, median 0.73 vs 0.74 baseline, a coin flip |
 | Adding all 12 profitability candidates | IR → **0.49** |
 | Forecasting 12m-ahead profitability, trading the forecast (rules p.23) | forecast t = 3.53 vs the level it is built from, t = 3.66 |
 | Fundamental *changes* rather than levels | `niq_be` level t = 3.87 vs change t = 1.72 |
 | Value-residualized-on-quality "mispricing" | t = 2.75 vs 3.94 for the plain sum |
 | Loughran-McDonald filing tone | raw t = −2.41, **t = 0.44 after neutralization** |
+| Event triage on signed 8-K item codes | raw t = -0.20, **t = +0.06 after neutralization**, on 25% coverage |
 | Volatility targeting, inverse-vol weighting | IR 0.77 → 0.34 / 0.55 |
 | Turnover control (EWMA + buffer) | turnover 78% → 24%, net IR *fell* |
 | Vol-matched legs | IR 0.79 but net exposure +0.83, breaks the mandate |
+| 8-K filing intensity, `−log1p(count)` | raw t = 1.95, **t = 2.05 after neutralization**, and still rejected, see below |
+
+**The one text signal that survived neutralization, and why it is still out.** Filing
+*intensity*, quiet companies outperforming busy ones, goes t 1.95 to **2.05** after
+neutralization, the only text signal that survived. It is still rejected, because nothing here
+enters on a t-statistic. It enters on a decile table that rises through the tails, and this one
+does not:
+
+| 8-Ks filed in month t | next-month return vs cross-section | names |
+|---:|---:|---:|
+| 0 | +10 bps | 58,806 |
+| 1 | −4 bps | 49,564 |
+| 2 | −16 bps | 20,595 |
+| 3 | −16 bps | 5,604 |
+| 4 | **+37 bps** | 1,389 |
+| 6 | −336 bps | 75 |
+| 7 | −735 bps | 23 |
+
+It reverses at 4 filings and the tail buckets hold 23 to 90 names, so the t-statistic rests on
+a handful of observations, not a shape we could trade. The quiet-minus-busy spread is t = 1.14.
+A signal that passes on IC and fails on deciles is exactly what our own rule was written to
+catch.
 
 ## Outstanding
 
 1. **S&P 500 total-return series**, a hard submission gate. Ken French's factor is CRSP, not S&P.
-2. **Required charts**, cumulative, underwater, rolling 12m beta and IR, histogram, contributors.
-3. **`MAIN.py`**, concatenate `src/` into one file. Do it last, so we are not maintaining two copies.
-4. **WRDS**, daily risk marking if access lands. Nothing scored depends on it.
+   The only item on this list that blocks submission.
+2. **`MAIN.py`**, concatenate `src/` into one file. Do it last, so we are not maintaining two copies.
+3. **The deck.**
+4. **WRDS.** Ask about Compustat Point-in-Time first: it decides whether the contamination
+   tests are evidence or assumption. Then the S&P series, `dlret`, daily spread and ADV.

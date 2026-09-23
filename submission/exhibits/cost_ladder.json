@@ -1,0 +1,52 @@
+{
+  "components": {
+    "commission": 0.006039637336367648,
+    "impact": 0.009663419738188236,
+    "borrow_general_collateral": 0.004999999999999999,
+    "borrow_hard_to_borrow": 0.005303953228727243,
+    "spread": 0.012840855793579598,
+    "total": 0.03884786609686273
+  },
+  "break_even": {
+    "current_annual_cost": 0.03884786609686273,
+    "break_even_annual_cost": 0.16183241219732838,
+    "break_even_multiple": 4.165799269226724,
+    "ladder": {
+      "x1.00": {
+        "annual_cost": 0.03884786609686273,
+        "active_annual": 0.12298454610046568,
+        "information_ratio": 0.8461246836457211
+      },
+      "x1.50": {
+        "annual_cost": 0.058271799145294095,
+        "active_annual": 0.10356061305203429,
+        "information_ratio": 0.712408754429239
+      },
+      "x2.00": {
+        "annual_cost": 0.07769573219372546,
+        "active_annual": 0.08413668000360294,
+        "information_ratio": 0.5786865947062348
+      },
+      "x2.50": {
+        "annual_cost": 0.09711966524215682,
+        "active_annual": 0.06471274695517157,
+        "information_ratio": 0.444983527818911
+      },
+      "x3.00": {
+        "annual_cost": 0.11654359829058819,
+        "active_annual": 0.04528881390674021,
+        "information_ratio": 0.3113248347126024
+      },
+      "x4.17": {
+        "annual_cost": 0.16183241219732838,
+        "active_annual": 1.5918638956022464e-17,
+        "information_ratio": 1.0932432726787359e-16
+      },
+      "x4.79": {
+        "annual_cost": 0.18610727402692764,
+        "active_annual": -0.02427486182959924,
+        "information_ratio": -0.1666042557349939
+      }
+    }
+  }
+}

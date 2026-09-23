@@ -8,28 +8,26 @@ Read `BRIEF.md` for what we built and why. `RESULTS.md` has the numbers.
 
     python -m pip install -r requirements.txt
 
-Verified on Python 3.14.5. No GPU needed.
-
-Copy the organizer's two Parquet files into `data/` and check them once against the SHA-256s in
-their `data/readme.md`:
-
-    sha256sum data/*.parquet
-
-Do not re-save those files in place. Rewriting one changes its hash even when the rows are
-identical, so write intermediates under new names.
-
-Benchmark data is already in `data/benchmarks/`, the FRED T-bill rate and Ken French factors.
-Neither needs a key. `.env` is optional and the pipeline never reads it.
+Python 3.14.5, no GPU needed. Copy the organizer's two Parquet files into `data/`.
+**Never re-save them in place**, write intermediates under new names instead: rewriting a
+Parquet changes its bytes even with identical rows, and `run.py` records a hash of every data
+file so a judge can tell the numbers came from the supplied data. Benchmarks are already in
+`data/benchmarks/` and need no key.
 
 ## Running it
 
-    python run.py
+    python run.py          # about twenty seconds
+    python run.py --ml     # adds the model comparison and research exhibits, hours
 
-That runs all four steps in order: builds the portfolio, copies the numbers into `RESULTS.md`,
-draws the charts, then checks nothing is out of date. Use it instead of calling the scripts by
-hand, so the write-up can never disagree with the output.
+`run.py` builds the portfolio, repairs labels, runs the exhibits, copies numbers into
+`RESULTS.md`, draws the charts and re-checks the look-ahead list. Use it instead of calling
+scripts by hand, so the write-up can never disagree with the output.
 
-The pipeline stops if any competition limit breaks, so a clean run means the book is compliant.
+It stops if any competition limit breaks, so a clean run means the book is compliant. The last
+step is a reproducibility audit: seventeen look-ahead and survivorship checks that exit
+non-zero on failure. Each is a necessary condition, not proof the submission reproduces.
+
+Style is `ruff check` and `ruff format`, configured in `pyproject.toml`.
 
 ## Layout
 
@@ -38,13 +36,17 @@ The pipeline stops if any competition limit breaks, so a clean run means the boo
 | `run.py` | runs everything below in order. This is the one to use |
 | `src/pipeline.py` | screen, score, neutralize, optimize, round to whole shares, charge costs |
 | `src/report.py` | copies `metrics.json` into `RESULTS.md` |
-| `src/charts.py` | the seven required charts |
+| `src/charts.py` | the eight performance charts, cumulative return through P&L contributors |
+| `src/exhibit_charts.py` | the ten research charts, deciles through the placebo lab |
 | `src/check_docs.py` | flags any hand-typed number that no longer matches |
 | `src/features.py` | join seam, so a new feature block does not mean rebuilding everything |
+| `src/exhibits/` | sub-period split, cost ladder, turnover sweep, label repair, rules statistics, baseline freeze, constraint survival, placebo lab |
+| `src/ml/` | the four-model comparison, folds through decile tables, plus the NN3 seed sweep |
+| `src/agents/` | two deterministic research controls, the reproducibility audit, and the devil's-advocate data pack |
 | `prompts/` | what we send the local models, word for word. Part of the submission |
 | `models/MANIFEST.txt` | model hashes for the research layer. Weights stay out of git |
-| `submission/` | generated output |
-| `data/`, `cache/`, `notebooks/`, `.venv-gpu/` | gitignored |
+| `submission/` | generated output, including `exhibits/` and `figures/` |
+| `data/`, `cache/`, `.venv-gpu/` | gitignored |
 
 ## Optional GPU setup
 

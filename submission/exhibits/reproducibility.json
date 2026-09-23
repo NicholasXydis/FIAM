@@ -1,0 +1,87 @@
+[
+  {
+    "check": "no provenance column is a feature",
+    "passed": true,
+    "detail": "clean"
+  },
+  {
+    "check": "target is ret_exc_lead1m, never re-shifted",
+    "passed": true,
+    "detail": "clean"
+  },
+  {
+    "check": "every signal is in factor_char_list.csv",
+    "passed": true,
+    "detail": "12 signals, all listed"
+  },
+  {
+    "check": "68 holding months, 2021-01 to 2026-08",
+    "passed": true,
+    "detail": "68 months from 2021-01-01"
+  },
+  {
+    "check": "names with no next-month return are still held",
+    "passed": true,
+    "detail": "311 such names in the book"
+  },
+  {
+    "check": "missing returns are kept, not dropped",
+    "passed": true,
+    "detail": "0.2971 weight-months booked flat, a stated assumption"
+  },
+  {
+    "check": "labels come from the decision month or earlier",
+    "passed": true,
+    "detail": "0 from the future"
+  },
+  {
+    "check": "carry-in sees last month's book, never this one",
+    "passed": true,
+    "detail": "called at line 280, updated at line 303"
+  },
+  {
+    "check": "model folds are strictly ordered in time",
+    "passed": true,
+    "detail": "6 folds, no overlap"
+  },
+  {
+    "check": "model features are ranked within the month only",
+    "passed": true,
+    "detail": "every rank and fill is grouped by eom"
+  },
+  {
+    "check": "model test folds are calendar years",
+    "passed": true,
+    "detail": "every test block starts in January"
+  },
+  {
+    "check": "model predictions cover the book's 68 months",
+    "passed": true,
+    "detail": "all 9 models cover 68 months"
+  },
+  {
+    "check": "constraint survival ends at the shipped book",
+    "passed": true,
+    "detail": "exhibit 0.846 vs book 0.846"
+  },
+  {
+    "check": "shuffled scores earn nothing before costs",
+    "passed": true,
+    "detail": "null gross +0.36%/yr over 200 draws, tolerance 1.00%"
+  },
+  {
+    "check": "every NN3 seed covers the same months",
+    "passed": true,
+    "detail": "5 seeds, months [68]"
+  },
+  {
+    "check": "deflation counts match the experiment ledger",
+    "passed": true,
+    "detail": "ledger 85/1328 vs code 85/1328"
+  },
+  {
+    "check": "docs quote the right number of checks",
+    "passed": true,
+    "detail": "all docs say seventeen"
+  }
+]

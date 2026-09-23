@@ -1,0 +1,12 @@
+{
+  "budget": 200,
+  "subset_size": 5,
+  "search_window": "holding months 2021-01 to 2024-01, exclusive",
+  "chosen_signals": "qmj+at_gr1+niq_su+chcsho_12m+noa_gr1a",
+  "chosen_ir_in_search": 1.780417244062292,
+  "chosen_ir_in_sealed": 0.32913626107563887,
+  "median_ir_in_sealed": 0.10815976468308372,
+  "rank_of_chosen_in_sealed": 54,
+  "search_vs_sealed_correlation": -0.3024901878496059,
+  "all_twelve_ir_in_sealed": 0.10929433989188037
+}

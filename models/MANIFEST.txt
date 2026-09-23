@@ -1,45 +1,34 @@
 # WHAT THIS FILE IS
 #
-# SETUP NOTES FOR WORK NOT YET RUN. Every hash below is <pending>, which means no model in
-# this file has been downloaded, run, or used for anything in the submission. Nothing here is
-# evidence; it is the configuration whoever runs the text layer should start from.
+# SETUP NOTES FOR WORK NOT YET RUN. Every hash below is <pending>, so nothing here has been
+# downloaded or used for anything in the submission. It is where whoever runs the text layer
+# starts, and it becomes the record of which model file produced which piece of research.
 #
-# When a run happens, this becomes a record of exactly which model file produced which piece
-# of research.
+# Weights are multi-gigabyte files we cannot commit and are not ours to redistribute, so they
+# live on disk, never in the repo. Without this file nothing says WHICH model produced a
+# result. "We used Qwen" is not reproducible. A SHA-256 hash is.
 #
-# Why it exists: the model weights are multi-gigabyte files we cannot commit to git, and are
-# not ours to redistribute anyway. So they live on disk and never in the repo. Without this
-# file, nothing would say WHICH version of a model produced a given result. "We used Qwen"
-# is not reproducible. A SHA-256 hash is.
+# None of this affects our submitted numbers. src/pipeline.py uses no models at all, and
+# requirements.txt is the only setup you need to reproduce the book.
 #
-# What you need to know before touching it:
-#   - None of this affects our submitted numbers. src/pipeline.py uses no models at all.
-#     requirements.txt is the only setup file you need to reproduce the book.
-#   - No hardware requirements. Any machine that can load the weights gets the same output.
-#   - If you download one of these models, hash it and paste the result over the matching
-#     <pending>. On Windows: Get-FileHash models/<file> -Algorithm SHA256
-#     On macOS or Linux: shasum -a 256 models/<file>
-#     That is the whole job.
-#
-# A SHA-256 is a fingerprint of a file's contents. Two people with the same hash have
-# byte-identical files, which is how a judge can verify they ran what we ran.
+# Downloaded one? Hash it and paste over the <pending>. That is the whole job.
+#   Windows:       Get-FileHash models/<file> -Algorithm SHA256
+#   macOS / Linux: shasum -a 256 models/<file>
 
 
 # ---------------------------------------------------------------------------------------
 # TEXT ENCODER
-# A BERT-style model that turns filing text into numbers. Research only: its output has
-# never moved a portfolio weight, and it only would if it first cleared the gate below.
+# Turns filing text into numbers. Research only, and the only path by which text could ever
+# reach a weight, because it is deterministic. A model that writes text never can.
 # ---------------------------------------------------------------------------------------
-  base       nlpaueb/sec-bert-base, trained on filings that predate our test window
-             (which is what stops it having seen the answers)
-  revision   <pending, pin the commit sha, not the branch, or it changes under you>
+  base       nlpaueb/sec-bert-base, trained on filings predating our test window
+  revision   <pending, pin the commit sha, not the branch, or it moves under you>
   sha256     <pending>
-  training   more MLM on training-window filings, then a return-prediction head
-  gate       Must beat the Loughran-McDonald word list on validation folds. That list scores
-             t=0.44 once sector and beta come out, so the bar is near zero, and filing tone
-             still missed it. Any text signal that moves weights has to come from a fixed
-             encoder like this, never from a model that writes text.
-  needs      ~8GB VRAM, or CPU if you are patient, or LightningAI free hours
+  training   more MLM on training-window filings only, then a return-prediction head
+  gate       Must beat the Loughran-McDonald word list on validation folds. That scores
+             t=0.44 after neutralization, so the bar is near zero and filing tone still
+             missed it. Gate on a 20,000-filing subsample before the full run.
+  needs      ~8GB VRAM, or CPU if you are patient
 
 
 # ---------------------------------------------------------------------------------------
@@ -48,34 +37,39 @@
 # look up evidence and check labels. They never produce a number that reaches the book.
 # Two different vendors on purpose, so when they agree it tells us something.
 # ---------------------------------------------------------------------------------------
-  primary    Qwen3 14B at Q4_K_M, Apache-2.0, ~9GB. The card has 16GB, so the newer 27B
-             dense at Q4 (~18GB) does not fit and would spill to CPU; a model that fits is
-             faster than a larger one that does not.
-  source     <pending, paste the exact Hugging Face repo and file you downloaded>
+  PICK ON THE DAY, NOT FROM THIS FILE. What follows is the requirement a model has to
+  meet. Model names go stale in months, so whoever runs this chooses the best available
+  option that clears the bar, benchmarks it on their own machine, and writes the hash in.
+
+  size       Must fit in 16GB VRAM with its KV cache. At Q4_K_M that means roughly 14B:
+             ~9GB of weights plus ~2GB of cache. A 27B at Q4 needs ~18GB, does not fit,
+             and spills to CPU. A model that fits beats a larger one that does not.
+  licence    Apache-2.0 or MIT only. A community licence with a use restriction is not
+             worth arguing about in a submission, whatever the benchmark says.
+  vendors    Two models from DIFFERENT vendors. Agreement between two models of the same
+             lineage tells you nothing. This is the only reason we run two at all.
+  excluded   Harmony models (gpt-oss-*). Their control tokens break the grammar sampler,
+             and forcing valid JSON is what makes a run repeatable.
+  sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf. Same prompt gives
+             the same answer every time, which is what lets a judge rerun it.
+  running    One at a time on a 16GB card, never both at once.
+
+  Qwen3 14B (Apache-2.0) is the strongest candidate we are aware of for model 1 and a
+  sensible default. For model 2 the requirement is a DIFFERENT vendor, so check what is
+  current at the time: Mistral, Gemma and Phi have all shipped models in this class under
+  Apache-2.0 or MIT. NOTHING HERE HAS BEEN RUN OR BENCHMARKED. Pick on measured speed and
+  output quality on the actual card, then write the hash in.
+
+  model 1    <pending: name, Hugging Face repo, exact file>
   sha256     <pending>
-  second     Phi-4 14B at Q4_K_M, MIT, ~9GB. A different vendor on purpose, so agreement
-             between the two says something about stability. Gemma 3 12B is the alternative.
+  model 2    <pending: name, Hugging Face repo, exact file, different vendor>
   sha256     <pending>
-  third      Optional. Only add one if the first two disagree often enough to need a tie
-             break, and say so rather than implying three votes mean more than two.
-  licence    Apache-2.0 and MIT only. A community licence with a use restriction is not worth
-             arguing about in a submission, whatever the benchmark says.
-  sizing     ~9GB of weights each at Q4_K_M, plus ~2GB of KV cache at our context. That is
-             ~11GB for one model, so the two are run ONE AT A TIME on a 16GB card, not
-             concurrently. A 27B at Q4 (~18GB) does not fit at all.
-  sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf
-             (temperature 0 and a fixed seed mean the same prompt gives the same answer
-             every time, which is what lets a judge rerun it)
-  excluded   Harmony models (gpt-oss-*). Their control tokens break the grammar sampler, and
-             forcing valid JSON is what makes a run repeatable.
   note       Two models agreeing shows the output is stable, not that either is correct.
-  needs      ~11GB VRAM per 14B model at Q4_K_M including cache, so one at a time on 16GB
 
 
 # ---------------------------------------------------------------------------------------
 # RUNTIME
-# The program that actually runs the models above. Pinned because a different version can
-# produce different output from identical weights.
+# Pinned, because a different version gives different output from identical weights.
 # ---------------------------------------------------------------------------------------
   llama.cpp  <commit sha pending>
   flags      -np 8 --cache-reuse

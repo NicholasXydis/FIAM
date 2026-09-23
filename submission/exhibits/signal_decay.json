@@ -1,0 +1,161 @@
+{
+  "what": "How much of each model's predictive power survives being a month old. A score that decays fast has to be refreshed every month, and that refresh is the turnover the cost model charges for.",
+  "lags_in_months": [
+    0,
+    1,
+    2,
+    3,
+    6
+  ],
+  "code": {
+    "git_commit": "64b6a3e",
+    "working_tree_dirty": true,
+    "src_sha256": "6c6d89aad2be9ec7",
+    "src_files": [
+      "src/agents/devils_advocate.py",
+      "src/agents/event_triage.py",
+      "src/agents/reproducibility.py",
+      "src/agents/signal_discovery.py",
+      "src/charts.py",
+      "src/check_docs.py",
+      "src/exhibit_charts.py",
+      "src/exhibits/completeness.py",
+      "src/exhibits/config_log.py",
+      "src/exhibits/constraint_survival.py",
+      "src/exhibits/costs.py",
+      "src/exhibits/freeze.py",
+      "src/exhibits/label_repair.py",
+      "src/exhibits/placebo_lab.py",
+      "src/exhibits/risk_decomposition.py",
+      "src/exhibits/subperiod.py",
+      "src/exhibits/turnover_sweep.py",
+      "src/features.py",
+      "src/ml/collect.py",
+      "src/ml/dataset.py",
+      "src/ml/decile_tables.py",
+      "src/ml/nn3_seeds.py",
+      "src/ml/run_through_optimizer.py",
+      "src/ml/signal_decay.py",
+      "src/ml/subset_sweep.py",
+      "src/ml/train_enet.py",
+      "src/ml/train_lgbm.py",
+      "src/ml/train_nn3.py",
+      "src/pipeline.py",
+      "src/report.py"
+    ]
+  },
+  "models": {
+    "composite": {
+      "lag_0": {
+        "ic_mean": 0.044936701013706094,
+        "ic_t": 3.774542833060377,
+        "months": 68
+      },
+      "lag_1": {
+        "ic_mean": 0.04076353886116937,
+        "ic_t": 3.4199052125021514,
+        "months": 67
+      },
+      "lag_2": {
+        "ic_mean": 0.04369348891625517,
+        "ic_t": 3.7458949874984837,
+        "months": 66
+      },
+      "lag_3": {
+        "ic_mean": 0.03906135359970184,
+        "ic_t": 3.4082561367614157,
+        "months": 65
+      },
+      "lag_6": {
+        "ic_mean": 0.029979920964975454,
+        "ic_t": 2.582625602409453,
+        "months": 62
+      },
+      "one_month_retention": 0.9071324316561673
+    },
+    "lgbm": {
+      "lag_0": {
+        "ic_mean": 0.03432913049915527,
+        "ic_t": 2.39852782902572,
+        "months": 68
+      },
+      "lag_1": {
+        "ic_mean": 0.028405830147130856,
+        "ic_t": 2.268784366927345,
+        "months": 67
+      },
+      "lag_2": {
+        "ic_mean": 0.034740798791936,
+        "ic_t": 2.854736991835577,
+        "months": 66
+      },
+      "lag_3": {
+        "ic_mean": 0.026694279465592812,
+        "ic_t": 2.3810104449894953,
+        "months": 65
+      },
+      "lag_6": {
+        "ic_mean": 0.017158882164296556,
+        "ic_t": 1.2074780659710709,
+        "months": 62
+      },
+      "one_month_retention": 0.8274555671554172
+    },
+    "nn3": {
+      "lag_0": {
+        "ic_mean": 0.03889137552508246,
+        "ic_t": 2.9126604547794623,
+        "months": 68
+      },
+      "lag_1": {
+        "ic_mean": 0.037594464879047836,
+        "ic_t": 2.9169481622415963,
+        "months": 67
+      },
+      "lag_2": {
+        "ic_mean": 0.03754935245001162,
+        "ic_t": 3.1223349896337083,
+        "months": 66
+      },
+      "lag_3": {
+        "ic_mean": 0.02835492942681534,
+        "ic_t": 2.2586259614747934,
+        "months": 65
+      },
+      "lag_6": {
+        "ic_mean": 0.027578429758995156,
+        "ic_t": 2.1865365863135686,
+        "months": 62
+      },
+      "one_month_retention": 0.9666530013782052
+    },
+    "enet": {
+      "lag_0": {
+        "ic_mean": 0.029257557958613095,
+        "ic_t": 1.86524869793656,
+        "months": 56
+      },
+      "lag_1": {
+        "ic_mean": 0.02669307617417693,
+        "ic_t": 1.8970715075588245,
+        "months": 55
+      },
+      "lag_2": {
+        "ic_mean": 0.03773086357997913,
+        "ic_t": 2.9674173888329003,
+        "months": 54
+      },
+      "lag_3": {
+        "ic_mean": 0.029453288652171377,
+        "ic_t": 2.4841583438179082,
+        "months": 53
+      },
+      "lag_6": {
+        "ic_mean": 0.007281801693300755,
+        "ic_t": 0.5559445789629301,
+        "months": 50
+      },
+      "one_month_retention": 0.9123480576176656
+    }
+  }
+}
