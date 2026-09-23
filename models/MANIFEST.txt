@@ -1,6 +1,11 @@
 # WHAT THIS FILE IS
 #
-# A record of exactly which model file produced which piece of research.
+# SETUP NOTES FOR WORK NOT YET RUN. Every hash below is <pending>, which means no model in
+# this file has been downloaded, run, or used for anything in the submission. Nothing here is
+# evidence; it is the configuration whoever runs the text layer should start from.
+#
+# When a run happens, this becomes a record of exactly which model file produced which piece
+# of research.
 #
 # Why it exists: the model weights are multi-gigabyte files we cannot commit to git, and are
 # not ours to redistribute anyway. So they live on disk and never in the repo. Without this
@@ -11,8 +16,10 @@
 #   - None of this affects our submitted numbers. src/pipeline.py uses no models at all.
 #     requirements.txt is the only setup file you need to reproduce the book.
 #   - No hardware requirements. Any machine that can load the weights gets the same output.
-#   - If you download one of these models, run `sha256sum models/<file>` and paste the result
-#     over the matching <pending>. That is the whole job.
+#   - If you download one of these models, hash it and paste the result over the matching
+#     <pending>. On Windows: Get-FileHash models/<file> -Algorithm SHA256
+#     On macOS or Linux: shasum -a 256 models/<file>
+#     That is the whole job.
 #
 # A SHA-256 is a fingerprint of a file's contents. Two people with the same hash have
 # byte-identical files, which is how a judge can verify they ran what we ran.
@@ -41,18 +48,28 @@
 # look up evidence and check labels. They never produce a number that reaches the book.
 # Two different vendors on purpose, so when they agree it tells us something.
 # ---------------------------------------------------------------------------------------
-  primary    <pending, a current dense ~27B at Q4>
-  source     <pending>
+  primary    Qwen3 14B at Q4_K_M, Apache-2.0, ~9GB. The card has 16GB, so the newer 27B
+             dense at Q4 (~18GB) does not fit and would spill to CPU; a model that fits is
+             faster than a larger one that does not.
+  source     <pending, paste the exact Hugging Face repo and file you downloaded>
   sha256     <pending>
-  second     <pending, a different vendor so agreement between them means something>
+  second     Phi-4 14B at Q4_K_M, MIT, ~9GB. A different vendor on purpose, so agreement
+             between the two says something about stability. Gemma 3 12B is the alternative.
   sha256     <pending>
+  third      Optional. Only add one if the first two disagree often enough to need a tie
+             break, and say so rather than implying three votes mean more than two.
+  licence    Apache-2.0 and MIT only. A community licence with a use restriction is not worth
+             arguing about in a submission, whatever the benchmark says.
+  sizing     ~9GB of weights each at Q4_K_M, plus ~2GB of KV cache at our context. That is
+             ~11GB for one model, so the two are run ONE AT A TIME on a 16GB card, not
+             concurrently. A 27B at Q4 (~18GB) does not fit at all.
   sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf
              (temperature 0 and a fixed seed mean the same prompt gives the same answer
              every time, which is what lets a judge rerun it)
   excluded   Harmony models (gpt-oss-*). Their control tokens break the grammar sampler, and
              forcing valid JSON is what makes a run repeatable.
   note       Two models agreeing shows the output is stable, not that either is correct.
-  needs      ~16GB VRAM for a dense 27B at Q4, less for smaller quantizations
+  needs      ~11GB VRAM per 14B model at Q4_K_M including cache, so one at a time on 16GB
 
 
 # ---------------------------------------------------------------------------------------
