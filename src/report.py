@@ -23,10 +23,11 @@ def table(m: dict) -> str:
         ("Sharpe ratio", f"{perf['sharpe_ratio']:.2f}"),
         ("Max drawdown (total return)", f"{perf['max_drawdown_total']:.1%}"),
         ("Hit rate", f"{perf['hit_rate_positive_active_months']:.1%}"),
-        ("**Annualized alpha**",
-         f"**{perf['alpha_annual']:.1%}** (t = {perf['alpha_tstat']:.2f}, HAC)"),
-        ("**Realized beta**",
-         f"**{perf['beta_realized']:.2f}** (se {perf['beta_stderr']:.2f})"),
+        (
+            "**Annualized alpha**",
+            f"**{perf['alpha_annual']:.1%}** (t = {perf['alpha_tstat']:.2f}, HAC)",
+        ),
+        ("**Realized beta**", f"**{perf['beta_realized']:.2f}** (se {perf['beta_stderr']:.2f})"),
         ("Correlation with market", f"{perf['correlation_with_market']:.2f}"),
         ("Positions", f"{comp['positions_average']:.0f}"),
         ("Max single-sector tilt", f"{comp['sector_tilt_max']:.2%}"),
@@ -51,8 +52,10 @@ def main() -> None:
     a, b = text.index(START) + len(START), text.index(END)
     TARGET.write_text(text[:a] + "\n\n" + table(m) + "\n\n" + text[b:], encoding="utf-8")
     perf = m["performance"]
-    print(f"RESULTS.md synced: IR {perf['information_ratio']:.2f}, "
-          f"net {perf['return_net_annual']:.1%}")
+    print(
+        f"RESULTS.md synced: IR {perf['information_ratio']:.2f}, "
+        f"net {perf['return_net_annual']:.1%}"
+    )
 
 
 if __name__ == "__main__":
