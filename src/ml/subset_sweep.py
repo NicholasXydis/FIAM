@@ -1,5 +1,4 @@
-# Every 5-signal subset of the 12-signal menu, scored on an early window and a later one.
-# Writes submission/exhibits/subset_sweep.csv. The control group for "should we have picked?".
+# Every 5-signal subset of the menu, on an early window and a later one. 792 of them.
 
 from __future__ import annotations
 
@@ -16,12 +15,10 @@ import pipeline as P
 
 OUT = Path("submission/exhibits")
 
-# Five of twelve gives 792 combinations, small enough to run and large enough that picking a
-# winner looks tempting. That is what this is here to show.
+# 792 combinations. Small enough to run, large enough that picking a winner tempts you.
 SUBSET_SIZE = 5
 
-# Split the scored window in half. The first half stands in for what a team would have seen
-# when choosing. The second half is what they would then have earned.
+# First half is what a team would have seen when choosing, second is what they earned.
 SPLIT = "2023-01-01"
 
 
@@ -69,8 +66,7 @@ def main() -> None:
             dict(signals="+".join(cols), ir_early=ir(early), ir_late=ir(late), ir_full=ir(spread))
         )
 
-    # The twelve-signal book measured the same way, so the histogram has something honest to
-    # mark. Its post-optimizer IR is a different basis and would not belong on that axis.
+    # The twelve-signal book on the same basis, so the histogram has an honest marker.
     full = subset_spread(df, tuple(P.SIGNALS))
     table = pd.DataFrame(rows)
     table.attrs["all_twelve_ir_full"] = ir(full)

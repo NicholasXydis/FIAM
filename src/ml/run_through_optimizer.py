@@ -1,5 +1,4 @@
-# Feeds a model's predictions through the same optimizer the book uses, and reports the IR.
-# Reads cache/preds/<model>.parquet, writes cache/preds/<model>_portfolio.json.
+# Feeds a model's predictions through the book's own optimizer and reports the IR.
 
 from __future__ import annotations
 
@@ -16,8 +15,7 @@ import pipeline as P
 OUT = Path("cache/preds")
 
 
-# Swaps a model's score in for the composite, then runs the book's own neutralization.
-# Everything after that is the shipped code, so only the score differs.
+# Swaps a model's score in for the composite. Everything after is the shipped code.
 def neutralize(panel: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     df = P.build_signal(P.screen(panel))
     scored = df.merge(preds[["permno", "eom", "pred"]], on=["permno", "eom"], how="inner")
@@ -26,8 +24,7 @@ def neutralize(panel: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     r = scored.groupby("eom")["pred"].rank(pct=True)
     mu = r.groupby(scored["eom"]).transform("mean")
     sd = r.groupby(scored["eom"]).transform("std")
-    # A fully penalised ElasticNet predicts one constant all month, so the z-score would
-    # divide by zero. Score those months flat instead of dropping them.
+    # A flat month would divide by zero, so score it flat rather than dropping it.
     z = ((r - mu) / sd.replace(0.0, np.nan)).fillna(0.0)
     demeaned = z - z.groupby([scored["eom"], scored["sector"]]).transform("mean")
     bx = scored["beta_60m"] - scored.groupby("eom")["beta_60m"].transform("mean")
@@ -56,8 +53,7 @@ def backtest(universe: pd.DataFrame) -> pd.DataFrame:
         spreads = cross_section.set_index("permno")["bidaskhl_21d"]
         cost, turnover = P.trading_cost(weights, previous, info, spreads, previous_spreads)
 
-        # Same limits the book asserts, so a model cannot win by breaking one. The floor is
-        # the exception. A flat month leaves nothing to rank, so we count it and report it.
+        # The book's own limits, except the floor. A flat month is counted, not crashed.
         if not len(weights):
             flat_months += 1
             previous, previous_spreads = previous, previous_spreads

@@ -1,5 +1,4 @@
-# Gathers every ML result into one file, so no write-up has to quote a terminal.
-# Reads cache/preds/ and submission/exhibits/, writes submission/exhibits/ml_metrics.json.
+# Gathers every ML result into ml_metrics.json, so no write-up quotes a terminal.
 
 from __future__ import annotations
 
@@ -16,8 +15,7 @@ import pipeline as P
 PREDS = Path("cache/preds")
 EXHIBITS = Path("submission/exhibits")
 
-# The three comparison families. The composite is handled separately because it is not a
-# fitted model and has no prediction file.
+# The three fitted families. The composite has no prediction file, so it is separate.
 MODELS = ["enet", "lgbm", "nn3"]
 
 
@@ -50,8 +48,7 @@ def main() -> None:
         }
     }
 
-    # The composite's IR comes from the book itself, in submission/metrics.json, so it is
-    # left blank here rather than duplicated and allowed to drift.
+    # The composite's IR lives in metrics.json, so leave it blank rather than duplicate it.
     out["composite"] = composite_ic() | {"information_ratio": None}
     for name in MODELS:
         entry = {}

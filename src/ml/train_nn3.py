@@ -1,5 +1,4 @@
-# Gu-Kelly-Xiu style NN3 on the prescribed folds, CPU only, fixed seed.
-# Reads cache/folds/, writes cache/preds/nn3.parquet.
+# Gu-Kelly-Xiu style NN3 on the prescribed folds. CPU only, fixed seed.
 
 from __future__ import annotations
 
@@ -20,8 +19,7 @@ OUT = Path("cache/preds")
 # Fixed so a judge rerunning this gets our numbers, not numbers near ours.
 SEED = 42
 
-# Three narrowing layers, the depth Gu-Kelly-Xiu found best on this problem. Deeper measured
-# no better and is harder to defend.
+# Three narrowing layers, the depth Gu-Kelly-Xiu found best. Deeper measured no better.
 HIDDEN = (32, 16, 8)
 
 # Stop as soon as the validation loss stalls. Left alone the net fits the training window.
@@ -41,8 +39,7 @@ def build(n_features: int) -> nn.Module:
     return nn.Sequential(*layers)
 
 
-# Trains one fold, early-stopping on the validation split, and scores the test cross-section.
-# The seed is an argument so the sweep can vary it. Everything else is held fixed.
+# Trains one fold with early stopping. The seed is an argument so the sweep can vary it.
 def fit_fold(fold: dict, cols: list[str], seed: int = SEED) -> pd.DataFrame:
     torch.manual_seed(seed)
     np.random.seed(seed)

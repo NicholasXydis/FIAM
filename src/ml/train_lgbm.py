@@ -1,5 +1,4 @@
-# Trains the LightGBM comparison model on the prescribed folds and scores each test year.
-# Reads cache/folds/, writes cache/preds/lgbm.parquet and cache/preds/lgbm_ic.json.
+# Trains the LightGBM comparison model on the prescribed folds, one score per test year.
 
 from __future__ import annotations
 
@@ -16,8 +15,7 @@ import dataset as D
 
 OUT = Path("cache/preds")
 
-# Heavy regularization on purpose. With 147 noisy predictors and a rank target, an
-# unconstrained tree memorizes the training window and scores nothing out of sample.
+# Heavy regularization on purpose. 147 noisy predictors memorize the training window.
 PARAMS = dict(
     objective="regression",
     metric="l2",
@@ -49,8 +47,7 @@ def fit_fold(fold: dict, cols: list[str]) -> pd.DataFrame:
         valid_sets=[ds_val],
         callbacks=[lgb.early_stopping(EARLY, verbose=False)],
     )
-    # Score the whole test cross-section, including names with no target. Filtering here
-    # would drop the companies that failed, which is the survivorship trap.
+    # Score every name, even with no target. Filtering drops the companies that failed.
     test = fold["test"]
     return pd.DataFrame(
         dict(

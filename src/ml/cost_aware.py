@@ -1,8 +1,6 @@
-# Tests whether slowing a model's score down saves it from its own trading bill.
-# Reads cache/preds/, writes submission/exhibits/cost_aware.json.
+# Tests whether slowing a model's score saves it from its own trading bill.
 #
-# The models predict as well as we do but reorder the whole book monthly and pay for it.
-# signal_decay.json says their scores last as long as ours, so that trading buys them nothing.
+# They predict as well as we do but rebuild the book monthly. signal_decay says why not.
 
 from __future__ import annotations
 
@@ -23,13 +21,11 @@ OUT = Path("submission/exhibits")
 
 MODELS = ("lgbm", "nn3", "enet")
 
-# How much of last month's score to keep. 0.0 is the shipped model, 0.9 barely moves.
-# No theory fixes the value, so we sweep it and report every setting, not just the best.
+# How much of last month's score to keep. Swept, and every setting reported.
 BLENDS = (0.0, 0.3, 0.5, 0.7, 0.9)
 
 
-# Carries each name's own previous score forward, on the calendar rather than by row position,
-# so a name that goes missing for a month does not inherit a year-old view.
+# Carries each name's own last score forward on the calendar, never by row position.
 def persist(scored: pd.DataFrame, weight: float) -> pd.Series:
     if weight == 0.0:
         return scored["signal"]
@@ -39,8 +35,7 @@ def persist(scored: pd.DataFrame, weight: float) -> pd.Series:
         columns={"eom": "prev_eom", "signal": "prior"}
     )
     merged = frame.merge(previous, on=["permno", "prev_eom"], how="left")
-    # A name with no prior score keeps this month's, rather than being dropped: dropping it
-    # would quietly shrink the universe and flatter the turnover number.
+    # No prior score keeps this month's. Dropping it would flatter the turnover.
     blended = (1 - weight) * merged["signal"] + weight * merged["prior"].fillna(merged["signal"])
     return pd.Series(blended.to_numpy(), index=scored.index)
 

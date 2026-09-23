@@ -1,5 +1,4 @@
 # How fast each model's score goes stale, which is what forces it to trade.
-# Reads cache/preds/, writes submission/exhibits/signal_decay.json.
 
 from __future__ import annotations
 
@@ -18,20 +17,17 @@ OUT = Path("submission/exhibits")
 
 MODELS = ("composite", "lgbm", "nn3", "enet")
 
-# How old we let the score get, in months. A score still good after six months is slow.
-# One that dies after a month has to be redone monthly, and that is what the bill pays for.
+# How old we let the score get. One that dies in a month must be redone monthly.
 LAGS = (0, 1, 2, 3, 6)
 
 
-# Compare each month's score against the return it earns, then against returns one, two,
-# three and six months later. The shape of that fall-off says how long a view stays useful.
+# Score against its own return, then against later ones. The fall-off is the answer.
 def decay_curve(scored: pd.DataFrame) -> dict:
     out = {}
     wide = scored.pivot_table(index="eom", columns="permno", values="score")
     rets = scored.pivot_table(index="eom", columns="permno", values="ret")
     for lag in LAGS:
-        # Slide the returns back so this month's score lines up with the return that lands
-        # however many months later we are testing.
+        # Slide the returns back so this month's score meets a later month's return.
         shifted = rets.shift(-lag)
         ics = []
         for month in wide.index:
@@ -51,8 +47,7 @@ def decay_curve(scored: pd.DataFrame) -> dict:
     return out
 
 
-# Attaches a model's score and the realised return to one frame, on the shipped universe so
-# every model is measured on the same names and months.
+# Score and return on one frame, on the shipped universe, so models are comparable.
 def scored_frame(panel: pd.DataFrame, model: str) -> pd.DataFrame:
     base = P.build_signal(P.screen(panel))
     if model == "composite":

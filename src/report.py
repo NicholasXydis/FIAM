@@ -1,5 +1,4 @@
-# Copies the numbers from the results file into the table in RESULTS.md.
-# Run it after the pipeline, so the write-up always shows what the code actually produced.
+# Copies the numbers from metrics.json into the table in RESULTS.md.
 
 import json
 from pathlib import Path
@@ -12,8 +11,7 @@ START, END = "<!--AUTO:headline-->", "<!--/AUTO:headline-->"
 # Builds the results table that goes into RESULTS.md.
 def table(m: dict) -> str:
     perf, cost, comp, run = m["performance"], m["costs"], m["compliance"], m["run"]
-    # A label and a number per row. We round hard on purpose, because our headline figures are
-    # only accurate to about a tenth and more digits would pretend otherwise.
+    # Rounded hard on purpose. Our headline figures are good to about a tenth.
     rows = [
         ("Gross return (annualized)", f"{perf['return_gross_annual']:.1%}"),
         ("**Net return (annualized)**", f"**{perf['return_net_annual']:.1%}**"),
@@ -36,8 +34,7 @@ def table(m: dict) -> str:
         ("Costs as share of gross", f"{cost['cost_share_of_gross']:.0%}"),
         ("Holding months", f"{run['holding_months']}, {run['window']}"),
     ]
-    # The date and code version at the bottom are how you spot an old table. If they are older
-    # than your last pipeline run, these numbers came from a different one.
+    # The date and code hash at the bottom are how you spot a table from an older run.
     body = "\n".join(f"| {k} | {v} |" for k, v in rows)
     stamp = f"_Generated {run['generated_utc']} from commit `{run['git_commit']}`._"
     return f"| | |\n|---|---:|\n{body}\n\n{stamp}"
@@ -47,8 +44,7 @@ def table(m: dict) -> str:
 def main() -> None:
     m = json.loads(METRICS.read_text())
     text = TARGET.read_text(encoding="utf-8")
-    # Only the part between the two markers gets replaced. Everything else is written by hand
-    # and has to survive untouched.
+    # Only the part between the markers is replaced. The rest is hand-written.
     a, b = text.index(START) + len(START), text.index(END)
     TARGET.write_text(text[:a] + "\n\n" + table(m) + "\n\n" + text[b:], encoding="utf-8")
     perf = m["performance"]

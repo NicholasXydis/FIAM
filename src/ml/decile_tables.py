@@ -1,5 +1,4 @@
-# Decile tables for every scoring model, which is how a signal earns its place here.
-# Reads cache/preds/, writes submission/exhibits/decile_tables.csv.
+# Decile tables for every model. This is how a signal earns its place here.
 
 from __future__ import annotations
 
@@ -51,8 +50,7 @@ def main() -> None:
     table = pd.DataFrame(rows).T
     table.columns = [f"d{int(c) + 1}" for c in table.columns]
     table["top_minus_bottom"] = table.iloc[:, -1] - table.iloc[:, 0]
-    # Rising through the tails is what a long-short book needs. A high middle is
-    # worth nothing, because the middle never enters the book.
+    # A long-short book needs rising tails. The middle never enters it.
     table["top_beats_second"] = table["d10"] > table["d9"]
     OUT.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUT / "decile_tables.csv")

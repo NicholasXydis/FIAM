@@ -1,5 +1,4 @@
-# Builds the train/validate/test folds the rules prescribe, from the supplied panel.
-# Reads data/chars_final_with_names.parquet, writes cached folds to cache/folds/.
+# Builds the train/validate/test folds the rules prescribe. Caches them to cache/folds/.
 
 from __future__ import annotations
 
@@ -19,20 +18,17 @@ TARGET = "ret_exc_lead1m"
 # Same screen as the book, so the ML comparison is against the universe we actually trade.
 MIN_PRICE, MIN_ME = 5.0, 300.0
 
-# Expanding training, 2-year rolling validation, annual refit, split by target month.
-# Test blocks are calendar years. The panel starts in 2015, so the first one is short.
+# Expanding train, 2-year validation, annual refit. Test blocks are calendar years.
 VAL_YEARS = 2
 FIRST_TARGET = "2015-02-01"
 FIRST_TEST_YEAR, LAST_TEST_YEAR = 2021, 2026
 
-# The scored window ends with the August 2026 holding month, the same 68 months the book
-# holds. Without this the last fold runs to September and the model tables count 69.
+# Ends at August 2026, the same 68 months the book holds. Otherwise the last fold is 69.
 LAST_HOLDING_MONTH = "2026-08-01"
 N_HOLDING_MONTHS = 68
 
 
-# The 147 names we are allowed to use. Never "all numeric columns", because the panel's
-# bookkeeping columns split 2026 perfectly and would leak.
+# The 147 we may use. Never "all numeric columns", the bookkeeping ones leak 2026.
 def predictors() -> list[str]:
     with CHAR_LIST.open() as fh:
         return [row["variable"] for row in csv.DictReader(fh)]
@@ -43,15 +39,13 @@ def load() -> pd.DataFrame:
     cols = predictors() + ["permno", "eom", "prc", "me", TARGET]
     panel = pq.read_table(CHARS, columns=sorted(set(cols))).to_pandas()
     panel["eom"] = pd.to_datetime(panel["eom"])
-    # eom is when we decide, the target lands the month after.
-    # Carrying both is the one thing most likely to go wrong without anyone noticing.
+    # eom is when we decide, the target lands the month after. Carry both, always.
     panel["holding_month"] = (panel["eom"] + pd.offsets.MonthBegin(1)).dt.normalize()
     keep = (panel["prc"].abs() >= MIN_PRICE) & (panel["me"] >= MIN_ME)
     return panel[keep].copy()
 
 
-# Ranks each predictor into [-1, 1] within its own month, as the rules' teaching script does.
-# Gaps are filled with that month's median first.
+# Ranks each predictor into [-1, 1] within its month. Gaps filled with that month's median.
 def rank_transform(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     out = df.copy()
     for col in cols:
@@ -69,8 +63,7 @@ def folds(df: pd.DataFrame):
     start = pd.Timestamp(FIRST_TARGET)
     m = df["holding_month"]
     for test_year in range(FIRST_TEST_YEAR, LAST_TEST_YEAR + 1):
-        # Work backwards from the calendar test year so the test block is Jan to Dec, then
-        # the two validation years, then everything before that is training.
+        # Work back from the test year, so the block is Jan to Dec, then validation.
         test_start = pd.Timestamp(year=test_year, month=1, day=1)
         test_end = pd.Timestamp(year=test_year + 1, month=1, day=1)
         val_start = test_start - pd.DateOffset(years=VAL_YEARS)
@@ -83,15 +76,13 @@ def folds(df: pd.DataFrame):
         )
 
 
-# The models fit the rank of the target, not the return itself.
-# Raw returns let a handful of 300% months own the loss, and ranks measured far better.
+# Models fit the rank, not the return. Raw returns let a few 300% months own the loss.
 def rank_target(frame: pd.DataFrame) -> np.ndarray:
     r = frame.groupby("holding_month")[TARGET].rank(pct=True)
     return (r - 0.5).to_numpy()
 
 
-# Drops rows with no target, for training and validation only.
-# The test month is scored in full, because filtering it there is survivorship.
+# Drops rows with no target, train and validation only. Filtering the test month is bias.
 def labelled(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[frame[TARGET].notna()]
 
@@ -120,8 +111,7 @@ def build(refresh: bool = False) -> Path:
     CACHE.mkdir(parents=True, exist_ok=True)
     marker = CACHE / "folds.parquet"
     stamp = CACHE / "fingerprint.txt"
-    # Rebuild if the panel, predictors, screen or schedule change.
-    # A stale cache after a date change is how wrong model numbers get shipped.
+    # Rebuild if the panel, predictors, screen or schedule change. Stale caches ship bugs.
     current = fingerprint()
     if marker.exists() and not refresh and stamp.exists() and stamp.read_text() == current:
         return marker
@@ -132,8 +122,7 @@ def build(refresh: bool = False) -> Path:
     return marker
 
 
-# Stops a run whose predictions miss the months the book holds.
-# A silent 69th month is how the model tables and the portfolio end up disagreeing.
+# Stops a run whose predictions miss the book's months. A silent 69th breaks every table.
 def assert_holding_months(preds: pd.DataFrame) -> None:
     months = preds["holding_month"].nunique()
     assert months == N_HOLDING_MONTHS, f"expected {N_HOLDING_MONTHS} holding months, got {months}"

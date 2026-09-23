@@ -1,5 +1,4 @@
-# Refits NN3 on five predeclared seeds to show how much of its result is the seed.
-# Reads cache/folds/, writes submission/exhibits/nn3_seeds.json.
+# Refits NN3 on five seeds to show how much of its result is just the seed.
 
 from __future__ import annotations
 
@@ -21,8 +20,7 @@ import train_nn3 as N
 OUT = Path("submission/exhibits")
 PREDS = Path("cache/preds")
 
-# Seed 42 is the one our shipped comparison used, 43-46 were added later to check it.
-# Consecutive, not hand-picked. We report all five, and we knew 42's result first.
+# 42 is the shipped seed, 43-46 added later. Consecutive, not picked. All five reported.
 SEEDS = (42, 43, 44, 45, 46)
 
 
@@ -37,12 +35,10 @@ def information_coefficient(preds: pd.DataFrame) -> tuple[float, float, int]:
     return float(ic.mean()), float(ic.mean() / ic.std() * np.sqrt(len(ic))), int(len(ic))
 
 
-# Fits every fold on one seed, then puts the predictions through the shipped optimizer so the
-# seed is judged on a portfolio, not on a correlation.
+# Fits every fold on one seed, then scores it through the book, not on a correlation.
 def one_seed(df: pd.DataFrame, cols: list[str], panel: pd.DataFrame, seed: int) -> dict:
     frames = [N.fit_fold(fold, cols, seed=seed) for fold in D.folds(df)]
-    # Early stopping picks its own epoch per fold, and that choice is part of what the seed
-    # changes, so it is recorded rather than averaged away.
+    # Early stopping picks its own epoch per fold, so record it rather than average it.
     epochs = [int(f.attrs.get("best_epoch", 0)) for f in frames]
     preds = pd.concat(frames, ignore_index=True)
     D.assert_holding_months(preds)
@@ -65,8 +61,7 @@ def one_seed(df: pd.DataFrame, cols: list[str], panel: pd.DataFrame, seed: int) 
     )
 
 
-# Every seed, then the spread across them. No averaging into an ensemble: that would be a
-# different model and would need its own predeclaration and its own optimizer run.
+# Every seed and the spread. Never averaged, an ensemble is a different model.
 def main() -> None:
     torch.set_num_threads(max(1, (torch.get_num_threads() or 4)))
     df = D.load_folds()
@@ -90,8 +85,7 @@ def main() -> None:
             median=float(table[field].median()),
             min=float(table[field].min()),
             max=float(table[field].max()),
-            # The range matters more than the mean here: it is the number that says whether
-            # a single-seed result was worth quoting in the first place.
+            # The range matters more than the mean. It says if one seed was worth quoting.
             range=float(table[field].max() - table[field].min()),
         )
         for field in ["ic_mean", "ic_t", "information_ratio", "gross_annual", "net_annual"]

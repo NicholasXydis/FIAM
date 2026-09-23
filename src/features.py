@@ -1,5 +1,4 @@
-# Joins extra data onto the stock panel without rebuilding it. Each batch is its own file
-# keyed by stock and month, so adding one is just a join. Rules p.16 asks finalists for this.
+# Joins extra data onto the panel by stock and month, so adding a batch is just a join.
 
 from pathlib import Path
 

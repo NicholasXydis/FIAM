@@ -1,5 +1,4 @@
-# Builds the portfolio and writes the holdings, returns and stats. Same answer every time.
-# Screen, score, strip unwanted bets, size positions, round to whole shares, charge fees.
+# Screen, score, neutralize, size, round to whole shares, charge fees. Writes submission/.
 
 from __future__ import annotations
 
@@ -18,8 +17,7 @@ CHARS = Path("data/chars_final_with_names.parquet")
 BENCH = Path("data/benchmarks")
 OUT = Path("submission")
 
-# We decide at month end and hold the next month.
-# So July 2026 is the last month we can act on.
+# We decide at month end and hold the next, so July 2026 is the last month we can act on.
 FIRST_FORECAST, LAST_FORECAST = "2020-12-31", "2026-07-31"
 N_HOLDING_MONTHS = 68
 
@@ -29,8 +27,7 @@ MIN_SIGNALS = 9
 # Only matters for rounding. At $10m, one share of an expensive stock is a real slice.
 NAV = 10_000_000.0
 
-# The twelve measures. +1 means higher is better, -1 means lower is better.
-# Directions come from theory, fixed before we ran anything. All twelve, so no cherry-picking.
+# The twelve measures. +1 means higher is better. Signs from theory, fixed before we ran.
 SIGNALS = {
     "ivol_capm_21d": -1,
     "be_me": +1,
@@ -46,12 +43,10 @@ SIGNALS = {
     "eqnetis_at": -1,
 }
 
-# Our limits. Gross and position count come from the rules, the rest are ours.
-# `risk` stops us leaning calm or jumpy, `pool` is candidates per side, `ridge` spreads us out.
+# Gross and position count come from the rules. `pool` is candidates per side.
 LIMITS = dict(gross=2.0, beta=0.02, risk=0.02, sector=0.01, name=0.015, pool=200, ridge=30.0)
 
-# How many things we tried. First counts only ones that could have shipped, second counts all.
-# Both are totals of the attempts column in config_log.csv. Change one, change the other.
+# Things we tried, from the attempts column in config_log.csv. Change one, change both.
 DESIGN_TRIALS, ALL_TRIALS = 85, 1328
 
 # Assumed, not measured. Deliberately pessimistic, and stated openly in the deck.
@@ -82,8 +77,7 @@ def load_panel() -> pd.DataFrame:
     ]
     panel = pq.read_table(CHARS, columns=sorted(set(cols))).to_pandas()
     panel["eom"] = pd.to_datetime(panel["eom"])
-    # First two digits of the sector code give the 11 broad sectors.
-    # Companies with no sector get their own group rather than being dropped.
+    # First two digits give the 11 sectors. No sector gets its own group, never dropped.
     panel["sector"] = panel["gics"].astype("string").str[:2].fillna("XX")
     return panel
 
@@ -91,7 +85,6 @@ def load_panel() -> pd.DataFrame:
 # Narrows the list to stocks we would actually be willing to trade.
 def screen(panel: pd.DataFrame) -> pd.DataFrame:
     # Never filter on having a future return, that drops the companies that failed.
-    # Under $5 or $300m shorting gets expensive. Leaves about 2,350 companies a month.
     keep = (panel["prc"].abs() >= 5.0) & (panel["me"] >= 300.0)
     window = panel["eom"].between(FIRST_FORECAST, LAST_FORECAST)
     return panel[keep & window].copy()
@@ -126,8 +119,7 @@ def build_signal(df: pd.DataFrame) -> pd.DataFrame:
     q05 = df.groupby("eom")["dolvol_126d"].transform(lambda s: s.quantile(0.05))
     df["htb"] = (df["size_grp"] == "micro") | (df["dolvol_126d"] <= q05)
 
-    # Jumpy stocks move with the market. Leaning away from them is a hidden bet that the
-    # market falls. Averaging four measures of jumpiness fixes it. Our main finding.
+    # Leaning away from jumpy stocks is a hidden bet the market falls. Our main finding.
     parts = []
     for col in ("ivol_capm_21d", "rvol_21d", "betadown_252d", "betabab_1260d"):
         r = df.groupby("eom")[col].rank(pct=True)
@@ -144,8 +136,7 @@ def optimize_month(month: pd.DataFrame, previous: pd.Series | None = None) -> pd
     month = month.sort_values("signal")
     pool = pd.concat([month.tail(LIMITS["pool"]), month.head(LIMITS["pool"])])
 
-    # A stock we hold can drift out of the pool and get sold automatically. Adding it back
-    # lets the optimizer decide. That cut turnover from 66% to 50%, and costs with it.
+    # Held stocks drift out of the pool and get force-sold. Adding them back cut turnover.
     if previous is not None:
         held = month[month["permno"].isin(previous.index) & ~month["permno"].isin(pool["permno"])]
         if not held.empty:
@@ -207,8 +198,7 @@ def to_whole_shares(weights: pd.Series, prices: pd.Series) -> pd.Series:
     return held[held.abs() > 1e-9]
 
 
-# What it cost to move from last month's book to this one. Fees hit what changed hands,
-# so the first month is dearest because we buy everything.
+# Cost of moving from last month's book to this one. Month one is dearest, we buy it all.
 def trading_cost(
     weights: pd.Series,
     previous: pd.Series | None,
@@ -243,8 +233,7 @@ def trading_cost(
     return cost, traded.sum() / 2
 
 
-# Everything we record about one month.
-# The compliance check and the write-up both read these same numbers.
+# Everything we record about one month. The checks and the write-up read these numbers.
 def month_record(
     month: pd.Timestamp,
     weights: pd.Series,
@@ -253,8 +242,7 @@ def month_record(
     cost: float,
     turnover: float,
 ) -> dict:
-    # A missing return usually means the company failed. Dropping it would remove the exact
-    # disasters a short book profits from, so we keep it and count it as zero.
+    # A missing return usually means the company failed, so count it zero, never drop it.
     missing = info["ret_exc_lead1m"].isna()
     shorts = weights[weights < 0]
     htb_weight = shorts[info.loc[shorts.index, "htb"].to_numpy()].abs().sum()
@@ -317,12 +305,10 @@ def run() -> dict:
     book = pd.DataFrame(rows).set_index("holding_month")
     check_compliance(book)
     OUT.mkdir(exist_ok=True)
-    # This wipes the labels label_repair.py filled in, so that script must run after this one.
-    # run.py already does that, and the audit fails the build if someone runs this alone.
+    # Wipes the labels label_repair.py filled in, so run that after this. run.py does.
     pd.concat(holdings).to_csv(OUT / "holdings.csv", index=False)
     stats = performance(book)
-    # Export the total return, not just the long-short spread, because that is what an
-    # investor earned. Our cash earns the T-bill rate and the stock picking sits on top.
+    # Total return, not just the spread, because that is what an investor earned.
     bm = benchmarks().set_index("month")
     out = book.join(bm[["rf"]], how="left")
     out["portfolio_total_return"] = out["rf"] + out["net"]
@@ -334,23 +320,20 @@ def run() -> dict:
 
 # Checks the finished portfolio against every competition rule and stops if one is broken.
 def check_compliance(book: pd.DataFrame) -> None:
-    # Stops the run rather than warning.
-    # The small allowances are there because whole shares cannot hit a target exactly.
+    # Stops the run rather than warning. Whole shares cannot hit a target exactly.
     assert len(book) == N_HOLDING_MONTHS, f"{len(book)} holding months"
     assert book["net_exposure"].abs().max() < 0.005, "net exposure outside tolerance"
     assert book["gross_exposure"].max() <= 2.0, "gross above 200%"
     assert book["n"].between(100, 500).all(), "position count outside 100-500"
     assert book["beta"].abs().max() <= 0.03, "beta drift beyond tolerance"
     assert book["max_sector"].max() <= 0.015, "sector tilt beyond tolerance"
-    # Rounding a 1.50% target can land slightly above it.
-    # So we state the real post-rounding cap instead of the target.
+    # Rounding a 1.50% target can land above it, so state the real cap, not the target.
     assert book["max_weight"].max() <= LIMITS["name"] * 1.10, "position cap breached after rounding"
 
 
 # Loads the two things we measure ourselves against: the cash rate and the market return.
 def benchmarks() -> pd.DataFrame:
-    # T-bill is the cash rate the rules require. The market series is a broad index,
-    # not the S&P 500, because no free S&P series includes dividends.
+    # T-bill is the required cash rate. The market is a broad index, not the S&P 500.
     tb = pd.read_csv(BENCH / "TB3MS.csv", parse_dates=["observation_date"])
     tb = tb.rename(columns={"observation_date": "month", "TB3MS": "tb3ms"})
     tb["month"] = tb["month"].dt.normalize()
@@ -372,8 +355,7 @@ def source_fingerprint() -> dict:
     # A version number alone would miss uncommitted edits, so fingerprint the files.
     import hashlib
 
-    # Every source file under src/, so changes in src/ml or src/exhibits show up too.
-    # It skips prompts/ and the data, so it says which code ran, not that nothing else moved.
+    # Every file under src/. Skips prompts/ and data, so it says which code ran only.
     files = sorted(Path("src").rglob("*.py"))
     files = [f for f in files if "__pycache__" not in f.parts]
     digest = hashlib.sha256()
@@ -410,11 +392,9 @@ def round_floats(obj, places: int = 6):
     return obj
 
 
-# Bailey and Lopez de Prado's deflated Sharpe. Returns a PROBABILITY our true Sharpe beats
-# zero, not a Sharpe ratio, plus the Sharpe that luck alone produces after that many tries.
+# Deflated Sharpe. Returns a PROBABILITY our Sharpe beats zero, not a Sharpe ratio.
 def deflated_sharpe(excess: pd.Series, trials: int) -> tuple[float, float]:
-    # Try enough versions and one looks good by luck. This works out how high luck alone
-    # would push the best of them, then asks whether we cleared that bar.
+    # Works out how high luck alone pushes the best of many tries, then if we beat it.
     from scipy.stats import kurtosis, norm, skew
 
     n = len(excess)
@@ -436,16 +416,14 @@ def _returns(book: pd.DataFrame):
     if df["rf"].isna().any():
         raise RuntimeError("TB3MS does not cover the holding window")
 
-    # Equal long and short cancels out an unknown cash rate buried in the data.
-    # Our cash earns the T-bill rate and the stock picking sits on top.
+    # Equal long and short cancels an unknown cash rate buried in the data.
     df["total"] = df["rf"] + df["net"]
     df["active"] = df["total"] - (df["rf"] + 0.04 / 12)
     df["excess"] = df["total"] - df["rf"]
 
     # Market data lags a month. Returns use every month, the comparison uses fewer.
     regression = df.dropna(subset=["mkt_rf"])
-    # Corrects for monthly returns not being independent. Otherwise we look more certain
-    # than we are.
+    # Corrects for monthly returns not being independent, which would flatter us.
     fit = sm.OLS(regression["excess"], sm.add_constant(regression["mkt_rf"])).fit(
         cov_type="HAC", cov_kwds={"maxlags": 6}
     )
@@ -477,12 +455,10 @@ def _performance_stats(df, regression, fit) -> dict:
 
 # What the result looks like if our assumptions are wrong.
 def _robustness_stats(df: pd.DataFrame) -> dict:
-    # Harsher version. A stock we owned that stopped trading loses 30%, one we shorted gains
-    # nothing. Charging both the same would flatter us.
+    # Harsher. A dead stock we owned loses 30%, one we shorted gains nothing.
     adverse = (df["net"] - df["missing_long_weight"] * 0.30) - 0.04 / 12
 
-    # Narrow count is attempts that could have shipped, broad is every fit. We show both.
-    # The key names carry the counts, so a stale doc number cannot hide behind a fixed label.
+    # Narrow count is attempts that could have shipped, broad is every fit. Both shown.
     dsr_design, _ = deflated_sharpe(df["excess"], DESIGN_TRIALS)
     dsr_everything, hurdle = deflated_sharpe(df["excess"], ALL_TRIALS)
     return {

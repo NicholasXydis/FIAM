@@ -1,5 +1,4 @@
-# ElasticNet baseline on the prescribed folds, so our OOS R-squared is comparable to the
-# competition's own template. Reads cache/folds/, writes cache/preds/enet.parquet.
+# ElasticNet baseline, so our OOS R-squared is comparable to the competition's template.
 
 from __future__ import annotations
 
@@ -16,8 +15,7 @@ import dataset as D
 
 OUT = Path("cache/preds")
 
-# The template searches a wide lambda grid. We keep the same idea with a coarser grid,
-# because the rank target is already well scaled and the fine grid changed nothing.
+# A coarser lambda grid than the template. The rank target is already well scaled.
 ALPHAS = [10.0**i for i in range(-6, 1)]
 L1_RATIO = 0.5
 
@@ -70,8 +68,7 @@ def main() -> None:
         .apply(lambda g: g["pred"].corr(g["actual"], method="spearman"), include_groups=False)
         .dropna()
     )
-    # In some months the penalty zeroes every coefficient, so the model predicts one constant
-    # and a rank correlation is undefined. Report both counts rather than the smaller one.
+    # Some months the penalty zeroes everything, so report both counts, not the smaller.
     scored_months = int(preds["holding_month"].nunique())
     stats = dict(
         ic_mean=float(ic.mean()),
