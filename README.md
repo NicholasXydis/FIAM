@@ -1,80 +1,51 @@
 # FIAM
 
-Market-neutral US equity strategy, McGill-FIAM Asset Management Hackathon 2026.
+Market-neutral US equity strategy, McGill-FIAM Hackathon 2026. `BRIEF.md` is the story,
+`RESULTS.md` every number, `FIAM_Plan.md` what is left, `CLAUDE.md` the rules.
 
-Read `BRIEF.md` for what we built and why. `RESULTS.md` has the numbers.
+## Run it
 
-## Setup
+    python -m pip install -r requirements.txt   # Python 3.14, CPU only
+    python run.py              # book, docs, charts, 28-check audit, about a minute
+    python run.py --ml         # plus models and controls, 20 min fresh, under a minute if unchanged
+    python run.py --agents     # plus the three agents, needs a GPU and models/
+    python run.py --official   # refuses a run without the WRDS inputs
+    pytest                     # mechanics tests, seconds
 
-    python -m pip install -r requirements.txt
+Put the organizer's two Parquet files in `data/` and never re-save them. Steps are skipped when
+nothing they read changed; `--fresh` reruns all.
 
-Python 3.14.5, no GPU needed. Copy the organizer's two Parquet files into `data/`.
-**Never re-save them in place**, write intermediates under new names instead: rewriting a
-Parquet changes its bytes even with identical rows, and `run.py` records a hash of every data
-file so a judge can tell the numbers came from the supplied data. Benchmarks are already in
-`data/benchmarks/` and need no key.
+## Optional inputs
 
-## Running it
+- **WRDS:** `python src/wrds.py <csvs>` with these exports, shared privately, never committed.
 
-    python run.py          # about twenty seconds
-    python run.py --ml     # adds the model comparison and research exhibits, hours
+  | export | WRDS dataset | dates | our file's SHA-256 |
+  |---|---|---|---|
+  | CRSP monthly | Monthly Stock File, CIZ, with security info and delistings | 2010-01 to 2025-12 | `2796c030f9ed6f34…` |
+  | S&P 500 index | CRSP index series, S&P 500 universe | 2010-01 to 2025-12 | `382a3f33c2c6b6d6…` |
+  | Compustat quarterly | Fundamentals Quarterly (`fundq`) with `rdq`, `dldte`, `dlrsn` | 2010-01 to 2026-08 | `5f943fea4ec4debd…` |
 
-`run.py` builds the portfolio, repairs labels, runs the exhibits, copies numbers into
-`RESULTS.md`, draws the charts and re-checks the look-ahead list. Use it instead of calling
-scripts by hand, so the write-up can never disagree with the output.
+  Columns kept are listed in `src/wrds.py`. Without WRDS the book differs by 0.001 of IR.
+- **Labels:** `python src/exhibits/labels.py --fetch`, once, with `SEC_CONTACT` in `.env`.
+- **Live score:** `python src/exhibits/live_score.py --fetch`, with `TIINGO_API_KEY` in `.env`.
+- **Benchmarks:** pinned in `data/benchmarks/`; `python src/benchmarks.py --refresh <file>` updates one.
 
-It stops if any competition limit breaks, so a clean run means the book is compliant. The last
-step is a reproducibility audit: seventeen look-ahead and survivorship checks that exit
-non-zero on failure. Each is a necessary condition, not proof the submission reproduces.
+## Agents
 
-Style is `ruff check` and `ruff format`, configured in `pyproject.toml`.
+    python src/agents/harness.py verify     # model files against models/MANIFEST.txt
+    python src/agents/harness.py register   # sets up this machine's Hermes
+    python src/agents/harness.py serve qwen # a model for the Hermes app
+
+Windows: llama.cpp's Vulkan build in `models/llama.cpp/`. Linux or Lightning AI:
+`bash src/agents/setup_lightning.sh` (steps in `FIAM_Plan.md`).
 
 ## Layout
 
-| | |
-|---|---|
-| `run.py` | runs everything below in order. This is the one to use |
-| `src/pipeline.py` | screen, score, neutralize, optimize, round to whole shares, charge costs |
-| `src/report.py` | copies `metrics.json` into `RESULTS.md` |
-| `src/charts.py` | the eight performance charts, cumulative return through P&L contributors |
-| `src/exhibit_charts.py` | the ten research charts, deciles through the placebo lab |
-| `src/check_docs.py` | flags any hand-typed number that no longer matches |
-| `src/features.py` | join seam, so a new feature block does not mean rebuilding everything |
-| `src/exhibits/` | sub-period split, cost ladder, turnover sweep, label repair, rules statistics, baseline freeze, constraint survival, placebo lab |
-| `src/ml/` | the four-model comparison, folds through decile tables, plus the NN3 seed sweep |
-| `src/agents/` | two deterministic research controls, the reproducibility audit, and the devil's-advocate data pack |
-| `prompts/` | what we send the local models, word for word. Part of the submission |
-| `models/MANIFEST.txt` | model hashes for the research layer. Weights stay out of git |
-| `submission/` | generated output, including `exhibits/` and `figures/` |
-| `data/`, `cache/`, `.venv-gpu/` | gitignored |
+`src/pipeline.py` the book and shared maths · `src/exhibits/` and `src/controls/` exhibits and the
+audit · `src/ml/` the model comparison · `src/agents/` Hermes runner, tool server, agents ·
+`prompts/agents/` what the models are sent · `submission/` output · `data/`, `cache/` gitignored.
 
-## Optional GPU setup
-
-Only the text encoder needs a GPU, and only for whoever runs it. Every submitted number
-reproduces on CPU. AMD ships Windows ROCm wheels for Python 3.12 only, so it gets its own
-interpreter:
-
-    py -3.12 -m venv .venv-gpu
-    .venv-gpu\Scripts\python -m pip install --no-cache-dir --find-links https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/ --extra-index-url https://pypi.org/simple torch==2.9.1+rocm7.2.1
-
-Verified on an RX 9070 XT. A Mac or an NVIDIA box works too.
-
-## Submission
-
-The rules want one file called `MAIN.py`. We build it from `src/` at the end, so there is only
-ever one copy to edit while the work is moving.
-
-Everything built from the supplied data runs offline. The benchmark inputs come from outside and
-are versioned with their source.
-
-## Working rules
-
-Nicholas commits and pushes through GitHub Desktop. Agents and assistants write files and report
-what changed. They never run `git commit`, `git push`, `git merge`, or create branches.
-
-Prompts live in `prompts/` as files. The cache keys off their hash, so `git log prompts/` counts
-how many versions we tried without anyone tracking it by hand.
-
-## Team
+Offline and reproducible for supplied data; benchmarks versioned with sources. Nicholas commits;
+assistants only write files.
 
 Nicholas Xydis · Yohannah Ilieva · Jérémie Caussignac · Agamjot Singh Bawa · Nokto Lapointe
