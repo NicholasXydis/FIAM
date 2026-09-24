@@ -1,0 +1,173 @@
+{
+  "what": "The baseline and its pass marks, and which run produced each artifact. The reproducibility audit checks every hash.",
+  "baseline": {
+    "what": "The baseline the pre-WRDS research exhibits are measured against.",
+    "code": {
+      "git_commit": "a056bc2",
+      "working_tree_dirty": true,
+      "src_sha256": "20c17b5272ddc466",
+      "src_files": [
+        "src/agents/auditor.py",
+        "src/agents/critic.py",
+        "src/agents/discovery.py",
+        "src/agents/harness.py",
+        "src/agents/mcp_server.py",
+        "src/benchmarks.py",
+        "src/charts.py",
+        "src/controls/reproducibility.py",
+        "src/controls/selection.py",
+        "src/controls/wrds_checks.py",
+        "src/docs.py",
+        "src/exhibits/config_log.py",
+        "src/exhibits/confirmation.py",
+        "src/exhibits/constraint_survival.py",
+        "src/exhibits/earnings.py",
+        "src/exhibits/labels.py",
+        "src/exhibits/live_forecast.py",
+        "src/exhibits/live_score.py",
+        "src/exhibits/pack.py",
+        "src/exhibits/placebo_lab.py",
+        "src/ml/dataset.py",
+        "src/ml/nn3_seeds.py",
+        "src/ml/oos_r2.py",
+        "src/ml/summary.py",
+        "src/ml/train.py",
+        "src/pipeline.py",
+        "src/provenance.py",
+        "src/research_charts.py",
+        "src/wrds.py",
+        "prompts/agents/auditor.md",
+        "prompts/agents/critic.md",
+        "prompts/agents/discovery.md",
+        "run.py",
+        "requirements.txt",
+        "models/MANIFEST.txt"
+      ]
+    },
+    "data": {
+      "data/8k_20150101_20260831_identified.parquet": {
+        "sha256": "f333cd02076485ec",
+        "bytes": 358076009
+      },
+      "data/benchmarks/ff5_factors.zip": {
+        "sha256": "b8653b411cc5e289",
+        "bytes": 11948
+      },
+      "data/benchmarks/ff_factors.zip": {
+        "sha256": "b840dba55d319f48",
+        "bytes": 13067
+      },
+      "data/benchmarks/ff_momentum.zip": {
+        "sha256": "7ee14e892b0f7044",
+        "bytes": 5596
+      },
+      "data/benchmarks/SP500.csv": {
+        "sha256": "d58f831df2fd37c5",
+        "bytes": 48903
+      },
+      "data/benchmarks/TB3MS.csv": {
+        "sha256": "18d6a3def98fecb7",
+        "bytes": 2263
+      },
+      "data/chars_final_with_names.parquet": {
+        "sha256": "797c01ebd59f7a14",
+        "bytes": 412599998
+      },
+      "data/factor_char_list.csv": {
+        "sha256": "066c783d8bae2116",
+        "bytes": 1647
+      },
+      "data/wrds/compustat_quarterly.parquet": {
+        "sha256": "8eb77e605236e7a3",
+        "bytes": 8098139
+      },
+      "data/wrds/crsp_monthly.parquet": {
+        "sha256": "ea1bd7bd43d631e4",
+        "bytes": 14223872
+      },
+      "data/wrds/exits.parquet": {
+        "sha256": "8ef5808137810ce3",
+        "bytes": 170280
+      },
+      "data/wrds/sp500_index.parquet": {
+        "sha256": "b086d91375924d5e",
+        "bytes": 7244
+      }
+    },
+    "environment": {
+      "python": "3.14.5",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "requirements_sha256": "adb17fb7ae8181ab"
+    },
+    "baseline": {
+      "information_ratio": 0.834141,
+      "sharpe_ratio": 1.109699,
+      "return_gross_annual": 0.201893,
+      "return_net_annual": 0.161084,
+      "max_drawdown_total": -0.127814,
+      "beta_realized": -0.048076,
+      "turnover_monthly_one_way": 0.534231,
+      "positions_average": 316.264706
+    },
+    "rounding_drift": {
+      "net_exposure_max_abs": 0.000885,
+      "sector_tilt_max": 0.011095,
+      "position_weight_max": 0.016405
+    },
+    "acceptance_rules": {
+      "nn3_seeds": "Reporting only. Report every seed, never average them into a model.",
+      "constraint_survival": "Descriptive, no pass mark. Universe, months and parameters fixed.",
+      "permutation_null": "Shipped result above the null's 95th percentile, null gross near zero.",
+      "inversion": "Gross lands near minus the baseline gross, not near zero.",
+      "stale_scores": "Degraded, but not necessarily to zero.",
+      "confirmation": "Reported whatever it says. The design never looked at 2016-2020.",
+      "factor_atlas": "A catalogue. Nothing in it is selected for the book.",
+      "earnings_module": "Ships only if its best variant beats the frozen book by 0.10 IR on 2016-2020, with realized beta inside 0.15 and both tails monotone. The decision is written to disk before 2021-2026 is computed and is not revisited.",
+      "live_forecast": "Scored against public prices once October 2026 has closed."
+    },
+    "amended_rules": {
+      "permutation_null": {
+        "original": "The null's net IR should centre near zero.",
+        "why_wrong": "A shuffled ranking re-sorts the book monthly, so it churns at about 179% turnover and pays our real cost rates. Its net IR centres near -2.",
+        "now": "Tested on gross return, which is the only place a null can be zero."
+      }
+    }
+  },
+  "book": {
+    "written_utc": "2026-09-24T18:13:28+00:00",
+    "code": "5a9b08ac2f0e7006",
+    "files": {
+      "submission/holdings.csv": "fd31e2ba7f1c69c1607d740f18749fe9e3d2ff68c67ab08a38c479d9e3c0f90d",
+      "submission/returns.csv": "a8d1a3b0ad93b98270405999690b4a826fe8c4ab673fa8a96fb005fddc4327aa",
+      "submission/metrics.json": "c7d84b693be99e693c4e27134d27543b6f2f51331272c8ea95118f9af4d2919b",
+      "submission/exhibits/auditor.json": "9f0baf6ee381808bfc3c7c54634311da02303f4959052d8a3e56f0599fd7a959",
+      "submission/exhibits/config_log.csv": "f0294188deed34a8325772c7bdcc6c79511742d1d332c6f0290b2161143234c1",
+      "submission/exhibits/confirmation.json": "cf781298789a8291a6d73b31d8785e705554a1d43421bd63128c22a635226aac",
+      "submission/exhibits/critic.json": "d68c48278603902843c842fa0e234128be6263317ebb96cc740ef77cf656aa94",
+      "submission/exhibits/discovery.json": "997f4dab229dc05d372865c379979f993c3209164319ec194ba8e204cdba1a91",
+      "submission/exhibits/labels.csv": "3ab1aeef70f380307ef28cdaaf6086129502e2ccda0fe0efb1ab2a30fad70eda",
+      "submission/exhibits/labels.json": "a2292a3efa53042347edc351f099b28457c335bf6768030987eeaf3088f14f10",
+      "submission/exhibits/live_forecast.json": "3f3d97c0c2f553e6bada76269ebf71b500f703b4a68844b19fc3d378490cb671",
+      "submission/exhibits/live_forecast_2026-09.csv": "bb58c4d406a1edb2b68c7e752c4b3ea0eab8177c225116b23473c001fd578062",
+      "submission/exhibits/live_forecast_2026-09_corrected.csv": "38962800b07ea311ac692a029ec6598ce2b3afe28108bdb8961f255201dcb98a",
+      "submission/exhibits/pack.json": "07a1f531aee484a7fc477e438d1341360631d0d08fbecf35bf076b8fe6e05891",
+      "submission/exhibits/wrds.json": "8c5ef67f9d2fcdba0c304ac836d62f1d6ef7506f14561f3920e7486df03afec4"
+    }
+  },
+  "ml": {
+    "written_utc": "2026-09-24T16:40:06+00:00",
+    "code": "6e7e1e7c73334960",
+    "files": {
+      "submission/exhibits/ml_metrics.json": "3b3d42c1b0c93a2185e69b23cae271a28fc5175b82170d5b92018c4c2749f51c",
+      "submission/exhibits/subset_sweep.csv": "f379a4797e8be71d755be6031fe399f8f1b5e95fdf9b2693d7dca2df1a96ecc4",
+      "submission/exhibits/selection.json": "933d245e8cc3a90ec1ced86162a4cb900b5de6c88286b4328a0b05675439a099",
+      "submission/exhibits/nn3_seeds.json": "66542d24d0736f1d7d6ea0ced4f6f26b665951ce1113ce496a05e12bfc42b153",
+      "submission/exhibits/placebo_lab.json": "04faa68c74254558065ced9473953cbc91d229401f7e52963394b169ca4305b3",
+      "submission/exhibits/constraint_survival.json": "dbc0bc5a7b1a78122570ce710d328461b90286d567587e4a07b4c8ce36b76801",
+      "submission/exhibits/oos_r2.json": "dc233f03a0e224a16b00db6c3c72df333b8d1d963ff3827bd0733f4c6877298d",
+      "submission/exhibits/factor_atlas.csv": "cee6fce46e2858cf82ede18fd8351cf12df7dd95c32d3442ab602486a3729f28",
+      "submission/exhibits/earnings_decision.json": "b19c1f4ef3bcbd76e0f538aaf44550e9cb569d8d30b76c08f1f0212948c36a1a",
+      "submission/exhibits/earnings_module.json": "9279ef3279bb1804a6c0212c14f87ee8dd35c9b1f9dd0a4fb98363540bd430e1"
+    }
+  }
+}

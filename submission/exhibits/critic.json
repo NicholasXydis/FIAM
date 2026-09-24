@@ -1,0 +1,55 @@
+{
+  "what": "Devil's advocate on a second vendor's model. Retrospective, names visible, so never a forecast. Every quoted number is checked against what the tools showed.",
+  "status": "answered",
+  "steps": 3,
+  "plan_revisions": 3,
+  "critiques": [
+    {
+      "claim": "The book is a massive failure in out-of-sample testing, with a net annual return of -0.05367186552302779 and an information ratio of -0.8166921153866376 during the 2016-2020 period.",
+      "severity": "high",
+      "target": "book",
+      "numbers_supported": false
+    },
+    {
+      "claim": "Returns are heavily driven by unintended factor exposures rather than pure stock selection; specifically, the RMW (quality) factor accounts for 0.23580407387786498 of the individual variance contribution, and the SMB (size) factor accounts for 0.07201905881570739.",
+      "severity": "high",
+      "target": "book",
+      "numbers_supported": true
+    },
+    {
+      "claim": "The discovery agent's 'coded' pick is highly susceptible to overfitting, as it is constructed by selecting the 8 strongest signals based on their t-statistics from a pre-2021 dataset.",
+      "severity": "high",
+      "target": "discovery pick",
+      "numbers_supported": true
+    },
+    {
+      "claim": "The short book has significant implementation risk, with 0.212135 of the short book consisting of hard-to-borrow names.",
+      "severity": "medium",
+      "target": "book",
+      "numbers_supported": true
+    },
+    {
+      "claim": "The 'named' pick relies on a formula with a negative f_score of -1 and negative accruals/cash flow components, which contradicts the stated hypothesis of buying 'high-quality' companies.",
+      "severity": "medium",
+      "target": "discovery pick",
+      "numbers_supported": true
+    }
+  ],
+  "unsupported": 1,
+  "transcript": "submission/exhibits/agents/critic.jsonl",
+  "repeatability": {
+    "what": "The same run twice with identical inputs, compared call by call.",
+    "identical_inputs": true,
+    "comparison": {
+      "calls_first": 5,
+      "calls_second": 5,
+      "identical_prefix": 5,
+      "identical": true
+    },
+    "runtime": {
+      "build": "b11132-633733d0a",
+      "model_path": "C:\\Code\\FIAM\\models\\gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
+      "context": 65536
+    }
+  }
+}

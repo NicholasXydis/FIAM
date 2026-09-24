@@ -1,65 +1,62 @@
 # WHAT THIS FILE IS
 #
-# A record of exactly which model file produced which piece of research.
+# The record of which model file and which runtime produced each piece of agent research.
+# Weights are multi-gigabyte files we cannot commit, so they live in models/ on disk, never in
+# the repo. "We used Qwen" is not reproducible; a SHA-256 hash is.
 #
-# Why it exists: the model weights are multi-gigabyte files we cannot commit to git, and are
-# not ours to redistribute anyway. So they live on disk and never in the repo. Without this
-# file, nothing would say WHICH version of a model produced a given result. "We used Qwen"
-# is not reproducible. A SHA-256 hash is.
+# None of this affects a submitted number. src/pipeline.py uses no models, and
+# requirements.txt alone reproduces the book, CPU-only.
 #
-# What you need to know before touching it:
-#   - None of this affects our submitted numbers. src/pipeline.py uses no models at all.
-#     requirements.txt is the only setup file you need to reproduce the book.
-#   - No hardware requirements. Any machine that can load the weights gets the same output.
-#   - If you download one of these models, run `sha256sum models/<file>` and paste the result
-#     over the matching <pending>. That is the whole job.
-#
-# A SHA-256 is a fingerprint of a file's contents. Two people with the same hash have
-# byte-identical files, which is how a judge can verify they ran what we ran.
+# Check a file:   Get-FileHash models/<file> -Algorithm SHA256     (Windows)
+#                 shasum -a 256 models/<file>                      (macOS / Linux)
+# The harness also hashes each file and keeps the result beside it as <file>.sha256.json.
 
 
 # ---------------------------------------------------------------------------------------
-# TEXT ENCODER
-# A BERT-style model that turns filing text into numbers. Research only: its output has
-# never moved a portfolio weight, and it only would if it first cleared the gate below.
+# AGENT MODELS
+# Two vendors on purpose, so agreement between them means something. Both Apache-2.0.
 # ---------------------------------------------------------------------------------------
-  base       nlpaueb/sec-bert-base, trained on filings that predate our test window
-             (which is what stops it having seen the answers)
-  revision   <pending, pin the commit sha, not the branch, or it changes under you>
-  sha256     <pending>
-  training   more MLM on training-window filings, then a return-prediction head
-  gate       Must beat the Loughran-McDonald word list on validation folds. That list scores
-             t=0.44 once sector and beta come out, so the bar is near zero, and filing tone
-             still missed it. Any text signal that moves weights has to come from a fixed
-             encoder like this, never from a model that writes text.
-  needs      ~8GB VRAM, or CPU if you are patient, or LightningAI free hours
+  model 1    Qwen3.8-27B (Alibaba, released 2026-08-14), Apache-2.0
+  file       Qwen3.8-27B-UD-IQ4_XS.gguf, from huggingface.co/unsloth/Qwen3.8-27B-GGUF
+  sha256     40fac4050e940397dbf13087afd50f4734a11805bf9d65ef8ddd7483470e6199
+  bytes      14252845984, matches the X-Linked-ETag Hugging Face publishes
+  used by    signal-discovery agent, reproducibility agent
 
+  model 2    Gemma 4 26B-A4B instruct (Google), Apache-2.0, mixture of experts, ~4B active
+  file       gemma-4-26B-A4B-it-UD-IQ4_XS.gguf, from huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF
+  sha256     babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf
+  bytes      13597177568, matches the X-Linked-ETag Hugging Face publishes
+  used by    devil's-advocate agent
 
-# ---------------------------------------------------------------------------------------
-# RESEARCH AGENTS
-# Local language models that read filings and write commentary. They criticise our picks,
-# look up evidence and check labels. They never produce a number that reaches the book.
-# Two different vendors on purpose, so when they agree it tells us something.
-# ---------------------------------------------------------------------------------------
-  primary    <pending, a current dense ~27B at Q4>
-  source     <pending>
-  sha256     <pending>
-  second     <pending, a different vendor so agreement between them means something>
-  sha256     <pending>
-  sampling   temperature 0, seed 42, --grammar-file prompts/triage.gbnf
-             (temperature 0 and a fixed seed mean the same prompt gives the same answer
-             every time, which is what lets a judge rerun it)
-  excluded   Harmony models (gpt-oss-*). Their control tokens break the grammar sampler, and
-             forcing valid JSON is what makes a run repeatable.
-  note       Two models agreeing shows the output is stable, not that either is correct.
-  needs      ~16GB VRAM for a dense 27B at Q4, less for smaller quantizations
+  why these  The strongest open models that fit a 16 GB card whole at 4-bit, from two vendors,
+             both with native tool calling. Rejected: Llama 4 Scout (109B total, ~33 GB even at
+             1.78-bit, and not Apache or MIT), Llama 3.x (old, same licence), DeepSeek-R1
+             distills (long reasoning, weak tool use), gpt-oss (control tokens break grammars).
 
 
 # ---------------------------------------------------------------------------------------
 # RUNTIME
-# The program that actually runs the models above. Pinned because a different version can
-# produce different output from identical weights.
+# Pinned, because a different build or cache type can give different output from identical weights.
 # ---------------------------------------------------------------------------------------
-  llama.cpp  <commit sha pending>
-  flags      -np 8 --cache-reuse
-  backend    whichever is faster on the machine running it. Changes speed, not output.
+  llama.cpp  build b11132, commit 633733d0a, Windows Vulkan binary, extracted to models/llama.cpp/
+  download   https://github.com/ggml-org/llama.cpp/releases/download/b11132/llama-b11132-bin-win-vulkan-x64.zip
+             32,126,438 bytes
+  device     Vulkan0, AMD Radeon RX 9070 XT, 16 GB. Elsewhere set LLAMA_SERVER and LLAMA_DEVICE.
+  flags      -c 65536 -np 1 --seed 42 --temp 0 --jinja -ctxcp 0 -cram 0
+             --chat-template-kwargs '{"enable_thinking": false}'
+             Qwen adds -fa on -ctk q8_0 -ctv q4_0; Gemma runs its cache at full precision.
+  why        Hermes refuses a window under 64,000 tokens. Qwen at 64K needs 17.5 GB with a
+             full-precision cache, over the ~15.3 GB free, so its keys are 8-bit and values 4-bit.
+             Context checkpoints crash this build on Qwen3.8's hybrid attention, so they are off.
+             Thinking is off, so the plan an agent writes is the plan we can read.
+  measured   Qwen 64K q8_0/q4_0: 16.3 tokens/s, 15.1 GiB. Gemma 64K: 72.5 tokens/s, 14.7 GiB.
+  runner     Hermes Agent v0.21.4 (2026.9.21, upstream 16fe260a), one-shot, stream-json events,
+             tool search off, only the fiam MCP toolset. Each transcript records the version.
+
+
+# ---------------------------------------------------------------------------------------
+# NOT USED
+# ---------------------------------------------------------------------------------------
+  text encoders  ChronoBERT and SEC-BERT were considered and cut for scope. If text is ever
+                 allowed to become a factor, the encoder must be chronologically consistent,
+                 with a training cutoff before each test year. See FIAM_Plan.md, phase 7.

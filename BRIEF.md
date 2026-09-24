@@ -1,96 +1,58 @@
 # The project in plain terms
 
-McGill-FIAM Asset Management Hackathon 2026. Eleven years of monthly data on 6,500 US stocks,
-147 numbers each, plus 373,000 filings.
+McGill-FIAM Hackathon 2026: eleven years of monthly data on 6,500 US stocks, 147 numbers each.
 
-## What we built
-
-Every month we score each stock on twelve classical measures, things like volatility,
-cheapness, profitability, asset growth and share issuance, then average all twelve.
-
-Then we strip two things out of that score. The **sector bet**, so we are not accidentally long
-tech and short energy. And the **market bet**, because "buy calm stocks, short wild ones" is
-secretly a bet that the market falls.
-
-An optimizer turns the scores into positions under hard limits: zero net exposure, 200% gross,
-beta near zero, no sector above 1% of the book, no position above 1.5%. About 253 stocks, half
-long and half short, rounded to whole shares. No trained model touches any of it. It is
-arithmetic a judge can check by hand.
+**What we built.** Each month we score every stock on twelve classical measures (volatility,
+cheapness, profitability, asset growth, share issuance and more), remove the sector bet and the
+market bet, and let an optimizer build about 316 positions, half long and half short, in whole
+shares, with every cost charged. **No trained model and no AI touches a position.**
 
 ## What it returns
 
-Straight from the code, full detail in `RESULTS.md`.
+<!--AUTO:brief-->
 
-|                   |                                                                 |
-| ----------------- | --------------------------------------------------------------- |
-| Net return        | **14.3% a year** after every modelled fee                       |
-| Information ratio | **0.73**, the headline number                                   |
-| Sharpe ratio      | 1.01                                                            |
-| Alpha             | 16.1% a year, t = 2.28                                          |
-| Beta              | −0.10, standard error 0.10, so statistically zero               |
-| Worst drawdown    | −14.1%                                                          |
-| By year           | 2021 +49%, 2022 +36%, 2023 +12%, 2024 −5%, 2025 flat, 2026 +18% |
+|  |  |
+|---|---|
+| Net return | **16.1% a year** after every modelled fee |
+| Information ratio | **0.83** |
+| Alpha | 16.6% a year, t = 2.40 |
+| Beta to the S&P 500 | -0.05, standard error 0.11 |
+| Worst drawdown | -12.8% |
+| Split in half | 2021-22 IR 1.87, 2023-26 IR +0.06 |
+| CRSP years only | 2021-25 IR 0.76 |
+| 2016-2020, never looked at | IR -0.82, beta -0.30 (se 0.09) |
 
-Costs eat 25% of the gross return: commission, spread, borrow fees on the shorts, an extra
-charge on the 21% that are hard to borrow, and market impact. No borrow rate here is observed
-data, every one is a stress assumption, and we say so.
+<!--/AUTO:brief-->
 
-## The three things that make us different
+**Read the last three rows.** The second half earned about nothing, the CRSP years alone earn less,
+and the same code on 2016-2020, never looked at, lost money. The record is honest arithmetic, not
+proof it works everywhere: a value, quality and defensive tilt that earns when that regime pays.
 
-All three are the same finding: **things that look better are not.**
+## What makes it different
 
-**1. Our first book looked neutral and was not.** Reported beta −0.002, real beta −0.52. It made
-+17.7% in a month the market fell 9.4%. We had neutralised the obvious measure of market
-sensitivity, but the book was still tilted away from volatile stocks, and volatile stocks _are_
-market sensitivity. Fixing it moved beta to −0.10 and improved everything else: IR 0.47 to 0.73,
-drawdown −35% to −14%.
+1. **Our first book looked neutral and was not** (promised beta 0, real −0.52). Now the real beta
+   fails the build.
+2. **The machine-learning version predicts as well and loses money**, on trading costs.
+3. **We could have shown a higher number and did not**: picking signals on the past picks badly.
+4. **We checked the data against WRDS** and the book barely moved.
+5. **We tried to make our result look fake and could not**, and a 28-check audit guards the build.
 
-**2. We built the machine-learning version and it lost.**
+## The agents
 
-|                       | prediction skill    | what is scored |
-| --------------------- | ------------------- | -------------- |
-| **Our factor score**  | t = 3.10            | **IR +0.73**   |
-| Gradient-boosted tree | t = 2.99            | IR −1.80       |
-| Neural network        | **t = 4.47** (best) | IR −1.75       |
+Three local AI agents, run through Hermes, each judged on something it cannot fake:
 
-They predict better and lose money, because they rank the middle of the pack well and we only
-trade the extremes. We ship the simple model and keep them as evidence.
+<!--AUTO:agents-->
 
-**3. We could have shown a higher number and did not.** Across all 792 five-signal combinations
-the IR ranged 0.03 to 0.96, purely on which five you pick, and past IR correlates −0.48 with
-future IR. So we use all twelve and there is nothing to cherry-pick.
+| agent | model | what happened |
+|---|---|---|
+| **Signal discovery** | Qwen3.8-27B | real names: 8 backtests, best in sample 1.14, sealed IR **-2.08**; coded names: 0 backtests, sealed IR **-1.82**; random search, same budget, sealed IR -0.44 |
+| **Devil's advocate** | Gemma 4 26B-A4B | 5 critiques, 1 quoting a number no tool showed; run twice, 5 of 5 calls identical |
+| **Reproducibility** | Qwen3.8-27B | found **0 of 7** planted bugs; 10 false alarms on the clean copy |
 
-## What did not work, and what we cannot claim
+<!--/AUTO:agents-->
 
-Momentum is statistically dead in this period. Filing sentiment looked real until we removed the
-sector and market bets, then vanished. Predicting fundamentals instead of returns, which the
-rules suggest, beat nothing. Volatility targeting and turnover control both made things worse.
+## What we cannot claim
 
-These are research backtests, not a sealed out-of-sample record, because we made design choices
-while able to see the 2021-2026 results. The deflated Sharpe, which asks whether a result
-survives how many things you tried, is 0.52 on the choices that fed the book and 0.20 counting
-everything we ever ran. Encouraging under one count, inconclusive under the other. We report both.
-
-**Still waiting on WRDS.** The rules ask for beta against the S&P 500. We use Ken French's broad
-market series and label it honestly, because the free S&P data has no dividends in it. WRDS
-access through McGill fixes that and adds daily data for better risk numbers. Requested, not
-granted, and nothing else is waiting on it.
-
-## Running it
-
-    python run.py    # builds the portfolio, updates RESULTS.md, draws the charts
-
-The pipeline stops if any competition limit breaks, so a clean run means the book is compliant.
-`MAIN.py`, the single file the rules want, is assembled from `src/` at the end.
-
-## How it is judged
-
-Mostly on originality, choice of technology, and whether the backtest was done properly, and
-they check the book is really neutral before anything else. The panel is people aged 40+, almost
-all finance, so it has to survive being pitched in ninety seconds:
-
-> _We run a sector- and beta-neutral book of 253 US stocks, ranked on twelve classical factors
-> with the market bet stripped out. We also built the machine-learning version. It predicted
-> better and lost money, because its skill is in the middle of the distribution and a long-short
-> book only trades the tails. Our first pipeline also looked neutral and had a real beta of
-> −0.52. We found it, fixed it, and show you both numbers._
+Research backtests, not a sealed out-of-sample record; costs modelled, not observed; 2026 returns
+from Compustat, not CRSP. The only clean test is live: our September book is hashed, and October
+2026 scores it.

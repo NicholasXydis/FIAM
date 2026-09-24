@@ -1,0 +1,232 @@
+{
+  "what": "Aggregate checks against CRSP and Compustat. No WRDS row is written here.",
+  "exits": {
+    "by_source": {
+      "CRSP delisting GLI UNAV": 2217,
+      "CRSP delisting MER CASH": 2018,
+      "CRSP delisting GDR PRCF": 1857,
+      "CRSP delisting MER STK": 1374,
+      "CRSP delisting MER CST": 435,
+      "CRSP delisting GEX STK": 124,
+      "Compustat deletion reason 01": 105,
+      "CRSP delisting MER CSHN": 97,
+      "CRSP delisting MER USTK": 33,
+      "CRSP delisting GEX USTK": 28,
+      "CRSP delisting MER CNC": 17,
+      "CRSP delisting MER SNC": 10,
+      "CRSP delisting MER CUS": 7,
+      "Compustat deletion reason 09": 6,
+      "CRSP delisting MER USNC": 5,
+      "CRSP delisting MER COP": 3,
+      "CRSP delisting GEX CST": 3,
+      "Compustat deletion reason 02": 3,
+      "CRSP delisting GEX CNC": 1,
+      "CRSP delisting MER MMI": 1,
+      "CRSP delisting GEX CASH": 1,
+      "Compustat deletion reason 10": 1
+    },
+    "rows_already_delisted_at_decision_screened": 598,
+    "held_and_already_dead": 0,
+    "held_exiting_during_holding_month": {
+      "securities": 60,
+      "position_months": 60,
+      "by_kind": {
+        "MER CASH": 42,
+        "MER CST": 6,
+        "MER STK": 6,
+        "MER CSHN": 6
+      },
+      "long_weight_monthly": 0.000967,
+      "short_weight_monthly": 0.005342,
+      "payout_contribution_annual": 7.2e-05,
+      "closing_cost_annual_already_charged": 0.000118,
+      "what": "Names taken over or delisted after the decision. Their final CRSP return is booked, where booking zero would drop the payout_contribution_annual above."
+    }
+  },
+  "returns_against_crsp": {
+    "window": "2021-01 to 2025-12 holding months",
+    "panel_rows": 242328,
+    "compared": 241051,
+    "correlation": 0.999525,
+    "median_abs_gap": 3.4e-05,
+    "share_within_1bp": 0.838715,
+    "share_off_by_over_1pct": 0.000282,
+    "panel_missing_but_crsp_has": 13,
+    "crsp_missing_but_panel_has": 4
+  },
+  "market_with_dividends": {
+    "months": 60,
+    "window": "2021-01 to 2025-12",
+    "total_return_crsp": {
+      "beta": -0.016561,
+      "beta_stderr": 0.12094,
+      "alpha_annual": 0.154867,
+      "alpha_tstat": 1.977039
+    },
+    "price_only_fred": {
+      "beta": -0.010058,
+      "beta_stderr": 0.120859,
+      "alpha_annual": 0.153951,
+      "alpha_tstat": 1.97142
+    },
+    "dividend_gap_annual": 0.014776,
+    "fred_vs_crsp_price_correlation": 0.999808
+  },
+  "report_dates": {
+    "rule": "More than 1% of a signal's updates before any new report: lag it a month and rebuild the book. Declared before the check was run.",
+    "passed": true,
+    "worst_early_share": 0.001007,
+    "chance_a_month_has_a_release": 0.326774,
+    "not_tested": "qmj is a rank composite that moves every month; chcsho_12m, ret_12_1 and ivol_capm_21d come from prices and shares, not reports.",
+    "signals": {
+      "at_gr1": {
+        "2016_2020": {
+          "updates": 67212,
+          "early_share": 0.000491,
+          "released_on_decision_day_share": 0.039785
+        },
+        "2021_2025": {
+          "updates": 71230,
+          "early_share": 0.000267,
+          "released_on_decision_day_share": 0.038004
+        },
+        "2026": {
+          "updates": 9838,
+          "early_share": 0.000203,
+          "released_on_decision_day_share": 0.041472
+        }
+      },
+      "niq_su": {
+        "2016_2020": {
+          "updates": 63240,
+          "early_share": 0.000648,
+          "released_on_decision_day_share": 0.040481
+        },
+        "2021_2025": {
+          "updates": 65688,
+          "early_share": 0.000122,
+          "released_on_decision_day_share": 0.038104
+        },
+        "2026": {
+          "updates": 9316,
+          "early_share": 0.000107,
+          "released_on_decision_day_share": 0.04079
+        }
+      },
+      "ope_be": {
+        "2016_2020": {
+          "updates": 48984,
+          "early_share": 0.000694,
+          "released_on_decision_day_share": 0.042585
+        },
+        "2021_2025": {
+          "updates": 51901,
+          "early_share": 0.000193,
+          "released_on_decision_day_share": 0.040828
+        },
+        "2026": {
+          "updates": 7101,
+          "early_share": 0.000141,
+          "released_on_decision_day_share": 0.044219
+        }
+      },
+      "o_score": {
+        "2016_2020": {
+          "updates": 55486,
+          "early_share": 0.00027,
+          "released_on_decision_day_share": 0.04147
+        },
+        "2021_2025": {
+          "updates": 60290,
+          "early_share": 0.000166,
+          "released_on_decision_day_share": 0.039725
+        },
+        "2026": {
+          "updates": 8430,
+          "early_share": 0.000119,
+          "released_on_decision_day_share": 0.043772
+        }
+      },
+      "gp_at": {
+        "2016_2020": {
+          "updates": 65738,
+          "early_share": 0.000654,
+          "released_on_decision_day_share": 0.040525
+        },
+        "2021_2025": {
+          "updates": 68488,
+          "early_share": 0.000336,
+          "released_on_decision_day_share": 0.038269
+        },
+        "2026": {
+          "updates": 9252,
+          "early_share": 0.000108,
+          "released_on_decision_day_share": 0.041288
+        }
+      },
+      "noa_gr1a": {
+        "2016_2020": {
+          "updates": 56222,
+          "early_share": 0.000409,
+          "released_on_decision_day_share": 0.041283
+        },
+        "2021_2025": {
+          "updates": 60970,
+          "early_share": 0.00023,
+          "released_on_decision_day_share": 0.039626
+        },
+        "2026": {
+          "updates": 8488,
+          "early_share": 0.000236,
+          "released_on_decision_day_share": 0.043827
+        }
+      },
+      "eqnetis_at": {
+        "2016_2020": {
+          "updates": 61569,
+          "early_share": 0.000845,
+          "released_on_decision_day_share": 0.040394
+        },
+        "2021_2025": {
+          "updates": 66717,
+          "early_share": 0.000375,
+          "released_on_decision_day_share": 0.038206
+        },
+        "2026": {
+          "updates": 9268,
+          "early_share": 0.000108,
+          "released_on_decision_day_share": 0.041433
+        }
+      },
+      "book": {
+        "2016_2020": {
+          "updates": 64541,
+          "early_share": 0.001007,
+          "released_on_decision_day_share": 0.040083
+        },
+        "2021_2025": {
+          "updates": 68092,
+          "early_share": 0.000441,
+          "released_on_decision_day_share": 0.037831
+        },
+        "2026": {
+          "updates": 7335,
+          "early_share": 0.000273,
+          "released_on_decision_day_share": 0.050307
+        }
+      }
+    }
+  },
+  "release_day_sensitivity": {
+    "what": "Accounting updates whose report is dated on the decision day, which may have come after the close, held back a month. A sensitivity only: the shipped book is unchanged.",
+    "panel_rows_affected_share": 0.012474,
+    "information_ratio": 0.817604,
+    "net_annual": 0.158697
+  },
+  "organizer_data_only": {
+    "information_ratio": 0.832587,
+    "return_net_annual": 0.161013,
+    "beta_realized": -0.047341,
+    "beta_stderr": 0.111044
+  }
+}

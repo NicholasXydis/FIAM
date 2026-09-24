@@ -1,0 +1,770 @@
+{
+  "what": "The book-side exhibits, each from submission/returns.csv and holdings.csv.",
+  "subperiod": {
+    "full_2021_2026": {
+      "months": 68,
+      "gross_annual": 0.20189294592774837,
+      "cost_annual": 0.040808820592979876,
+      "net_annual": 0.16108412533476787,
+      "cost_share_of_gross": 0.20213098781363154,
+      "information_ratio": 0.8341413856004029,
+      "ir_ci_low": -0.09019726362749605,
+      "ir_ci_high": 1.7538935666089897
+    },
+    "first_half_2021_2022": {
+      "months": 24,
+      "gross_annual": 0.4117419748149945,
+      "cost_annual": 0.04216301361724165,
+      "net_annual": 0.3695789611977524,
+      "cost_share_of_gross": 0.10240154319021397,
+      "information_ratio": 1.865673969429288,
+      "ir_ci_low": 1.1649129279932766,
+      "ir_ci_high": 3.3137638545230934
+    },
+    "second_half_2023_2026": {
+      "months": 44,
+      "gross_annual": 0.0874298392619777,
+      "cost_annual": 0.040070169852473456,
+      "net_annual": 0.04735966940950363,
+      "cost_share_of_gross": 0.4583122900684497,
+      "information_ratio": 0.06450970845162629,
+      "ir_ci_low": -1.153973177530232,
+      "ir_ci_high": 0.9440101265469012
+    },
+    "excluding_2021": {
+      "months": 56,
+      "gross_annual": 0.14551791281566043,
+      "cost_annual": 0.040159909680193645,
+      "net_annual": 0.10535800313546619,
+      "cost_share_of_gross": 0.27597914856755484,
+      "information_ratio": 0.49623846864878,
+      "ir_ci_low": -0.5946116814392268,
+      "ir_ci_high": 1.1995569993841813
+    },
+    "crsp_era_2021_2025": {
+      "months": 60,
+      "gross_annual": 0.1934540677424783,
+      "cost_annual": 0.04050408746829377,
+      "net_annual": 0.15294998027418397,
+      "cost_share_of_gross": 0.2093731496109552,
+      "information_ratio": 0.7619647875280369,
+      "ir_ci_low": -0.2508044810462148,
+      "ir_ci_high": 1.771243571558943
+    },
+    "by_year": {
+      "2021": {
+        "gross": 0.5555406570352373,
+        "cost": 0.0648561500089031,
+        "net": 0.49068450702633415
+      },
+      "2022": {
+        "gross": 0.4051500991385555,
+        "cost": 0.05446847577333491,
+        "net": 0.3506816233652206
+      },
+      "2023": {
+        "gross": 0.16285163287976423,
+        "cost": 0.041571829640209,
+        "net": 0.12127980323955523
+      },
+      "2024": {
+        "gross": -0.06583498483066874,
+        "cost": 0.03495528017614735,
+        "net": -0.1007902650068161
+      },
+      "2025": {
+        "gross": 0.04383042052925079,
+        "cost": 0.04426432686122228,
+        "net": -0.00043390633197148976
+      },
+      "2026": {
+        "gross": 0.18580484770396288,
+        "cost": 0.03296419330439404,
+        "net": 0.15284065439956884
+      }
+    }
+  },
+  "costs": {
+    "components": {
+      "commission": 0.006410777481610447,
+      "spread": 0.013841784361563157,
+      "borrow_general_collateral": 0.004997887833455365,
+      "borrow_hard_to_borrow": 0.0053011269457716,
+      "impact": 0.010257243970577081,
+      "total": 0.040808820592979876
+    },
+    "break_even": {
+      "current_annual_cost": 0.040808820592979876,
+      "break_even_annual_cost": 0.16189294592774836,
+      "break_even_multiple": 3.9671067081903844,
+      "ladder": {
+        "x1.00": {
+          "annual_cost": 0.040808820592979876,
+          "active_annual": 0.1210841253347685,
+          "information_ratio": 0.8341413856004066
+        },
+        "x1.50": {
+          "annual_cost": 0.06121323088946981,
+          "active_annual": 0.10067971503827858,
+          "information_ratio": 0.6935120382260126
+        },
+        "x2.00": {
+          "annual_cost": 0.08161764118595975,
+          "active_annual": 0.08027530474178862,
+          "information_ratio": 0.5528758139868839
+        },
+        "x2.50": {
+          "annual_cost": 0.1020220514824497,
+          "active_annual": 0.059870894445298674,
+          "information_ratio": 0.4122579482998255
+        },
+        "x3.00": {
+          "annual_cost": 0.12242646177893962,
+          "active_annual": 0.03946648414880874,
+          "information_ratio": 0.2716836390531778
+        },
+        "x3.97": {
+          "annual_cost": 0.16189294592774836,
+          "active_annual": 6.122553444624025e-18,
+          "information_ratio": 4.211778954281259e-17
+        },
+        "x4.56": {
+          "annual_cost": 0.18617688781691058,
+          "active_annual": -0.02428394188916222,
+          "information_ratio": -0.16696229138188784
+        }
+      }
+    }
+  },
+  "completeness": {
+    "average_monthly_return": 0.01615786828770124,
+    "cumulative_return_full_period": 1.8140064155954847,
+    "average_long_positions": 164.11764705882354,
+    "average_short_positions": 152.14705882352942,
+    "average_absolute_position_weight": 0.006320611394029574,
+    "by_year": {
+      "2021": {
+        "months": 12,
+        "partial_year": false,
+        "strategy": 0.49132758464744053,
+        "benchmark": 0.04119976798869973,
+        "market": 0.2689273629085722,
+        "active": 0.4501278166587408
+      },
+      "2022": {
+        "months": 12,
+        "partial_year": false,
+        "strategy": 0.37762679516788666,
+        "benchmark": 0.06189728648438031,
+        "market": -0.194428242324042,
+        "active": 0.31572950868350635
+      },
+      "2023": {
+        "months": 12,
+        "partial_year": false,
+        "strategy": 0.1789234909069699,
+        "benchmark": 0.0945486520190637,
+        "market": 0.2423049876285972,
+        "active": 0.0843748388879062
+      },
+      "2024": {
+        "months": 12,
+        "partial_year": false,
+        "strategy": -0.05468820690093157,
+        "benchmark": 0.09344448142492712,
+        "market": 0.23309006819949563,
+        "active": -0.14813268832585869
+      },
+      "2025": {
+        "months": 12,
+        "partial_year": false,
+        "strategy": 0.04101137427094237,
+        "benchmark": 0.08371673078523068,
+        "market": 0.16387804061119127,
+        "active": -0.042705356514288306
+      },
+      "2026": {
+        "months": 8,
+        "partial_year": true,
+        "strategy": 0.18060407777702792,
+        "benchmark": 0.05206543267515307,
+        "market": 0.12280184062522803,
+        "active": 0.12853864510187485
+      }
+    },
+    "ranges": {
+      "gross_exposure": {
+        "mean": 1.9989863069779412,
+        "min": 1.998409057,
+        "max": 1.999420335
+      },
+      "net_exposure": {
+        "mean": -0.00016882640441173835,
+        "min": -0.0008849779999999,
+        "max": -1.0685000000343337e-06
+      },
+      "turnover_one_way": {
+        "mean": 0.5342314568009214,
+        "min": 0.3555357775864406,
+        "max": 0.99947693425
+      },
+      "positions": {
+        "mean": 316.2647058823529,
+        "min": 279.0,
+        "max": 343.0
+      }
+    },
+    "legs": {
+      "long": {
+        "annual_contribution": 0.16924188916420496,
+        "volatility": 0.19627069220348148,
+        "names_per_month": 164.11764705882354,
+        "mean_market_cap_musd": 60718.75787362321,
+        "median_market_cap_musd": 6152.5056,
+        "mean_dollar_volume": 416047254.0304589,
+        "median_dollar_volume": 64589341.507096075
+      },
+      "short": {
+        "annual_contribution": 0.03265105603356362,
+        "volatility": 0.24670448708585016,
+        "names_per_month": 152.14705882352942,
+        "mean_market_cap_musd": 6408.46676482167,
+        "median_market_cap_musd": 1861.682595,
+        "mean_dollar_volume": 106978961.25923084,
+        "median_dollar_volume": 23879202.641542964
+      },
+      "top10_share_of_gross": 0.0753997248074132
+    },
+    "top_positions": {
+      "long": [
+        {
+          "ticker": "PRG",
+          "company": "PROG HOLDINGS INC",
+          "average_weight": 0.013200335735294118,
+          "months_held": 68
+        },
+        {
+          "ticker": "DDS",
+          "company": "DILLARD'S, INC.",
+          "average_weight": 0.009998708382352941,
+          "months_held": 58
+        },
+        {
+          "ticker": "ALGN",
+          "company": "ALIGN TECHNOLOGY INC",
+          "average_weight": 0.00964445794117647,
+          "months_held": 68
+        },
+        {
+          "ticker": "DFIN",
+          "company": "Donnelley Financial Solutions, Inc.",
+          "average_weight": 0.009514871176470588,
+          "months_held": 67
+        },
+        {
+          "ticker": "MEDP",
+          "company": "Medpace Holdings, Inc.",
+          "average_weight": 0.009373518970588234,
+          "months_held": 63
+        },
+        {
+          "ticker": "SIGA",
+          "company": "S I G A TECHNOLOGIES INC",
+          "average_weight": 0.009320217647058824,
+          "months_held": 52
+        },
+        {
+          "ticker": "MTD",
+          "company": "METTLER TOLEDO INTERNATIONAL INC/",
+          "average_weight": 0.008535785294117647,
+          "months_held": 68
+        },
+        {
+          "ticker": "LRCX",
+          "company": "LAM RESEARCH CORP",
+          "average_weight": 0.007904468088235294,
+          "months_held": 53
+        },
+        {
+          "ticker": "CCRN",
+          "company": "CROSS COUNTRY HEALTHCARE INC",
+          "average_weight": 0.007261542205882353,
+          "months_held": 39
+        },
+        {
+          "ticker": "AMAT",
+          "company": "APPLIED MATERIALS INC /DE",
+          "average_weight": 0.006994244117647059,
+          "months_held": 62
+        }
+      ],
+      "short": [
+        {
+          "ticker": "NEXT",
+          "company": "NextDecade Corp",
+          "average_weight": -0.008889850294117646,
+          "months_held": 44
+        },
+        {
+          "ticker": "CYTK",
+          "company": "CYTOKINETICS INC",
+          "average_weight": -0.0081473625,
+          "months_held": 56
+        },
+        {
+          "ticker": "KRUS",
+          "company": "KURA SUSHI USA, INC.",
+          "average_weight": -0.007299896029411765,
+          "months_held": 48
+        },
+        {
+          "ticker": "VRDN",
+          "company": "Viridian Therapeutics, Inc.\\DE",
+          "average_weight": -0.00725719838235294,
+          "months_held": 56
+        },
+        {
+          "ticker": "CWST",
+          "company": "CASELLA WASTE SYSTEMS INC",
+          "average_weight": -0.00700571955882353,
+          "months_held": 45
+        },
+        {
+          "ticker": "MSTR",
+          "company": "Strategy Inc",
+          "average_weight": -0.006881396617647059,
+          "months_held": 47
+        },
+        {
+          "ticker": "COGT",
+          "company": "Cogent Biosciences, Inc.",
+          "average_weight": -0.006577707058823529,
+          "months_held": 41
+        },
+        {
+          "ticker": "IONS",
+          "company": "IONIS PHARMACEUTICALS INC",
+          "average_weight": -0.006028896617647058,
+          "months_held": 41
+        },
+        {
+          "ticker": "BLNK",
+          "company": "BLINK CHARGING CO",
+          "average_weight": -0.006014217499999999,
+          "months_held": 29
+        },
+        {
+          "ticker": "FIVN",
+          "company": "FIVE 9 INC",
+          "average_weight": -0.005914666911764706,
+          "months_held": 50
+        }
+      ]
+    },
+    "best_month": {
+      "month": "2022-04-01",
+      "value": 0.1211235348807282
+    },
+    "worst_month": {
+      "month": "2024-10-01",
+      "value": -0.0917716642998447
+    }
+  },
+  "data_by_year": {
+    "2021": {
+      "names_per_month": 2045.9166666666667,
+      "cross_sectional_std": 0.11176692630318852,
+      "share_beyond_50pct": 0.006965093071565313,
+      "share_missing": 0.00012219461529061954,
+      "returns_from": "CRSP"
+    },
+    "2022": {
+      "names_per_month": 1964.5,
+      "cross_sectional_std": 0.11855674470305072,
+      "share_beyond_50pct": 0.004454059557139221,
+      "share_missing": 4.241961482989734e-05,
+      "returns_from": "CRSP"
+    },
+    "2023": {
+      "names_per_month": 1909.0833333333333,
+      "cross_sectional_std": 0.11672625802695581,
+      "share_beyond_50pct": 0.005980182461041512,
+      "share_missing": 0.0,
+      "returns_from": "CRSP"
+    },
+    "2024": {
+      "names_per_month": 2026.75,
+      "cross_sectional_std": 0.11072672194558009,
+      "share_beyond_50pct": 0.006907610706796596,
+      "share_missing": 0.0,
+      "returns_from": "CRSP"
+    },
+    "2025": {
+      "names_per_month": 2029.9166666666667,
+      "cross_sectional_std": 0.11925112997752428,
+      "share_beyond_50pct": 0.007512623670922452,
+      "share_missing": 0.0,
+      "returns_from": "CRSP"
+    },
+    "2026": {
+      "names_per_month": 2031.375,
+      "cross_sectional_std": 0.14855039695395944,
+      "share_beyond_50pct": 0.012491538982216478,
+      "share_missing": 0.0012306934957848747,
+      "returns_from": "Compustat"
+    }
+  },
+  "risk": {
+    "attribution": {
+      "alpha_annual": 0.09875182714572839,
+      "alpha_t": 1.7493315234548665,
+      "betas": {
+        "mkt_rf": 0.048322457405457334,
+        "smb": -0.6905216186237664,
+        "hml": 0.34349174135830246
+      },
+      "t_stats": {
+        "mkt_rf": 0.5864831082381897,
+        "smb": -4.946902346531089,
+        "hml": 3.7231534835493107
+      },
+      "r_squared": 0.3035722329034577,
+      "individual_variance_contribution": {
+        "mkt_rf": 0.0026237422896786796,
+        "smb": 0.21956950937459685,
+        "hml": 0.11253875310431845
+      },
+      "unallocated_after_individual_contributions": 0.665267995231406,
+      "explained_by_all_three": 0.30357223290345753,
+      "residual_share": 0.6964277670965424,
+      "months": 67
+    },
+    "five_factor_momentum": {
+      "alpha_annual": 0.09463708001426205,
+      "alpha_t": 1.8234927221434127,
+      "betas": {
+        "mkt_rf": 0.0701078113761107,
+        "smb": -0.3708802472029327,
+        "hml": 0.24698187371747432,
+        "rmw": 0.633988759379755,
+        "cma": 0.16607892377261327,
+        "mom": 0.010807726740235286
+      },
+      "t_stats": {
+        "mkt_rf": 1.4117665024556219,
+        "smb": -3.09913831846096,
+        "hml": 2.1936065185828992,
+        "rmw": 3.85979178248167,
+        "cma": 1.2918420072549412,
+        "mom": 0.08812289555585084
+      },
+      "r_squared": 0.49304363630271775,
+      "individual_variance_contribution": {
+        "mkt_rf": 0.005523755592362833,
+        "smb": 0.07201905881570739,
+        "hml": 0.05818347578598281,
+        "rmw": 0.23580407387786498,
+        "cma": 0.01443287540879,
+        "mom": 0.00011193263023545025
+      },
+      "unallocated_after_individual_contributions": 0.6139248278890566,
+      "explained_by_all_three": 0.49304363630271747,
+      "residual_share": 0.5069563636972825,
+      "months": 67
+    },
+    "book": {
+      "gross": {
+        "annual": 0.20189294592774837,
+        "volatility": 0.1451592156581348,
+        "worst_month": -0.0930031585426485,
+        "best_month": 0.1239159103610135
+      },
+      "net": {
+        "annual": 0.16108412533476787,
+        "volatility": 0.1451601939731276,
+        "worst_month": -0.095529997633178,
+        "best_month": 0.1204902015473948
+      }
+    },
+    "tails": {
+      "var_95_monthly": -0.051220530516318426,
+      "cvar_95_monthly": -0.06643935340980531,
+      "skew": 0.36597340766103265,
+      "excess_kurtosis": 0.2635183561501533,
+      "worst_three_months": [
+        -0.09886333096651133,
+        -0.06008655018241643,
+        -0.05530391166857904
+      ]
+    },
+    "consistency": {
+      "windows": 57,
+      "share_negative": 0.40350877192982454,
+      "median": 0.6400326700835455,
+      "worst": -1.8010643100207642,
+      "best": 3.302986451982174
+    }
+  },
+  "beta_drift": {
+    "2021_2023": {
+      "beta": 0.044159414045099,
+      "stderr": 0.1303399375815511,
+      "t": 0.33880186583233046,
+      "months": 36
+    },
+    "2024_2026": {
+      "beta": -0.21077836857413923,
+      "stderr": 0.0942971718652273,
+      "t": -2.2352565236568362,
+      "months": 32
+    },
+    "rolling_12m_outside_band": 0.3684210526315789,
+    "rolling_12m_windows": 57
+  },
+  "attribution": {
+    "what": "Gross return split across the twelve signals by exposure times each signal's pure monthly return, from a joint cross-sectional regression. Before costs.",
+    "months": 68,
+    "full": {
+      "ivol_capm_21d": {
+        "contribution_annual": -0.008051746566510854,
+        "t": -0.8073392351338675,
+        "average_exposure": 0.4208504227864195,
+        "sign": -1
+      },
+      "be_me": {
+        "contribution_annual": 0.015456331990421915,
+        "t": 1.8485343703350448,
+        "average_exposure": 0.07494598665187908,
+        "sign": 1
+      },
+      "qmj": {
+        "contribution_annual": -0.004865052534244311,
+        "t": -0.17160053340772,
+        "average_exposure": 1.7319876816105104,
+        "sign": 1
+      },
+      "at_gr1": {
+        "contribution_annual": 0.007101868329742623,
+        "t": 0.4345638309616614,
+        "average_exposure": 1.6729404635356644,
+        "sign": -1
+      },
+      "niq_su": {
+        "contribution_annual": 0.013296122496892703,
+        "t": 1.545859597898877,
+        "average_exposure": 1.1968403604428677,
+        "sign": 1
+      },
+      "ope_be": {
+        "contribution_annual": 0.03771015399782543,
+        "t": 1.2242883520021193,
+        "average_exposure": 1.5547143957414866,
+        "sign": 1
+      },
+      "chcsho_12m": {
+        "contribution_annual": 0.007734973320893741,
+        "t": 0.36319839063200465,
+        "average_exposure": 2.1913169987467156,
+        "sign": -1
+      },
+      "o_score": {
+        "contribution_annual": 0.022122096556890722,
+        "t": 1.0796601810910447,
+        "average_exposure": 1.7348962556474412,
+        "sign": -1
+      },
+      "ret_12_1": {
+        "contribution_annual": 0.026222871600954788,
+        "t": 1.4584713368064497,
+        "average_exposure": 0.9325722364529756,
+        "sign": 1
+      },
+      "gp_at": {
+        "contribution_annual": -0.029192424797157654,
+        "t": -0.985638376964478,
+        "average_exposure": 1.723819334884732,
+        "sign": 1
+      },
+      "noa_gr1a": {
+        "contribution_annual": 0.02509492908651277,
+        "t": 2.0245025135595,
+        "average_exposure": 1.469921321444149,
+        "sign": -1
+      },
+      "eqnetis_at": {
+        "contribution_annual": 0.022785700749330395,
+        "t": 0.9403791042174623,
+        "average_exposure": 2.2950749762653277,
+        "sign": -1
+      },
+      "residual": {
+        "contribution_annual": 0.06647712169619606
+      },
+      "explained_total": {
+        "contribution_annual": 0.1354158242315523
+      }
+    },
+    "halves": {
+      "2021_2022": {
+        "ivol_capm_21d": {
+          "contribution_annual": 0.002624746437966296,
+          "t": 0.13546788417138822,
+          "average_exposure": 0.42714115045545614,
+          "sign": -1
+        },
+        "be_me": {
+          "contribution_annual": 0.039387951408572236,
+          "t": 1.8036278349694337,
+          "average_exposure": 0.31978221161193576,
+          "sign": 1
+        },
+        "qmj": {
+          "contribution_annual": -0.010174329016583562,
+          "t": -0.2060737761428235,
+          "average_exposure": 1.8007858348807435,
+          "sign": 1
+        },
+        "at_gr1": {
+          "contribution_annual": 0.050734356551252344,
+          "t": 1.6244123175557286,
+          "average_exposure": 1.5794485020361553,
+          "sign": -1
+        },
+        "niq_su": {
+          "contribution_annual": 0.016563278399868934,
+          "t": 1.0083882799357549,
+          "average_exposure": 1.4085275883095398,
+          "sign": 1
+        },
+        "ope_be": {
+          "contribution_annual": 0.1073889342213393,
+          "t": 1.582416228165939,
+          "average_exposure": 1.7006013219666922,
+          "sign": 1
+        },
+        "chcsho_12m": {
+          "contribution_annual": 0.012192941538301034,
+          "t": 0.31738322835796406,
+          "average_exposure": 2.206359808074342,
+          "sign": -1
+        },
+        "o_score": {
+          "contribution_annual": 0.02324639479095728,
+          "t": 0.5961234257629725,
+          "average_exposure": 1.7940446917105959,
+          "sign": -1
+        },
+        "ret_12_1": {
+          "contribution_annual": 0.05859387281033156,
+          "t": 1.6765171860566583,
+          "average_exposure": 1.091441001140309,
+          "sign": 1
+        },
+        "gp_at": {
+          "contribution_annual": -0.011176735801101276,
+          "t": -0.23589471701760054,
+          "average_exposure": 1.7072206302273212,
+          "sign": 1
+        },
+        "noa_gr1a": {
+          "contribution_annual": 0.035458535186039454,
+          "t": 2.016252087978176,
+          "average_exposure": 1.4580835641362129,
+          "sign": -1
+        },
+        "eqnetis_at": {
+          "contribution_annual": 0.05727769016556701,
+          "t": 1.427371083949438,
+          "average_exposure": 2.2823712004289085,
+          "sign": -1
+        },
+        "residual": {
+          "contribution_annual": 0.02962433812248398
+        },
+        "explained_total": {
+          "contribution_annual": 0.38211763669251053
+        }
+      },
+      "2023_2026": {
+        "ivol_capm_21d": {
+          "contribution_annual": -0.013875288205316572,
+          "t": -1.2276009423678216,
+          "average_exposure": 0.4174191167851268,
+          "sign": -1
+        },
+        "be_me": {
+          "contribution_annual": 0.002402721398703562,
+          "t": 0.5665552856015397,
+          "average_exposure": -0.05860104514451545,
+          "sign": 1
+        },
+        "qmj": {
+          "contribution_annual": -0.0019690835438774474,
+          "t": -0.05628728653345141,
+          "average_exposure": 1.694461416190383,
+          "sign": 1
+        },
+        "at_gr1": {
+          "contribution_annual": -0.016697670700171766,
+          "t": -0.9316624765163579,
+          "average_exposure": 1.723936078899033,
+          "sign": -1
+        },
+        "niq_su": {
+          "contribution_annual": 0.011514037458905673,
+          "t": 1.1559163858772448,
+          "average_exposure": 1.0813745997883193,
+          "sign": 1
+        },
+        "ope_be": {
+          "contribution_annual": -0.0002964533968184892,
+          "t": -0.010193790655702863,
+          "average_exposure": 1.4751397087095568,
+          "sign": 1
+        },
+        "chcsho_12m": {
+          "contribution_annual": 0.0053033542932170484,
+          "t": 0.2062465000222111,
+          "average_exposure": 2.183111830022556,
+          "sign": -1
+        },
+        "o_score": {
+          "contribution_annual": 0.021508842974672607,
+          "t": 0.9030596620938879,
+          "average_exposure": 1.702633472340266,
+          "sign": -1
+        },
+        "ret_12_1": {
+          "contribution_annual": 0.008565961850385632,
+          "t": 0.4274830081672339,
+          "average_exposure": 0.8459165466235207,
+          "sign": 1
+        },
+        "gp_at": {
+          "contribution_annual": -0.03901916424955202,
+          "t": -1.0243257909277081,
+          "average_exposure": 1.7328731737887741,
+          "sign": 1
+        },
+        "noa_gr1a": {
+          "contribution_annual": 0.019442053032225477,
+          "t": 1.1667763607579926,
+          "average_exposure": 1.4763782799757508,
+          "sign": -1
+        },
+        "eqnetis_at": {
+          "contribution_annual": 0.003971888340474063,
+          "t": 0.13090280192516462,
+          "average_exposure": 2.302004308539738,
+          "sign": -1
+        },
+        "residual": {
+          "contribution_annual": 0.08657864000912996
+        },
+        "explained_total": {
+          "contribution_annual": 0.0008511992528477598
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+# Decile tables for every model and every ML number, in one file, ml_metrics.json.
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import pipeline as P
+
+PREDS = Path("cache/preds")
+EXHIBITS = Path("submission/exhibits")
+
+# Named, not globbed, so a stray file in the cache can never become a row in the exhibit.
+MODELS = ("enet", "lgbm", "nn3")
+
+
+# Next-month excess return by decile of the score, annualized. How a signal earns its place.
+def deciles(frame: pd.DataFrame, score: str, n: int = 10) -> pd.Series:
+    scored = frame.dropna(subset=[score, "actual"]).copy()
+    # Rank inside each month, so a decile means the same thing in every cross-section.
+    scored["bucket"] = scored.groupby("holding_month")[score].transform(
+        lambda s: pd.qcut(s.rank(method="first"), n, labels=False, duplicates="drop")
+    )
+    monthly = scored.groupby(["holding_month", "bucket"])["actual"].mean()
+    return monthly.groupby("bucket").mean() * 12
+
+
+def main() -> None:
+    universe = P.universe()
+    composite = universe.assign(
+        holding_month=(universe["eom"] + pd.offsets.MonthBegin(1)).dt.normalize(),
+        actual=universe["ret_exc_lead1m"],
+    )
+    rows = {"composite": deciles(composite.rename(columns={"signal": "score"}), "score")}
+    for model in MODELS:
+        rows[model] = deciles(pd.read_parquet(PREDS / f"{model}.parquet"), "pred")
+    table = pd.DataFrame(rows).T
+    table.columns = [f"d{int(c) + 1}" for c in table.columns]
+    table["top_minus_bottom"] = table.iloc[:, -1] - table.iloc[:, 0]
+    # A long-short book needs rising tails. The middle never enters it.
+    table["top_beats_second"] = table["d10"] > table["d9"]
+    EXHIBITS.mkdir(parents=True, exist_ok=True)
+    print((table * 100).round(1).to_string())
+
+    # Models are scored raw, so the composite's raw IC is the like-for-like comparison.
+    ic = P.information_coefficient(universe, "signal", "ret_exc_lead1m", "eom")
+    raw = P.information_coefficient(universe, "composite", "ret_exc_lead1m", "eom")
+    out = {
+        "_about": {
+            "what": "One run of the src/ml scripts. Every ML number in the write-up is from here.",
+            "regenerate": "python run.py --ml",
+            "note": "IR is after sector, beta and vol neutralization, the optimizer and costs.",
+        },
+        # The composite's IR lives in metrics.json, so it is left blank rather than duplicated.
+        "composite": dict(
+            ic_mean=ic["ic_mean"],
+            ic_t=ic["ic_t"],
+            months=ic["months"],
+            raw_ic_mean=raw["ic_mean"],
+            raw_ic_t=raw["ic_t"],
+            information_ratio=None,
+        ),
+    }
+    for name in MODELS:
+        out[name] = json.loads((PREDS / f"{name}_ic.json").read_text())
+        out[name] |= json.loads((PREDS / f"{name}_portfolio.json").read_text())
+    out["deciles"] = {i: {c: float(v) for c, v in row.items()} for i, row in table.iterrows()}
+    # Summarised once by the selection controls, so it is never recomputed differently here.
+    selection = json.loads((EXHIBITS / "selection.json").read_text())
+    out["subset_sweep"] = selection["subset_sweep"]
+    (EXHIBITS / "ml_metrics.json").write_text(json.dumps(out, indent=2))
+
+
+if __name__ == "__main__":
+    main()

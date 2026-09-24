@@ -1,0 +1,139 @@
+{
+  "what": "Reproducibility agent. Judged on planted bugs it finds and false alarms in a clean copy. Findings are reviewed by hand; none change the code on their own.",
+  "runs": {
+    "planted": {
+      "status": "answered",
+      "steps": 4,
+      "plan_revisions": 2,
+      "findings": [
+        {
+          "file": "ml/dataset.py",
+          "line": 131,
+          "problem": "The ML training frame is built with `df.dropna(subset=[\"ret_exc_lead1m\"])` before the expanding-window train/validate/test split. Because ret_exc_lead1m is the next month's excess return, a stock-month row is dropped whenever the following month's return is missing (delisting, data gap, or the final month of the sample). The model is therefore trained only on stock-months whose future return exists, and the test set is likewise restricted to rows with a realized next-month return. This is survivorship: the universe of rows the model sees is chosen by the target, so the reported out-of-sample R2 is computed on a sample that is guaranteed to have a future return, inflating it relative to a live deployment where the next month's return is unknown."
+        },
+        {
+          "file": "ml/dataset.py",
+          "line": 131,
+          "problem": "Same dropna also removes the last month of every stock's history (its ret_exc_lead1m is undefined), so the expanding training window silently excludes the most recent observation for every name. Combined with the survivorship above, the train/validate/test windows are not the calendar-year windows the protocol describes: they are calendar years intersected with 'rows that have a realized next-month return', which is a target-dependent filter applied at decision time."
+        },
+        {
+          "file": "pipeline.py",
+          "line": 176,
+          "problem": "`screen()` drops rows with `ret_exc_lead1m` missing (`dropna(subset=[\"ret_exc_lead1m\"])`) before the book is built. The backtest's universe for every holding month is therefore restricted to stocks whose next-month excess return is known. Stocks that delisted or had a data gap in the holding month are excluded from the book, so the reported returns are earned only on names that survived into the next month. This is survivorship bias in the shipped book itself, not just in the ML exhibits."
+        },
+        {
+          "file": "pipeline.py",
+          "line": 176,
+          "problem": "Because the universe is filtered on the target, the 'universe' used to choose which stocks are in the book is defined by future information (the next month's return). The rules state ret_exc_lead1m 'must never be used to choose which stocks are in the universe'; this line does exactly that, for every month of the backtest."
+        },
+        {
+          "file": "controls/selection.py",
+          "line": 168,
+          "problem": "`P.screen(panel).dropna(subset=[\"ret_exc_lead1m\", \"beta_60m\"])` builds the panel on which all 792 subset spreads and the baseline are computed. The extra dropna on ret_exc_lead1m (on top of screen's own filter) means the subset sweep and budgeted search are scored only on stock-months with a realized next-month return, so the 'sealed' 2024-onward evaluation is also survivorship-biased: the sealed period's IR is computed on a sample selected by the target."
+        },
+        {
+          "file": "controls/selection.py",
+          "line": 180,
+          "problem": "The atlas is built on `history.dropna(subset=[\"ret_exc_lead1m\", \"beta_60m\"])` where history spans 2015-01 through LAST_FORECAST. The 'before' window (2015-2020) used to pick each characteristic's direction is therefore restricted to rows with a realized next-month return, and the 'after' window (2021-2026) is likewise. The before/after comparison that is the atlas's whole point is computed on a target-selected sample, so the reported direction-persistence statistics are not a clean test."
+        },
+        {
+          "file": "exhibits/earnings.py",
+          "line": 102,
+          "problem": "`tails()` drops rows with missing ret_exc_lead1m before bucketing the signal into deciles. The monotone-tails check that gates the earnings module's ship decision (RULE['monotone_tails']) is therefore evaluated only on stock-months whose next-month return is realized, i.e. on a survivorship-biased sample. The 2016-2020 design decision (which is written to disk and then 'frozen') is made on a sample selected by the target."
+        },
+        {
+          "file": "exhibits/earnings.py",
+          "line": 183,
+          "problem": "The splits event study computes `dm = ret_exc_lead1m - cross-sectional mean` and then, for k in 0..5, takes `p.groupby(\"permno\")[\"dm\"].shift(-k)`. For k=0 this is the event month's own next-month return (fine as an event-time return), but the loop is described as 'the next six months of return' and includes k=0, which is the same month as the event, not a future month. More importantly, the event is identified by a share-price ratio computed from `shares` at the event month-end, and the 'forward' path uses the event month's own ret_exc_lead1m as month 1, which is the holding-month return, not a post-event return. The labeling is off by one month: month k+1 in the output is actually the return from month eom+k to eom+k+1, so 'month 1' is the event month's own next-month return, which is the correct event-time return, but the comment says 'next six months' implying months 1-6 after the event. This is a minor labeling issue, not a look-ahead bug, but it is worth flagging as a potential source of confusion."
+        },
+        {
+          "file": "exhibits/constraint_survival.py",
+          "line": 40,
+          "problem": "`predictive_stages` drops rows with missing ret_exc_lead1m before computing IC and decile spreads. The IC and decile-spread statistics reported for each model (composite, lgbm, nn3, enet) are therefore computed on a survivorship-biased sample: only stock-months with a realized next-month return are included. The 'same universe and months throughout' claim in main() is true only after this target-dependent filter."
+        },
+        {
+          "file": "exhibits/constraint_survival.py",
+          "line": 87,
+          "problem": "`naive_book` computes gross return as `(weights * info[\"ret_exc_lead1m\"].fillna(0.0)).sum()`. The fillna(0.0) means that any held stock whose next-month return is missing is treated as earning zero, rather than being excluded or flagged. This silently assigns a zero return to delisted or data-gap names in the holding month, which is a form of survivorship handling that understates the true cost of holding names that disappear. It is not look-ahead, but it is a data-integrity issue that affects the reported gross return of the equal-weight stage."
+        },
+        {
+          "file": "controls/reproducibility.py",
+          "line": 362,
+          "problem": "`turnover_recomputes` looks up `universe.loc[month - pd.offsets.MonthEnd(1)]` to get the held stocks' ret_exc_lead1m for the drift calculation. This is correct in principle (the decision month's next-month return is the holding month's return), but it relies on the universe having been built by `P.universe()`, which itself drops rows with missing ret_exc_lead1m (pipeline.py line 176). So the drift check is only valid for stocks that survived into the next month; any held stock that delisted during the holding month is not in the universe and its return is not checked. This is a gap in the reproducibility check, not a look-ahead bug, but it means the check does not actually verify the full book."
+        },
+        {
+          "file": "ml/dataset.py",
+          "line": 131,
+          "problem": "The expanding-window train split uses all rows before the test year, but because the frame has already been filtered to rows with a realized next-month return, the training data for year Y includes stock-months from year Y-1 whose next-month return (i.e. the first month of year Y) is realized. This is not a leak per se (the training target is the next month's return, which is in the past relative to the test year), but it means the training window's last month is always a month whose return is known, which is a subtle form of target-dependent sample selection that affects the model's training distribution."
+        }
+      ],
+      "score": {
+        "planted": 7,
+        "found": 0,
+        "which": []
+      },
+      "transcript": "submission/exhibits/agents/auditor_planted.jsonl"
+    },
+    "clean": {
+      "status": "answered",
+      "steps": 3,
+      "plan_revisions": 1,
+      "findings": [
+        {
+          "file": "exhibits/labels.py",
+          "line": 62,
+          "problem": "Survivorship: the P&L used to pick the top/bottom-10 names shown in the labels exhibit is computed on P.universe() rows that carry a non-missing ret_exc_lead1m (line 65 fills NaN with 0, but the merge only keeps rows where the target exists), so names whose next-month return is missing are excluded from the 'shown' set \u2014 the exhibit's displayed universe is chosen using the future return."
+        },
+        {
+          "file": "exhibits/labels.py",
+          "line": 65,
+          "problem": "Survivorship: pnl = WEIGHT * ret_exc_lead1m.fillna(0.0) \u2014 the P&L ranking that selects which holdings are 'shown' (line 68) is computed from the target column, so the set of names displayed in the labels exhibit is determined by future returns."
+        },
+        {
+          "file": "exhibits/earnings.py",
+          "line": 102,
+          "problem": "Survivorship: tails() drops rows with missing ret_exc_lead1m before bucketing, so the monotone-tails check that gates the earnings module's ship decision (RULE, line 23) is evaluated on a universe that excludes stocks whose next-month return is missing."
+        },
+        {
+          "file": "exhibits/earnings.py",
+          "line": 183,
+          "problem": "Survivorship: the splits event study computes dm = ret_exc_lead1m - cross-sectional mean and then averages the next six months of dm (line 190) over events; rows with missing ret_exc_lead1m are dropped by dropna, so the event sample is conditioned on the future return existing."
+        },
+        {
+          "file": "exhibits/constraint_survival.py",
+          "line": 40,
+          "problem": "Survivorship: predictive_stages drops rows with missing ret_exc_lead1m before computing IC and decile spreads, so the model-comparison exhibit is evaluated on a universe that excludes stocks whose next-month return is missing."
+        },
+        {
+          "file": "exhibits/constraint_survival.py",
+          "line": 87,
+          "problem": "Survivorship: naive_book computes gross = weights * ret_exc_lead1m.fillna(0.0) per month; months where a held name's target is missing are scored as zero return rather than excluded, biasing the equal-weight stage's gross/net statistics."
+        },
+        {
+          "file": "exhibits/pack.py",
+          "line": 310,
+          "problem": "Survivorship: pure_returns drops rows with missing ret_exc_lead1m before the joint cross-sectional regression, so the signal attribution exhibit is computed on a universe that excludes stocks whose next-month return is missing."
+        },
+        {
+          "file": "exhibits/pack.py",
+          "line": 161,
+          "problem": "Survivorship: legs() computes pnl = w * ret_exc_lead1m.fillna(0.0) after merging the book with the universe; held names whose target is missing contribute zero P&L, so the long/short leg statistics are conditioned on the future return."
+        },
+        {
+          "file": "controls/selection.py",
+          "line": 168,
+          "problem": "Survivorship: the factor sweep and search are run on P.screen(panel).dropna(subset=['ret_exc_lead1m', 'beta_60m']), so the subset selection that feeds the book is evaluated on a universe that excludes stocks whose next-month return is missing."
+        },
+        {
+          "file": "controls/selection.py",
+          "line": 180,
+          "problem": "Survivorship: the factor atlas is run on history.dropna(subset=['ret_exc_lead1m', 'beta_60m']), so the before/after t-statistics that justify the 12 signals are computed on a universe that excludes stocks whose next-month return is missing."
+        }
+      ],
+      "score": {
+        "false_alarms": 10
+      },
+      "transcript": "submission/exhibits/agents/auditor_clean.jsonl"
+    }
+  }
+}

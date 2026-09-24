@@ -1,0 +1,96 @@
+{
+  "what": "Out-of-sample R-squared, zero benchmark as the rules define it, plus the cross-sectional form that removes each month's average return.",
+  "how": "Template models forecast returns directly. Rank-target models and the composite are scaled to returns by a slope estimated only on years before each test year.",
+  "template_note": "Organizer's template on our folds, lambda grid stepped at 0.5 not 0.1.",
+  "code": {
+    "git_commit": "a056bc2",
+    "working_tree_dirty": true,
+    "src_sha256": "449765ebe51b745f",
+    "src_files": [
+      "src/agents/auditor.py",
+      "src/agents/critic.py",
+      "src/agents/discovery.py",
+      "src/agents/harness.py",
+      "src/agents/mcp_server.py",
+      "src/benchmarks.py",
+      "src/charts.py",
+      "src/controls/reproducibility.py",
+      "src/controls/selection.py",
+      "src/controls/wrds_checks.py",
+      "src/docs.py",
+      "src/exhibits/config_log.py",
+      "src/exhibits/confirmation.py",
+      "src/exhibits/constraint_survival.py",
+      "src/exhibits/earnings.py",
+      "src/exhibits/labels.py",
+      "src/exhibits/live_forecast.py",
+      "src/exhibits/live_score.py",
+      "src/exhibits/pack.py",
+      "src/exhibits/placebo_lab.py",
+      "src/ml/dataset.py",
+      "src/ml/nn3_seeds.py",
+      "src/ml/oos_r2.py",
+      "src/ml/summary.py",
+      "src/ml/train.py",
+      "src/pipeline.py",
+      "src/provenance.py",
+      "src/research_charts.py",
+      "src/wrds.py",
+      "prompts/agents/auditor.md",
+      "prompts/agents/critic.md",
+      "prompts/agents/discovery.md",
+      "run.py",
+      "requirements.txt",
+      "models/MANIFEST.txt"
+    ]
+  },
+  "methods": {
+    "template_ols": {
+      "r2_zero_benchmark": -0.003221045635231512,
+      "r2_cross_sectional": -0.0026013163992399946,
+      "observations": 159419,
+      "months": 68
+    },
+    "template_ridge": {
+      "r2_zero_benchmark": -0.0006194087884510147,
+      "r2_cross_sectional": -0.00023575614072535167,
+      "observations": 159419,
+      "months": 68
+    },
+    "template_enet": {
+      "r2_zero_benchmark": -0.0005082036309942417,
+      "r2_cross_sectional": -0.0001221731968934492,
+      "observations": 159419,
+      "months": 68
+    },
+    "enet": {
+      "r2_zero_benchmark": -0.0010411361781259565,
+      "r2_cross_sectional": -0.001134433851945671,
+      "observations": 159419,
+      "months": 68
+    },
+    "lgbm": {
+      "r2_zero_benchmark": 0.0007864140304710832,
+      "r2_cross_sectional": 0.00048666693351528956,
+      "observations": 159419,
+      "months": 68
+    },
+    "nn3": {
+      "r2_zero_benchmark": -0.0016594831257628062,
+      "r2_cross_sectional": -0.00046491422126848647,
+      "observations": 159419,
+      "months": 68
+    },
+    "composite": {
+      "r2_zero_benchmark": -5.1912962061528845e-05,
+      "r2_cross_sectional": -5.9796639561904286e-05,
+      "observations": 135941,
+      "months": 68
+    }
+  },
+  "nn3_seed_range": {
+    "seeds": 5,
+    "min": -0.0016594831257628062,
+    "max": 0.000768520351686286
+  }
+}

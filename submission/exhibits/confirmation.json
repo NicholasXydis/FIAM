@@ -1,0 +1,45 @@
+{
+  "what": "The shipped code and parameters, unchanged, on holding months 2016-01 to 2020-12.",
+  "why": "Every construction choice was made while looking at 2021-2026. This window was not examined during design, so it is the nearest thing to a clean test.",
+  "first_run_utc": "2026-09-23T13:53:33+00:00",
+  "market": "CRSP value-weighted market (Ken French), for both windows",
+  "confirmation_2016_2020": {
+    "months": 60,
+    "gross_annual": -0.013256434526469102,
+    "net_annual": -0.05367186552302779,
+    "information_ratio": -0.8166921153866376,
+    "sharpe_ratio": -0.4679461559348673,
+    "beta_realized": -0.3037734853048724,
+    "beta_stderr": 0.08630041820102526,
+    "max_drawdown_spread": -0.3771293254182244,
+    "turnover": 0.5591769053081003,
+    "positions": 327.3333333333333,
+    "net_by_year": {
+      "2016": 0.014089160202715778,
+      "2017": -0.015581411518452826,
+      "2018": 0.1623738275548483,
+      "2019": -0.07477567893402515,
+      "2020": -0.3113127370557066
+    }
+  },
+  "shipped_2021_2026": {
+    "months": 68,
+    "gross_annual": 0.20189294592774837,
+    "net_annual": 0.16108412533476787,
+    "information_ratio": 0.8341413856004029,
+    "sharpe_ratio": 1.1096990223407126,
+    "beta_realized": -0.10863587402393521,
+    "beta_stderr": 0.10668793963521941,
+    "max_drawdown_spread": -0.18198552342891994,
+    "turnover": 0.5342314568009214,
+    "positions": 316.2647058823529,
+    "net_by_year": {
+      "2021": 0.49068450702633415,
+      "2022": 0.3506816233652206,
+      "2023": 0.12127980323955523,
+      "2024": -0.1007902650068161,
+      "2025": -0.00043390633197148976,
+      "2026": 0.15284065439956884
+    }
+  }
+}

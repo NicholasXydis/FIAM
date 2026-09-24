@@ -1,0 +1,79 @@
+{
+  "what": "An LLM agent proposes and backtests signal formulas on 2015-2020, commits to one, and the harness scores it once on 2021-2026 through the real book. Research only.",
+  "budget": 30,
+  "runs": {
+    "named": {
+      "status": "answered",
+      "steps": 10,
+      "plan_revisions": 2,
+      "backtests_used": 8,
+      "pick": {
+        "f_score": -1,
+        "taccruals_at": -1,
+        "gp_atl1": 1,
+        "ocf_at_chg1": -1,
+        "ocf_me": -1
+      },
+      "hypothesis": "This formula blends quality and value: it buys companies with strong, sustainable cash generation (low EV/OCF), low accounting manipulation risk (low accruals, high Piotroski score), competitive advantages (high gross profit/assets), and stable cash flow (low OCF/assets change). The economic rationale is that fundamentally high-quality companies with cheap valuations relative to their cash flows should outperform because they have durable competitive advantages, lower bankruptcy risk, and less exposure to earnings manipulation. This is a well-documented factor in the academic literature (Piotroski 2000, Sloan 1996, Novy-Marx 2013) that reflects fundamental business quality rather than a transient market anomaly, so it should persist after 2020.",
+      "best_design_ir_seen": 1.139,
+      "sealed": {
+        "information_ratio": -2.081166599659459,
+        "gross_annual": -0.16344507544671177,
+        "net_annual": -0.20356094492822197,
+        "cost_annual": 0.04011586948151023,
+        "turnover": 0.5271606107084662,
+        "positions": 328.0147058823529,
+        "months": 68
+      },
+      "transcript": "submission/exhibits/agents/discovery_named.jsonl"
+    },
+    "coded": {
+      "status": "answered",
+      "steps": 8,
+      "plan_revisions": 1,
+      "backtests_used": 0,
+      "pick": {
+        "ret_60_12": 1,
+        "seas_1_1an": -1,
+        "aliq_mat": -1,
+        "ni_ar1": 1,
+        "fnl_gr1a": 1,
+        "at_gr1": 1,
+        "ncoa_gr1a": 1,
+        "lti_gr1a": 1
+      },
+      "hypothesis": "This formula combines the 8 strongest pre-2021 signals by t-statistic: x029 (t=2.05), x005 (t=-2.12), x011 (t=-1.87), x024 (t=1.73), x051 (t=1.65), x035 (t=1.52), x048 (t=1.65), and x026 (t=1.48). Each has high coverage (0.85-1.0) and a statistically significant spread before 2021. The economic rationale is that these characteristics likely capture persistent risk premia or behavioral biases that are slow to decay. By combining multiple independent signals with strong pre-2021 evidence, the formula should be more robust to regime changes than any single characteristic. The equal-weight approach avoids overfitting to any one signal, and the sector/beta neutralization in the book should remove common-factor exposure, leaving the idiosyncratic alpha that these characteristics capture.",
+      "best_design_ir_seen": null,
+      "sealed": {
+        "information_ratio": -1.821673889947568,
+        "gross_annual": -0.14557378625306294,
+        "net_annual": -0.21159272497728127,
+        "cost_annual": 0.06601893872421825,
+        "turnover": 0.9859527924580216,
+        "positions": 338.13235294117646,
+        "months": 68
+      },
+      "transcript": "submission/exhibits/agents/discovery_coded.jsonl"
+    }
+  },
+  "random_search_control": {
+    "formula": {
+      "capx_gr2": -1,
+      "ivol_ff3_21d": -1,
+      "op_at": 1,
+      "nfna_gr1a": -1,
+      "niq_at_chg1": -1
+    },
+    "design_spread_ir": 0.6799215442831629,
+    "sealed": {
+      "information_ratio": -0.43784052084671277,
+      "gross_annual": 0.015311281412911748,
+      "net_annual": -0.03692479845036488,
+      "cost_annual": 0.052236079863276635,
+      "turnover": 0.693335624752004,
+      "positions": 304.1470588235294,
+      "months": 68
+    }
+  },
+  "shipped_book_ir": 0.834141
+}

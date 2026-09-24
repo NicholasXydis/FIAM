@@ -1,0 +1,21 @@
+# Ruff settings.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E and F catch real bugs. I keeps everyone's imports in the same order.
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# The ledger is a wide text table; wrapping its rows would make it unreadable.
+"src/exhibits/config_log.py" = ["E501"]
+
+[tool.ruff.format]
+# Match what src/ already uses.
+quote-style = "double"
+
+[tool.pytest.ini_options]
+# Synthetic data only, so the tests pass on a fresh clone with no data/ folder.
+testpaths = ["tests"]
