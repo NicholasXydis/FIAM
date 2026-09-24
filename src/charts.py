@@ -1,9 +1,10 @@
-# Draws the required charts into submission/figures/. Run after the pipeline.
+# The seven performance charts the rules list, and the style every chart shares.
 
 import matplotlib
 
 matplotlib.use("Agg")
 
+import sys
 import textwrap
 from pathlib import Path
 
@@ -11,7 +12,10 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
+
+sys.path.insert(0, str(Path(__file__).parent))
+from benchmarks import benchmarks  # noqa: E402
+from pipeline import MARKET_NAME, display_name, regress, universe  # noqa: E402
 
 RETURNS = Path("submission/returns.csv")
 HOLDINGS = Path("submission/holdings.csv")
@@ -47,12 +51,7 @@ def load() -> pd.DataFrame:
 
 # The overall stock market return, month by month, to compare ourselves against.
 def market_series(index: pd.DatetimeIndex) -> pd.Series:
-    # A broad market index, not the S&P 500. No free S&P series includes dividends.
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).parent))
-    from pipeline import benchmarks
-
+    # Whatever pipeline.benchmarks() calls the market. MARKET_NAME says which.
     bm = benchmarks().set_index("month")
     # The source gives the market return above cash, so add cash back to get the full return.
     return (bm["mkt_rf"] + bm["rf"]).reindex(index)
@@ -88,6 +87,11 @@ def caption(ax, text: str) -> None:
     ax.text(0, -0.17, wrapped, transform=ax.transAxes, fontsize=7.5, color=MUTED, va="top")
 
 
+# The caption for a two-panel chart. On the figure, not an axis, so it cannot push the panels apart.
+def figure_caption(fig, text: str) -> None:
+    fig.text(0.01, 0.0, textwrap.fill(text, width=170), fontsize=7.5, color=MUTED, va="top")
+
+
 # Saves one chart as an image file.
 def save(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
@@ -106,7 +110,7 @@ def cumulative(df: pd.DataFrame) -> None:
     for series, label, colour in [
         (df["portfolio_total_return"], "Strategy (net)", OURS),
         (df["benchmark"], "T-bill + 4%", BENCH),
-        (market_series(df.index), "Market (CRSP VW, not S&P 500)", MARKET),
+        (market_series(df.index), MARKET_NAME, MARKET),
     ]:
         # Market data arrives a month late, so the line stops rather than faking a zero.
         growth = (1 + series.dropna()).cumprod()
@@ -131,74 +135,38 @@ def underwater(df: pd.DataFrame) -> None:
     ax.fill_between(ours.index, ours, 0, alpha=0.28, color=OURS)
     ax.plot(ours.index, ours, color=OURS, linewidth=1.6, label="Strategy")
     market = path(market_series(df.index))
-    ax.plot(market.index, market, color=MARKET, linewidth=1.1, alpha=0.75, label="Market")
+    ax.plot(
+        market.index, market, color=MARKET, linewidth=1.1, alpha=0.75, label="S&P 500 (price index)"
+    )
     ax.legend(fontsize=8, frameon=False, loc="lower left")
     style(ax, "Drawdown from the running peak", "Drawdown (%)", dates=True)
     caption(ax, PERIOD)
     save(fig, "drawdown")
 
 
-# Shows how much the strategy moved with the market, measured over rolling 12-month windows.
+# The beta we thought we had, the beta we had, and how it moved. One chart, two panels.
 def rolling_beta(df: pd.DataFrame) -> None:
     market = market_series(df.index)
     excess, market_excess = df["portfolio_total_return"] - df["rf"], market - df["rf"]
     both = pd.concat([excess, market_excess], axis=1).dropna()
+
+    # The same HAC regression as the headline table, so the two can never disagree.
+    def slope(sub):
+        return regress(sub.iloc[:, 0], sub.iloc[:, 1])
+
+    full = slope(both)
+    now, se = float(full.params.iloc[1]), float(full.bse.iloc[1])
+    early, late = slope(both[both.index.year <= 2023]), slope(both[both.index.year >= 2024])
     # Beta over a moving 12-month window. Near zero means we are not following the market.
     beta = both.iloc[:, 0].rolling(12).cov(both.iloc[:, 1]) / both.iloc[:, 1].rolling(12).var()
 
-    fig, ax = plt.subplots(figsize=WIDE)
-    ax.axhspan(-0.2, 0.2, color=BENCH, alpha=0.15, zorder=0)
-    ax.plot(beta.index, beta, color=OURS, linewidth=1.8)
-    ax.axhline(0, color="black", linewidth=0.8)
-    # Scaled to the data. Stretching down to -0.52 made the series we own look flat.
-    pad = (beta.max() - beta.min()) * 0.18
-    ax.set_ylim(beta.min() - pad, max(beta.max(), 0.2) + pad)
-    ax.text(
-        0.99,
-        0.04,
-        "investors treat the shaded band as neutral",
-        transform=ax.transAxes,
-        ha="right",
-        fontsize=7.5,
-        color=MUTED,
-    )
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.2), width_ratios=[1, 2.4])
 
-    # Computed here rather than typed in, so the caption cannot go stale.
-    import statsmodels.api as sm
-
-    def slope(sub):
-        return sm.OLS(sub.iloc[:, 0], sm.add_constant(sub.iloc[:, 1])).fit()
-
-    full = slope(both)
-    early, late = slope(both[both.index.year <= 2023]), slope(both[both.index.year >= 2024])
-    style(ax, "Rolling 12-month beta to the market", "Beta", dates=True)
-    caption(
-        ax,
-        f"{len(both)} monthly observations. Full period {full.params.iloc[1]:+.2f} "
-        f"(se {full.bse.iloc[1]:.2f}), 2021-23 {early.params.iloc[1]:+.2f}, "
-        f"2024-26 {late.params.iloc[1]:+.2f}. Overlapping windows, so the path is noisy by "
-        "construction.",
-    )
-    save(fig, "rolling_beta")
-
-
-# The beta we thought we had next to the one we had, as two points with error bars.
-def beta_before_after(df: pd.DataFrame) -> None:
-    import statsmodels.api as sm
-
-    market = market_series(df.index)
-    both = pd.concat([df["portfolio_total_return"] - df["rf"], market - df["rf"]], axis=1).dropna()
-    fit = sm.OLS(both.iloc[:, 0], sm.add_constant(both.iloc[:, 1])).fit(
-        cov_type="HAC", cov_kwds={"maxlags": 6}
-    )
-    now, se = float(fit.params.iloc[1]), float(fit.bse.iloc[1])
-
-    fig, ax = plt.subplots(figsize=SQUARE)
-    ax.axhspan(-0.2, 0.2, color=BENCH, alpha=0.15, zorder=0)
-    ax.axhline(0, color="black", linewidth=0.8)
-    # The old beta is a figure we quote, not a regression we re-run, so no error bar.
-    ax.scatter([0], [PRE_FIX_BETA], s=120, color=NEG, zorder=3)
-    ax.errorbar(
+    # Panel A. The old beta is a figure we quote, not a regression we re-run, so no error bar.
+    left.axhspan(-0.2, 0.2, color=BENCH, alpha=0.15, zorder=0)
+    left.axhline(0, color="black", linewidth=0.8)
+    left.scatter([0], [PRE_FIX_BETA], s=120, color=NEG, zorder=3)
+    left.errorbar(
         [1],
         [now],
         yerr=[1.96 * se],
@@ -211,19 +179,40 @@ def beta_before_after(df: pd.DataFrame) -> None:
         zorder=3,
     )
     for x, y, text in [(0, PRE_FIX_BETA, f"{PRE_FIX_BETA:+.2f}"), (1, now, f"{now:+.2f}")]:
-        ax.annotate(text, (x, y), xytext=(14, -4), textcoords="offset points", fontsize=10)
-    ax.set_xticks([0, 1])
-    ax.set_xticklabels(
-        ["Before" + BR + "beta_60m only", "After" + BR + "+ volatility complex"], fontsize=9
+        left.annotate(text, (x, y), xytext=(14, -4), textcoords="offset points", fontsize=10)
+    left.set_xticks([0, 1])
+    left.set_xticklabels(
+        ["Before" + BR + "beta_60m only", "After" + BR + "+ volatility"], fontsize=8
     )
-    ax.set_xlim(-0.5, 1.5)
-    style(ax, "Realized beta, before and after the volatility constraint", "Beta")
-    caption(
-        ax,
-        f"Bars are 95% intervals, HAC errors. The first book reported an ex-ante beta of "
-        f"-0.002 and realized {PRE_FIX_BETA:+.2f}; only the regression tells you what you own.",
+    left.set_xlim(-0.5, 1.5)
+    style(left, "A. Before and after the fix", "Beta")
+
+    # Panel B. Scaled to the data. Stretching down to -0.52 made the series we own look flat.
+    right.axhspan(-0.2, 0.2, color=BENCH, alpha=0.15, zorder=0)
+    right.plot(beta.index, beta, color=OURS, linewidth=1.8)
+    right.axhline(0, color="black", linewidth=0.8)
+    pad = (beta.max() - beta.min()) * 0.18
+    right.set_ylim(beta.min() - pad, max(beta.max(), 0.2) + pad)
+    right.text(
+        0.99,
+        0.04,
+        "investors treat the shaded band as neutral",
+        transform=right.transAxes,
+        ha="right",
+        fontsize=7.5,
+        color=MUTED,
     )
-    save(fig, "beta_before_after")
+    style(right, "B. Rolling 12-month beta to the market", "", dates=True)
+
+    figure_caption(
+        fig,
+        f"{len(both)} monthly observations against the {MARKET_NAME}, HAC errors, 95% interval. "
+        f"The first book reported an ex-ante beta of -0.002 and realized {PRE_FIX_BETA:+.2f}. "
+        f"Now {now:+.2f} (se {se:.2f}); 2021-23 {early.params.iloc[1]:+.2f}, 2024-26 "
+        f"{late.params.iloc[1]:+.2f}. Rolling windows overlap, so the path is noisy by "
+        "construction.",
+    )
+    save(fig, "rolling_beta")
 
 
 # Shows whether we were beating the benchmark, over rolling 12-month windows.
@@ -277,44 +266,33 @@ def histogram(df: pd.DataFrame) -> None:
 
 
 # Shows the ten stocks that made us the most money and the ten that cost us the most.
-def contributors(df: pd.DataFrame) -> None:
+def contributors() -> None:
     holdings = pd.read_csv(HOLDINGS, parse_dates=["Date"])
     # Holdings are dated the first, returns the month-end before. Step back to line up.
-    holdings["eom"] = (holdings["Date"] - pd.offsets.MonthEnd(1)).dt.normalize()
-    panel = pq.read_table(CHARS, columns=["permno", "eom", "ret_exc_lead1m"]).to_pandas()
-    panel["eom"] = pd.to_datetime(panel["eom"])
-    merged = holdings.merge(
-        panel, left_on=["PERMNO", "eom"], right_on=["permno", "eom"], how="left"
-    )
+    holdings["eom"] = holdings["Date"] - pd.offsets.MonthEnd(1)
+    # The book's own universe, so delisting payouts count here exactly as they did in the book.
+    earned = universe()[["permno", "eom", "ret_exc_lead1m"]]
+    merged = holdings.merge(earned, left_on=["PERMNO", "eom"], right_on=["permno", "eom"])
     # Weight is stored as a percentage, so divide by 100 before multiplying by the return.
     merged["pnl"] = merged["WEIGHT"] / 100 * merged["ret_exc_lead1m"].fillna(0)
 
-    # Added up across all 68 months, so each company appears once with its total effect.
-    total = (merged.groupby(["TICKER", "COMPANY_NAME"])["pnl"].sum() * 100).sort_values()
-    worst, best = total.head(10), total.tail(10)  # ten at each end, as the rules ask
-    both = pd.concat([worst, best])
+    # By security across all 68 months, labelled as it was last held, as the rules ask.
+    total = (merged.groupby("PERMNO")["pnl"].sum() * 100).sort_values()
+    both = pd.concat([total.head(10), total.tail(10)])
+    label = merged.sort_values("Date").groupby("PERMNO")[["TICKER", "COMPANY NAME"]].last()
 
-    # Ticker only on the axis. Twenty full company names crowded the bars.
-    labels = [ticker for ticker, _ in both.index]
-
-    fig, ax = plt.subplots(figsize=(9.5, 6.0))
+    fig, ax = plt.subplots(figsize=(11, 6.5))
     ax.barh(range(len(both)), both.values, color=[NEG if v < 0 else OURS for v in both.values])
     ax.set_yticks(range(len(both)))
-    ax.set_yticklabels(labels, fontsize=9)
+    ax.set_yticklabels(label.loc[both.index, "TICKER"], fontsize=9)
     ax.axvline(0, color="black", linewidth=0.8)
-    # Room both sides for the names, or the longest label hits the ticker axis.
+    # Room both sides for the full names, or the longest one runs into the ticker axis.
     span = max(abs(both.values.min()), abs(both.values.max()))
-    ax.set_xlim(-span * 1.55, span * 1.45)
-    # Company name sits next to its bar, on the far side from the axis, so it never collides.
-    for y, ((_, company), value) in enumerate(zip(both.index, both.values)):
-        # Never .title() these. It turns AT&T into At&T. Only the suffix comes off.
-        short = company.strip()
-        for suffix in (" INC", " CORP", " CO", " PLC", " LTD", " CORPORATION", " COMPANY"):
-            if short.endswith(suffix):
-                short = short[: -len(suffix)].strip()
-        short = short.rstrip(" .,&")[:26]
+    ax.set_xlim(-span * 2.3, span * 2.1)
+    # The full company name, uncut, beside its bar on the far side from the axis.
+    for y, (permno, value) in enumerate(both.items()):
         ax.annotate(
-            short,
+            display_name(label.loc[permno, "COMPANY NAME"]),
             (value, y),
             xytext=(6 if value > 0 else -6, 0),
             textcoords="offset points",
@@ -331,18 +309,16 @@ def contributors(df: pd.DataFrame) -> None:
     save(fig, "pnl_contributors")
 
 
-# Draws the performance charts.
+# Clears the folder, then draws the performance charts. research_charts.py runs after this.
 def main() -> None:
+    # Cleared first, so a renamed or retired chart never lingers beside the current ones.
+    for stale in FIGURES.glob("*.png"):
+        stale.unlink()
     df = load()
     print(f"Writing charts to {FIGURES}/")
-    cumulative(df)
-    underwater(df)
-    rolling_beta(df)
-    beta_before_after(df)
-    rolling_ir(df)
-    rolling_active(df)
-    histogram(df)
-    contributors(df)
+    for draw in (cumulative, underwater, rolling_beta, rolling_ir, rolling_active, histogram):
+        draw(df)
+    contributors()
 
 
 if __name__ == "__main__":

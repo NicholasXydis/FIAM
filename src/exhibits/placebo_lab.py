@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -20,32 +22,8 @@ DRAWS = 200
 # Fixed, so anyone re-running this gets the same 200 shuffles we did.
 RNG_SEED = 20260921
 
-
-# IR against T-bill plus 4%. The T-bill cancels, so only the 4% comes off.
-def information_ratio(net: pd.Series) -> float:
-    active = net - 0.04 / 12
-    return float(active.mean() / active.std() * np.sqrt(12)) if active.std() else 0.0
-
-
-# Runs the real book on whatever is in the signal column. Each test is a different score.
-def run(universe: pd.DataFrame) -> pd.DataFrame:
-    rows, previous, previous_spreads = [], None, None
-    for month in sorted(universe["eom"].unique()):
-        cross = universe[universe["eom"] == month]
-        weights = P.optimize_month(cross, previous)
-        if weights is None or not len(weights):
-            continue
-        info = cross.set_index("permno").loc[weights.index]
-        weights = P.to_whole_shares(weights, info["prc"].abs())
-        if not len(weights):
-            continue
-        info = info.loc[weights.index]
-        spreads = cross.set_index("permno")["bidaskhl_21d"]
-        cost, turnover = P.trading_cost(weights, previous, info, spreads, previous_spreads)
-        gross = float((weights * info["ret_exc_lead1m"].fillna(0.0)).sum())
-        rows.append(dict(gross=gross, cost=cost, net=gross - cost, turnover=turnover))
-        previous, previous_spreads = weights, spreads
-    return pd.DataFrame(rows)
+# Each worker loads the universe once, so only the shuffled scores cross between processes.
+WORKER_UNIVERSE: pd.DataFrame | None = None
 
 
 # One summary for any book, so the tests and the real thing are described the same way.
@@ -53,8 +31,8 @@ def summarise(book: pd.DataFrame) -> dict:
     return dict(
         gross_annual=float(book["gross"].mean() * 12),
         net_annual=float(book["net"].mean() * 12),
-        net_ir=information_ratio(book["net"]),
-        gross_ir=information_ratio(book["gross"]),
+        net_ir=P.information_ratio(book["net"]),
+        gross_ir=P.information_ratio(book["gross"]),
         turnover=float(book["turnover"].mean()),
         months=int(len(book)),
     )
@@ -71,36 +49,38 @@ def permute(universe: pd.DataFrame, rng: np.random.Generator) -> pd.Series:
     )
 
 
+# Loads the shared universe into a worker process before it takes any shuffle.
+def start_worker() -> None:
+    global WORKER_UNIVERSE
+    WORKER_UNIVERSE = P.universe()
+
+
+# One shuffled book: net IR, gross a year, turnover. Gross is the fair test, costs still churn.
+def null_book(signal: np.ndarray) -> tuple[float, float, float]:
+    book = P.backtest(WORKER_UNIVERSE.assign(signal=signal))
+    return P.information_ratio(book["net"]), book["gross"].mean() * 12, book["turnover"].mean()
+
+
 def main() -> None:
-    panel = P.load_panel()
-    universe = P.build_signal(P.screen(panel))
+    universe = P.universe()
     rng = np.random.default_rng(RNG_SEED)
 
-    shipped_book = run(universe)
+    shipped_book = P.backtest(universe)
     real = summarise(shipped_book)
     print(f"shipped book: net IR {real['net_ir']:+.3f}, net {real['net_annual'] * 100:+.1f}%/yr")
 
-    # Test 1, the shuffle. Cuts score from return. This one should come out near zero.
-    null_irs, null_gross, null_turnover = [], [], []
-    for draw in range(DRAWS):
-        shuffled = universe.assign(signal=permute(universe, rng))
-        book = run(shuffled)
-        null_irs.append(information_ratio(book["net"]))
-        # Gross is the fair test. After costs it cannot be zero, a shuffle still churns.
-        null_gross.append(float(book["gross"].mean() * 12))
-        null_turnover.append(float(book["turnover"].mean()))
-        if (draw + 1) % 25 == 0:
-            print(
-                f"  permutation {draw + 1}/{DRAWS}, gross {np.mean(null_gross) * 100:+.2f}%/yr, "
-                f"net IR {np.mean(null_irs):+.3f}"
-            )
-    null = np.array(null_irs)
-    gross = np.array(null_gross)
+    # Test 1, the shuffle. Drawn in order from one generator, then run in parallel.
+    shuffles = [permute(universe, rng).to_numpy() for _ in range(DRAWS)]
+    workers = min(8, os.cpu_count() or 1)
+    with ProcessPoolExecutor(workers, initializer=start_worker) as pool:
+        results = list(pool.map(null_book, shuffles, chunksize=5))
+    null, gross, null_turnover = (np.array(column, dtype=float) for column in zip(*results))
+    print(f"  {DRAWS} shuffles: gross {gross.mean():+.2%}/yr, net IR {null.mean():+.3f}")
     # Where our result lands among the 200. Not near the top would be a finding.
     percentile = float((null < real["net_ir"]).mean() * 100)
 
     # Test 2, flip the sign. Should lose about what we make, not land near zero.
-    inverted = summarise(run(universe.assign(signal=-universe["signal"])))
+    inverted = summarise(P.backtest(universe.assign(signal=-universe["signal"])))
     print(
         f"inverted: gross {inverted['gross_annual'] * 100:+.1f}%/yr, "
         f"net IR {inverted['net_ir']:+.2f}"
@@ -113,7 +93,9 @@ def main() -> None:
         columns={"eom": "prev_eom", "signal": "stale"}
     )
     lagged = lagged.merge(stale_scores, on=["permno", "prev_eom"], how="left")
-    stale = summarise(run(lagged.dropna(subset=["stale"]).assign(signal=lambda d: d["stale"])))
+    stale = summarise(
+        P.backtest(lagged.dropna(subset=["stale"]).assign(signal=lambda d: d["stale"]))
+    )
     print(f"stale scores: net IR {stale['net_ir']:+.2f}")
 
     out = dict(
@@ -155,7 +137,7 @@ def main() -> None:
             expectation="degraded, not necessarily zero",
             baseline_net_ir=real["net_ir"],
             # No prior score in month one, so this is 67 months and so is the baseline.
-            baseline_net_ir_matched=information_ratio(shipped_book["net"].iloc[1:]),
+            baseline_net_ir_matched=P.information_ratio(shipped_book["net"].iloc[1:]),
             **stale,
         ),
     )
