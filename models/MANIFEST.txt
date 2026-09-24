@@ -59,4 +59,4 @@
 # ---------------------------------------------------------------------------------------
   text encoders  ChronoBERT and SEC-BERT were considered and cut for scope. If text is ever
                  allowed to become a factor, the encoder must be chronologically consistent,
-                 with a training cutoff before each test year. See FIAM_Plan.md, phase 7.
+                 with a training cutoff before each test year.

@@ -1,7 +1,7 @@
 # FIAM
 
 Market-neutral US equity strategy, McGill-FIAM Hackathon 2026. `BRIEF.md` is the story,
-`RESULTS.md` every number, `FIAM_Plan.md` what is left, `CLAUDE.md` the rules.
+`RESULTS.md` every number.
 
 ## Run it
 
@@ -36,8 +36,9 @@ nothing they read changed; `--fresh` reruns all.
     python src/agents/harness.py register   # sets up this machine's Hermes
     python src/agents/harness.py serve qwen # a model for the Hermes app
 
-Windows: llama.cpp's Vulkan build in `models/llama.cpp/`. Linux or Lightning AI:
-`bash src/agents/setup_lightning.sh` (steps in `FIAM_Plan.md`).
+Windows: llama.cpp's Vulkan build in `models/llama.cpp/`. Lightning AI: create a Studio on a 24 GB
+GPU, clone the repo, upload `data/`, run `bash src/agents/setup_lightning.sh` once, then
+`python run.py --agents`. Stop the Studio when done.
 
 ## Layout
 
