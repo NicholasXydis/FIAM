@@ -1,0 +1,278 @@
+{
+  "discovery": [
+    {
+      "name": "list_characteristics",
+      "description": "The characteristics you may use.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "describe",
+      "description": "Coverage and the before-2021 t-statistic of one characteristic on its own.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "backtest",
+      "description": "Scores an equal-weight signed formula on 2015-2020, neutralized like the book. You have 30 in total.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "a characteristic from list_characteristics"
+                },
+                "sign": {
+                  "type": "integer",
+                  "enum": [
+                    -1,
+                    1
+                  ],
+                  "description": "+1 buy high, -1 buy low"
+                }
+              },
+              "required": [
+                "name",
+                "sign"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 12
+          }
+        },
+        "required": [
+          "terms"
+        ]
+      }
+    },
+    {
+      "name": "final_answer",
+      "description": "Commit to one formula and say why it should keep working after 2020.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "a characteristic from list_characteristics"
+                },
+                "sign": {
+                  "type": "integer",
+                  "enum": [
+                    -1,
+                    1
+                  ],
+                  "description": "+1 buy high, -1 buy low"
+                }
+              },
+              "required": [
+                "name",
+                "sign"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 12
+          },
+          "hypothesis": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "terms",
+          "hypothesis"
+        ]
+      }
+    }
+  ],
+  "critic": [
+    {
+      "name": "list_positions",
+      "description": "The ten largest longs and shorts.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "position",
+      "description": "Everything known about one position: realized P&L, size, liquidity, 8-K items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker"
+        ]
+      }
+    },
+    {
+      "name": "book_risk",
+      "description": "Factor loadings, borrow exposure, and the 2016-2020 test.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "signal_attribution",
+      "description": "Each signal's contribution to gross return, % a year.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "discovery_pick",
+      "description": "The formula the discovery agent committed to.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "final_answer",
+      "description": "Your critiques. Quote only numbers a tool returned.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "critiques": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "description": "a ticker, 'book', or 'discovery pick'"
+                },
+                "claim": {
+                  "type": "string",
+                  "description": "the objection, quoting only numbers you saw"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                }
+              },
+              "required": [
+                "target",
+                "claim",
+                "severity"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "critiques"
+        ]
+      }
+    }
+  ],
+  "auditor": [
+    {
+      "name": "list_files",
+      "description": "Every Python file in the repository.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Lines of one file, numbered, at most 150 at a time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "start": {
+            "type": "integer"
+          },
+          "end": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "grep",
+      "description": "Lines matching a regular expression, across every file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      }
+    },
+    {
+      "name": "final_answer",
+      "description": "Every look-ahead, leakage or survivorship problem you found, with file and line.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "problem": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "file",
+                "line",
+                "problem"
+              ]
+            }
+          }
+        },
+        "required": [
+          "findings"
+        ]
+      }
+    }
+  ]
+}

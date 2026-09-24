@@ -1,0 +1,62 @@
+{
+  "what": "Stage one of the earnings module. Written before 2021-2026 was computed.",
+  "rule": {
+    "min_ir_gain": 0.1,
+    "max_abs_beta": 0.15,
+    "monotone_tails": true
+  },
+  "window": "holding months 2016-01 to 2020-12",
+  "decided_utc": "2026-09-23T14:15:36+00:00",
+  "frozen_book": {
+    "information_ratio": -0.8166921153866376,
+    "gross_annual": -0.013256434526469102,
+    "net_annual": -0.05367186552302779,
+    "cost_annual": 0.04041543099655867,
+    "turnover": 0.5591769053081003,
+    "positions": 327.3333333333333,
+    "months": 60,
+    "beta_realized": -0.3037734853048724,
+    "beta_stderr": 0.08630041820102526,
+    "tails_monotone": true
+  },
+  "variants": {
+    "announcement_premium": {
+      "information_ratio": -0.7585686856653931,
+      "gross_annual": 0.00783288860091999,
+      "net_annual": -0.04121548454343238,
+      "cost_annual": 0.04904837314435237,
+      "turnover": 0.7317527262160206,
+      "positions": 332.75,
+      "months": 60,
+      "beta_realized": -0.2748398495775756,
+      "beta_stderr": 0.07387591571672789,
+      "tails_monotone": false
+    },
+    "combined_surprise": {
+      "information_ratio": -0.7344416961240753,
+      "gross_annual": -0.0034831515813401187,
+      "net_annual": -0.043818376278994486,
+      "cost_annual": 0.04033522469765438,
+      "turnover": 0.5492794457964582,
+      "positions": 330.5,
+      "months": 60,
+      "beta_realized": -0.3232518191830305,
+      "beta_stderr": 0.0885952089299007,
+      "tails_monotone": false
+    },
+    "fresh_surprise": {
+      "information_ratio": -0.8245239719935559,
+      "gross_annual": -0.01395351760351662,
+      "net_annual": -0.05491046443728177,
+      "cost_annual": 0.04095694683376516,
+      "turnover": 0.5685204346241566,
+      "positions": 326.2,
+      "months": 60,
+      "beta_realized": -0.3138055522106936,
+      "beta_stderr": 0.0848198475513907,
+      "tails_monotone": true
+    }
+  },
+  "best_variant": "combined_surprise",
+  "ship": false
+}
