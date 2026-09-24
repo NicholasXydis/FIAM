@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-import csv
+import hashlib
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import pipeline as P
+
 CHARS = Path("data/chars_final_with_names.parquet")
-CHAR_LIST = Path("data/factor_char_list.csv")
 CACHE = Path("cache/folds")
 
 TARGET = "ret_exc_lead1m"
@@ -28,15 +31,9 @@ LAST_HOLDING_MONTH = "2026-08-01"
 N_HOLDING_MONTHS = 68
 
 
-# The 147 we may use. Never "all numeric columns", the bookkeeping ones leak 2026.
-def predictors() -> list[str]:
-    with CHAR_LIST.open() as fh:
-        return [row["variable"] for row in csv.DictReader(fh)]
-
-
 # Loads the panel and attaches the holding month, which is what every split keys on.
 def load() -> pd.DataFrame:
-    cols = predictors() + ["permno", "eom", "prc", "me", TARGET]
+    cols = P.characteristics() + ["permno", "eom", "prc", "me", TARGET]
     panel = pq.read_table(CHARS, columns=sorted(set(cols))).to_pandas()
     panel["eom"] = pd.to_datetime(panel["eom"])
     # eom is when we decide, the target lands the month after. Carry both, always.
@@ -89,11 +86,9 @@ def labelled(frame: pd.DataFrame) -> pd.DataFrame:
 
 # What the cached folds depend on. Any change here has to invalidate them.
 def fingerprint() -> str:
-    import hashlib
-
     parts = [
         CHARS.stat().st_size,
-        CHAR_LIST.read_bytes(),
+        P.CHAR_LIST.read_bytes(),
         MIN_PRICE,
         MIN_ME,
         VAL_YEARS,
@@ -106,7 +101,7 @@ def fingerprint() -> str:
     return hashlib.sha256("|".join(str(p) for p in parts).encode()).hexdigest()[:16]
 
 
-# Builds the folds once and caches them, so the four model scripts all read the same splits.
+# Builds the folds once and caches them, so every model script reads the same splits.
 def build(refresh: bool = False) -> Path:
     CACHE.mkdir(parents=True, exist_ok=True)
     marker = CACHE / "folds.parquet"
@@ -115,7 +110,7 @@ def build(refresh: bool = False) -> Path:
     current = fingerprint()
     if marker.exists() and not refresh and stamp.exists() and stamp.read_text() == current:
         return marker
-    cols = predictors()
+    cols = P.characteristics()
     df = rank_transform(load(), cols)
     df[["permno", "eom", "holding_month", TARGET] + cols].to_parquet(marker, index=False)
     stamp.write_text(current)
@@ -137,7 +132,7 @@ def load_folds(refresh: bool = False) -> pd.DataFrame:
 
 if __name__ == "__main__":
     df = load_folds()
-    cols = predictors()
+    cols = P.characteristics()
     print(f"panel {len(df):,} rows, {len(cols)} predictors")
     for f in folds(df):
         print(

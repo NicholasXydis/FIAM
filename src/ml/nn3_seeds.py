@@ -14,8 +14,9 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import dataset as D
-import run_through_optimizer as R
-import train_nn3 as N
+import train as T
+
+import pipeline as P
 
 OUT = Path("submission/exhibits")
 PREDS = Path("cache/preds")
@@ -24,54 +25,33 @@ PREDS = Path("cache/preds")
 SEEDS = (42, 43, 44, 45, 46)
 
 
-# Spearman IC by month, the same way the single-seed script measures it.
-def information_coefficient(preds: pd.DataFrame) -> tuple[float, float, int]:
-    scored = preds.dropna(subset=["actual"])
-    ic = (
-        scored.groupby("holding_month")
-        .apply(lambda g: g["pred"].corr(g["actual"], method="spearman"), include_groups=False)
-        .dropna()
-    )
-    return float(ic.mean()), float(ic.mean() / ic.std() * np.sqrt(len(ic))), int(len(ic))
-
-
 # Fits every fold on one seed, then scores it through the book, not on a correlation.
-def one_seed(df: pd.DataFrame, cols: list[str], panel: pd.DataFrame, seed: int) -> dict:
-    frames = [N.fit_fold(fold, cols, seed=seed) for fold in D.folds(df)]
-    # Early stopping picks its own epoch per fold, so record it rather than average it.
-    epochs = [int(f.attrs.get("best_epoch", 0)) for f in frames]
-    preds = pd.concat(frames, ignore_index=True)
-    D.assert_holding_months(preds)
-    preds.to_parquet(PREDS / f"nn3_seed{seed}.parquet", index=False)
-
-    ic_mean, ic_t, months = information_coefficient(preds)
-    book = R.backtest(R.neutralize(panel, preds))
+def one_seed(df: pd.DataFrame, cols: list[str], seed: int) -> dict:
+    preds = T.fit_all(T.fit_nn3, df, cols, seed=seed)
+    # The shipped seed is already cached as nn3.parquet, byte for byte.
+    if seed != T.SEED:
+        preds.to_parquet(PREDS / f"nn3_seed{seed}.parquet", index=False)
+    ic = P.information_coefficient(preds)
     return dict(
         seed=seed,
-        best_epoch_per_fold=epochs,
-        ic_mean=ic_mean,
-        ic_t=ic_t,
-        ic_months=months,
-        information_ratio=R.information_ratio(book),
-        gross_annual=float(book["gross"].mean() * 12),
-        net_annual=float(book["net"].mean() * 12),
-        turnover=float(book["turnover"].mean()),
-        positions=float(book["n"].mean()),
-        months=int(len(book)),
+        # Early stopping picks its own epoch per fold, so record it rather than average it.
+        best_epoch_per_fold=preds.attrs["best_epoch"],
+        ic_mean=ic["ic_mean"],
+        ic_t=ic["ic_t"],
+        ic_months=ic["months"],
+        **P.book_stats(T.score_book(preds)),
     )
 
 
 # Every seed and the spread. Never averaged, an ensemble is a different model.
 def main() -> None:
-    torch.set_num_threads(max(1, (torch.get_num_threads() or 4)))
     df = D.load_folds()
-    cols = D.predictors()
-    panel = R.P.load_panel()
+    cols = P.characteristics()
     PREDS.mkdir(parents=True, exist_ok=True)
 
     rows = []
     for seed in SEEDS:
-        row = one_seed(df, cols, panel, seed)
+        row = one_seed(df, cols, seed)
         rows.append(row)
         print(
             f"  seed {seed}: IC {row['ic_mean']:+.4f} (t {row['ic_t']:.2f})  "
@@ -104,7 +84,7 @@ def main() -> None:
             device="cpu",
             threads=int(torch.get_num_threads()),
         ),
-        code=R.P.source_fingerprint(),
+        code=P.source_fingerprint(),
         per_seed=rows,
         spread=spread,
     )
