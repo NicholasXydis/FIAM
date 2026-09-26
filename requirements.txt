@@ -2,6 +2,9 @@
 #   python -m pip install -r requirements.txt
 # Verified on Python 3.14.5.
 
+# PyPI has no +cpu torch builds; this index serves the pinned one below.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Needed to reproduce the book. Nothing else here matters for the submitted numbers.
 pyarrow==25.0.1        # reads the organizer's Parquet files
 pandas==3.0.3          # the panel and every table

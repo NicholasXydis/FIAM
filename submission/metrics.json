@@ -14,10 +14,10 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "generated_utc": "2026-09-24T18:12:52+00:00",
-    "git_commit": "a056bc2",
+    "generated_utc": "2026-09-26T03:43:12+00:00",
+    "git_commit": "8f7e05b",
     "working_tree_dirty": true,
-    "src_sha256": "20c17b5272ddc466",
+    "src_sha256": "33e03cf3a7b96cc5",
     "src_files": [
       "src/agents/auditor.py",
       "src/agents/critic.py",

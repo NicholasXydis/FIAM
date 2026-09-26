@@ -28,7 +28,7 @@ Produced by `python run.py`, Jan 2021 to Aug 2026, net of every modelled cost un
 | Costs as share of gross | 20% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_Generated 2026-09-24T18:12:52+00:00 from commit `a056bc2`._
+_Generated 2026-09-26T03:43:12+00:00 from commit `8f7e05b`._
 
 <!--/AUTO:headline-->
 

@@ -37,8 +37,10 @@ htmlcov/
 *.npy
 *.npz
 
-# Working data
-/data/
+# Working data; the public benchmarks and SEC records are pinned in git so a clone runs
+/data/*
+!/data/benchmarks/
+!/data/edgar_cache.zip
 
 # Cached LLM & encoder output
 cache/

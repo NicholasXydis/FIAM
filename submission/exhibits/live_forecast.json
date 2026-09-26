@@ -60,9 +60,9 @@
     "csv": "submission/exhibits/live_forecast_2026-09_corrected.csv",
     "sha256": "38962800b07ea311ac692a029ec6598ce2b3afe28108bdb8961f255201dcb98a",
     "code": {
-      "git_commit": "a056bc2",
+      "git_commit": "8f7e05b",
       "working_tree_dirty": true,
-      "src_sha256": "20c17b5272ddc466",
+      "src_sha256": "33e03cf3a7b96cc5",
       "src_files": [
         "src/agents/auditor.py",
         "src/agents/critic.py",
