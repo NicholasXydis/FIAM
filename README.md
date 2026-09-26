@@ -6,14 +6,16 @@ Market-neutral US equity strategy, McGill-FIAM Hackathon 2026. `BRIEF.md` is the
 ## Run it
 
     python -m pip install -r requirements.txt   # Python 3.14, CPU only
-    python run.py              # book, docs, charts, 28-check audit, about a minute
-    python run.py --ml         # plus models and controls, 20 min fresh, under a minute if unchanged
+    python run.py --ml         # first run on a new machine: everything, 28-check audit, 20 min
+    python run.py              # after that: book, docs, charts and audit, about a minute
     python run.py --agents     # plus the three agents, needs a GPU and models/
     python run.py --official   # refuses a run without the WRDS inputs
     pytest                     # mechanics tests, seconds
 
-Put the organizer's two Parquet files in `data/` and never re-save them. Steps are skipped when
-nothing they read changed; `--fresh` reruns all.
+Put the organizer's two Parquet files and `factor_char_list.csv` in `data/` and never re-save
+them. The benchmarks are already in `data/benchmarks/`. The first run needs `--ml`: the model
+exhibits' run records live in the gitignored `cache/`, so a plain run fails two audit checks until
+they are rebuilt. Steps are skipped when nothing they read changed; `--fresh` reruns all.
 
 ## Optional inputs
 
@@ -25,15 +27,19 @@ nothing they read changed; `--fresh` reruns all.
   | S&P 500 index | CRSP index series, S&P 500 universe | 2010-01 to 2025-12 | `382a3f33c2c6b6d6…` |
   | Compustat quarterly | Fundamentals Quarterly (`fundq`) with `rdq`, `dldte`, `dlrsn` | 2010-01 to 2026-08 | `5f943fea4ec4debd…` |
 
-  Columns kept are listed in `src/wrds.py`. Without WRDS the book differs by 0.001 of IR.
-- **Labels:** `python src/exhibits/labels.py --fetch`, once, with `SEC_CONTACT` in `.env`.
+  Columns kept are listed in `src/wrds.py`. Without WRDS the numbers move in the third decimal,
+  so the stale-number check stops the build: the committed results need `data/wrds/`.
+- **Labels:** once after cloning, `Expand-Archive data/edgar_cache.zip -DestinationPath cache`
+  (or `unzip data/edgar_cache.zip -d cache`): the SEC records the labels were checked against.
+  `python src/exhibits/labels.py --fetch` with `SEC_CONTACT` in `.env` fetches only missing
+  filers; SEC's current records can differ, which changes the labels.
 - **Live score:** `python src/exhibits/live_score.py --fetch`, with `TIINGO_API_KEY` in `.env`.
 - **Benchmarks:** pinned in `data/benchmarks/`; `python src/benchmarks.py --refresh <file>` updates one.
 
 ## Agents
 
     python src/agents/harness.py verify     # model files against models/MANIFEST.txt
-    python src/agents/harness.py register   # sets up this machine's Hermes
+    python src/agents/harness.py register   # sets up the dedicated fiam-runs Hermes profile
     python src/agents/harness.py serve qwen # a model for the Hermes app
 
 Windows: llama.cpp's Vulkan build in `models/llama.cpp/`. Lightning AI: create a Studio on a 24 GB

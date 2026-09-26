@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
@@ -34,6 +35,7 @@ HERMES = (
     or shutil.which("hermes")
     or str(Path(os.environ.get("LOCALAPPDATA", "")) / "hermes" / "bin" / "hermes.exe")
 )
+PROFILE = "fiam-runs"
 
 # Two vendors on purpose. Agreement between two models of one lineage says nothing.
 MODELS = {
@@ -109,6 +111,26 @@ class Server:
             if Path(running["model_path"]).name != self.path.name or running["context"] != CONTEXT:
                 raise RuntimeError(f"port {PORT} serves another model or context; stop it first")
             return self
+        if os.name == "nt":
+            found = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq llama-server.exe", "/FO", "CSV", "/NH"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            other = any(
+                row and row[0].lower() == "llama-server.exe"
+                for row in csv.reader(found.stdout.splitlines())
+            )
+        else:
+            found = subprocess.run(
+                ["ps", "-eo", "comm="], capture_output=True, text=True, check=True
+            )
+            other = any("llama-server" in name for name in found.stdout.splitlines())
+        if other:
+            raise RuntimeError(
+                "Another model is using the GPU. Stop it before starting FIAM's model."
+            )
         args = [str(SERVER), "-m", str(self.path), "--alias", self.name, "--device", DEVICE]
         args += ["-c", str(CONTEXT), "-np", "1", "--seed", str(SEED), "--temp", str(TEMPERATURE)]
         # Checkpoints crash this build on hybrid attention. Off costs seconds, not correctness.
@@ -150,7 +172,17 @@ def plan_in(text: str) -> list[str]:
 
 # One Hermes turn, one-shot, only our tools, events as JSON lines.
 def hermes(query: Path, run: Run, session: str | None) -> list[dict]:
-    args = [HERMES, "chat", "--query-file", str(query), "--oneshot", "--format", "stream-json"]
+    args = [
+        HERMES,
+        "-p",
+        PROFILE,
+        "chat",
+        "--query-file",
+        str(query),
+        "--oneshot",
+        "--format",
+        "stream-json",
+    ]
     args += ["-t", "fiam", "--ignore-rules", "--source", "fiam", "--reasoning", "none"]
     # A nudge only needs room to answer, so a stuck run cannot spend a second budget.
     turns = WARN_AT if session else run.budget + WARN_AT
@@ -270,13 +302,39 @@ SETTINGS = {
 
 # Points this machine's Hermes at our tool server and model, so a teammate needs one command.
 def register() -> None:
-    subprocess.run([HERMES, "mcp", "remove", "fiam"], capture_output=True, stdin=subprocess.DEVNULL)
-    add = [HERMES, "mcp", "add", "fiam", "--command", sys.executable, "--connect-timeout", "120"]
+    profiles = subprocess.run(
+        [HERMES, "profile", "list"], capture_output=True, text=True, check=True
+    )
+    if PROFILE not in profiles.stdout:
+        subprocess.run(
+            [HERMES, "profile", "create", PROFILE, "--no-skills", "--no-alias"], check=True
+        )
+    subprocess.run(
+        [HERMES, "-p", PROFILE, "mcp", "remove", "fiam"],
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+    )
+    add = [
+        HERMES,
+        "-p",
+        PROFILE,
+        "mcp",
+        "add",
+        "fiam",
+        "--command",
+        sys.executable,
+        "--connect-timeout",
+        "120",
+    ]
     add += ["--args", (ROOT / "src" / "agents" / "mcp_server.py").as_posix()]
     # Hermes asks whether to enable the tools it found; the answer is always all of them.
     subprocess.run(add, input="Y\n", text=True, check=True)
     for key, value in SETTINGS.items():
-        subprocess.run([HERMES, "config", "set", key, value], check=True, stdin=subprocess.DEVNULL)
+        subprocess.run(
+            [HERMES, "-p", PROFILE, "config", "set", key, value],
+            check=True,
+            stdin=subprocess.DEVNULL,
+        )
     print("Hermes is set up. Start a model with: python src/agents/harness.py serve qwen")
 
 
