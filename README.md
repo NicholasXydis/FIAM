@@ -31,7 +31,7 @@ then `python run.py`.
 
 ## If something goes wrong
 
-- **macOS, `--ml`:** `brew install libomp` (LightGBM needs it).
+- **macOS, `--ml` or `pytest`:** `brew install libomp` (LightGBM needs it).
 - **Intel Mac, or macOS 13 and older:** everything except `--ml` runs; PyTorch 2.14 has no
   build there.
 - **Windows on ARM:** pyarrow has no ARM build; use x64 Python:

@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      # LightGBM on macOS needs Homebrew's OpenMP; Windows and Linux ship their own.
+      - if: runner.os == 'macOS'
+        run: brew install libomp
       - run: uv run ruff check src run.py tests tools
       - run: uv run ruff format --check src run.py tests tools
       - run: uv run pytest
