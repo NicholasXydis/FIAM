@@ -14,9 +14,9 @@
     "after_costs"
   ],
   "code": {
-    "git_commit": "a056bc2",
+    "git_commit": "b7e1612",
     "working_tree_dirty": true,
-    "src_sha256": "449765ebe51b745f",
+    "src_sha256": "5cd3aa7175e53cd4",
     "src_files": [
       "src/agents/auditor.py",
       "src/agents/critic.py",
@@ -25,6 +25,7 @@
       "src/agents/mcp_server.py",
       "src/benchmarks.py",
       "src/charts.py",
+      "src/compare.py",
       "src/controls/reproducibility.py",
       "src/controls/selection.py",
       "src/controls/wrds_checks.py",
@@ -43,9 +44,11 @@
       "src/ml/oos_r2.py",
       "src/ml/summary.py",
       "src/ml/train.py",
+      "src/paths.py",
       "src/pipeline.py",
       "src/provenance.py",
       "src/research_charts.py",
+      "src/verify.py",
       "src/wrds.py",
       "prompts/agents/auditor.md",
       "prompts/agents/critic.md",
@@ -66,8 +69,8 @@
           "decile_months": 68
         },
         "sector": {
-          "ic_mean": 0.04541053982522148,
-          "ic_t": 3.241874803108577,
+          "ic_mean": 0.045410591198302354,
+          "ic_t": 3.241876299426262,
           "decile_spread_annual": 0.1046602525678985,
           "months": 68,
           "decile_months": 68
@@ -97,19 +100,19 @@
           "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
         },
         "optimizer": {
-          "gross_annual": 0.18386969984357057,
-          "net_annual": 0.18386969984357057,
-          "turnover": 0.5856423672758576,
+          "gross_annual": 0.18386969984370388,
+          "net_annual": 0.18386969984370388,
+          "turnover": 0.5856423672757588,
           "positions": 358.0,
-          "net_ir": 0.6983297457448209,
+          "net_ir": 0.6983297457456472,
           "note": "convex optimizer, budget and per-name cap"
         },
         "constrained": {
-          "gross_annual": 0.2019961918960399,
-          "net_annual": 0.2019961918960399,
-          "turnover": 0.5341620334800834,
+          "gross_annual": 0.2019961918961533,
+          "net_annual": 0.2019961918961533,
+          "turnover": 0.5341620334800739,
           "positions": 316.4117647058824,
-          "net_ir": 1.1154968206117695,
+          "net_ir": 1.1154968206125018,
           "note": "plus the portfolio exposure constraints: sector, beta, volatility"
         },
         "whole_shares": {
@@ -171,19 +174,19 @@
           "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
         },
         "optimizer": {
-          "gross_annual": 0.027604853529589087,
-          "net_annual": 0.027604853529589087,
-          "turnover": 1.2746898975971024,
+          "gross_annual": 0.027604853529564967,
+          "net_annual": 0.027604853529564967,
+          "turnover": 1.2746898975970966,
           "positions": 264.5147058823529,
-          "net_ir": -0.08414420779679084,
+          "net_ir": -0.08414420779695496,
           "note": "convex optimizer, budget and per-name cap"
         },
         "constrained": {
-          "gross_annual": 0.07662139350793536,
-          "net_annual": 0.07662139350793536,
-          "turnover": 1.23044877422238,
+          "gross_annual": 0.07662139350807536,
+          "net_annual": 0.07662139350807536,
+          "turnover": 1.2304487742224572,
           "positions": 268.9117647058824,
-          "net_ir": 0.29029774169117684,
+          "net_ir": 0.2902977416922375,
           "note": "plus the portfolio exposure constraints: sector, beta, volatility"
         },
         "whole_shares": {
@@ -207,73 +210,73 @@
     "nn3": {
       "predictive": {
         "raw": {
-          "ic_mean": 0.03889137552508246,
-          "ic_t": 2.9126604547794623,
-          "decile_spread_annual": 0.04732173759371393,
+          "ic_mean": 0.04026371007884034,
+          "ic_t": 2.965711596356704,
+          "decile_spread_annual": 0.058223872221843456,
           "months": 68,
           "decile_months": 68
         },
         "sector": {
-          "ic_mean": 0.03405112311263708,
-          "ic_t": 2.8604242785989227,
-          "decile_spread_annual": 0.013370207942643136,
+          "ic_mean": 0.03410747137995008,
+          "ic_t": 2.8802127518695633,
+          "decile_spread_annual": 0.012785935275902691,
           "months": 68,
           "decile_months": 68
         },
         "beta": {
-          "ic_mean": 0.03299038629446266,
-          "ic_t": 3.495661244947094,
-          "decile_spread_annual": 0.04549363862927826,
+          "ic_mean": 0.03296807455546911,
+          "ic_t": 3.5491152992367687,
+          "decile_spread_annual": 0.03839543474710345,
           "months": 68,
           "decile_months": 68
         },
         "vol": {
-          "ic_mean": 0.024279939645396615,
-          "ic_t": 3.3499048815689796,
-          "decile_spread_annual": 0.07527037948848794,
+          "ic_mean": 0.023720571499380876,
+          "ic_t": 3.4098736460658223,
+          "decile_spread_annual": 0.06810698749378882,
           "months": 68,
           "decile_months": 68
         }
       },
       "portfolio": {
         "equal_weight": {
-          "gross_annual": 0.04802889043896681,
-          "net_annual": 0.04802889043896681,
+          "gross_annual": 0.038117372649776285,
+          "net_annual": 0.038117372649776285,
           "turnover": null,
           "positions": 400.0,
-          "net_ir": 0.08344034584480683,
+          "net_ir": -0.01831613173138733,
           "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
         },
         "optimizer": {
-          "gross_annual": 0.07226871513980036,
-          "net_annual": 0.07226871513980036,
-          "turnover": 1.07328228702863,
-          "positions": 267.9852941176471,
-          "net_ir": 0.32074266303062476,
+          "gross_annual": 0.0652421294103358,
+          "net_annual": 0.0652421294103358,
+          "turnover": 1.054279586158879,
+          "positions": 265.80882352941177,
+          "net_ir": 0.24083817919966483,
           "note": "convex optimizer, budget and per-name cap"
         },
         "constrained": {
-          "gross_annual": 0.07655107782930728,
-          "net_annual": 0.07655107782930728,
-          "turnover": 1.0103576115512367,
-          "positions": 284.0735294117647,
-          "net_ir": 0.30587939346579734,
+          "gross_annual": 0.07197478682147061,
+          "net_annual": 0.07197478682147061,
+          "turnover": 0.9807614620310957,
+          "positions": 278.86764705882354,
+          "net_ir": 0.257858457068423,
           "note": "plus the portfolio exposure constraints: sector, beta, volatility"
         },
         "whole_shares": {
-          "gross_annual": 0.07650508861198364,
-          "net_annual": 0.07650508861198364,
-          "turnover": 1.0101647361252972,
-          "positions": 283.97058823529414,
-          "net_ir": 0.3055597090253964,
+          "gross_annual": 0.07155459108381082,
+          "net_annual": 0.07155459108381082,
+          "turnover": 0.9805371972974155,
+          "positions": 278.5882352941176,
+          "net_ir": 0.2543032392633035,
           "note": "plus whole-share rounding against a $10m NAV"
         },
         "after_costs": {
-          "gross_annual": 0.07650508861198364,
-          "net_annual": 0.011592522267426249,
-          "turnover": 1.0101647361252972,
-          "positions": 283.97058823529414,
-          "net_ir": -0.2383493523747821,
+          "gross_annual": 0.07155459108381082,
+          "net_annual": 0.007684359157888319,
+          "turnover": 0.9805371972974155,
+          "positions": 278.5882352941176,
+          "net_ir": -0.2606844834131595,
           "note": "plus the full cost model, this row is the shipped book"
         }
       }
@@ -311,27 +314,27 @@
       },
       "portfolio": {
         "equal_weight": {
-          "gross_annual": 0.019749885794636497,
-          "net_annual": 0.019749885794636497,
+          "gross_annual": 0.003986129029930614,
+          "net_annual": 0.003986129029930614,
           "turnover": null,
           "positions": 400.0,
-          "net_ir": -0.18438871547010333,
+          "net_ir": -0.31493872230196013,
           "note": "equal-weight top and bottom 200 of a score already sector- and beta-adjusted"
         },
         "optimizer": {
-          "gross_annual": 0.014696706176543173,
-          "net_annual": 0.014696706176543173,
-          "turnover": 1.0351457597369493,
+          "gross_annual": 0.014696706176555099,
+          "net_annual": 0.014696706176555099,
+          "turnover": 1.0351457597370195,
           "positions": 225.10294117647058,
-          "net_ir": -0.178625819372576,
+          "net_ir": -0.17862581937250308,
           "note": "convex optimizer, budget and per-name cap"
         },
         "constrained": {
-          "gross_annual": 0.03748331822318567,
-          "net_annual": 0.03748331822318567,
-          "turnover": 0.9429141732943092,
+          "gross_annual": 0.037483318223164294,
+          "net_annual": 0.037483318223164294,
+          "turnover": 0.9429141732943151,
           "positions": 231.5,
-          "net_ir": -0.019793793015244386,
+          "net_ir": -0.019793793015414028,
           "note": "plus the portfolio exposure constraints: sector, beta, volatility"
         },
         "whole_shares": {

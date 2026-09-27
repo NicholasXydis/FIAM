@@ -1,7 +1,7 @@
 {
   "_about": {
     "what": "One run of src/pipeline.py. The source of truth for every number.",
-    "regenerate": "python run.py",
+    "regenerate": "uv run run.py --official",
     "sections": {
       "run": "when this was made, from which code",
       "performance": "returns, risk, and the market regression",
@@ -14,10 +14,10 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "generated_utc": "2026-09-26T03:43:12+00:00",
-    "git_commit": "8f7e05b",
+    "generated_utc": "2026-09-27T16:58:59+00:00",
+    "git_commit": "b7e1612",
     "working_tree_dirty": true,
-    "src_sha256": "33e03cf3a7b96cc5",
+    "src_sha256": "3731057232e8945d",
     "src_files": [
       "src/agents/auditor.py",
       "src/agents/critic.py",
@@ -26,6 +26,7 @@
       "src/agents/mcp_server.py",
       "src/benchmarks.py",
       "src/charts.py",
+      "src/compare.py",
       "src/controls/reproducibility.py",
       "src/controls/selection.py",
       "src/controls/wrds_checks.py",
@@ -44,9 +45,11 @@
       "src/ml/oos_r2.py",
       "src/ml/summary.py",
       "src/ml/train.py",
+      "src/paths.py",
       "src/pipeline.py",
       "src/provenance.py",
       "src/research_charts.py",
+      "src/verify.py",
       "src/wrds.py",
       "prompts/agents/auditor.md",
       "prompts/agents/critic.md",

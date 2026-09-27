@@ -24,9 +24,10 @@ shares, with every cost charged. **No trained model and no AI touches a position
 
 <!--/AUTO:brief-->
 
-**Read the last three rows.** The second half earned about nothing, the CRSP years alone earn less,
-and the same code on 2016-2020, never looked at, lost money. The record is honest arithmetic, not
-proof it works everywhere: a value, quality and defensive tilt that earns when that regime pays.
+**Read the last three rows.** The second half earned almost nothing, the CRSP years alone earn
+less, and the same code lost money on 2016-2020, which we never looked at. The record is honest
+arithmetic, not proof it works everywhere: it is a value, quality and defensive tilt that earns when
+that style pays.
 
 ## What makes it different
 
@@ -53,6 +54,6 @@ Three local AI agents, run through Hermes, each judged on something it cannot fa
 
 ## What we cannot claim
 
-Research backtests, not a sealed out-of-sample record; costs modelled, not observed; 2026 returns
-from Compustat, not CRSP. The only clean test is live: our September book is hashed, and October
-2026 scores it.
+These are research backtests, not a sealed out-of-sample record. Costs are modelled, not observed.
+2026 returns come from Compustat, not CRSP. The only clean test is live: our September book is
+hashed, and October 2026 will score it.

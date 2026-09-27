@@ -1,9 +1,10 @@
-# Canonical results
+# Results
 
 <!-- Every table between AUTO markers is written by src/docs.py and overwritten on each run. The
      prose is by hand; src/docs.py fails the run if a number it repeats has gone stale. -->
 
-Produced by `python run.py`, Jan 2021 to Aug 2026, net of every modelled cost unless stated.
+Made by `uv run run.py --official`. January 2021 to August 2026, after all modelled costs unless a
+table says otherwise.
 
 ## Headline
 
@@ -28,14 +29,15 @@ Produced by `python run.py`, Jan 2021 to Aug 2026, net of every modelled cost un
 | Costs as share of gross | 20% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_Generated 2026-09-26T03:43:12+00:00 from commit `8f7e05b`._
+_Generated 2026-09-27T16:58:59+00:00 from commit `b7e1612`._
 
 <!--/AUTO:headline-->
 
-IR 0.83 against cash plus 4%. Beta is the regression the rules ask for, against FRED `SP500`
-(price-only), HAC errors, and the build fails outside ±0.20; with dividends (WRDS) it barely moves.
+IR 0.83 against cash plus 4%. Beta is the regression the rules ask for, against the S&P 500 price
+index (FRED `SP500`) with HAC errors. The build fails if it leaves ±0.20. Adding dividends from
+WRDS barely moves it.
 
-## The committee pack
+## Committee pack
 
 <!--AUTO:committee-->
 
@@ -69,7 +71,7 @@ IR 0.83 against cash plus 4%. Beta is the regression the rules ask for, against 
 
 <!--/AUTO:years-->
 
-Each leg as its contribution to NAV before costs:
+Each side's contribution to NAV, before costs:
 
 <!--AUTO:legs-->
 
@@ -82,7 +84,8 @@ Short positions flagged small-cap or hard to borrow: 21% of the short book.
 
 <!--/AUTO:legs-->
 
-Ten largest positions each side by average weight; every label checked against a dated source:
+The ten largest positions on each side by average weight. Every name is checked against a dated
+source:
 
 <!--AUTO:top-->
 
@@ -103,7 +106,7 @@ Ten largest positions each side by average weight; every label checked against a
 
 ## The clean test failed
 
-The frozen book on 2016-2020, five years the design never looked at:
+The same frozen book on 2016-2020, five years we never looked at while designing it:
 
 <!--AUTO:clean-->
 
@@ -118,16 +121,16 @@ The frozen book on 2016-2020, five years the design never looked at:
 
 <!--/AUTO:clean-->
 
-**IR −0.82 and beta −0.30.** The strategy is a value, quality and defensive tilt that earns when
-that regime pays; 2020's junk rally broke it. The 2021-2026 record is real arithmetic, **not
-evidence that the design generalises**.
+**IR −0.82 and beta −0.30.** The book is a value, quality and defensive tilt. It earns when that
+style pays, and the 2020 rally in low-quality stocks broke it. So 2021-2026 is honest arithmetic,
+**not proof that the design works in general**.
 
 ## What WRDS changed
 
-Late CRSP and Compustat exports, used for dated delistings, payouts and checks, never as a signal:
-dead names screened at the decision date, takeover payouts booked, the S&P 500 as the market, and
-turnover against the drifted book. A pinned T-bill file that started in 2020 had shortened every
-2016-2020 regression to 12 months; fixed.
+We used late CRSP and Compustat exports to check and correct the book, never as a signal. Delisted
+stocks are removed on the decision date, takeover payouts are booked, the S&P 500 is the market,
+and turnover is measured from the drifted book. We also fixed a T-bill file that started in 2020,
+which had cut every 2016-2020 regression to 12 months.
 
 <!--AUTO:corrections-->
 
@@ -164,15 +167,15 @@ turnover against the drifted book. A pinned T-bill file that started in 2020 had
 
 <!--/AUTO:wrds-->
 
-Accounting data is point-in-time: no signal moved without a report in more than 0.1% of updates.
-Holding back reports dated on the decision day gives IR 0.82. **2021-2025 alone gives IR 0.76**, and
-2026, sourced from Compustat, is visibly more dispersed: the part of the record we trust least.
+Accounting data is point-in-time: for every signal, at most 0.1% of updates had no report behind
+them. Holding back reports dated on the decision day gives IR 0.82. **2021-2025 alone gives IR
+0.76.** 2026 comes from Compustat and is visibly noisier, so it is the part we trust least.
 
 ## Neutrality
 
-The first book's ex-ante beta was −0.002 and its realized beta −0.52: flat on `beta_60m` but tilted
-away from volatile stocks. Constraining the volatility complex fixed it. The full-period beta hides
-a drift:
+Our first book had a predicted beta of −0.002 and a real beta of −0.52: flat on `beta_60m`, but
+tilted away from volatile stocks. Limiting the volatility signals fixed it. The full-period beta
+still hides a drift:
 
 <!--AUTO:drift-->
 
@@ -188,9 +191,9 @@ a drift:
 
 ## Costs and compliance
 
-Commission 5bp and impact 8bp per side; half-spread from `bidaskhl_21d` × 0.20, an estimator whose
-level is scaled; borrow 50bp a year plus 250bp on hard-to-borrow shorts. Borrow and the
-hard-to-borrow flag are assumptions, not observed data.
+Commission 5 bp and impact 8 bp per side. The half-spread is `bidaskhl_21d` × 0.20, because that
+estimator's level is scaled. Borrow is 50 bp a year, plus 250 bp for hard-to-borrow shorts. Borrow
+costs and the hard-to-borrow flag are assumptions, not observed data.
 
 <!--AUTO:costs-->
 
@@ -222,8 +225,8 @@ hard-to-borrow flag are assumptions, not observed data.
 
 ## The machine-learning comparison
 
-ElasticNet, LightGBM and NN3 on all 147 characteristics, calendar-year folds as the rules
-prescribe, each through the same optimizer and costs as the book:
+ElasticNet, LightGBM and NN3 on all 147 characteristics, with calendar-year folds as the rules ask,
+each run through the same optimizer and costs as the book:
 
 <!--AUTO:models-->
 
@@ -231,7 +234,7 @@ prescribe, each through the same optimizer and costs as the book:
 |---|---:|---:|---:|---:|---:|---:|
 | **12-signal composite** | 3.78 | 20.2% | 4.1% | **+16.1%** | 53% | **+0.83** |
 | LightGBM | 3.60 | 7.7% | 8.1% | -0.4% | 123% | -0.35 |
-| NN3, seed 42 | 3.89 | 7.7% | 6.5% | +1.2% | 101% | -0.24 |
+| NN3, seed 42 | 3.91 | 7.2% | 6.4% | +0.8% | 98% | -0.26 |
 | ElasticNet | 2.55 | 3.8% | 6.1% | -2.3% | 94% | -0.50 |
 
 <!--/AUTO:models-->
@@ -242,14 +245,14 @@ prescribe, each through the same optimizer and costs as the book:
 |---|---:|---:|---:|---:|---:|
 | **12-signal composite** | +0.71 | +0.70 | +1.12 | +1.12 | +0.83 |
 | LightGBM | -0.23 | -0.08 | +0.29 | +0.29 | -0.35 |
-| NN3 | +0.08 | +0.32 | +0.31 | +0.31 | -0.24 |
-| ElasticNet | -0.18 | -0.18 | -0.02 | -0.02 | -0.50 |
+| NN3 | -0.02 | +0.24 | +0.26 | +0.25 | -0.26 |
+| ElasticNet | -0.31 | -0.18 | -0.02 | -0.02 | -0.50 |
 
 <!--/AUTO:stages-->
 
-**Neutralization helps them; costs kill them.** NN3 depends on its seed: five seeds give IR −1.38
-to −0.24, mean −0.80, and seed 42 is the kindest. Blending toward last month's scores, longer
-horizons, monotone constraints and an ensemble all stayed negative (figures in `config_log.csv`).
+**Neutralizing helps them; costs sink them.** NN3 depends on its seed: five seeds give IR −1.26 to
+−0.26, mean −0.81, and seed 42 is the best. Blending toward last month's scores, longer horizons,
+monotone constraints and an ensemble all stayed negative (figures in `config_log.csv`).
 
 <!--AUTO:r2-->
 
@@ -260,10 +263,10 @@ horizons, monotone constraints and an ensemble all stayed negative (figures in `
 | Template ElasticNet | -0.05% | -0.01% |
 | ElasticNet, rank target | -0.10% | -0.11% |
 | LightGBM | +0.08% | +0.05% |
-| NN3, seed 42 | -0.17% | -0.05% |
+| NN3, seed 42 | -0.15% | +0.01% |
 | 12-signal composite | -0.01% | -0.01% |
 
-NN3 across five seeds: -0.17% to +0.08%, zero benchmark.
+NN3 across five seeds: -0.16% to +0.07%, zero benchmark.
 
 <!--/AUTO:r2-->
 
@@ -281,7 +284,7 @@ NN3 across five seeds: -0.17% to +0.08%, zero benchmark.
 
 <!--/AUTO:halves-->
 
-The interval includes zero and the record is front-loaded: 2023-2026 is IR +0.06.
+The 95% interval includes zero, and most of the return came early: 2023-2026 is IR +0.06.
 
 ## Where the return comes from
 
@@ -336,8 +339,8 @@ The six explain 49% of the variance, over 67 months.
 
 <!--/AUTO:tails-->
 
-The panel's earnings update in the release month in 90% of cases; three months staler gives IR
-0.41, six months 0.33.
+The panel's earnings update in the month they are released 90% of the time. Using them three
+months late gives IR 0.41, six months late 0.33.
 
 ## Trying to make the result disappear
 
@@ -353,14 +356,14 @@ The panel's earnings update in the release month in 90% of cases; three months s
 
 ## Selection is worse than not choosing
 
-Across all 792 five-signal subsets, early and late IR correlate at −0.36. A budgeted search scored
-+1.78 where it looked and +0.33 afterwards. Across all 147 characteristics, t-statistics before and
-after 2021 correlate at −0.41 and 38% keep their direction. So the twelve are theory-signed and
-never selected.
+Across all 792 five-signal subsets, IR in the early years and IR in the later years correlate at
+−0.36. A budgeted search scored +1.78 on the years it searched and +0.33 afterwards. Across all 147
+characteristics, t-statistics before and after 2021 correlate at −0.41, and only 38% keep their
+sign. That is why the twelve signals are signed by theory and never picked on results.
 
 ## The earnings module
 
-Designed and judged on 2016-2020 under a rule written first:
+Designed and judged on 2016-2020, under a rule written down first:
 
 <!--AUTO:earnings-->
 
@@ -377,9 +380,9 @@ Rule: +0.10 IR on 2016-2020, beta inside ±0.15, monotone tails. Shipped: **no**
 
 ## Agents
 
-Two vendors' local models through Hermes, pinned by SHA-256, temperature 0, each agent limited to
-its own read-only tools with every call logged. **No model output reaches a weight.** Transcripts
-and tool definitions are in `submission/exhibits/agents/`.
+Local models from two vendors, run through Hermes, pinned by SHA-256, at temperature 0. Each agent
+gets only its own read-only tools, and every call is logged. **No model output ever sets a
+weight.** Transcripts and tool definitions are in `submission/exhibits/agents/`.
 
 <!--AUTO:agents-->
 
@@ -417,12 +420,12 @@ and tool definitions are in `submission/exhibits/agents/`.
 |---|---|
 | Sealed book | 299 names, SHA-256 `bb58c4d406a1edb2`, first hashed 2026-09-23T13:55:30+00:00 |
 | Holding month | 2026-09; the clean test is October 2026, same book |
-| Today's code, same month | 298 names, `38962800b07ea311`; the sealed file is never rewritten |
+| Today's code, same month | 298 names, `eb60a983495d15ec`; the sealed file is never rewritten |
 
 <!--/AUTO:live-->
 
-September is mechanical, the book having been hashed on the 23rd; October is the clean test, scored
-to date at the finals. The rule, set first: report whatever it says.
+September is mechanical, because the book was hashed on the 23rd. October is the clean test,
+scored so far at the finals. The rule, set in advance: report whatever it shows.
 
 ## Multiple testing
 
@@ -436,10 +439,10 @@ to date at the finals. The rule, set first: report whatever it says.
 
 <!--/AUTO:deflation-->
 
-The deflated-Sharpe probability is a probability, not a Sharpe ratio. Attempts come from
+The deflated-Sharpe probability is a probability, not a Sharpe ratio. Attempt counts come from
 `config_log.csv`. **These are research backtests, not a sealed out-of-sample record.**
 
 ## Limits
 
-2021-2026 was seen during design · costs are modelled · 2026 returns come from Compustat · the S&P
+We saw 2021-2026 while designing · costs are modelled · 2026 returns come from Compustat · the S&P
 500 series is price-only · point-in-time accounting is checked, not guaranteed.
