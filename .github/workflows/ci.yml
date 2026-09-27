@@ -1,0 +1,27 @@
+# On Windows, macOS and Linux: install with uv, lint, test, then run the one command with no data,
+# both from the repo and as the single MAIN.py a judge receives. No data is ever needed here.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run ruff check src run.py tests tools
+      - run: uv run ruff format --check src run.py tests tools
+      - run: uv run pytest
+      - run: uv run run.py
+      - name: MAIN.py alone in an empty folder
+        shell: bash
+        run: |
+          uv run python tools/build_main.py --out "$RUNNER_TEMP/judge/MAIN.py"
+          cd "$RUNNER_TEMP/judge" && uv run MAIN.py
