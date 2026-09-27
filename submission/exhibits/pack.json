@@ -387,7 +387,7 @@
     },
     "2023": {
       "names_per_month": 1909.0833333333333,
-      "cross_sectional_std": 0.11672625802695581,
+      "cross_sectional_std": 0.11672625802695583,
       "share_beyond_50pct": 0.005980182461041512,
       "share_missing": 0.0,
       "returns_from": "CRSP"
@@ -401,7 +401,7 @@
     },
     "2025": {
       "names_per_month": 2029.9166666666667,
-      "cross_sectional_std": 0.11925112997752428,
+      "cross_sectional_std": 0.11925112997752427,
       "share_beyond_50pct": 0.007512623670922452,
       "share_missing": 0.0,
       "returns_from": "CRSP"
@@ -416,23 +416,23 @@
   },
   "risk": {
     "attribution": {
-      "alpha_annual": 0.09875182714572839,
-      "alpha_t": 1.7493315234548665,
+      "alpha_annual": 0.09875182714572836,
+      "alpha_t": 1.749331523454867,
       "betas": {
-        "mkt_rf": 0.048322457405457334,
-        "smb": -0.6905216186237664,
-        "hml": 0.34349174135830246
+        "mkt_rf": 0.04832245740545704,
+        "smb": -0.6905216186237666,
+        "hml": 0.3434917413583023
       },
       "t_stats": {
-        "mkt_rf": 0.5864831082381897,
+        "mkt_rf": 0.5864831082381865,
         "smb": -4.946902346531089,
-        "hml": 3.7231534835493107
+        "hml": 3.723153483549309
       },
-      "r_squared": 0.3035722329034577,
+      "r_squared": 0.3035722329034578,
       "individual_variance_contribution": {
-        "mkt_rf": 0.0026237422896786796,
-        "smb": 0.21956950937459685,
-        "hml": 0.11253875310431845
+        "mkt_rf": 0.0026237422896786488,
+        "smb": 0.21956950937459702,
+        "hml": 0.11253875310431834
       },
       "unallocated_after_individual_contributions": 0.665267995231406,
       "explained_by_all_three": 0.30357223290345753,
@@ -440,36 +440,36 @@
       "months": 67
     },
     "five_factor_momentum": {
-      "alpha_annual": 0.09463708001426205,
-      "alpha_t": 1.8234927221434127,
+      "alpha_annual": 0.09463708001426192,
+      "alpha_t": 1.8234927221434087,
       "betas": {
-        "mkt_rf": 0.0701078113761107,
-        "smb": -0.3708802472029327,
-        "hml": 0.24698187371747432,
-        "rmw": 0.633988759379755,
-        "cma": 0.16607892377261327,
-        "mom": 0.010807726740235286
+        "mkt_rf": 0.07010781137611088,
+        "smb": -0.37088024720293333,
+        "hml": 0.24698187371747435,
+        "rmw": 0.6339887593797556,
+        "cma": 0.16607892377261288,
+        "mom": 0.010807726740235557
       },
       "t_stats": {
-        "mkt_rf": 1.4117665024556219,
-        "smb": -3.09913831846096,
-        "hml": 2.1936065185828992,
-        "rmw": 3.85979178248167,
-        "cma": 1.2918420072549412,
-        "mom": 0.08812289555585084
+        "mkt_rf": 1.4117665024556252,
+        "smb": -3.099138318460963,
+        "hml": 2.1936065185828997,
+        "rmw": 3.859791782481668,
+        "cma": 1.2918420072549348,
+        "mom": 0.08812289555585304
       },
-      "r_squared": 0.49304363630271775,
+      "r_squared": 0.49304363630271786,
       "individual_variance_contribution": {
-        "mkt_rf": 0.005523755592362833,
-        "smb": 0.07201905881570739,
-        "hml": 0.05818347578598281,
-        "rmw": 0.23580407387786498,
-        "cma": 0.01443287540879,
-        "mom": 0.00011193263023545025
+        "mkt_rf": 0.005523755592362862,
+        "smb": 0.07201905881570762,
+        "hml": 0.058183475785982826,
+        "rmw": 0.23580407387786545,
+        "cma": 0.014432875408789932,
+        "mom": 0.00011193263023545585
       },
-      "unallocated_after_individual_contributions": 0.6139248278890566,
-      "explained_by_all_three": 0.49304363630271747,
-      "residual_share": 0.5069563636972825,
+      "unallocated_after_individual_contributions": 0.6139248278890559,
+      "explained_by_all_three": 0.493043636302718,
+      "residual_share": 0.506956363697282,
       "months": 67
     },
     "book": {
@@ -500,22 +500,22 @@
     "consistency": {
       "windows": 57,
       "share_negative": 0.40350877192982454,
-      "median": 0.6400326700835455,
-      "worst": -1.8010643100207642,
+      "median": 0.6400326700835458,
+      "worst": -1.8010643100207648,
       "best": 3.302986451982174
     }
   },
   "beta_drift": {
     "2021_2023": {
-      "beta": 0.044159414045099,
-      "stderr": 0.1303399375815511,
-      "t": 0.33880186583233046,
+      "beta": 0.04415941404509899,
+      "stderr": 0.1303399375815512,
+      "t": 0.3388018658323301,
       "months": 36
     },
     "2024_2026": {
-      "beta": -0.21077836857413923,
-      "stderr": 0.0942971718652273,
-      "t": -2.2352565236568362,
+      "beta": -0.21077836857413915,
+      "stderr": 0.09429717186522726,
+      "t": -2.2352565236568367,
       "months": 32
     },
     "rolling_12m_outside_band": 0.3684210526315789,
@@ -526,243 +526,243 @@
     "months": 68,
     "full": {
       "ivol_capm_21d": {
-        "contribution_annual": -0.008051746566510854,
-        "t": -0.8073392351338675,
+        "contribution_annual": -0.008051746566510835,
+        "t": -0.8073392351338654,
         "average_exposure": 0.4208504227864195,
         "sign": -1
       },
       "be_me": {
-        "contribution_annual": 0.015456331990421915,
-        "t": 1.8485343703350448,
+        "contribution_annual": 0.015456331990421908,
+        "t": 1.8485343703350443,
         "average_exposure": 0.07494598665187908,
         "sign": 1
       },
       "qmj": {
-        "contribution_annual": -0.004865052534244311,
-        "t": -0.17160053340772,
+        "contribution_annual": -0.004865052534244355,
+        "t": -0.1716005334077216,
         "average_exposure": 1.7319876816105104,
         "sign": 1
       },
       "at_gr1": {
-        "contribution_annual": 0.007101868329742623,
-        "t": 0.4345638309616614,
+        "contribution_annual": 0.007101868329742619,
+        "t": 0.434563830961661,
         "average_exposure": 1.6729404635356644,
         "sign": -1
       },
       "niq_su": {
-        "contribution_annual": 0.013296122496892703,
-        "t": 1.545859597898877,
+        "contribution_annual": 0.013296122496892666,
+        "t": 1.545859597898874,
         "average_exposure": 1.1968403604428677,
         "sign": 1
       },
       "ope_be": {
-        "contribution_annual": 0.03771015399782543,
-        "t": 1.2242883520021193,
+        "contribution_annual": 0.037710153997825395,
+        "t": 1.2242883520021186,
         "average_exposure": 1.5547143957414866,
         "sign": 1
       },
       "chcsho_12m": {
-        "contribution_annual": 0.007734973320893741,
-        "t": 0.36319839063200465,
+        "contribution_annual": 0.007734973320893682,
+        "t": 0.3631983906320018,
         "average_exposure": 2.1913169987467156,
         "sign": -1
       },
       "o_score": {
-        "contribution_annual": 0.022122096556890722,
-        "t": 1.0796601810910447,
+        "contribution_annual": 0.02212209655689073,
+        "t": 1.079660181091045,
         "average_exposure": 1.7348962556474412,
         "sign": -1
       },
       "ret_12_1": {
-        "contribution_annual": 0.026222871600954788,
-        "t": 1.4584713368064497,
+        "contribution_annual": 0.02622287160095474,
+        "t": 1.4584713368064477,
         "average_exposure": 0.9325722364529756,
         "sign": 1
       },
       "gp_at": {
-        "contribution_annual": -0.029192424797157654,
-        "t": -0.985638376964478,
-        "average_exposure": 1.723819334884732,
+        "contribution_annual": -0.029192424797157578,
+        "t": -0.985638376964475,
+        "average_exposure": 1.7238193348847322,
         "sign": 1
       },
       "noa_gr1a": {
-        "contribution_annual": 0.02509492908651277,
-        "t": 2.0245025135595,
-        "average_exposure": 1.469921321444149,
+        "contribution_annual": 0.025094929086512775,
+        "t": 2.0245025135595016,
+        "average_exposure": 1.4699213214441493,
         "sign": -1
       },
       "eqnetis_at": {
-        "contribution_annual": 0.022785700749330395,
-        "t": 0.9403791042174623,
+        "contribution_annual": 0.022785700749330402,
+        "t": 0.9403791042174631,
         "average_exposure": 2.2950749762653277,
         "sign": -1
       },
       "residual": {
-        "contribution_annual": 0.06647712169619606
+        "contribution_annual": 0.06647712169619621
       },
       "explained_total": {
-        "contribution_annual": 0.1354158242315523
+        "contribution_annual": 0.13541582423155216
       }
     },
     "halves": {
       "2021_2022": {
         "ivol_capm_21d": {
-          "contribution_annual": 0.002624746437966296,
-          "t": 0.13546788417138822,
+          "contribution_annual": 0.0026247464379663176,
+          "t": 0.13546788417138933,
           "average_exposure": 0.42714115045545614,
           "sign": -1
         },
         "be_me": {
-          "contribution_annual": 0.039387951408572236,
-          "t": 1.8036278349694337,
+          "contribution_annual": 0.0393879514085722,
+          "t": 1.8036278349694324,
           "average_exposure": 0.31978221161193576,
           "sign": 1
         },
         "qmj": {
-          "contribution_annual": -0.010174329016583562,
-          "t": -0.2060737761428235,
+          "contribution_annual": -0.010174329016583536,
+          "t": -0.206073776142823,
           "average_exposure": 1.8007858348807435,
           "sign": 1
         },
         "at_gr1": {
-          "contribution_annual": 0.050734356551252344,
-          "t": 1.6244123175557286,
+          "contribution_annual": 0.05073435655125233,
+          "t": 1.624412317555727,
           "average_exposure": 1.5794485020361553,
           "sign": -1
         },
         "niq_su": {
-          "contribution_annual": 0.016563278399868934,
-          "t": 1.0083882799357549,
+          "contribution_annual": 0.01656327839986882,
+          "t": 1.0083882799357498,
           "average_exposure": 1.4085275883095398,
           "sign": 1
         },
         "ope_be": {
-          "contribution_annual": 0.1073889342213393,
-          "t": 1.582416228165939,
+          "contribution_annual": 0.10738893422133913,
+          "t": 1.5824162281659375,
           "average_exposure": 1.7006013219666922,
           "sign": 1
         },
         "chcsho_12m": {
-          "contribution_annual": 0.012192941538301034,
-          "t": 0.31738322835796406,
+          "contribution_annual": 0.012192941538300882,
+          "t": 0.31738322835796023,
           "average_exposure": 2.206359808074342,
           "sign": -1
         },
         "o_score": {
-          "contribution_annual": 0.02324639479095728,
-          "t": 0.5961234257629725,
+          "contribution_annual": 0.023246394790957327,
+          "t": 0.5961234257629734,
           "average_exposure": 1.7940446917105959,
           "sign": -1
         },
         "ret_12_1": {
-          "contribution_annual": 0.05859387281033156,
-          "t": 1.6765171860566583,
+          "contribution_annual": 0.058593872810331446,
+          "t": 1.6765171860566561,
           "average_exposure": 1.091441001140309,
           "sign": 1
         },
         "gp_at": {
-          "contribution_annual": -0.011176735801101276,
-          "t": -0.23589471701760054,
+          "contribution_annual": -0.011176735801101095,
+          "t": -0.23589471701759654,
           "average_exposure": 1.7072206302273212,
           "sign": 1
         },
         "noa_gr1a": {
-          "contribution_annual": 0.035458535186039454,
-          "t": 2.016252087978176,
+          "contribution_annual": 0.0354585351860395,
+          "t": 2.0162520879781805,
           "average_exposure": 1.4580835641362129,
           "sign": -1
         },
         "eqnetis_at": {
-          "contribution_annual": 0.05727769016556701,
-          "t": 1.427371083949438,
-          "average_exposure": 2.2823712004289085,
+          "contribution_annual": 0.057277690165566914,
+          "t": 1.427371083949437,
+          "average_exposure": 2.282371200428909,
           "sign": -1
         },
         "residual": {
-          "contribution_annual": 0.02962433812248398
+          "contribution_annual": 0.029624338122484342
         },
         "explained_total": {
-          "contribution_annual": 0.38211763669251053
+          "contribution_annual": 0.3821176366925102
         }
       },
       "2023_2026": {
         "ivol_capm_21d": {
-          "contribution_annual": -0.013875288205316572,
-          "t": -1.2276009423678216,
+          "contribution_annual": -0.013875288205316551,
+          "t": -1.2276009423678202,
           "average_exposure": 0.4174191167851268,
           "sign": -1
         },
         "be_me": {
-          "contribution_annual": 0.002402721398703562,
-          "t": 0.5665552856015397,
+          "contribution_annual": 0.0024027213987035667,
+          "t": 0.5665552856015407,
           "average_exposure": -0.05860104514451545,
           "sign": 1
         },
         "qmj": {
-          "contribution_annual": -0.0019690835438774474,
-          "t": -0.05628728653345141,
+          "contribution_annual": -0.0019690835438775306,
+          "t": -0.05628728653345381,
           "average_exposure": 1.694461416190383,
           "sign": 1
         },
         "at_gr1": {
           "contribution_annual": -0.016697670700171766,
-          "t": -0.9316624765163579,
+          "t": -0.9316624765163574,
           "average_exposure": 1.723936078899033,
           "sign": -1
         },
         "niq_su": {
-          "contribution_annual": 0.011514037458905673,
+          "contribution_annual": 0.011514037458905672,
           "t": 1.1559163858772448,
           "average_exposure": 1.0813745997883193,
           "sign": 1
         },
         "ope_be": {
-          "contribution_annual": -0.0002964533968184892,
-          "t": -0.010193790655702863,
+          "contribution_annual": -0.00029645339681845046,
+          "t": -0.010193790655701532,
           "average_exposure": 1.4751397087095568,
           "sign": 1
         },
         "chcsho_12m": {
-          "contribution_annual": 0.0053033542932170484,
-          "t": 0.2062465000222111,
+          "contribution_annual": 0.005303354293217023,
+          "t": 0.2062465000222101,
           "average_exposure": 2.183111830022556,
           "sign": -1
         },
         "o_score": {
-          "contribution_annual": 0.021508842974672607,
-          "t": 0.9030596620938879,
+          "contribution_annual": 0.021508842974672576,
+          "t": 0.9030596620938871,
           "average_exposure": 1.702633472340266,
           "sign": -1
         },
         "ret_12_1": {
-          "contribution_annual": 0.008565961850385632,
-          "t": 0.4274830081672339,
-          "average_exposure": 0.8459165466235207,
+          "contribution_annual": 0.008565961850385636,
+          "t": 0.427483008167234,
+          "average_exposure": 0.8459165466235209,
           "sign": 1
         },
         "gp_at": {
           "contribution_annual": -0.03901916424955202,
-          "t": -1.0243257909277081,
+          "t": -1.024325790927708,
           "average_exposure": 1.7328731737887741,
           "sign": 1
         },
         "noa_gr1a": {
-          "contribution_annual": 0.019442053032225477,
-          "t": 1.1667763607579926,
+          "contribution_annual": 0.019442053032225466,
+          "t": 1.1667763607579924,
           "average_exposure": 1.4763782799757508,
           "sign": -1
         },
         "eqnetis_at": {
-          "contribution_annual": 0.003971888340474063,
-          "t": 0.13090280192516462,
-          "average_exposure": 2.302004308539738,
+          "contribution_annual": 0.003971888340474129,
+          "t": 0.13090280192516685,
+          "average_exposure": 2.3020043085397375,
           "sign": -1
         },
         "residual": {
-          "contribution_annual": 0.08657864000912996
+          "contribution_annual": 0.08657864000912993
         },
         "explained_total": {
-          "contribution_annual": 0.0008511992528477598
+          "contribution_annual": 0.0008511992528477637
         }
       }
     }

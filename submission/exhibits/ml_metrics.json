@@ -1,7 +1,7 @@
 {
   "_about": {
     "what": "One run of the src/ml scripts. Every ML number in the write-up is from here.",
-    "regenerate": "python run.py --ml",
+    "regenerate": "uv run run.py --official --ml",
     "note": "IR is after sector, beta and vol neutralization, the optimizer and costs."
   },
   "composite": {
@@ -45,18 +45,18 @@
     "months_below_100_positions": 0
   },
   "nn3": {
-    "ic_mean": 0.05765799031673863,
-    "ic_t": 3.8923951557830243,
+    "ic_mean": 0.059927484961149566,
+    "ic_t": 3.913844002358791,
     "months": 68,
     "months_with_a_defined_ic": 68,
     "months_with_no_view": 0,
     "model": "nn3",
-    "information_ratio": -0.2383493523747821,
-    "gross_annual": 0.07650508861198364,
-    "net_annual": 0.011592522267426249,
-    "cost_annual": 0.06491256634455739,
-    "turnover": 1.0101647361252972,
-    "positions": 283.97058823529414,
+    "information_ratio": -0.2606844834131595,
+    "gross_annual": 0.07155459108381082,
+    "net_annual": 0.007684359157888319,
+    "cost_annual": 0.0638702319259225,
+    "turnover": 0.9805371972974155,
+    "positions": 278.5882352941176,
     "months_with_no_position": 0,
     "months_below_100_positions": 0
   },
@@ -104,27 +104,27 @@
       "top_beats_second": 1.0
     },
     "nn3": {
-      "d1": -0.013363648206182237,
-      "d2": -0.011486795652343848,
-      "d3": 0.07059071138055742,
-      "d4": 0.07234492729888918,
-      "d5": 0.06681415674470384,
-      "d6": 0.07317681219778968,
-      "d7": 0.09379669371979188,
-      "d8": 0.06519923161128369,
-      "d9": 0.08258092130535563,
-      "d10": 0.10457804672918608,
-      "top_minus_bottom": 0.11794169493536832,
+      "d1": -0.04052734905547557,
+      "d2": 0.0029716044130251237,
+      "d3": 0.07129185307669465,
+      "d4": 0.06999668159658205,
+      "d5": 0.0797888616119837,
+      "d6": 0.08077799771183525,
+      "d7": 0.08004253256639222,
+      "d8": 0.07262068562236038,
+      "d9": 0.08187234162870966,
+      "d10": 0.105377307956557,
+      "top_minus_bottom": 0.1459046570120326,
       "top_beats_second": 1.0
     }
   },
   "subset_sweep": {
     "n_subsets": 792,
     "ir_full_min": 0.45219218616727946,
-    "ir_full_max": 1.2563608144231055,
-    "early_late_correlation": -0.35545186443532395,
-    "best_on_early_then_earned": -0.05259689607361804,
-    "median_late_ir": 0.1430140832777105,
+    "ir_full_max": 1.2563608144231058,
+    "early_late_correlation": -0.35545186443532384,
+    "best_on_early_then_earned": -0.05259689607361814,
+    "median_late_ir": 0.14301408327771045,
     "all_twelve_ir_full": 0.8852442941897745
   }
 }

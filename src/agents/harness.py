@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[2]
-TRANSCRIPTS = ROOT / "submission" / "exhibits" / "agents"
+sys.path.insert(0, str(ROOT / "src"))
+import paths  # noqa: E402
+
+TRANSCRIPTS = ROOT / paths.EXHIBITS / "agents"
 RUNS = ROOT / "cache" / "agents"
 # The MCP server reads this on start: present means a scored run, absent means research.
 RUN_FILE = RUNS / "run.json"
@@ -73,10 +76,10 @@ def sha256(path: Path) -> str:
 def model_hash(path: Path) -> str:
     stamp = path.with_suffix(".sha256.json")
     key = dict(bytes=path.stat().st_size, modified=path.stat().st_mtime)
-    if stamp.exists() and json.loads(stamp.read_text()).get("key") == key:
-        return json.loads(stamp.read_text())["sha256"]
+    if stamp.exists() and json.loads(stamp.read_text(encoding="utf-8")).get("key") == key:
+        return json.loads(stamp.read_text(encoding="utf-8"))["sha256"]
     value = sha256(path)
-    stamp.write_text(json.dumps(dict(key=key, sha256=value)))
+    stamp.write_text(json.dumps(dict(key=key, sha256=value)), encoding="utf-8", newline="\n")
     return value
 
 
@@ -210,7 +213,7 @@ def run_agent(server: Server, run: Run) -> dict:
     RUNS.mkdir(parents=True, exist_ok=True)
     log, query = RUNS / f"{run.name}.calls.jsonl", RUNS / f"{run.name}.query.md"
     log.unlink(missing_ok=True)
-    query.write_text(f"{run.system}\n\n{run.task}", encoding="utf-8")
+    query.write_text(f"{run.system}\n\n{run.task}", encoding="utf-8", newline="\n")
     RUN_FILE.write_text(
         json.dumps(dict(agent=run.agent, budget=run.budget, log=str(log), **run.options))
     )
@@ -219,7 +222,7 @@ def run_agent(server: Server, run: Run) -> dict:
     try:
         for attempt in range(NUDGES + 1):
             if attempt:
-                query.write_text(NUDGE, encoding="utf-8")
+                query.write_text(NUDGE, encoding="utf-8", newline="\n")
             events += hermes(query, run, sessions[-1] if sessions else None)
             sessions += [e["session_id"] for e in events[-1:] if e.get("type") == "result"]
             if any(e["type"] == "tool_use" and e["name"].endswith("final_answer") for e in events):
@@ -260,7 +263,7 @@ def run_agent(server: Server, run: Run) -> dict:
     status = "answered" if answers else "no answer within the budget"
     TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
     path = TRANSCRIPTS / f"{run.name}.jsonl"
-    with path.open("w", encoding="utf-8") as fh:
+    with path.open("w", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps(dict(header=header, plans=plans, status=status)) + "\n")
         for record in records:
             fh.write(json.dumps(record, default=str) + "\n")

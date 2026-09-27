@@ -224,9 +224,9 @@
     "net_annual": 0.158697
   },
   "organizer_data_only": {
-    "information_ratio": 0.832587,
-    "return_net_annual": 0.161013,
-    "beta_realized": -0.047341,
-    "beta_stderr": 0.111044
+    "information_ratio": 0.832556,
+    "return_net_annual": 0.161007,
+    "beta_realized": -0.047353,
+    "beta_stderr": 0.11104
   }
 }

@@ -10,10 +10,11 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths
 import pipeline as P
 
 PREDS = Path("cache/preds")
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 
 MODELS = ("composite", "lgbm", "nn3", "enet")
 
@@ -168,7 +169,9 @@ def main() -> None:
         )
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "constraint_survival.json").write_text(json.dumps(result, indent=2))
+    (OUT / "constraint_survival.json").write_text(
+        json.dumps(result, indent=2), encoding="utf-8", newline="\n"
+    )
     print("\nwrote constraint_survival.json")
 
 

@@ -3,9 +3,9 @@
   "baseline": {
     "what": "The baseline the pre-WRDS research exhibits are measured against.",
     "code": {
-      "git_commit": "8f7e05b",
+      "git_commit": "b7e1612",
       "working_tree_dirty": true,
-      "src_sha256": "33e03cf3a7b96cc5",
+      "src_sha256": "3731057232e8945d",
       "src_files": [
         "src/agents/auditor.py",
         "src/agents/critic.py",
@@ -14,6 +14,7 @@
         "src/agents/mcp_server.py",
         "src/benchmarks.py",
         "src/charts.py",
+        "src/compare.py",
         "src/controls/reproducibility.py",
         "src/controls/selection.py",
         "src/controls/wrds_checks.py",
@@ -32,9 +33,11 @@
         "src/ml/oos_r2.py",
         "src/ml/summary.py",
         "src/ml/train.py",
+        "src/paths.py",
         "src/pipeline.py",
         "src/provenance.py",
         "src/research_charts.py",
+        "src/verify.py",
         "src/wrds.py",
         "prompts/agents/auditor.md",
         "prompts/agents/critic.md",
@@ -49,6 +52,14 @@
         "sha256": "f333cd02076485ec",
         "bytes": 358076009
       },
+      "data/benchmarks/SP500.csv": {
+        "sha256": "d58f831df2fd37c5",
+        "bytes": 48903
+      },
+      "data/benchmarks/TB3MS.csv": {
+        "sha256": "18d6a3def98fecb7",
+        "bytes": 2263
+      },
       "data/benchmarks/ff5_factors.zip": {
         "sha256": "b8653b411cc5e289",
         "bytes": 11948
@@ -60,14 +71,6 @@
       "data/benchmarks/ff_momentum.zip": {
         "sha256": "7ee14e892b0f7044",
         "bytes": 5596
-      },
-      "data/benchmarks/SP500.csv": {
-        "sha256": "d58f831df2fd37c5",
-        "bytes": 48903
-      },
-      "data/benchmarks/TB3MS.csv": {
-        "sha256": "18d6a3def98fecb7",
-        "bytes": 2263
       },
       "data/chars_final_with_names.parquet": {
         "sha256": "797c01ebd59f7a14",
@@ -99,9 +102,9 @@
       }
     },
     "environment": {
-      "python": "3.14.5",
-      "platform": "Windows-11-10.0.26200-SP0",
-      "requirements_sha256": "ff19ad7debb2e128"
+      "python": "3.14.6",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "requirements_sha256": "92081e1dd91d6ccf"
     },
     "baseline": {
       "information_ratio": 0.834141,
@@ -138,40 +141,40 @@
     }
   },
   "book": {
-    "written_utc": "2026-09-26T03:43:50+00:00",
-    "code": "7b4112c156e9b8d0",
+    "written_utc": "2026-09-27T16:59:24+00:00",
+    "code": "21664a7e7f96d88c",
     "files": {
-      "submission/holdings.csv": "fd31e2ba7f1c69c1607d740f18749fe9e3d2ff68c67ab08a38c479d9e3c0f90d",
-      "submission/returns.csv": "a8d1a3b0ad93b98270405999690b4a826fe8c4ab673fa8a96fb005fddc4327aa",
-      "submission/metrics.json": "665138f2a4c076196c85c4776ec7fdac831052fdb0dafaa4efecfb9223b4a015",
-      "submission/exhibits/auditor.json": "9f0baf6ee381808bfc3c7c54634311da02303f4959052d8a3e56f0599fd7a959",
-      "submission/exhibits/config_log.csv": "f0294188deed34a8325772c7bdcc6c79511742d1d332c6f0290b2161143234c1",
-      "submission/exhibits/confirmation.json": "cf781298789a8291a6d73b31d8785e705554a1d43421bd63128c22a635226aac",
-      "submission/exhibits/critic.json": "d68c48278603902843c842fa0e234128be6263317ebb96cc740ef77cf656aa94",
-      "submission/exhibits/discovery.json": "997f4dab229dc05d372865c379979f993c3209164319ec194ba8e204cdba1a91",
-      "submission/exhibits/labels.csv": "3ab1aeef70f380307ef28cdaaf6086129502e2ccda0fe0efb1ab2a30fad70eda",
-      "submission/exhibits/labels.json": "a2292a3efa53042347edc351f099b28457c335bf6768030987eeaf3088f14f10",
-      "submission/exhibits/live_forecast.json": "858e265061a336107f77c1f36115e0af98cb6c33d0146f2eb4bfe2eb1b2378f6",
-      "submission/exhibits/live_forecast_2026-09.csv": "bb58c4d406a1edb2b68c7e752c4b3ea0eab8177c225116b23473c001fd578062",
-      "submission/exhibits/live_forecast_2026-09_corrected.csv": "38962800b07ea311ac692a029ec6598ce2b3afe28108bdb8961f255201dcb98a",
-      "submission/exhibits/pack.json": "07a1f531aee484a7fc477e438d1341360631d0d08fbecf35bf076b8fe6e05891",
-      "submission/exhibits/wrds.json": "8c5ef67f9d2fcdba0c304ac836d62f1d6ef7506f14561f3920e7486df03afec4"
+      "submission/holdings.csv": "48d7ee108e34b69fb235380e1e583d0fa8f1d9d767d64392e87e5c0c809694fd",
+      "submission/returns.csv": "fb6144b2ad367ca7c71dca292904054b2e9c6e0738a31aee1084ca8d1f17379b",
+      "submission/metrics.json": "3c7791f0c1be2a6c738fa37d550e482c6ed838421629679aae1fd794756eddbd",
+      "submission/exhibits/auditor.json": "ecfd83c5a525719d89df69d1440a4b95699d2ae26b5d321eea7dbbc7a4c4c4f7",
+      "submission/exhibits/config_log.csv": "ebde3ce6a9e8b353e85de74325f1bed726bcba83726ae3369cc1e31be54418cc",
+      "submission/exhibits/confirmation.json": "82f941862f0a2711c43c540b08e61e558cfbe304a543d8d675c8e7f0c9162bd3",
+      "submission/exhibits/critic.json": "8decfd03a8272297bea1b491739e14e977260bff6c36b8ad4f87beda19c7ccc9",
+      "submission/exhibits/discovery.json": "eb2275fdaad7e3514bd48993ae3fbdb60d7cabe16afe1d68022d1170d2ba54a6",
+      "submission/exhibits/labels.csv": "ea9c912b9324b71069c17eaa22e39b1e912971bce31a4f0b07e5bda9d09dba7e",
+      "submission/exhibits/labels.json": "8c9b2620255e5399c2b325ef0c75cdad69f36bce151e7f1d54533670c8fb862d",
+      "submission/exhibits/live_forecast.json": "315f8233f1d22525deed68380eb930de116c5400ef6ad876dfe787a8f1747866",
+      "submission/exhibits/live_forecast_2026-09.csv": "4aca2ba7b2f2a945bc9da3bb7e099fcdd5acdf938d40fa5273b4f03f2c2e9dde",
+      "submission/exhibits/live_forecast_2026-09_corrected.csv": "eb60a983495d15eccd42917b1c687c511fd2b6d0f1271679512244bcfdc28127",
+      "submission/exhibits/pack.json": "6e6643c4709ce69cd623f67682bc1b0294dd559a980b6aa13bded1dcb47819fd",
+      "submission/exhibits/wrds.json": "20eee7538bc84876fe862648d407079759df1c5ca739e5c5a510350bb969f2fe"
     }
   },
   "ml": {
-    "written_utc": "2026-09-26T00:29:50+00:00",
-    "code": "6084812f57aad228",
+    "written_utc": "2026-09-27T16:02:34+00:00",
+    "code": "3307359a9df251ba",
     "files": {
-      "submission/exhibits/ml_metrics.json": "3b3d42c1b0c93a2185e69b23cae271a28fc5175b82170d5b92018c4c2749f51c",
-      "submission/exhibits/subset_sweep.csv": "f379a4797e8be71d755be6031fe399f8f1b5e95fdf9b2693d7dca2df1a96ecc4",
-      "submission/exhibits/selection.json": "933d245e8cc3a90ec1ced86162a4cb900b5de6c88286b4328a0b05675439a099",
-      "submission/exhibits/nn3_seeds.json": "66542d24d0736f1d7d6ea0ced4f6f26b665951ce1113ce496a05e12bfc42b153",
-      "submission/exhibits/placebo_lab.json": "04faa68c74254558065ced9473953cbc91d229401f7e52963394b169ca4305b3",
-      "submission/exhibits/constraint_survival.json": "dbc0bc5a7b1a78122570ce710d328461b90286d567587e4a07b4c8ce36b76801",
-      "submission/exhibits/oos_r2.json": "dc233f03a0e224a16b00db6c3c72df333b8d1d963ff3827bd0733f4c6877298d",
-      "submission/exhibits/factor_atlas.csv": "cee6fce46e2858cf82ede18fd8351cf12df7dd95c32d3442ab602486a3729f28",
-      "submission/exhibits/earnings_decision.json": "b19c1f4ef3bcbd76e0f538aaf44550e9cb569d8d30b76c08f1f0212948c36a1a",
-      "submission/exhibits/earnings_module.json": "9279ef3279bb1804a6c0212c14f87ee8dd35c9b1f9dd0a4fb98363540bd430e1"
+      "submission/exhibits/ml_metrics.json": "0a03f151a358444707ab8d8a51de04ac80739300660da4c516422d521f0eb8de",
+      "submission/exhibits/subset_sweep.csv": "8d0b86ce90646305194391f82a876844ad91d78f27ade9b0795f02a9111d61b2",
+      "submission/exhibits/selection.json": "6654ff1262cf569ddd40a008af30acf63c59566de1c81b1b2b0e6bdd176d1f26",
+      "submission/exhibits/nn3_seeds.json": "ce723d1b7104505199dd149a024e2bfd5afa738e81840b62ac2e472d705efac9",
+      "submission/exhibits/placebo_lab.json": "cd82a2989c4bdb6518a9ee6805903ac8b91d0c799f0ca6473ba3671897dc44af",
+      "submission/exhibits/constraint_survival.json": "48f101c33126add1cebd9cd61f10fca39d2b318fe3ae3bc97d4bca6529d7b296",
+      "submission/exhibits/oos_r2.json": "1a9d5f06d90b23c08320ed76f0f03bd53cff8956af4369440779247a3d253c5f",
+      "submission/exhibits/factor_atlas.csv": "6c10acce9d27fd0672582e19605e19db386b16e34862ab2cb8fc0038374fe9eb",
+      "submission/exhibits/earnings_decision.json": "0e34e9c6efa8620a7f1dae915c12d281901290db503b1a40c3051a2c099a84df",
+      "submission/exhibits/earnings_module.json": "38a3797a8709eb2ff883c8455e689faf56b9486649c9dc14c6c477aa9308dca9"
     }
   }
 }

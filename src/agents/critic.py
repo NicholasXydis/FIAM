@@ -16,12 +16,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import harness as H
 
+import paths
 import pipeline as P
 
 ROOT = H.ROOT
-EXHIBITS = ROOT / "submission" / "exhibits"
+EXHIBITS = ROOT / paths.EXHIBITS
 PROMPT = ROOT / "prompts" / "agents" / "critic.md"
-HOLDINGS = ROOT / "submission" / "holdings.csv"
+HOLDINGS = ROOT / paths.SUBMISSION / "holdings.csv"
 FILINGS = ROOT / "data" / "8k_20150101_20260831_identified.parquet"
 
 # Ten each side. Fewer misses the book's character, more is a reading list nobody works through.
@@ -47,7 +48,7 @@ SAME_INPUTS = (
 # An exhibit the pipeline wrote, or nothing if that step has not run.
 def load(name: str) -> dict:
     path = EXHIBITS / name
-    return json.loads(path.read_text()) if path.exists() else {}
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 # The ten largest longs and shorts, averaged over every month so one-month bets never outrank.
@@ -144,7 +145,7 @@ class Evidence:
 
     # What a risk committee asks first: factor loadings, borrow, and the clean test.
     def book_risk(self) -> dict:
-        metrics = json.loads((ROOT / "submission" / "metrics.json").read_text())
+        metrics = json.loads((ROOT / paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))
         return self.show(
             dict(
                 five_factor_momentum=load("pack.json").get("risk", {}).get("five_factor_momentum"),
@@ -269,7 +270,7 @@ def repeat() -> None:
         comparison=H.repeatable(first, result["transcript"]),
         runtime=header[1]["server"],
     )
-    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2))
+    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     print(json.dumps(out["repeatability"], indent=2))
 
 
@@ -290,7 +291,7 @@ def main() -> None:
         unsupported=sum(1 for c in checked if not c["numbers_supported"]),
         transcript=result["transcript"].relative_to(ROOT).as_posix(),
     )
-    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2))
+    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     print(f"{len(checked)} critiques, {out['unsupported']} with numbers no tool showed")
 
 

@@ -21,21 +21,21 @@
     "turnover": 0.5342314568009214,
     "positions": 316.2647058823529,
     "months": 68,
-    "beta_realized": -0.1086358740239354,
-    "beta_stderr": 0.10668793963521951,
+    "beta_realized": -0.10863587402393529,
+    "beta_stderr": 0.10668793963521934,
     "tails_monotone": true
   },
   "variants": {
     "announcement_premium": {
-      "information_ratio": 0.7212145584366706,
-      "gross_annual": 0.1940886587807358,
-      "net_annual": 0.14332825969825502,
-      "cost_annual": 0.050760399082480784,
-      "turnover": 0.7245955604501321,
+      "information_ratio": 0.7211548744239692,
+      "gross_annual": 0.1940770506541014,
+      "net_annual": 0.14331700671303654,
+      "cost_annual": 0.0507600439410649,
+      "turnover": 0.7245885451164876,
       "positions": 328.9117647058824,
       "months": 68,
-      "beta_realized": -0.10568824197964732,
-      "beta_stderr": 0.10846187908362634,
+      "beta_realized": -0.10570881902579461,
+      "beta_stderr": 0.1084579031409759,
       "tails_monotone": true
     },
     "combined_surprise": {
@@ -46,20 +46,20 @@
       "turnover": 0.5281707142203779,
       "positions": 316.69117647058823,
       "months": 68,
-      "beta_realized": -0.10187743681092815,
-      "beta_stderr": 0.10409440293724123,
+      "beta_realized": -0.10187743681092806,
+      "beta_stderr": 0.10409440293724107,
       "tails_monotone": true
     },
     "fresh_surprise": {
-      "information_ratio": 0.8033991108974603,
-      "gross_annual": 0.19712134698794534,
-      "net_annual": 0.1557256113418791,
-      "cost_annual": 0.04139573564606631,
-      "turnover": 0.5451918331502726,
+      "information_ratio": 0.8034622765765843,
+      "gross_annual": 0.19713367891842792,
+      "net_annual": 0.15573756436209543,
+      "cost_annual": 0.04139611455633253,
+      "turnover": 0.5451993067503778,
       "positions": 316.0882352941176,
       "months": 68,
-      "beta_realized": -0.11047109862344259,
-      "beta_stderr": 0.10503358545040194,
+      "beta_realized": -0.11044923461854465,
+      "beta_stderr": 0.10503712631067894,
       "tails_monotone": true
     }
   },
@@ -72,8 +72,8 @@
       "turnover": 0.5390922728549292,
       "positions": 314.7352941176471,
       "months": 68,
-      "beta_realized": -0.10241918079411638,
-      "beta_stderr": 0.11063922103932324,
+      "beta_realized": -0.1024191807941163,
+      "beta_stderr": 0.11063922103932311,
       "tails_monotone": false
     },
     "lag_6m": {
@@ -84,8 +84,8 @@
       "turnover": 0.5394866233468603,
       "positions": 314.8970588235294,
       "months": 68,
-      "beta_realized": -0.06941131335711262,
-      "beta_stderr": 0.1180343981697211,
+      "beta_realized": -0.06941131335711256,
+      "beta_stderr": 0.1180343981697209,
       "tails_monotone": true
     }
   },
@@ -162,9 +162,9 @@
     }
   },
   "code": {
-    "git_commit": "a056bc2",
+    "git_commit": "b7e1612",
     "working_tree_dirty": true,
-    "src_sha256": "449765ebe51b745f",
+    "src_sha256": "5cd3aa7175e53cd4",
     "src_files": [
       "src/agents/auditor.py",
       "src/agents/critic.py",
@@ -173,6 +173,7 @@
       "src/agents/mcp_server.py",
       "src/benchmarks.py",
       "src/charts.py",
+      "src/compare.py",
       "src/controls/reproducibility.py",
       "src/controls/selection.py",
       "src/controls/wrds_checks.py",
@@ -191,9 +192,11 @@
       "src/ml/oos_r2.py",
       "src/ml/summary.py",
       "src/ml/train.py",
+      "src/paths.py",
       "src/pipeline.py",
       "src/provenance.py",
       "src/research_charts.py",
+      "src/verify.py",
       "src/wrds.py",
       "prompts/agents/auditor.md",
       "prompts/agents/critic.md",

@@ -3,9 +3,9 @@
   "how": "Template models forecast returns directly. Rank-target models and the composite are scaled to returns by a slope estimated only on years before each test year.",
   "template_note": "Organizer's template on our folds, lambda grid stepped at 0.5 not 0.1.",
   "code": {
-    "git_commit": "a056bc2",
+    "git_commit": "b7e1612",
     "working_tree_dirty": true,
-    "src_sha256": "449765ebe51b745f",
+    "src_sha256": "5cd3aa7175e53cd4",
     "src_files": [
       "src/agents/auditor.py",
       "src/agents/critic.py",
@@ -14,6 +14,7 @@
       "src/agents/mcp_server.py",
       "src/benchmarks.py",
       "src/charts.py",
+      "src/compare.py",
       "src/controls/reproducibility.py",
       "src/controls/selection.py",
       "src/controls/wrds_checks.py",
@@ -32,9 +33,11 @@
       "src/ml/oos_r2.py",
       "src/ml/summary.py",
       "src/ml/train.py",
+      "src/paths.py",
       "src/pipeline.py",
       "src/provenance.py",
       "src/research_charts.py",
+      "src/verify.py",
       "src/wrds.py",
       "prompts/agents/auditor.md",
       "prompts/agents/critic.md",
@@ -59,7 +62,7 @@
     },
     "template_enet": {
       "r2_zero_benchmark": -0.0005082036309942417,
-      "r2_cross_sectional": -0.0001221731968934492,
+      "r2_cross_sectional": -0.00012217319689367123,
       "observations": 159419,
       "months": 68
     },
@@ -76,8 +79,8 @@
       "months": 68
     },
     "nn3": {
-      "r2_zero_benchmark": -0.0016594831257628062,
-      "r2_cross_sectional": -0.00046491422126848647,
+      "r2_zero_benchmark": -0.0014756972582383732,
+      "r2_cross_sectional": 6.0055066741560026e-05,
       "observations": 159419,
       "months": 68
     },
@@ -90,7 +93,7 @@
   },
   "nn3_seed_range": {
     "seeds": 5,
-    "min": -0.0016594831257628062,
-    "max": 0.000768520351686286
+    "min": -0.0015837762041328585,
+    "max": 0.0007341407774404951
   }
 }

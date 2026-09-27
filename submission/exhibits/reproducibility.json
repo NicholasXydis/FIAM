@@ -37,7 +37,7 @@
   {
     "check": "carry-in sees last month's book, never this one",
     "passed": true,
-    "detail": "called at line 389, updated at line 400"
+    "detail": "called at line 390, updated at line 401"
   },
   {
     "check": "model folds are strictly ordered in time",

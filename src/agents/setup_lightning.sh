@@ -27,4 +27,4 @@ if ! command -v hermes > /dev/null; then
 fi
 python src/agents/harness.py register
 
-echo "Ready. Copy the organizer's data into data/, then: python run.py --agents"
+echo "Ready. Copy the organizer's data into data/, then: python run.py --official --agents"

@@ -83,7 +83,7 @@ def download(url: str) -> bytes:
 # Downloads the named files, or all of them, and records URL, date and hash beside them.
 def refresh(names: list[str]) -> None:
     BENCH.mkdir(parents=True, exist_ok=True)
-    record = json.loads(SOURCES.read_text()) if SOURCES.exists() else {}
+    record = json.loads(SOURCES.read_text(encoding="utf-8")) if SOURCES.exists() else {}
     for name in names or list(URLS):
         body = download(URLS[name])
         (BENCH / name).write_bytes(body)
@@ -94,7 +94,7 @@ def refresh(names: list[str]) -> None:
             bytes=len(body),
         )
         print(f"  {name}: {len(body):,} bytes")
-    SOURCES.write_text(json.dumps(record, indent=2))
+    SOURCES.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

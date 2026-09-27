@@ -203,7 +203,9 @@ def main() -> None:
             months_with_a_defined_ic=ic["months"],
             months_with_no_view=months - ic["months"],
         )
-        (PREDS / f"{name}_ic.json").write_text(json.dumps(stats, indent=2))
+        (PREDS / f"{name}_ic.json").write_text(
+            json.dumps(stats, indent=2), encoding="utf-8", newline="\n"
+        )
 
         book = score_book(preds)
         portfolio = dict(
@@ -213,7 +215,9 @@ def main() -> None:
             # The rules' floor. A model with no view breaches it, and that is stated, not hidden.
             months_below_100_positions=int((book["n"] < 100).sum()),
         )
-        (PREDS / f"{name}_portfolio.json").write_text(json.dumps(portfolio, indent=2))
+        (PREDS / f"{name}_portfolio.json").write_text(
+            json.dumps(portfolio, indent=2), encoding="utf-8", newline="\n"
+        )
         print(
             f"{name}: IC {stats['ic_mean']:.4f} (t {stats['ic_t']:.2f}), "
             f"IR {portfolio['information_ratio']:+.2f}, net {portfolio['net_annual']:+.1%}/yr"

@@ -10,11 +10,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
-HOLDINGS = Path("submission/holdings.csv")
-RETURNS = Path("submission/returns.csv")
-OUT = Path("submission/exhibits")
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
+RETURNS = paths.SUBMISSION / "returns.csv"
+OUT = paths.EXHIBITS
 RECORD = OUT / "live_forecast.json"
 DECISION, PRIOR = "2026-08-31", "2026-07-31"
 SEALED = OUT / "live_forecast_2026-09.csv"
@@ -72,14 +73,15 @@ def build() -> tuple[pd.DataFrame, dict]:
 
 def main() -> None:
     book, facts = build()
-    body = book.to_csv(index=False).encode()
+    body = book.to_csv(index=False, lineterminator="\n").encode()
     digest = hashlib.sha256(body).hexdigest()
     OUT.mkdir(parents=True, exist_ok=True)
 
     # Sealed once. The hash and its date are the claim, so the first book is never rewritten.
     if RECORD.exists():
-        record = json.loads(RECORD.read_text())
-        same = digest == record["sha256"]
+        record = json.loads(RECORD.read_text(encoding="utf-8"))
+        # The seal was taken on Windows with CRLF endings; the same rows in LF are the same book.
+        same = record["sha256"] in paths.digests(body)
         if not same:
             CORRECTED.write_bytes(body)
         record["current_code"] = dict(
@@ -105,7 +107,7 @@ def main() -> None:
             **facts,
             code=P.source_fingerprint(),
         )
-    RECORD.write_text(json.dumps(record, indent=2))
+    RECORD.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
     print(f"sealed book {record['sha256'][:16]}; today's code {digest[:16]}")
 
 

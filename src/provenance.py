@@ -8,9 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import paths
 import pipeline as P
 
-EXHIBITS = Path("submission/exhibits")
+EXHIBITS = paths.EXHIBITS
 MANIFEST = EXHIBITS / "run_manifest.json"
 
 # One pass mark per exhibit, written here instead of decided once we saw the answer.
@@ -40,7 +41,7 @@ AMENDMENTS = {
 
 # Built by the slow --ml steps. Everything else in submission/ is rebuilt on every run.
 ML_ARTIFACTS = [
-    f"submission/exhibits/{name}"
+    (paths.EXHIBITS / name).as_posix()
     for name in (
         "ml_metrics.json",
         "subset_sweep.csv",
@@ -95,7 +96,7 @@ def fingerprint(entries: list[str]) -> str:
 
 # The baseline the research exhibits are measured against, with the data it ran on.
 def freeze() -> dict:
-    metrics = json.loads(Path("submission/metrics.json").read_text())
+    metrics = json.loads((paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))
     perf, comp = metrics["performance"], metrics["compliance"]
     data = [p for p in sorted(Path("data").rglob("*")) if p.suffix in {".parquet", ".csv", ".zip"}]
     return dict(
@@ -139,11 +140,11 @@ def section(paths: list[str], code: str) -> dict:
 
 def main() -> None:
     # Found rather than listed, so no book-side artifact is missed.
-    found = sorted(Path("submission").glob("*.csv")) + sorted(Path("submission").glob("*.json"))
+    found = sorted(paths.SUBMISSION.glob("*.csv")) + sorted(paths.SUBMISSION.glob("*.json"))
     found += sorted(EXHIBITS.glob("*"))
     book = [p.as_posix() for p in found if p.is_file() and p.name not in SKIP]
     book = [p for p in book if p not in ML_ARTIFACTS]
-    previous = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
+    previous = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.exists() else {}
     out = dict(
         what="The baseline and its pass marks, and which run produced each artifact. The "
         "reproducibility audit checks every hash.",
@@ -154,7 +155,7 @@ def main() -> None:
         if "--ml" in sys.argv
         else previous.get("ml"),
     )
-    MANIFEST.write_text(json.dumps(out, indent=2))
+    MANIFEST.write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     models = f"{len(out['ml']['files'])} model artifacts" if out["ml"] else "no model run yet"
     print(f"baseline frozen, {len(out['book']['files'])} book artifacts, {models}")
 

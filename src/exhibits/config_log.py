@@ -1,9 +1,13 @@
 # The ledger behind the deflated Sharpe. Attempts count runs, not rows. Writes config_log.csv.
 
 import csv
+import sys
 from pathlib import Path
 
-OUT = Path("submission/exhibits")
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths  # noqa: E402
+
+OUT = paths.EXHIBITS
 
 # Eligible means it could have shipped had it won. The attempt totals must equal pipeline.py's.
 LEDGER = """
@@ -93,7 +97,7 @@ def main() -> None:
     table = rows()
     OUT.mkdir(parents=True, exist_ok=True)
     with (OUT / "config_log.csv").open("w", newline="", encoding="utf-8") as fh:
-        csv.writer(fh).writerows([COLUMNS, *table])
+        csv.writer(fh, lineterminator="\n").writerows([COLUMNS, *table])
     eligible = sum(r[3] for r in table if r[2] == "yes")
     print(
         f"{len(table)} experiment families, {eligible} eligible attempts, {sum(r[3] for r in table)} in all"

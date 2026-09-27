@@ -2,7 +2,6 @@
 
 import json
 import textwrap
-from pathlib import Path
 
 import matplotlib
 
@@ -11,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import paths
 from charts import (
     ALT,
     BENCH,
@@ -25,7 +25,7 @@ from charts import (
     xlabel,
 )
 
-EXHIBITS = Path("submission/exhibits")
+EXHIBITS = paths.EXHIBITS
 
 # A line break inside a caption.
 BR = chr(10)
@@ -41,9 +41,9 @@ MODELS = {
 
 # The IC trap in one picture. Every model's decile curve on one axis.
 def decile_curves() -> None:
-    metrics = json.loads((EXHIBITS / "ml_metrics.json").read_text())
+    metrics = json.loads((EXHIBITS / "ml_metrics.json").read_text(encoding="utf-8"))
     table = pd.DataFrame(metrics["deciles"]).T
-    book = json.loads(Path("submission/metrics.json").read_text())
+    book = json.loads((paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))
     deciles = [c for c in table.columns if c.startswith("d")]
 
     # Only the four shipped models. The seed runs belong in their own exhibit.
@@ -169,7 +169,7 @@ def signal_selection() -> None:
 
 # Where the money goes. Panel A: gross to net by cost line. Panel B: the same costs by year.
 def costs() -> None:
-    pack = json.loads((EXHIBITS / "pack.json").read_text())
+    pack = json.loads((EXHIBITS / "pack.json").read_text(encoding="utf-8"))
     parts, even = pack["costs"]["components"], pack["costs"]["break_even"]
     split = pack["subperiod"]
     gross = split["full_2021_2026"]["gross_annual"]
@@ -225,7 +225,7 @@ def costs() -> None:
 
 # Panel A: variance the factors explain. Panel B: every unconstrained loading, with its t.
 def factor_attribution() -> None:
-    risk = json.loads((EXHIBITS / "pack.json").read_text())["risk"]
+    risk = json.loads((EXHIBITS / "pack.json").read_text(encoding="utf-8"))["risk"]
     d, e = risk["attribution"], risk["five_factor_momentum"]
     names = {
         "mkt_rf": "market",
@@ -285,7 +285,7 @@ def factor_attribution() -> None:
 
 # Two panels. Prediction and portfolio are different metrics, never one line.
 def constraint_survival() -> None:
-    d = json.loads((EXHIBITS / "constraint_survival.json").read_text())
+    d = json.loads((EXHIBITS / "constraint_survival.json").read_text(encoding="utf-8"))
     stages = d["predictive_stages"]
     labels = ["Raw score", "+ sector", "+ beta", "+ volatility"]
 
@@ -370,7 +370,7 @@ def constraint_survival() -> None:
 
 # Two panels, because the null is only zero before costs. Net IR alone would mislead.
 def placebo_lab() -> None:
-    d = json.loads((EXHIBITS / "placebo_lab.json").read_text())
+    d = json.loads((EXHIBITS / "placebo_lab.json").read_text(encoding="utf-8"))
     null = d["permutation_null"]
     shipped = d["shipped"]
 
@@ -451,7 +451,7 @@ def placebo_lab() -> None:
 
 # Which signals earned the gross return, and how much the twelve leave unexplained.
 def signal_attribution() -> None:
-    d = json.loads((EXHIBITS / "pack.json").read_text())["attribution"]
+    d = json.loads((EXHIBITS / "pack.json").read_text(encoding="utf-8"))["attribution"]
     full = d["full"]
     names = sorted(
         (k for k in full if k not in ("residual", "explained_total")),
@@ -489,7 +489,7 @@ def signal_attribution() -> None:
 # All 147 characteristics before 2021 against after. No slope is why nothing is chosen from data.
 def factor_atlas() -> None:
     table = pd.read_csv(EXHIBITS / "factor_atlas.csv").dropna(subset=["t_before", "t_after"])
-    summary = json.loads((EXHIBITS / "selection.json").read_text())["atlas"]
+    summary = json.loads((EXHIBITS / "selection.json").read_text(encoding="utf-8"))["atlas"]
     ours = table[table["in_book"]]
     rest = table[~table["in_book"]]
 

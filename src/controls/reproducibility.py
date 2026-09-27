@@ -16,13 +16,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "ml"))
 import dataset as D
 
 import benchmarks as B
+import paths
 import pipeline as P
 import provenance
 
 SRC = Path("src")
-HOLDINGS = Path("submission/holdings.csv")
-RETURNS = Path("submission/returns.csv")
-OUT = Path("submission/exhibits")
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
+RETURNS = paths.SUBMISSION / "returns.csv"
+OUT = paths.EXHIBITS
 FOLDS = Path("cache/folds/folds.parquet")
 
 # A rank or fill is safe when grouped by one of these.
@@ -56,7 +57,7 @@ def check(name: str):
 # An exhibit the pipeline wrote, or None if its step has not run.
 def exhibit(name: str) -> dict | None:
     path = OUT / name
-    return json.loads(path.read_text()) if path.exists() else None
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
 # The names in the SIGNALS block, read from source, the only place a feature enters the book.
@@ -214,7 +215,9 @@ def survival_reconciles_to_the_book():
     if not survival:
         return SKIPPED
     final = survival["models"]["composite"]["portfolio"]["after_costs"]["net_ir"]
-    book = json.loads(Path("submission/metrics.json").read_text())["performance"]
+    book = json.loads((paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))[
+        "performance"
+    ]
     shipped = book["information_ratio"]
     return abs(final - shipped) < 0.01, f"exhibit {final:.3f} vs book {shipped:.3f}"
 
@@ -264,11 +267,7 @@ def artifacts_match_their_run():
     if not manifest:
         return SKIPPED
     files = {**(manifest["book"] or {}).get("files", {}), **(manifest["ml"] or {}).get("files", {})}
-    bad = [
-        Path(f).name
-        for f, digest in files.items()
-        if not Path(f).exists() or provenance.sha256(Path(f)) != digest
-    ]
+    bad = [Path(f).name for f, digest in files.items() if not paths.matches(Path(f), digest)]
     return not bad, f"changed since their run: {bad}" if bad else "all hashes match"
 
 
@@ -279,14 +278,14 @@ def model_exhibits_are_current():
     if not ml:
         return True, "no --ml run recorded yet, skipped"
     ok = provenance.fingerprint(provenance.ML_CODE) == ml["code"]
-    return ok, "current" if ok else "code changed since, rerun python run.py --ml"
+    return ok, "current" if ok else "code changed since, rerun uv run run.py --official --ml"
 
 
 # Every model book must span the same 68 months as ours, flat months included.
 @check("every model book covers all 68 months")
 def model_books_cover_68_months():
-    paths = Path("cache/preds").glob("*_portfolio.json")
-    books = {p.stem: json.loads(p.read_text())["months"] for p in paths}
+    found = Path("cache/preds").glob("*_portfolio.json")
+    books = {p.stem: json.loads(p.read_text(encoding="utf-8"))["months"] for p in found}
     if not books:
         return SKIPPED
     short = {k: v for k, v in books.items() if v != 68}
@@ -332,7 +331,7 @@ def docs_quote_the_check_count():
 # The rules measure beta against the S&P 500, over every holding month.
 @check("market is the S&P 500, regressed over all 68 months")
 def market_is_the_sp500():
-    notes = json.loads(Path("submission/metrics.json").read_text())["notes"]
+    notes = json.loads((paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))["notes"]
     ok = "S&P 500" in notes["market_series"] and notes["regression_months"] == 68
     return ok, f"{notes['market_series']}, {notes['regression_months']} months"
 
@@ -374,14 +373,14 @@ def book_is_current():
     if not manifest:
         return SKIPPED
     ok = provenance.fingerprint(["src", "run.py", "requirements.txt"]) == manifest["book"]["code"]
-    return ok, "current" if ok else "code changed since, rerun python run.py"
+    return ok, "current" if ok else "code changed since, rerun uv run run.py --official"
 
 
 # Every benchmark file is the one its recorded source says it is, byte for byte.
 @check("benchmark files match their recorded sources")
 def benchmarks_are_pinned():
-    sources = json.loads(B.SOURCES.read_text()) if B.SOURCES.exists() else {}
-    bad = [n for n, s in sources.items() if provenance.sha256(B.BENCH / n) != s["sha256"]]
+    sources = json.loads(B.SOURCES.read_text(encoding="utf-8")) if B.SOURCES.exists() else {}
+    bad = [n for n, s in sources.items() if not paths.matches(B.BENCH / n, s["sha256"])]
     missing = sorted(set(B.URLS) - set(sources))
     ok = not bad and not missing
     return ok, f"changed: {bad}, unrecorded: {missing}" if not ok else f"{len(sources)} files match"
@@ -393,7 +392,10 @@ def wrds_exits_applied():
     table = P.exits()
     if table is None:
         official = os.environ.get("FIAM_OFFICIAL") == "1"
-        return not official, "PROVISIONAL: no data/wrds/exits.parquet, run python src/wrds.py"
+        return (
+            not official,
+            "PROVISIONAL: no WRDS exports; add them with uv run run.py --import <folder>",
+        )
     book = pd.read_csv(HOLDINGS, parse_dates=["Date"])
     decided = book["Date"] - pd.offsets.MonthEnd(1)
     dead = int((book["PERMNO"].map(table["exit_date"]) <= decided).sum())
@@ -408,7 +410,9 @@ def main() -> int:
     results = [(name, *function()) for name, function in CHECKS]
     OUT.mkdir(parents=True, exist_ok=True)
     report = [dict(check=n, passed=bool(p), detail=d) for n, p, d in results]
-    (OUT / "reproducibility.json").write_text(json.dumps(report, indent=2))
+    (OUT / "reproducibility.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8", newline="\n"
+    )
     for name, passed, detail in results:
         print(f"  [{'PASS' if passed else 'FAIL'}] {name:<48} {detail}")
     failed = sum(1 for _, p, _ in results if not p)

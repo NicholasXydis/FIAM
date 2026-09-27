@@ -12,15 +12,16 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths
 import pipeline as P
 
 FILINGS = Path("data/8k_20150101_20260831_identified.parquet")
 CRSP = Path("data/wrds/crsp_monthly.parquet")
 COMPUSTAT = Path("data/wrds/compustat_quarterly.parquet")
-HOLDINGS = Path("submission/holdings.csv")
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
 SOURCES = P.CACHE / "label_sources.parquet"
 EDGAR = P.CACHE / "edgar"
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 
 # Endings that differ between sources without changing who the company is.
 SUFFIXES = "|".join(
@@ -110,7 +111,7 @@ def edgar(cik, eom: pd.Timestamp) -> tuple[str | None, list[str]]:
     path = None if pd.isna(cik) else EDGAR / f"CIK{int(cik):010d}.json"
     if path is None or not path.exists():
         return None, []
-    record = json.loads(path.read_text())
+    record = json.loads(path.read_text(encoding="utf-8"))
     for former in record.get("formerNames", []):
         if pd.Timestamp(former["from"][:10]) <= eom <= pd.Timestamp(former["to"][:10]):
             return former["name"], record.get("tickers", [])
@@ -168,7 +169,11 @@ def verdict(row) -> str:
 def fetch(ciks: set) -> None:
     contact = (
         os.environ.get("SEC_CONTACT")
-        or dict(line.split("=", 1) for line in Path(".env").read_text().splitlines() if "=" in line)
+        or dict(
+            line.split("=", 1)
+            for line in Path(".env").read_text(encoding="utf-8").splitlines()
+            if "=" in line
+        )
         .get("SEC_CONTACT", "")
         .strip()
     )
@@ -216,7 +221,9 @@ def main() -> None:
     keep = ["Date", "PERMNO", "TICKER", "COMPANY NAME", "why_listed", "source", "label_month"]
     keep += ["filing_ticker", "filing_company", "filed", "cik", "edgar_name", "edgar_tickers"]
     OUT.mkdir(parents=True, exist_ok=True)
-    listed[keep].sort_values(["Date", "PERMNO"]).to_csv(OUT / "labels.csv", index=False)
+    listed[keep].sort_values(["Date", "PERMNO"]).to_csv(
+        OUT / "labels.csv", index=False, lineterminator="\n"
+    )
 
     period = late.map({False: "2021_2025_crsp", True: "2026_public_filings"})
     summary = dict(
@@ -237,7 +244,9 @@ def main() -> None:
         ],
         edgar_filers_cached=len(list(EDGAR.glob("*.json"))) if EDGAR.exists() else 0,
     )
-    (OUT / "labels.json").write_text(json.dumps(P.round_floats(summary), indent=2))
+    (OUT / "labels.json").write_text(
+        json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n"
+    )
     print(json.dumps(summary["by_period"], indent=2))
 
 

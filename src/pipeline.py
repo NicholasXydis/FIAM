@@ -17,13 +17,14 @@ import pyarrow.parquet as pq
 import statsmodels.api as sm
 from scipy.stats import kurtosis, norm, skew
 
+import paths
 from benchmarks import benchmarks
 
 CHARS = Path("data/chars_final_with_names.parquet")
 CHAR_LIST = Path("data/factor_char_list.csv")
 CACHE = Path("cache")
 EXITS = Path("data/wrds/exits.parquet")
-OUT = Path("submission")
+OUT = paths.SUBMISSION
 
 # We decide at month end and hold the next, so July 2026 is the last month we can act on.
 FIRST_FORECAST, LAST_FORECAST = "2020-12-31", "2026-07-31"
@@ -496,7 +497,7 @@ def fill_labels(holdings: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
 def write_holdings(filled: pd.DataFrame) -> None:
     out = filled[["Date", "PERMNO", "TICKER", "COMPANY_NAME", "WEIGHT"]]
     out = out.rename(columns={"COMPANY_NAME": "COMPANY NAME"}).round({"WEIGHT": 6})
-    out.to_csv(OUT / "holdings.csv", index=False)
+    out.to_csv(OUT / "holdings.csv", index=False, lineterminator="\n")
     # Every borrowed label with its source month. The label check folds it into its exhibit.
     borrowed = filled[filled["backfilled"]]
     CACHE.mkdir(exist_ok=True)
@@ -578,8 +579,10 @@ def run() -> dict:
     out = book.join(bm[["rf"]], how="left")
     out["portfolio_total_return"] = out["rf"] + out["net"]
     out["active_return"] = out["portfolio_total_return"] - (out["rf"] + 0.04 / 12)
-    out.reset_index().to_csv(OUT / "returns.csv", index=False)
-    (OUT / "metrics.json").write_text(json.dumps(stats, indent=2, default=str))
+    out.reset_index().to_csv(OUT / "returns.csv", index=False, lineterminator="\n")
+    (OUT / "metrics.json").write_text(
+        json.dumps(stats, indent=2, default=str), encoding="utf-8", newline="\n"
+    )
     return stats
 
 
@@ -734,7 +737,7 @@ def performance(book: pd.DataFrame) -> dict:
     stats = {
         "_about": {
             "what": "One run of src/pipeline.py. The source of truth for every number.",
-            "regenerate": "python run.py",
+            "regenerate": "uv run run.py --official",
             "sections": {
                 "run": "when this was made, from which code",
                 "performance": "returns, risk, and the market regression",
