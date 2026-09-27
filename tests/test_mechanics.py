@@ -1,5 +1,6 @@
 # Mechanics tests on small synthetic data. No organizer data, no WRDS, no network needed.
 
+import hashlib
 import importlib
 import json
 import subprocess
@@ -206,3 +207,80 @@ def test_display_name_drops_only_the_state_tag():
         P.display_name("SHENANDOAH TELECOMMUNICATIONS CO/VA/") == "SHENANDOAH TELECOMMUNICATIONS CO"
     )
     assert P.display_name("AT&T INC") == "AT&T INC"
+
+
+# The same rows with LF or CRLF endings are the same file; a binary file must match byte for byte.
+def test_hashes_ignore_line_endings_for_text_only(tmp_path):
+    paths = importlib.import_module("paths")
+    lf, crlf = tmp_path / "a.csv", tmp_path / "b.csv"
+    lf.write_bytes(b"x,y\n1,2\n")
+    crlf.write_bytes(b"x,y\r\n1,2\r\n")
+    digest = next(iter(paths.digests(lf.read_bytes())))
+    assert paths.matches(crlf, digest) and paths.matches(lf, digest)
+    blob = tmp_path / "c.zip"
+    blob.write_bytes(b"x,y\r\n")
+    assert not paths.matches(blob, hashlib.sha256(b"x,y\n").hexdigest())
+    assert not paths.matches(tmp_path / "missing.csv", digest)
+
+
+# A book inside every limit passes; one name short or 60% net fails exactly that rule.
+def test_submission_rules_catch_each_breach():
+    verify = importlib.import_module("verify")
+    months = pd.date_range("2021-01-01", "2026-08-01", freq="MS")
+
+    # Longs and shorts as % of NAV: 95/95 is neutral, 125/65 is 60% net inside 190% gross.
+    def book(names: int, long: float = 95, short: float = 95) -> pd.DataFrame:
+        half = names // 2
+        weight = np.r_[np.full(half, long / half), np.full(names - half, -short / (names - half))]
+        rows = [(m, p, "T", "N", w) for m in months for p, w in enumerate(weight)]
+        return pd.DataFrame(rows, columns=verify.COLUMNS)
+
+    returns = pd.DataFrame(dict(holding_month=months.strftime("%Y-%m-%d")))
+    failed = lambda frame: {n for n, ok, _ in verify.rules(frame, returns) if not ok}  # noqa: E731
+    assert failed(book(200)) == set()
+    assert failed(book(99)) == {"positions 100-500"}
+    assert failed(book(200, long=125, short=65)) == {"net inside +/-50%"}
+    assert failed(book(200, long=105, short=105)) == {"gross at most 200%"}
+    short = book(200)
+    short = short[short["Date"] < "2026-08-01"]
+    assert failed(short) == {"months", "returns cover the same months"}
+    assert failed(book(200).iloc[:0]) == {"holdings.csv has rows"}
+
+
+# The comparison reads results, not run details such as the date or commit.
+def test_comparison_ignores_run_details(tmp_path):
+    compare = importlib.import_module("compare")
+    a, b = tmp_path / "a.json", tmp_path / "b.json"
+    a.write_text(json.dumps(dict(run=dict(git_commit="x"), ir=0.8341, n=[1, 2])))
+    b.write_text(json.dumps(dict(run=dict(git_commit="y"), ir=0.8341, n=[1, 2])))
+    assert compare.difference(a, b) == (0.0, "ir")
+    b.write_text(json.dumps(dict(run=dict(git_commit="y"), ir=0.8326, n=[1, 2])))
+    gap, key = compare.difference(a, b)
+    assert key == "ir" and compare.verdict(gap) == "differs"
+
+
+# --import copies the organizer's files by name and leaves everything else, a CV say, alone.
+def test_import_takes_only_organizer_files(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("run", SRC.parent / "run.py")
+    run = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run)
+    downloads = tmp_path / "Downloads"
+    downloads.mkdir()
+    (downloads / "factor_char_list.csv").write_text("variable\nbe_me\n")
+    (downloads / "Someone_CV.pdf").write_bytes(b"%PDF")
+    (downloads / "notes.csv").write_text("a,b\n1,2\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(SRC))
+    run.import_from(downloads)
+    assert sorted(p.name for p in (tmp_path / "data").iterdir()) == ["factor_char_list.csv"]
+
+
+# A number on one side and nothing on the other is a difference, never a match.
+def test_comparison_counts_a_value_missing_on_one_side(tmp_path):
+    compare = importlib.import_module("compare")
+    a, b = tmp_path / "a.json", tmp_path / "b.json"
+    a.write_text(json.dumps(dict(ir=float("nan"))))
+    b.write_text(json.dumps(dict(ir=0.83)))
+    assert compare.verdict(compare.difference(a, b)[0]) == "differs"
+    b.write_text(json.dumps(dict(ir=float("nan"))))
+    assert compare.verdict(compare.difference(a, b)[0]) == "identical"

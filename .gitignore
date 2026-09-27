@@ -100,7 +100,10 @@ Desktop.ini
 .Trash-*
 *.kate-swp
 
-# Generated outputs
+# Generated outputs, except the submitted holdings and returns
 /submission/figures/
 /submission/*.csv
+!/submission/holdings.csv
+!/submission/returns.csv
 /submission/*.pdf
+/out/
