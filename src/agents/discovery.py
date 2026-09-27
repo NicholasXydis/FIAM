@@ -13,11 +13,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import harness as H
 
+import paths
 import pipeline as P
 
 ROOT = H.ROOT
 PROMPT = ROOT / "prompts" / "agents" / "discovery.md"
-OUT = ROOT / "submission" / "exhibits"
+OUT = ROOT / paths.EXHIBITS
 
 # What the agent may see, and the sealed period it never sees.
 DESIGN_END = "2021-01-01"
@@ -210,9 +211,11 @@ def main() -> None:
                 transcript=result["transcript"].relative_to(ROOT).as_posix(),
             )
         out["random_search_control"] = control(Sandbox(panel, False), panel)
-    book = json.loads((ROOT / "submission" / "metrics.json").read_text())
+    book = json.loads((ROOT / paths.SUBMISSION / "metrics.json").read_text(encoding="utf-8"))
     out["shipped_book_ir"] = book["performance"]["information_ratio"]
-    (OUT / "discovery.json").write_text(json.dumps(out, indent=2, default=str))
+    (OUT / "discovery.json").write_text(
+        json.dumps(out, indent=2, default=str), encoding="utf-8", newline="\n"
+    )
     print(json.dumps({k: v for k, v in out["runs"].items()}, indent=2, default=str)[:3000])
 
 

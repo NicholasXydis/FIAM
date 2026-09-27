@@ -99,7 +99,7 @@ def exits() -> pd.DataFrame:
 def main(paths: list[str]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     sources = OUT / "sources.json"
-    record = json.loads(sources.read_text()) if sources.exists() else {}
+    record = json.loads(sources.read_text(encoding="utf-8")) if sources.exists() else {}
     for path in map(Path, paths):
         name = kind(path)
         columns = TABLES[name][1]
@@ -117,7 +117,7 @@ def main(paths: list[str]) -> None:
             converted_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
         print(f"  {name}: {table.num_rows:,} rows from {path.name}")
-    sources.write_text(json.dumps(record, indent=2))
+    sources.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
     table = exits()
     table.to_parquet(OUT / "exits.parquet")
     print(f"  exits: {len(table):,} securities with a dated delisting or deletion")

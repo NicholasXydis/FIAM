@@ -14,13 +14,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
+import paths  # noqa: E402
 from benchmarks import benchmarks  # noqa: E402
 from pipeline import MARKET_NAME, display_name, regress, universe  # noqa: E402
 
-RETURNS = Path("submission/returns.csv")
-HOLDINGS = Path("submission/holdings.csv")
+RETURNS = paths.SUBMISSION / "returns.csv"
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
 CHARS = Path("data/chars_final_with_names.parquet")
-FIGURES = Path("submission/figures")
+FIGURES = paths.SUBMISSION / "figures"
 
 # One colour per role, colourblind-safe. RED MEANS LOSS AND NOTHING ELSE.
 OURS = "#1f4e79"  # the strategy

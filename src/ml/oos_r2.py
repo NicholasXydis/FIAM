@@ -16,10 +16,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import dataset as D
 import train as T
 
+import paths
 import pipeline as P
 
 PREDS = Path("cache/preds")
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 
 # The template's lambda grids, stepped at 0.5 rather than 0.1 so a fold fits in minutes.
 ENET_GRID = [10.0**e for e in np.arange(-4, 4.01, 0.5)]
@@ -164,7 +165,7 @@ def main() -> None:
     print(f"  composite: {out['methods']['composite']}")
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "oos_r2.json").write_text(json.dumps(out, indent=2))
+    (OUT / "oos_r2.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

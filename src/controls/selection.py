@@ -10,9 +10,10 @@ import pandas as pd
 from scipy.stats import norm
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths
 import pipeline as P
 
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 SUBSET_SIZE = 5
 
 # The sweep's early window is decisions through 2022, so holdings through January 2023.
@@ -50,7 +51,7 @@ def sweep(spreads: dict, baseline: pd.Series) -> dict:
             dict(signals="+".join(cols), ir_early=ir(early), ir_late=ir(late), ir_full=ir(s))
         )
     table = pd.DataFrame(rows)
-    table.to_csv(OUT / "subset_sweep.csv", index=False)
+    table.to_csv(OUT / "subset_sweep.csv", index=False, lineterminator="\n")
     best = table.loc[table["ir_early"].idxmax()]
     return dict(
         n_subsets=int(len(table)),
@@ -141,7 +142,7 @@ def atlas(df: pd.DataFrame, cols: list[str]) -> dict:
         )
     table = pd.DataFrame(rows)
     table["q_before"] = q_values(2 * norm.sf(table["t_before"].abs().fillna(0.0).to_numpy()))
-    table.to_csv(OUT / "factor_atlas.csv", index=False)
+    table.to_csv(OUT / "factor_atlas.csv", index=False, lineterminator="\n")
     valid = table.dropna(subset=["t_before", "t_after"])
     strong = valid[valid["t_before"].abs() >= HLZ_T]
     return dict(
@@ -179,7 +180,7 @@ def main() -> None:
         search_control=search(spreads, baseline),
         atlas=atlas(history.dropna(subset=["ret_exc_lead1m", "beta_60m"]), cols),
     )
-    (OUT / "selection.json").write_text(json.dumps(out, indent=2))
+    (OUT / "selection.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     s, c, a = out["subset_sweep"], out["search_control"], out["atlas"]
     print(f"{s['n_subsets']} subsets, IR {s['ir_full_min']:.2f} to {s['ir_full_max']:.2f}")
     looked, sealed = c["chosen_ir_in_search"], c["chosen_ir_in_sealed"]

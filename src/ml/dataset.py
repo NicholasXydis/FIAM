@@ -108,12 +108,17 @@ def build(refresh: bool = False) -> Path:
     stamp = CACHE / "fingerprint.txt"
     # Rebuild if the panel, predictors, screen or schedule change. Stale caches ship bugs.
     current = fingerprint()
-    if marker.exists() and not refresh and stamp.exists() and stamp.read_text() == current:
+    if (
+        marker.exists()
+        and not refresh
+        and stamp.exists()
+        and stamp.read_text(encoding="utf-8") == current
+    ):
         return marker
     cols = P.characteristics()
     df = rank_transform(load(), cols)
     df[["permno", "eom", "holding_month", TARGET] + cols].to_parquet(marker, index=False)
-    stamp.write_text(current)
+    stamp.write_text(current, encoding="utf-8", newline="\n")
     return marker
 
 

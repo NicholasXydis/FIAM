@@ -10,10 +10,11 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
-OUT = Path("submission/exhibits")
-RETURNS = Path("submission/returns.csv")
+OUT = paths.EXHIBITS
+RETURNS = paths.SUBMISSION / "returns.csv"
 
 # Decisions from December 2015, so the first holding month is January 2016.
 FIRST, LAST = "2015-12-31", "2020-11-30"
@@ -52,7 +53,9 @@ def main() -> None:
 
     path = OUT / "confirmation.json"
     # When this was first run is part of the evidence, so a rerun keeps the original date.
-    first_run = json.loads(path.read_text())["first_run_utc"] if path.exists() else None
+    first_run = (
+        json.loads(path.read_text(encoding="utf-8"))["first_run_utc"] if path.exists() else None
+    )
     out = dict(
         what="The shipped code and parameters, unchanged, on holding months 2016-01 to 2020-12.",
         why="Every construction choice was made while looking at 2021-2026. This window was "
@@ -63,7 +66,7 @@ def main() -> None:
         shipped_2021_2026=summarise(shipped, market),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(out, indent=2))
+    path.write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
 
     for label in ("confirmation_2016_2020", "shipped_2021_2026"):
         s = out[label]

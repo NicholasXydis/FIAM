@@ -9,10 +9,11 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths
 import pipeline as P
 
 PREDS = Path("cache/preds")
-EXHIBITS = Path("submission/exhibits")
+EXHIBITS = paths.EXHIBITS
 
 # Named, not globbed, so a stray file in the cache can never become a row in the exhibit.
 MODELS = ("enet", "lgbm", "nn3")
@@ -52,7 +53,7 @@ def main() -> None:
     out = {
         "_about": {
             "what": "One run of the src/ml scripts. Every ML number in the write-up is from here.",
-            "regenerate": "python run.py --ml",
+            "regenerate": "uv run run.py --official --ml",
             "note": "IR is after sector, beta and vol neutralization, the optimizer and costs.",
         },
         # The composite's IR lives in metrics.json, so it is left blank rather than duplicated.
@@ -66,13 +67,15 @@ def main() -> None:
         ),
     }
     for name in MODELS:
-        out[name] = json.loads((PREDS / f"{name}_ic.json").read_text())
-        out[name] |= json.loads((PREDS / f"{name}_portfolio.json").read_text())
+        out[name] = json.loads((PREDS / f"{name}_ic.json").read_text(encoding="utf-8"))
+        out[name] |= json.loads((PREDS / f"{name}_portfolio.json").read_text(encoding="utf-8"))
     out["deciles"] = {i: {c: float(v) for c, v in row.items()} for i, row in table.iterrows()}
     # Summarised once by the selection controls, so it is never recomputed differently here.
-    selection = json.loads((EXHIBITS / "selection.json").read_text())
+    selection = json.loads((EXHIBITS / "selection.json").read_text(encoding="utf-8"))
     out["subset_sweep"] = selection["subset_sweep"]
-    (EXHIBITS / "ml_metrics.json").write_text(json.dumps(out, indent=2))
+    (EXHIBITS / "ml_metrics.json").write_text(
+        json.dumps(out, indent=2), encoding="utf-8", newline="\n"
+    )
 
 
 if __name__ == "__main__":

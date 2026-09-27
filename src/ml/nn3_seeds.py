@@ -16,9 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import dataset as D
 import train as T
 
+import paths
 import pipeline as P
 
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 PREDS = Path("cache/preds")
 
 # 42 is the shipped seed, 43-46 added later. Consecutive, not picked. All five reported.
@@ -89,7 +90,7 @@ def main() -> None:
         spread=spread,
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "nn3_seeds.json").write_text(json.dumps(out, indent=2))
+    (OUT / "nn3_seeds.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
 
     ir = spread["information_ratio"]
     print(

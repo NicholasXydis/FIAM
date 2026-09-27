@@ -12,9 +12,10 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import paths
 import pipeline as P
 
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 
 # 200 runs, which places our result to half a percent. Finer than we ever claim.
 DRAWS = 200
@@ -142,7 +143,7 @@ def main() -> None:
         ),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "placebo_lab.json").write_text(json.dumps(out, indent=2))
+    (OUT / "placebo_lab.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     print(
         f"\nnull mean {null.mean():+.3f} (sd {null.std():.3f}), "
         f"shipped at the {percentile:.1f}th percentile"

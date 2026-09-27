@@ -11,10 +11,11 @@ import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
 FILINGS = Path("data/8k_20150101_20260831_identified.parquet")
-OUT = Path("submission/exhibits")
+OUT = paths.EXHIBITS
 
 DESIGN = ("2015-12-31", "2020-11-30")
 TEST = (P.FIRST_FORECAST, P.LAST_FORECAST)
@@ -125,7 +126,7 @@ def design_stage(panel: pd.DataFrame, market: pd.Series) -> dict:
         and b["tails_monotone"]
     )
     path = OUT / "earnings_decision.json"
-    earlier = json.loads(path.read_text()) if path.exists() else {}
+    earlier = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     # When it was decided is the evidence, so a rerun reaching the same decision keeps that date.
     same = earlier.get("ship") == bool(ship) and earlier.get("best_variant") == best
     decision = dict(
@@ -140,7 +141,7 @@ def design_stage(panel: pd.DataFrame, market: pd.Series) -> dict:
         best_variant=best,
         ship=bool(ship),
     )
-    path.write_text(json.dumps(decision, indent=2))
+    path.write_text(json.dumps(decision, indent=2), encoding="utf-8", newline="\n")
     return decision
 
 
@@ -222,7 +223,9 @@ def main() -> None:
         stock_splits=splits(panel),
         code=P.source_fingerprint(),
     )
-    (OUT / "earnings_module.json").write_text(json.dumps(result, indent=2))
+    (OUT / "earnings_module.json").write_text(
+        json.dumps(result, indent=2), encoding="utf-8", newline="\n"
+    )
     for name, s in result["variants"].items():
         print(f"  2021-26 {name}: IR {s['information_ratio']:+.2f}")
 

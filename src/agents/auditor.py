@@ -12,9 +12,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import harness as H
 
+import paths  # noqa: E402, harness puts src/ on the path
+
 ROOT = H.ROOT
 PROMPT = ROOT / "prompts" / "agents" / "auditor.md"
-OUT = ROOT / "submission" / "exhibits"
+OUT = ROOT / paths.EXHIBITS
 
 # A finding counts if it names the right file within this many lines of the planted bug.
 TOLERANCE = 6
@@ -78,7 +80,7 @@ def make_copy(where: Path, plant: bool) -> list[dict]:
         text = path.read_text(encoding="utf-8")
         if old not in text:
             raise RuntimeError(f"could not plant in {file}: the code it targets has moved")
-        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
     # Located after every plant is in, since a later one shifts the lines of an earlier one.
     landed = []
     for file, _, new, what in planted:
@@ -218,7 +220,7 @@ def main() -> None:
                 score=score(findings, landed) if plant else dict(false_alarms=len(findings)),
                 transcript=result["transcript"].relative_to(ROOT).as_posix(),
             )
-    (OUT / "auditor.json").write_text(json.dumps(out, indent=2))
+    (OUT / "auditor.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
     print(json.dumps({k: v["score"] for k, v in out["runs"].items()}, indent=2))
 
 

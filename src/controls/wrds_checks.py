@@ -9,12 +9,13 @@ import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
 WRDS = Path("data/wrds")
-HOLDINGS = Path("submission/holdings.csv")
-RETURNS = Path("submission/returns.csv")
-OUT = Path("submission/exhibits/wrds.json")
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
+RETURNS = paths.SUBMISSION / "returns.csv"
+OUT = paths.EXHIBITS / "wrds.json"
 
 # Signals that only move on a report. Book value stands in for be_me, which also moves with price.
 ACCOUNTING = ["at_gr1", "niq_su", "ope_be", "o_score", "gp_at", "noa_gr1a", "eqnetis_at", "book"]
@@ -218,7 +219,7 @@ def without_wrds() -> dict:
 
 def main() -> None:
     if not (WRDS / "exits.parquet").exists():
-        print("skipped: no data/wrds/, run python src/wrds.py on the WRDS exports")
+        print("skipped: no WRDS exports; add them with uv run run.py --import <folder>")
         return
     crsp = pd.read_parquet(WRDS / "crsp_monthly.parquet", columns=["PERMNO", "YYYYMM", "MthRet"])
     book = pd.read_csv(HOLDINGS, parse_dates=["Date"])
@@ -234,7 +235,7 @@ def main() -> None:
         release_day_sensitivity=release_day_sensitivity(reports),
         organizer_data_only=without_wrds(),
     )
-    OUT.write_text(json.dumps(P.round_floats(out), indent=2))
+    OUT.write_text(json.dumps(P.round_floats(out), indent=2), encoding="utf-8", newline="\n")
 
     r, m, t = out["returns_against_crsp"], out["market_with_dividends"], out["report_dates"]
     print(f"returns: {r['share_within_1bp']:.1%} within 1bp of CRSP, corr {r['correlation']:.4f}")

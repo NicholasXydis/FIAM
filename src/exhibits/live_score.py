@@ -15,9 +15,10 @@ import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
-EXHIBITS = Path("submission/exhibits")
+EXHIBITS = paths.EXHIBITS
 BOOKS = {
     "sealed": EXHIBITS / "live_forecast_2026-09.csv",
     "current_code": EXHIBITS / "live_forecast_2026-09_corrected.csv",
@@ -38,7 +39,7 @@ TOLERANCE = 0.005
 
 # The Tiingo key from the environment or .env, or a clear instruction if there is none.
 def token() -> str:
-    lines = Path(".env").read_text().splitlines() if Path(".env").exists() else []
+    lines = Path(".env").read_text(encoding="utf-8").splitlines() if Path(".env").exists() else []
     found = dict(line.split("=", 1) for line in lines if "=" in line and not line.startswith("#"))
     key = os.environ.get("TIINGO_API_KEY") or found.get("TIINGO_API_KEY", "").split("#")[0].strip()
     if not key:
@@ -49,7 +50,7 @@ def token() -> str:
 # One ticker's adjusted daily closes, from Tiingo once and then from cache. Classes may take a dash.
 def fetch(ticker: str, end: str) -> None:
     path = PRICES / f"{ticker}.json"
-    if path.exists() and json.loads(path.read_text()).get("end", "") >= end:
+    if path.exists() and json.loads(path.read_text(encoding="utf-8")).get("end", "") >= end:
         return
     body = []
     for symbol in dict.fromkeys(
@@ -69,7 +70,9 @@ def fetch(ticker: str, end: str) -> None:
         if body:
             break
     PRICES.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(dict(ticker=ticker, end=end, rows=body)))
+    path.write_text(
+        json.dumps(dict(ticker=ticker, end=end, rows=body)), encoding="utf-8", newline="\n"
+    )
 
 
 # Month-end-to-month-end returns per PERMNO from whatever prices are cached.
@@ -80,7 +83,7 @@ def monthly(book: pd.DataFrame) -> tuple[pd.DataFrame, str]:
         if not path.exists():
             continue
         digest.update(path.read_bytes())
-        rows = json.loads(path.read_text())["rows"]
+        rows = json.loads(path.read_text(encoding="utf-8"))["rows"]
         if rows:
             close = pd.Series({pd.Timestamp(r["date"][:10]): r["adjClose"] for r in rows})
             series[permno] = close.sort_index().resample("ME").last().pct_change()
@@ -163,7 +166,7 @@ def main() -> None:
         for i, ticker in enumerate(tickers, 1):
             fetch(ticker, today)
             print(f"  {i}/{len(tickers)} {ticker}", flush=True)
-    record = json.loads(OUT.read_text()) if OUT.exists() else {}
+    record = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
     record.setdefault(
         "rule", "Report whatever it says. A closed month is final and never rewritten."
     )
@@ -176,7 +179,7 @@ def main() -> None:
         entry = record.setdefault(name, {"months": {}})
         entry["check_2026"] = found
         weights = book.set_index("PERMNO")["WEIGHT"] / 100
-        cost = json.loads((EXHIBITS / "live_forecast.json").read_text())
+        cost = json.loads((EXHIBITS / "live_forecast.json").read_text(encoding="utf-8"))
         cost = cost["expected_cost"] if name == "sealed" else cost["current_code"]["expected_cost"]
         for month in MONTHS:
             if month not in prices.index:
@@ -193,7 +196,7 @@ def main() -> None:
             # October holds September's book as it drifted, with no trades in between.
             weights = weights * (1 + returns.fillna(0.0)) / (1 + result["gross"])
     if any(isinstance(v, dict) for v in record.values()):
-        OUT.write_text(json.dumps(P.round_floats(record), indent=2))
+        OUT.write_text(json.dumps(P.round_floats(record), indent=2), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

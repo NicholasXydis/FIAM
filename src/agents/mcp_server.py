@@ -35,7 +35,9 @@ class Lazy:
 # One agent's tools plus final_answer in a scored run, or every read-only tool for research.
 class Toolbox:
     def __init__(self):
-        self.run = json.loads(H.RUN_FILE.read_text()) if H.RUN_FILE.exists() else None
+        self.run = (
+            json.loads(H.RUN_FILE.read_text(encoding="utf-8")) if H.RUN_FILE.exists() else None
+        )
         if self.run:
             tools = SESSIONS[self.run["agent"]](self.run)
         else:
@@ -124,7 +126,9 @@ def export() -> None:
         for name, tools in agents.items()
     }
     H.TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
-    (H.TRANSCRIPTS / "tools.json").write_text(json.dumps(out, indent=2))
+    (H.TRANSCRIPTS / "tools.json").write_text(
+        json.dumps(out, indent=2), encoding="utf-8", newline="\n"
+    )
     print(f"tool definitions for {len(out)} agents written")
 
 

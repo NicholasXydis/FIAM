@@ -9,11 +9,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import benchmarks as B
+import paths
 import pipeline as P
 
-RETURNS = Path("submission/returns.csv")
-HOLDINGS = Path("submission/holdings.csv")
-OUT = Path("submission/exhibits")
+RETURNS = paths.SUBMISSION / "returns.csv"
+HOLDINGS = paths.SUBMISSION / "holdings.csv"
+OUT = paths.EXHIBITS
 
 HURDLE = 0.04 / 12
 
@@ -380,7 +381,7 @@ def main() -> None:
         attribution=attribution(book, P.universe(), df["gross"]),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "pack.json").write_text(json.dumps(out, indent=2))
+    (OUT / "pack.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
 
     for name in ("full_2021_2026", "first_half_2021_2022", "second_half_2023_2026"):
         s = out["subperiod"][name]
