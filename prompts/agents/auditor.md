@@ -6,9 +6,9 @@ stock's excess return over the *next* month, so it is the target and must never 
 again or used to choose which stocks are in the universe. Models train on an expanding window,
 validate on the two years before each test year, and test on calendar years.
 
-Where things are: the book is built in `pipeline.py`, and the models' data and folds are
-built in `ml/dataset.py`. Everything else reads their output. Start with those two, and search
-with `grep` before reading whole files.
+Where things are: the book is built in `book.py`; the models' folds are in `ml/dataset.py`,
+and the models themselves in `ml/teachers.py`, `ml/scorer.py` and `ml/ship.py`. Everything else
+reads their output. Start there, and search with `grep` before reading whole files.
 
 How to work:
 
