@@ -24,7 +24,6 @@ def test_blend_is_neutral_capped_and_sells_what_left_the_list():
 
 # The composite ships unless another candidate beats it by the hurdle with a small beta.
 def test_ship_rule_keeps_the_composite_without_a_clear_winner(monkeypatch):
-    ship = importlib.import_module("fiam.ml.ship")
     months = pd.date_range("2019-01-01", "2020-12-01", freq="MS")
     base = pd.Series(np.tile([0.02, -0.01], 12), index=months)
     books = {
@@ -41,9 +40,9 @@ def test_ship_rule_keeps_the_composite_without_a_clear_winner(monkeypatch):
         return dict(information_ratio=judged[name], beta=betas[name])
 
     monkeypatch.setattr(P, "judge", fake)
-    assert ship.choose(books, 2021)[0] == "composite"
+    assert P.choose(books, 2021)[0] == "composite"
     betas["scorer50+hedged"] = 0.1
-    assert ship.choose(books, 2021)[0] == "scorer50+hedged"
+    assert P.choose(books, 2021)[0] == "scorer50+hedged"
 
 
 # The 3 x 2 x 2 grid: every blend with and without each learned part, each named in words.
@@ -144,3 +143,24 @@ def test_harness_resolves_models_and_machines(monkeypatch):
     monkeypatch.setenv("FIAM_LLAMA_BUILD", "linux-cpu")
     assert harness.machine() == "linux-cpu"
     assert all(len(sha) == 64 for builds in harness.BUILDS.values() for _, sha in builds)
+
+
+# A walked-forward rule is shown only months before each year, and its picks' months are joined.
+def test_nested_rule_sees_only_the_past():
+    evaluate = importlib.import_module("fiam.evaluate")
+    months = pd.date_range("2019-01-01", "2022-12-01", freq="MS")
+    books = {
+        n: pd.DataFrame(dict(net=np.full(len(months), r)), index=months)
+        for n, r in (("a", 0.01), ("b", 0.02))
+    }
+    seen = {}
+
+    # Records the last month each year's rule was shown, then picks by the year's parity.
+    def rule(history: dict, year: int) -> str:
+        seen[year] = max(b.index.max() for b in history.values())
+        return "a" if year % 2 else "b"
+
+    picks, joined = evaluate.nested(books, rule, range(2021, 2023))
+    assert seen == {2021: pd.Timestamp("2020-12-01"), 2022: pd.Timestamp("2021-12-01")}
+    assert picks == {"2021": "a", "2022": "b"} and len(joined) == 24
+    assert joined.loc["2021", "net"].eq(0.01).all() and joined.loc["2022", "net"].eq(0.02).all()

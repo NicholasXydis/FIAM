@@ -21,8 +21,6 @@ FIRST_DECISION, FIRST_TRADER_YEAR, FIRST_SHIP_YEAR = (
     ("2021-12-31", 2024, 2024) if paths.SMOKE else ("2016-12-31", 2019, 2021)
 )
 
-# Written before any candidate was scored: the composite ships unless another beats it clearly.
-HURDLE, MAX_BETA = 0.25, 0.15
 # PPO is slow, so it is the trader's yardstick on one book: half scorer, learned hedge.
 REFERENCE = P.candidate_name(0.5, True, False)
 
@@ -50,22 +48,6 @@ def run_book(universe, extra, name: str, trades: dict | None = None):
     steps = list(P.walk(P.candidate(universe, extra, name), trades=trades))
     records = pd.DataFrame([P.month_record(*s) for s in steps]).set_index("holding_month")
     return records, steps
-
-
-# Each year's book: the composite, unless an alternative beat it on the two years before.
-def choose(books: dict, year: int) -> tuple[str, dict]:
-    first, last = f"{year - 2}-01-01", f"{year - 1}-12-01"
-    scores = {name: P.judge(b["net"], first, last) for name, b in books.items()}
-    base = scores["composite"]["information_ratio"]
-    fit = {
-        n: s
-        for n, s in scores.items()
-        if n != "composite"
-        and s["information_ratio"] >= base + HURDLE
-        and abs(s["beta"]) <= MAX_BETA
-    }
-    best = max(fit, key=lambda n: fit[n]["information_ratio"]) if fit else "composite"
-    return best, scores
 
 
 # Month by month, a policy trained on the months already paid for, warm from last month's.
@@ -143,7 +125,7 @@ def main() -> None:
 
     by_year, verdicts = {}, {}
     for year in range(FIRST_SHIP_YEAR, 2027):
-        by_year[str(year)], verdicts[str(year)] = choose(books, year)
+        by_year[str(year)], verdicts[str(year)] = P.choose(books, year)
     kept = {
         m: t
         for name, months in trades.items()
@@ -168,7 +150,7 @@ def main() -> None:
         "50% scorer, each with and without the learned hedge and the trader, and each year's "
         "choice by a rule written before any candidate was scored.",
         rule=f"the composite ships unless another candidate's IR over the two prior years beats "
-        f"it by {HURDLE} with beta inside +/-{MAX_BETA}",
+        f"it by {P.HURDLE} with beta inside +/-{P.MAX_BETA}",
         chosen=by_year,
         validation=verdicts,
         candidates_2021_2026={

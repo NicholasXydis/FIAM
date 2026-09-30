@@ -2,10 +2,10 @@
 
 import json
 
-import numpy as np
 import pandas as pd
 
 from fiam import book as P
+from fiam import evaluate as E
 from fiam import paths
 from fiam.agents import harness as H
 
@@ -13,7 +13,6 @@ PROMPT = H.ROOT / "prompts" / "agents" / "director.md"
 OUT = paths.EXHIBITS / "director.json"
 SHIP, MONTHS = paths.EXHIBITS / "ship.json", paths.EXHIBITS / "ship_candidates.csv"
 BUDGET = 4 if paths.SMOKE else 15
-DRAWS, SEED = 10_000, 42
 
 
 # Every candidate's monthly record, as the ship step wrote it.
@@ -104,31 +103,6 @@ def tools(room: Room) -> list[H.Tool]:
     ]
 
 
-# The picked candidates' months joined in order: an approximation, since a switch carries the book.
-def joined(table: pd.DataFrame, picks: dict) -> pd.Series:
-    nets = table["net"].unstack("candidate")
-    return pd.concat([nets.loc[y, name] for y, name in picks.items()])
-
-
-# Where the director's IR falls among random picks of one candidate a year, the same years.
-def against_chance(table: pd.DataFrame, picks: dict) -> dict:
-    nets = table["net"].unstack("candidate")
-    rng = np.random.default_rng(SEED)
-    names = list(P.CANDIDATES)
-    draws = [
-        P.information_ratio(
-            pd.concat([nets.loc[y, names[rng.integers(len(names))]] for y in picks])
-        )
-        for _ in range(DRAWS)
-    ]
-    ir = P.information_ratio(joined(table, picks))
-    return dict(
-        information_ratio=ir,
-        random_mean=float(np.mean(draws)),
-        share_of_random_beaten=float(np.mean(np.array(draws) < ir)),
-    )
-
-
 # One run per ship year, then the picks scored against the rule and chance.
 def main() -> None:
     table = load()
@@ -159,8 +133,8 @@ def main() -> None:
         "switch carries last year's book, so these are close to, not equal to, a walked book.",
         model=server.name,
         years=years,
-        director=against_chance(table, picks),
-        rule=against_chance(table, rule),
+        director=E.chance(E.candidates(), picks),
+        rule=E.chance(E.candidates(), rule),
         agreed_with_rule=sum(picks[y] == rule[y] for y in picks),
     )
     OUT.write_text(json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n")

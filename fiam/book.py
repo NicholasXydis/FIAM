@@ -238,6 +238,9 @@ def universe() -> pd.DataFrame:
     return built
 
 
+# Written before any candidate was scored: the composite ships unless another beats it clearly.
+HURDLE, MAX_BETA = 0.25, 0.15
+
 # The scorer's share of the blend in each candidate, written before any candidate was scored.
 BLENDS = (0.0, 0.25, 0.5)
 
@@ -554,6 +557,22 @@ def judge(net: pd.Series, first: str, last: str) -> dict:
     part = net.loc[first:last]
     fit = regress(part, benchmarks().set_index("month")["mkt_rf"].reindex(part.index))
     return dict(information_ratio=information_ratio(part), beta=float(fit.params.iloc[1]))
+
+
+# Each year's book: the composite, unless an alternative beat it on the two years before.
+def choose(books: dict, year: int) -> tuple[str, dict]:
+    first, last = f"{year - 2}-01-01", f"{year - 1}-12-01"
+    scores = {name: judge(b["net"], first, last) for name, b in books.items()}
+    base = scores["composite"]["information_ratio"]
+    fit = {
+        n: s
+        for n, s in scores.items()
+        if n != "composite"
+        and s["information_ratio"] >= base + HURDLE
+        and abs(s["beta"]) <= MAX_BETA
+    }
+    best = max(fit, key=lambda n: fit[n]["information_ratio"]) if fit else "composite"
+    return best, scores
 
 
 # The figures every research book is compared on, computed one way.

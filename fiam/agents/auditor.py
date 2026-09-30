@@ -77,7 +77,7 @@ PLANTED = [
         "the scorer stops early on the test year it is scored on",
     ),
     (
-        "ml/ship.py",
+        "book.py",
         '    first, last = f"{year - 2}-01-01", f"{year - 1}-12-01"',
         '    first, last = f"{year - 1}-01-01", f"{year}-12-01"',
         "the ship rule picks a year's book on that same year's returns",

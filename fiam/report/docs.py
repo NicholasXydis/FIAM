@@ -665,6 +665,38 @@ def agents(m: dict) -> str:
     return table(["agent", "model", "what happened"], rows) + note
 
 
+# Each way of choosing a book, window by window, beside random picks over the same years.
+def walk(m: dict) -> str:
+    e = load("exhibits/evaluation.json")
+    if not e:
+        return "The research harness has not run yet."
+    names = ["2016-2020", "2021-2022", "2023-2026", "2021-2026"]
+
+    # IR with its month count, blank where a window has less than a year.
+    def cells(windows: dict) -> list[str]:
+        return [
+            f"{windows[w]['information_ratio']:+.2f} ({windows[w]['months']})"
+            if w in windows
+            else ""
+            for w in names
+        ]
+
+    tracks = e["tracks"]
+    rows = [
+        ["Shipped book", *cells(e["shipped"])],
+        ["Ship rule, walked forward", *cells(tracks["ship_rule"]["windows"])],
+        ["Composite every year", *cells(tracks["always_composite"]["windows"])],
+    ]
+    ch = tracks["ship_rule"]["against_chance"]
+    note = (
+        f"\n\nIR by window, months in brackets, on the CRSP market. Picks start in "
+        f"{e['first_pick']}, the first year with two years of candidates behind it. Random picks "
+        f"of one candidate a year average IR {ch['random_mean']:+.2f}; the rule beats "
+        f"{ch['share_of_random_beaten']:.0%} of them."
+    )
+    return table(["", *names], rows) + note
+
+
 # Every holding label, by the source that confirmed it.
 def labels(m: dict) -> str:
     lab = load("exhibits/labels.json")
@@ -913,6 +945,7 @@ TABLES = dict(
     attribution=attribution,
     tails=tails,
     placebo=placebo,
+    walk=walk,
     agents=agents,
     labels=labels,
     deflation=deflation,

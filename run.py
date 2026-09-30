@@ -32,6 +32,7 @@ STEPS = [
     ("fiam.exhibits.daily_risk", "marking the book every trading day, 2021-2025"),
     ("fiam.checks.wrds_checks", "checking exits, returns, market and report dates on WRDS"),
     ("fiam.exhibits.confirmation", "running the same book on 2016-2020"),
+    ("fiam.evaluate", "scoring every candidate and the ship rule window by window, walked forward"),
     ("fiam.exhibits.config_log", "writing the configuration ledger"),
     ("fiam.exhibits.labels", "checking every label against CRSP, 8-K filings and EDGAR"),
 ]
