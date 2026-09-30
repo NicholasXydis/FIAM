@@ -14,8 +14,9 @@ from fiam.ml import text as T
 OUT = paths.EXHIBITS / "scorer.json"
 CACHE = P.CACHE / "scores.parquet"
 CROWD = P.CACHE / "crowd.parquet"
-# What the triage and analyst agents made of each stock-month's filings, once they have run.
-TRIAGE, ANALYST = P.CACHE / "triage.parquet", paths.EXHIBITS / "agents" / "analyst.parquet"
+# What the triage and analyst agents made of each stock-month's filings, as small models learned
+# them from pre-2021 answers; the analyst's own verdicts never enter (amendment 12).
+TRIAGE, ANALYST = P.CACHE / "triage.parquet", P.CACHE / "analyst.parquet"
 PREDS = P.CACHE / "preds" / "scorer.parquet"
 
 # Two years before the rules' first test year, so the ship rule has validation years to judge by.

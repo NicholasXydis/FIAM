@@ -372,6 +372,39 @@ def stress(m: dict) -> str:
     return table(["window", "strategy", "S&P 500", "worst fall inside"], rows) + note
 
 
+# The analyst behind the firewall: what taught the small model, and the recall test.
+def firewall(m: dict) -> str:
+    d = load("exhibits/analyst_learned.json")
+    if not d:
+        return "The analyst's verdicts have not been learned yet; they come from the agents' run."
+    rows = [
+        ("Verdicts that taught, up to November 2020", f"{d['taught_on']:,}"),
+        (
+            "Small model against the analyst, held-out rank correlation",
+            f"{d['cross_validated_rank_correlation']:.2f}",
+        ),
+        ("Stock-months it scores for the stock picker", f"{d['scored_stock_months']:,}"),
+    ]
+    probe = load("exhibits/analyst.json").get("look_ahead_probe")
+    if probe:
+        rows.append(
+            (
+                f"Probe: masked filings where the analyst named the company / year, of "
+                f"{probe['filings']}",
+                f"{probe['company_named']:.0%} / {probe['year_named']:.0%}",
+            )
+        )
+    test = d["recall_test"]
+
+    def cell(period: str, who: str) -> str:
+        x = test[period][who]
+        return f"{x['rank_correlation']:+.3f} (t {x['t']:.1f})"
+
+    body = [[f"IC, {p}", cell(p, "analyst"), cell(p, "learned")] for p in test]
+    recall = table(["", "analyst's own verdicts", "small model"], body)
+    return f"{pairs(rows)}\n\n{recall}\n\n_{d['reading']}_"
+
+
 # Each signal's gross contribution by calendar year, to see which ones stopped working.
 def signal_years(m: dict) -> str:
     years = load("exhibits/pack.json")["attribution"]["by_year"]
@@ -664,6 +697,28 @@ def factors(m: dict) -> str:
         f"\n\nThe six explain {six['r_squared']:.0%} of the variance, over {six['months']} months."
     )
     return table(["", "loading", "t"], rows) + note
+
+
+# Each year split into what the market and five styles paid and what stock selection added.
+def styles(m: dict) -> str:
+    years = load("exhibits/pack.json").get("risk", {}).get("style_by_year")
+    if not years:
+        return "The split by year is written by the next run."
+    rows = [
+        [
+            y if v["months"] == 12 else f"{y} ({v['months']} months)",
+            f"{v['total']:+.1%}",
+            f"{v['styles']:+.1%}",
+            f"{v['selection']:+.1%}",
+        ]
+        for y, v in years.items()
+    ]
+    note = (
+        "\n\nReturn over cash, monthly sums, at the full-period loadings on the market, size, "
+        "value, profitability, investment and momentum (Ken French's factors, which end a month "
+        "before our last). Stock selection is everything the six do not explain."
+    )
+    return table(["year", "total", "from the six styles", "from stock selection"], rows) + note
 
 
 # Each signal's share of gross return, exposure times its pure return.
@@ -1169,6 +1224,7 @@ TABLES = dict(
     scorer=scorer,
     trader=trader,
     crowd=crowd,
+    firewall=firewall,
     years=years,
     legs=legs,
     top=top,
@@ -1182,6 +1238,7 @@ TABLES = dict(
     r2=r2,
     halves=halves,
     factors=factors,
+    styles=styles,
     attribution=attribution,
     tails=tails,
     placebo=placebo,

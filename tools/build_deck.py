@@ -89,6 +89,61 @@ def chart(page, name: str, left, top, width) -> None:
         text(page, [f"{name}.png not drawn yet"], left, top, width, Inches(0.5), 11, MUTED)
 
 
+# The twelve signals in words, for the discussion page.
+NAMES = dict(
+    ope_be="operating profitability",
+    noa_gr1a="slow growth in operating assets",
+    ret_12_1="12-month momentum",
+    eqnetis_at="little new equity issued",
+    o_score="low bankruptcy risk",
+    be_me="book-to-market",
+    niq_su="earnings surprise",
+    chcsho_12m="few new shares",
+    at_gr1="slow asset growth",
+    qmj="quality",
+    ivol_capm_21d="low idiosyncratic volatility",
+    gp_at="gross profitability",
+)
+
+
+# Page 8 from the results: how each year went, which signals paid, where the losses came from.
+def discussion(R, m: dict) -> list[str]:
+    years = {row[0]: row for row in parse(R.years(m))[0][1:]}
+    signals = R.load("exhibits/pack.json")["attribution"]
+    total = {s: sum(y[s] for y in signals["by_year"].values()) for s in NAMES}
+    ranked = sorted(total, key=total.get, reverse=True)
+    worst = signals["worst_months"]
+    health = sum(next(iter(w["worst_sectors"])) == "35" for w in worst)
+    legs = {w["month"]: w["short"] for w in worst}
+    crash = R.load("exhibits/confirmation.json")["confirmation_2016_2020"]["net_by_year"]["2020"]
+    split = R.load("exhibits/pack.json")["risk"].get("style_by_year")
+    lines = [
+        f"Trained for and got: a neutral quality-and-value book. 2021 {years['2021'][1]} and "
+        f"2022 {years['2022'][1]}; in 2022 rate hikes rewarded cheap, profitable firms while the "
+        f"S&P 500 fell {years['2022'][3].lstrip('-')}.",
+        f"Fell short: 2024 {years['2024'][1]} and 2025 {years['2025'][1]} against a hurdle near "
+        f"9%. 2016-20 lost too, almost all in 2020 ({crash:+.1%}), when cheap, profitable stocks "
+        "crashed and speculative ones soared after COVID.",
+    ]
+    if split:
+        lines.append(
+            f"Style or selection: the six styles paid {split['2021']['styles']:+.1%} of 2021 and "
+            f"{split['2022']['styles']:+.1%} of 2022; the 2024 loss was stock-specific "
+            f"({split['2024']['selection']:+.1%} from selection), not style. Appendix."
+        )
+    return [
+        *lines,
+        f"Signals that paid most: {', '.join(NAMES[s] for s in ranked[:3])}. The one that hurt: "
+        f"{NAMES[ranked[-1]]}.",
+        f"Short squeezes cost most: short leg {legs.get('2021-01', 0):+.1%} in the January 2021 "
+        f"meme squeeze, {legs.get('2023-12', 0):+.1%} in December 2023 as markets priced rate "
+        f"cuts. Health care led {health} of the 10 worst months.",
+        f"The AI: {plain(R.shipped(m))}",
+        "Next: let the style-free stock picker carry more once it clears the rule; fewer "
+        "squeezable shorts; more capacity. Largest contributors, right, by ticker and name.",
+    ]
+
+
 def main() -> None:
     from fiam import paths
     from fiam.report import docs as R
@@ -120,6 +175,9 @@ def main() -> None:
         Inches(3.5),
     )
     table(page, R.comparison(m), right, Inches(1.5), half, 9)
+    # The team, as README.md's last line lists it.
+    team = (ROOT / "README.md").read_text().strip().splitlines()[-1]
+    text(page, [team], left, Inches(6.6), Inches(12.3), Inches(0.5), 12, MUTED)
 
     page = slide(deck, "Strategy: what we buy, what we short, and how we stay neutral")
     text(
@@ -141,72 +199,88 @@ def main() -> None:
     table(page, R.top(m), right, Inches(1.2), half, 8)
 
     page = slide(
-        deck, "Data and methodology", "Every model trains only on years before the one it trades"
+        deck,
+        "Data, methodology and the agents",
+        "Every model trains only on years before the one it trades; "
+        "no language model reads 2021-26",
     )
     text(
         page,
         [
             "Data: the 147-characteristic panel and 373,139 8-Ks; from WRDS, delistings, CRSP "
             "daily prices, short interest, analyst data and Compustat report dates.",
-            "Teachers: small models learn what 2025-only data would say, so it informs 2026.",
             "Stock picker: LightGBM ranking on the brief's folds, learning returns net of sector, "
-            "beta and style, from characteristics, FinBERT text, agent verdicts and teachers.",
-            "Trader: reinforcement learning (deep hedging, PPO) against Garleanu-Pedersen.",
-            "Agents: local open models only, names and dates masked, a probe measures recall.",
+            "beta and style, from characteristics, FinBERT text, the agents and four teachers.",
+            "Teachers: small models learn what WRDS data ending in 2025 would say, so it informs "
+            "2026. Trader: deep hedging and PPO against Garleanu-Pedersen.",
+            "OOS R-squared, right: every model's forecasts scaled on earlier years only.",
         ],
         left,
-        Inches(1.5),
+        Inches(1.4),
         half,
-        Inches(4.5),
-        12,
+        Inches(2.6),
+        11,
     )
-    table(page, R.r2(m), right, Inches(1.5), half, 9)
+    table(page, R.r2(m), right, Inches(1.4), half, 8)
+    agents = "\n".join(
+        [
+            "| agent | model | sees | calls, tools | look-ahead blocked by |",
+            "|---|---|---|---|---|",
+            "| Triage | Gemma 4 26B-A4B | 6,000 masked 8-Ks, 2015-18 | 1 per filing, none "
+            "| reads 2015-18 only; FinBERT + LightGBM label the rest |",
+            "| Analyst | Qwen3.8-27B | masked material 8-Ks, 12 months of ranks "
+            "| 1 per stock-month, 5,000, none "
+            "| only verdicts to Nov 2020 teach a small model; "
+            "its later ones never reach the book |",
+            "| AI crowd | Gemma 4 and Qwen3.8 | anonymous percentile cards, 40 a call "
+            "| 60 months of 2016-20, none "
+            "| never sees 2021-26; a small model learns what it buys |",
+            "| Director, discovery, auditor, critic | Qwen3.8, Gemma 4 | our exhibits, via tools "
+            "| at most 15, 60, 60, 30 tool calls "
+            "| none sets a weight; discovery sealed on 2021-26 |",
+            "",
+            "Local open models pinned by SHA-256, temperature 0; names, tickers and dates masked. "
+            "Prompts and tool definitions: appendix.",
+        ]
+    )
+    table(page, agents, left, Inches(4.15), Inches(12.3), 8)
 
     page = slide(deck, "Performance, January 2021 to August 2026", "Net of every modelled cost")
     table(page, R.headline(m), left, Inches(1.5), half, 9)
     table(page, R.committee(m), right, Inches(1.5), half, 9)
 
-    page = slide(deck, "Growth and drawdown against the benchmark and the S&P 500")
-    chart(page, "cumulative_return", left, Inches(1.2), half)
-    chart(page, "drawdown", right, Inches(1.2), half)
+    window = "Jan 2021 - Aug 2026, net of every modelled cost"
+    page = slide(deck, "Growth and drawdown against the benchmark and the S&P 500", window)
+    chart(page, "cumulative_return", left, Inches(1.5), half)
+    chart(page, "drawdown", right, Inches(1.5), half)
 
-    page = slide(deck, "Neutral throughout, not only on average")
-    chart(page, "rolling_beta", left, Inches(1.2), half)
-    chart(page, "rolling_ir", right, Inches(1.2), half)
+    title = "Neutral throughout, and how the edge came and went"
+    page = slide(deck, title, f"{window}; rolling 12 months")
+    quarter = Inches(5.0)
+    chart(page, "rolling_beta", left, Inches(1.45), quarter)
+    chart(page, "rolling_ir", right, Inches(1.45), quarter)
+    chart(page, "rolling_active_return", left, Inches(4.2), quarter)
+    chart(page, "return_histogram", right, Inches(4.2), quarter)
 
-    page = slide(deck, "Exposure, costs and the short book")
-    table(page, R.compliance(m), left, Inches(1.2), half, 9)
-    table(page, R.costs(m), right, Inches(1.2), half, 9)
-    table(page, R.legs(m), left, Inches(4.4), Inches(12.3), 8)
+    page = slide(deck, "Exposure, costs and the short book", window)
+    table(page, R.compliance(m), left, Inches(1.5), half, 9)
+    table(page, R.costs(m), right, Inches(1.5), half, 9)
+    table(page, R.legs(m), left, Inches(4.7), Inches(12.3), 8)
 
-    page = slide(deck, "Discussion: what worked, what did not, what next")
-    text(
-        page,
-        [
-            "Worked: a quality and value tilt, neutral and cost-realistic; strong in 2021-22.",
-            "Did not: 2023-26 was flat as the AI rally favoured expensive growth; 2016-20 lost "
-            "money in value's worst stretch in decades. Six-factor alpha is not significant.",
-            "AI: see the appendix for whether the stock picker earned its place, and the probe.",
-            "Next: a second, style-independent source of return; more capacity; live tracking.",
-        ],
-        left,
-        Inches(1.4),
-        half,
-        Inches(4.5),
-        12,
-    )
-    chart(page, "pnl_contributors", right, Inches(1.2), half)
+    page = slide(deck, "Discussion: what worked, what did not, what next", window)
+    text(page, discussion(R, m), left, Inches(1.5), half, Inches(5.8), 11)
+    chart(page, "pnl_contributors", right, Inches(1.5), half)
 
     for title, builds in (
-        ("Appendix: calendar years and the halves", [R.years, R.halves]),
+        ("Appendix: calendar years, style or stock selection", [R.years, R.styles]),
         ("Appendix: costs, capacity and stress", [R.implementation, R.stress]),
         ("Appendix: neutrality, monthly and daily", [R.drift, R.factor_windows]),
         ("Appendix: a pre-registered construction we rejected", [R.construction]),
         ("Appendix: a pre-registered factor-neutral book we rejected", [R.neutral]),
         ("Appendix: the ship rule and its candidates", [R.ship]),
-        ("Appendix: the machine learning", [R.teachers, R.learning]),
+        ("Appendix: the machine learning and the recall firewall", [R.teachers, R.firewall]),
         ("Appendix: the agents", [R.crowd, R.agents]),
-        ("Appendix: robustness and multiple testing", [R.placebo, R.deflation]),
+        ("Appendix: robustness and multiple testing", [R.halves, R.placebo, R.deflation]),
     ):
         page = slide(deck, title)
         top = Inches(1.2)

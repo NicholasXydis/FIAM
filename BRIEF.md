@@ -44,8 +44,10 @@ It shipped the composite in all 6 years: no learned book beat it clearly.
    ours failed and were dropped.
 3. **Old data helps new decisions.** Small models learn what data that ends in 2025 would say, so it
    still informs 2026.
-4. **AI you can check.** Names and dates are hidden from the models, and a probe measures whether
-   they recognise the company anyway.
+4. **AI that cannot remember the answer.** No language model's reading of a 2021-2026 filing
+   reaches the book: the agents judge older filings, and small models learn those judgments and
+   do the scoring. Names and dates are hidden, and a probe measures whether the models recognise
+   the company anyway.
 5. **The same numbers on any machine**, checked by an audit on every run.
 
 ## The agents

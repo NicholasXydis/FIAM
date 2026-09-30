@@ -274,6 +274,24 @@ def factor_fit(excess: pd.Series, factors: pd.DataFrame) -> dict:
     )
 
 
+# Each year's excess return split at the full-period loadings: the part the market and five styles
+# paid, and the rest, stock selection. Monthly sums, so the two parts add up to the total.
+def style_by_year(excess: pd.Series, factors: pd.DataFrame) -> dict:
+    names = list(factors.columns)
+    both = pd.concat([excess.rename("r"), factors], axis=1, sort=True).dropna()
+    fit = P.regress(both["r"], both[names])
+    style = both[names] @ fit.params[names]
+    return {
+        str(year): dict(
+            months=int(len(part)),
+            total=float(part["r"].sum()),
+            styles=float(style.loc[part.index].sum()),
+            selection=float(part["r"].sum() - style.loc[part.index].sum()),
+        )
+        for year, part in both.groupby(both.index.year)
+    }
+
+
 # Realized beta by era and in rolling years, since a full-period beta can hide a drift.
 def beta_drift(df: pd.DataFrame) -> dict:
     market = B.benchmarks().set_index("month")["mkt_rf"].reindex(df.index)
@@ -344,6 +362,7 @@ def risk(df: pd.DataFrame) -> dict:
     return dict(
         attribution=factor_fit(excess, three),
         five_factor_momentum=factor_fit(excess, extended),
+        style_by_year=style_by_year(excess, extended),
         # Twelve monthly points cannot pin six loadings, so the split is by window, not by year.
         five_factor_momentum_by_window={
             k: factor_fit(excess.loc[a:b], extended) for k, (a, b) in HALVES.items()

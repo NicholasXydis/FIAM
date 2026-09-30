@@ -65,6 +65,7 @@ ML_STEPS = [
     ("fiam.ml.teachers", "teachers: daily beta, crowding and revisions, learned year by year"),
     ("fiam.ml.crowd", "learning where the agents invest, for every month to 2026"),
     ("fiam.agents.analyst", "analyst agent: material filings in the composite's tails"),
+    ("fiam.ml.analyst", "the analyst's pre-2021 verdicts learned from the text, every month"),
     ("fiam.ml.scorer", "scorer: learning to rank what a neutral book earns, five seeds"),
     ("fiam.ml.ship", "the 3 x 2 x 2 candidate grid, the monthly trader, each year's choice"),
 ]

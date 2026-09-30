@@ -297,7 +297,8 @@ characteristics and 8-K counts, which reach August 2026; each year's model sees 
 
 **The stock picker.** LightGBM ranks stocks by next month's return **less** their sector, beta and
 style, so it must pick stocks, not styles. It reads the 147 characteristics, the 8-K counts, FinBERT's
-reading of each filing, the triage and analyst agents, the crowd score and the teachers. It trains on
+reading of each filing, the triage and analyst agents as small models learned them from older
+filings, the crowd score and the teachers. It trains on
 the brief's folds, averages five seeds, and its scores are smoothed over three months so it trades
 less.
 
@@ -390,6 +391,19 @@ score with no LLM at run time.
 The crowd agent has not run yet; it runs with --agents.
 
 <!--/AUTO:crowd-->
+
+**A firewall against recall.** The analyst's model was trained on text written after 2021, so its
+reading of a 2021-2026 filing could be memory, not reading. Its verdicts up to November 2020 teach
+a small model that sees only FinBERT's vectors and the stock's card, and that model, not the
+analyst, scores every stock-month for the stock picker (amendment 12). The triage and crowd agents
+already work this way, so no language model's reading of 2021-2026 reaches the book. The analyst's
+own later verdicts are kept only to measure recall.
+
+<!--AUTO:firewall-->
+
+The analyst's verdicts have not been learned yet; they come from the agents' run.
+
+<!--/AUTO:firewall-->
 
 **Agents as researchers, scored like any model.** The research director sees every candidate's
 months up to each December and chooses next year's book, one run a year; its picks are scored
@@ -537,6 +551,16 @@ before their report. 2021-2025 alone, the CRSP years, gives IR
 The six explain 48% of the variance, over 67 months.
 
 <!--/AUTO:factors-->
+
+**Style or stock selection, year by year.** At those loadings, each year's return splits into what
+the six paid and what is left. Styles paid about half of 2021-22; the 2024 loss was stock-specific,
+mostly squeezes on the short book, not style.
+
+<!--AUTO:styles-->
+
+The split by year is written by the next run.
+
+<!--/AUTO:styles-->
 
 **The same loadings in each half.** Twelve months cannot pin six loadings, so the split is by
 window, not by year.

@@ -248,3 +248,34 @@ def test_stock_picker_scores_are_smoothed_from_the_past():
     scores = pd.DataFrame(dict(permno=1, eom=eom, score=[1.0, 0.0, np.nan, 0.0]))
     out = ship.smooth(scores)["score"].tolist()
     assert out[0] == 1.0 and 0 < out[1] < 1 and np.isnan(out[2]) and 0 < out[3] < out[1]
+
+
+# Only the analyst's verdicts dated before the evaluation's first decision teach (amendment 12).
+def test_analyst_verdicts_from_the_evaluation_never_teach():
+    learned = importlib.import_module("fiam.ml.analyst")
+    eom = pd.to_datetime(["2020-10-31", "2020-11-30", "2020-12-31", "2023-05-31"])
+    verdicts = pd.DataFrame(dict(permno=1, eom=eom, analyst_conviction=[1.0, np.nan, 2.0, -1.0]))
+    assert learned.taught(verdicts)["eom"].tolist() == [pd.Timestamp("2020-10-31")]
+
+
+# A teacher never trains on a label first known inside its test year (amendment 12).
+def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
+    teachers = importlib.import_module("fiam.ml.teachers")
+    months = pd.date_range("2016-01-01", "2018-12-01", freq="MS")
+    frame = pd.DataFrame(dict(holding_month=np.repeat(months, 600), x=0.0))
+    known = frame["holding_month"] + pd.DateOffset(months=4)
+    seen = []
+
+    # Records which rows each fit was given, and predicts nothing.
+    class Stub:
+        def predict(self, x, **_):
+            return np.zeros(len(x))
+
+    def fake(params, dataset, rounds):
+        seen.append(dataset.label.index)
+        return Stub()
+
+    monkeypatch.setattr(teachers, "YEARS", [2018])
+    monkeypatch.setattr(teachers.lgb, "train", fake)
+    teachers.walk_forward(frame, ["x"], pd.Series(1.0, index=frame.index), known=known)
+    assert frame.loc[seen[0], "holding_month"].max() == pd.Timestamp("2017-08-01")

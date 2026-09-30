@@ -117,6 +117,29 @@ def composite_forecasts() -> pd.DataFrame:
     return pd.concat(frames)
 
 
+# The stock picker's ranks mapped to returns by a slope fitted on its own earlier scored years,
+# 2019-2020 first. Its ranks span the whole month, so the perfect-rank slope would overstate it.
+def scorer_forecasts(df: pd.DataFrame) -> pd.DataFrame | None:
+    cache = P.CACHE / "scores.parquet"
+    if not cache.exists():
+        return None
+    scores = pd.read_parquet(cache)[["permno", "eom", "holding_month", "score"]]
+    frame = scores.merge(df[["permno", "eom", D.TARGET]], on=["permno", "eom"], how="left")
+    frame = frame.rename(columns={D.TARGET: "actual"})
+    month = frame["holding_month"]
+    frame["actual_dm"] = frame["actual"] - frame.groupby(month)["actual"].transform("mean")
+    frames = []
+    for year in range(D.FIRST_TEST_YEAR, D.LAST_TEST_YEAR + 1):
+        start = pd.Timestamp(year=year, month=1, day=1)
+        history = frame[month < start].dropna(subset=["actual_dm", "score"])
+        x, y = history["score"], history["actual_dm"]
+        slope = float((x * y).sum() / (x**2).sum())
+        part = frame[(month.dt.year == year) & (month <= D.LAST_HOLDING_MONTH)].copy()
+        part["forecast"] = part["score"] * slope
+        frames.append(part)
+    return pd.concat(frames)
+
+
 # Out-of-sample R-squared for every method, both benchmarks.
 def main() -> None:
     df = D.load_folds()
@@ -143,12 +166,16 @@ def main() -> None:
         out["methods"][f"template_{name}"] = score(template, name)
         print(f"  template {name}: {out['methods'][f'template_{name}']}")
 
-    for model in ("enet", "lgbm", "nn3", "scorer"):
+    for model in ("enet", "lgbm", "nn3"):
         if not (PREDS / f"{model}.parquet").exists():
             continue
         preds = pd.read_parquet(PREDS / f"{model}.parquet")
         out["methods"][model] = score(calibrated(df, preds), "forecast")
         print(f"  {model}: {out['methods'][model]}")
+    picked = scorer_forecasts(df)
+    if picked is not None:
+        out["methods"]["scorer"] = score(picked, "forecast")
+        print(f"  scorer: {out['methods']['scorer']}")
 
     out["methods"]["composite"] = score(composite_forecasts(), "forecast")
     print(f"  composite: {out['methods']['composite']}")

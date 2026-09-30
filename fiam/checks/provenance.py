@@ -46,6 +46,7 @@ ML_ARTIFACTS = [
         "ship.json",
         "ship_candidates.csv",
         "triage.json",
+        "analyst_learned.json",
         "construction.json",
         "factor_neutral.json",
     )

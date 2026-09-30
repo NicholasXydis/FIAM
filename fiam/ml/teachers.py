@@ -93,8 +93,9 @@ def monthly_revisions() -> pd.Series | None:
     return pd.Series(net.to_numpy(), index=pd.MultiIndex.from_arrays([ibes["permno"], month]))
 
 
-# Next quarter's surprise: niq_su a month after the next report (rdq), if due within four months.
-def monthly_surprise() -> pd.Series | None:
+# Next quarter's surprise: niq_su a month after the next report (rdq), if due within four months,
+# with the month-end it is first known, so training can drop labels known inside the test year.
+def monthly_surprise() -> pd.DataFrame | None:
     quarters = data.wrds("compustat_quarterly", ["gvkey", "rdq"])
     if quarters is None:
         return None
@@ -117,7 +118,9 @@ def monthly_surprise() -> pd.Series | None:
     known = panel.set_index(["permno", "eom"])["niq_su"]
     value = known.reindex(pd.MultiIndex.from_arrays([decided["permno"], decided["when"]]))
     month = (decided["eom"] + pd.offsets.MonthBegin(1)).dt.normalize()
-    return pd.Series(value.to_numpy(), index=pd.MultiIndex.from_arrays([decided["permno"], month]))
+    index = pd.MultiIndex.from_arrays([decided["permno"], month])
+    dated = dict(target=value.to_numpy(), known=decided["when"].to_numpy())
+    return pd.DataFrame(dated, index=index)
 
 
 # Each row's target: what the layer shows in the holding month, the month after the decision.
@@ -128,11 +131,16 @@ def attach(frame: pd.DataFrame, target: pd.Series, rank: bool) -> pd.Series:
 
 
 # Year by year, trained only on holding months before that year. Never sees its own year.
-def walk_forward(frame: pd.DataFrame, cols: list[str], target: pd.Series, text=None) -> pd.Series:
+def walk_forward(
+    frame: pd.DataFrame, cols: list[str], target: pd.Series, text=None, known=None
+) -> pd.Series:
     out = pd.Series(np.nan, index=frame.index)
     year = frame["holding_month"].dt.year
     for test_year in YEARS:
         train = (year < test_year) & target.notna()
+        # A label first known inside the test year stays out, as the brief requires (amendment 12).
+        if known is not None:
+            train &= ~(known >= pd.Timestamp(year=test_year, month=1, day=1))
         test = year == test_year
         if train.sum() < 10_000 or not test.any():
             continue
@@ -174,10 +182,12 @@ def main() -> None:
         if raw is None:
             print(f"  {name}: its layer is not in the bundle, skipped")
             continue
-        target = attach(frame, raw, rank)
+        # A layer that dates its labels carries them beside the values.
+        known = attach(frame, raw["known"], False) if isinstance(raw, pd.DataFrame) else None
+        target = attach(frame, raw["target"] if known is not None else raw, rank)
         # Only the earnings-surprise teacher reads the text, as PREREGISTRATION.md fixes.
         text = T.aligned(frame) if name == "surprise" else None
-        pred = walk_forward(frame, cols, target, text)
+        pred = walk_forward(frame, cols, target, text, known)
         out[f"{name}_hat"] = pred
         report[name] = accuracy(frame, pred, target, name)
         print(f"  {name}: {report[name]['rank_correlation_by_year']}")

@@ -155,3 +155,18 @@ Each change is dated, made before the test it touches ran, and kept here rather 
     the other hedge (the 60-month beta or the teacher's learned beta) if the twin's monthly beta
     over the same two prior years was closer to zero. Disclosed: we had already seen that the
     learned hedge kept 2021-2026 beta closer to zero.
+12. **2026-09-30, before the stock picker ran with the analyst's verdicts.** Two look-ahead guards
+    from our own audit. (a) The analyst's model was trained on text written after 2021, so its
+    verdicts on 2021-2026 filings could be recall rather than reading. No language-model output
+    from the evaluation years now reaches the book. A small model learns the analyst's verdicts
+    dated up to November 2020, before the first decision of the evaluation, from what the analyst
+    read: the FinBERT vectors of that month's material filings (FinBERT's training text predates
+    2020) and the stock's card percentiles. It then scores every stock-month with a material
+    filing, as the triage and crowd agents already work. The analyst's own 2021-2026 verdicts are
+    kept for one exhibit: their correlation with next month's return beside the small model's on
+    the same stock-months, a direct measure of recall. Verdicts before 2021 may themselves recall
+    later events; the small model sees no names, so it can carry general patterns of text, not
+    what happened to a company. (b) The earnings-surprise teacher's label is known up to five
+    months after its decision. A training label first known on or after the test year's first
+    day is dropped, as the brief requires for labels realized in the test period. Nothing else
+    changes, and neither change's effect has been seen.
