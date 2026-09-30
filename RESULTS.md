@@ -4,7 +4,7 @@
 
 <!--AUTO:made-->
 
-Made by `uv run run.py --official`; models trained by `uv run run.py --official --ml`.
+Made by `uv run run.py --official --ml`.
 
 <!--/AUTO:made-->
 
@@ -34,7 +34,7 @@ Anyone rerunning the code on the same data gets the same numbers.
 | Costs as share of gross | 22% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_From code `ec55b6dc9e51c240`._
+_From code `d420b4f07365f663`._
 
 <!--/AUTO:headline-->
 
@@ -357,6 +357,22 @@ _From the earlier harness (Hermes Agent); the next `--all` run replaces them._
 <!--/AUTO:agents-->
 
 ## Robustness
+
+**Every way of choosing, walked forward.** Each year a rule sees only the months before it. Both
+windows have now been seen, so new rules take their settings from published research, never from
+these tables.
+
+<!--AUTO:walk-->
+
+|  | 2016-2020 | 2021-2022 | 2023-2026 | 2021-2026 |
+|---|---:|---:|---:|---:|
+| Shipped book |  | +1.81 (24) | +0.03 (44) | +0.79 (68) |
+| Ship rule, walked forward | -1.93 (24) | +1.83 (24) | +0.03 (44) | +0.80 (68) |
+| Composite every year | -1.93 (24) | +1.83 (24) | +0.03 (44) | +0.80 (68) |
+
+IR by window, months in brackets, on the CRSP market. Picks start in 2019, the first year with two years of candidates behind it. Random picks of one candidate a year average IR -0.04; the rule beats 82% of them.
+
+<!--/AUTO:walk-->
 
 **2016-2020, the years the signals were not designed on:**
 

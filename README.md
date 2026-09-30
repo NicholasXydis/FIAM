@@ -1,8 +1,9 @@
 # FIAM
 
 Market-neutral US equity strategy, McGill-FIAM Hackathon 2026: neutral by construction, with the
-realized beta measured monthly and daily. `BRIEF.md` is the story,
-`RESULTS.md` every number. The same code and data give the same numbers on any machine.
+realized beta measured monthly and daily. `BRIEF.md` is the story, `RESULTS.md` every number,
+`PREREGISTRATION.md` the next tests, fixed before they ran. The same code and data give the same
+numbers on any machine.
 
 ## Run it: Windows, macOS, Linux or Lightning AI
 
@@ -22,6 +23,7 @@ realized beta measured monthly and daily. `BRIEF.md` is the story,
     uv run run.py --official --all           # the team's overnight run: models, agents, results
     uv run run.py --export-data              # fiam_v1.zip for a teammate
     uv run pytest                            # tests on synthetic data, seconds
+    uv run tools/gpu_probe.py                # what this machine's GPU can run
 
 `uv run run.py --help` lists every option. Without uv: `python -m pip install -r requirements.txt`
 in Python 3.14, then `python run.py`.
