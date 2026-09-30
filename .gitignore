@@ -108,3 +108,5 @@ Desktop.ini
 !/submission/models/*.parquet
 !/submission/exhibits/agents/*.parquet
 /out/
+# The generated deck; the PDF made from it is submitted, not committed.
+/deck/

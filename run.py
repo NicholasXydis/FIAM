@@ -267,8 +267,11 @@ def bundle() -> bool:
     if all((BUNDLE / name).is_file() for name in CORE):
         return True
     if not all((Path("data") / name).exists() for name in REQUIRED):
-        return False
-    print(f"Building the data bundle in {BUNDLE} from data/, once, under a minute.", flush=True)
+        # The organizer's files beside MAIN.py or run.py count as imported: judges place them there.
+        if not all(Path(name).exists() for name in REQUIRED):
+            return False
+        import_from(Path("."))
+    print(f"Building the data bundle in {BUNDLE} from data/, once, about two minutes.", flush=True)
     build = [sys.executable, "-m", "fiam.build_data", "data"]
     return subprocess.run(build, env=child_env()).returncode == 0
 

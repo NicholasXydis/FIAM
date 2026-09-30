@@ -1,20 +1,20 @@
 # The project in plain terms
 
-McGill-FIAM Hackathon 2026: eleven years of monthly data on 6,500 US stocks, 147 numbers each.
+**What it is.** A market-neutral book of US stocks. Each month we rank every stock on twelve
+well-known measures (cheap, profitable, careful with money, rising), buy the best and short the
+worst: about <!--N:metrics.json:compliance.positions_average:.0f-->276<!--/N--> names, as much long
+as short, neutral to the market and to every sector, with every trading cost charged.
 
-**What we built.** Each month we score every stock on twelve classical measures, remove the sector
-and market bets, and let an optimizer build about
-<!--N:metrics.json:compliance.positions_average:.0f-->276<!--/N--> positions, half long, half short,
-in whole shares, every cost charged, at a gross that never passed 200% on any trading day we could
-measure. Machine learning adds a learned ranking, a learned hedge and a learned trader as candidates;
-a rule written before any of them was scored decides each year which book ships.
+**What the AI adds.** FinBERT reads every 8-K filing. Local AI agents triage filings, act as analysts
+and play the "AI crowd". A stock picker learns from all of it. A rule we wrote before seeing any
+result decides each year whether the learned books replace the simple one.
 <!--AUTO:shipped-->
 
 It shipped the composite in all 6 years: no learned book beat it clearly.
 
 <!--/AUTO:shipped-->
 
-## What it returns
+## Results
 
 <!--AUTO:brief-->
 
@@ -28,33 +28,25 @@ It shipped the composite in all 6 years: no learned book beat it clearly.
 | Worst drawdown | -11.0% |
 | Split in half | 2021-22 IR 1.74, 2023-26 IR -0.11 |
 | CRSP years only | 2021-25 IR 0.62 |
-| 2016-2020, not designed on | IR -1.00, beta -0.25 (se 0.07) |
+| 2016-2020, a historical check | IR -1.00, beta -0.25 (se 0.07) |
 
 <!--/AUTO:brief-->
 
-**Read the last rows.** The second half earned far less, and the same code lost money on
-2016-2020, which the signals were never designed on. It is a value, quality and defensive tilt that
-earns when that style pays.
+**The honest reading.** Most of the return comes from one style, quality and value. It paid in
+2021-22, was flat in 2023-26 while the AI rally favoured expensive growth, and lost money in
+2016-2020, value's worst stretch in decades. We show this rather than hide it.
 
-## What makes it different
+## What is new here
 
-1. **Learning has to earn its place.** A learned ranking, hedge and trader are candidates, never
-   defaults; the rule above decides, and every attempt counts in the multiple-testing ledger.
-2. **Data that stops in 2025 still helps in 2026**, through teachers: models that learn what the
-   daily prices, short interest and analyst data would say, from inputs that reach 2026. One of them
-   decides which shorts pay hard-to-borrow rates in the book we ship.
-3. **We measure the AI crowd instead of joining it.** Our local models play AI assistants picking
-   stocks from anonymous cards; a small model learns where they buy, and we measure what betting
-   against them is worth.
-4. **Machine learning predicts as well and loses money on trading costs**, so a trader retrained
-   every month on the months already paid for is tested as a candidate.
-5. **Agents do research, not trading.** A research-director agent picks each year's book from
-   earlier months only, and is scored against our rule and against chance.
-6. **Neutral by construction, and measured.** Our first book looked neutral and was not (promised
-   beta 0, real −0.52); now a real beta outside ±0.20 fails the build, and daily returns still show
-   the small short tilt in the table above.
-7. **The same code and data give the same numbers on any machine**, and an audit guards the
-   build.
+1. **Costs like a real fund.** Interactive Brokers' prices, spreads from real quotes, market impact
+   that grows with trade size, borrow fees by how shorted a stock is.
+2. **Rules written before the test.** Every upgrade was written down first and judged once. Two of
+   ours failed and were dropped.
+3. **Old data helps new decisions.** Small models learn what data that ends in 2025 would say, so it
+   still informs 2026.
+4. **AI you can check.** Names and dates are hidden from the models, and a probe measures whether
+   they recognise the company anyway.
+5. **The same numbers on any machine**, checked by an audit on every run.
 
 ## The agents
 
@@ -70,7 +62,8 @@ _From the earlier harness (Hermes Agent); the next `--all` run replaces them._
 
 <!--/AUTO:agents-->
 
-## What we cannot claim
+## Limits
 
-Research backtests that anyone can rerun to the same numbers, not a live record. Costs are
-modelled, not observed. 2026 returns come from Compustat, not CRSP.
+A backtest anyone can rerun, not a live record. Costs are modelled, not observed. 2026 returns come
+from Compustat, not CRSP. We saw both 2016-2020 and 2021-2026 while building, so neither is a
+perfectly clean test.

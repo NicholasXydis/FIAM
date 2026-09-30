@@ -627,6 +627,11 @@ def choose(books: dict, year: int) -> tuple[str, dict]:
         and abs(s["beta"]) <= MAX_BETA
     }
     best = max(fit, key=lambda n: fit[n]["information_ratio"]) if fit else "composite"
+    # The hedge follows neutrality: the twin with the other beta ships if its beta sat nearer zero.
+    spec = CANDIDATES[best]
+    twin = candidate_name(spec["blend"], not spec["hedge"], spec["trader"])
+    if twin in scores and abs(scores[twin]["beta"]) < abs(scores[best]["beta"]):
+        best = twin
     return best, scores
 
 

@@ -807,13 +807,15 @@ def walk(m: dict) -> str:
         out = []
         for w in names:
             x = windows.get(w)
-            full = x and x.get("span", "")[:4] == w[:4] and x.get("span", "")[-7:-3] == w[-4:]
+            # Results written before spans were recorded count as covering the whole window.
+            span = x.get("span", "") if x else ""
+            full = x and (not span or (span[:4] == w[:4] and span[-7:-3] == w[-4:]))
             if not x:
                 out.append("")
             elif full:
                 out.append(f"{x['information_ratio']:+.2f} ({x['months']})")
             else:
-                out.append(f"{x['information_ratio']:+.2f} ({x['months']}, {x['span']})")
+                out.append(f"{x['information_ratio']:+.2f} ({x['months']}, {span})")
         return out
 
     tracks = e["tracks"]

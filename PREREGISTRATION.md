@@ -144,3 +144,14 @@ Each change is dated, made before the test it touches ran, and kept here rather 
    Until the organizer's panel updates, it is built from August 2026 characteristics.
 9. **2026-09-30.** The live book of amendment 8 is dropped: the submission is due before October's
    returns exist, so it could not be scored in time. The rest of amendment 8 stands.
+10. **2026-09-30, before the stock picker ran with any Phase 4 input.** Its forecasts churn the book
+    (80-100% a month), which trading costs punish. Its scores now enter the book as an average of
+    each stock's current and past scores, weighted with a three-month half-life, past months only:
+    Gârleanu and Pedersen (2013) show a trader facing costs should aim at an average of current and
+    expected future targets. A stock with no score this month gets none. The grid and the ship rule
+    are unchanged.
+11. **2026-09-30, before the ship rule ran again.** The hedge follows neutrality, which the brief
+    checks first. Each year, once the ship rule has chosen a book, it takes that book's twin with
+    the other hedge (the 60-month beta or the teacher's learned beta) if the twin's monthly beta
+    over the same two prior years was closer to zero. Disclosed: we had already seen that the
+    learned hedge kept 2021-2026 beta closer to zero.

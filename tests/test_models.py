@@ -33,7 +33,7 @@ def test_ship_rule_keeps_the_composite_without_a_clear_winner(monkeypatch):
         "scorer50+hedged": pd.DataFrame(dict(net=base * 2 + 0.01)),
     }
     judged = {"composite": 0.5, "scorer50": 0.6, "scorer50+hedged": 1.0}
-    betas = {"composite": 0.0, "scorer50": 0.0, "scorer50+hedged": 0.3}
+    betas = {"composite": 0.0, "scorer50": 0.2, "scorer50+hedged": 0.3}
 
     # Returns the IR and beta set above for whichever book is passed.
     def fake(net, first, last):
@@ -44,6 +44,9 @@ def test_ship_rule_keeps_the_composite_without_a_clear_winner(monkeypatch):
     assert P.choose(books, 2021)[0] == "composite"
     betas["scorer50+hedged"] = 0.1
     assert P.choose(books, 2021)[0] == "scorer50+hedged"
+    # The hedge follows neutrality: the unhedged twin ships once its beta sits nearer zero.
+    betas["scorer50"] = 0.05
+    assert P.choose(books, 2021)[0] == "scorer50"
 
 
 # The 3 x 2 x 2 grid: every blend with and without each learned part, each named in words.
@@ -236,3 +239,12 @@ def test_agent_answers_resume(tmp_path, monkeypatch):
         save(dict(id="a", label="good"))
     with harness.answers("demo", itemgetter("id")) as (done, _):
         assert done == {"a": dict(id="a", label="good")}
+
+
+# Scores are averaged with their past, never their future, and a missing score stays missing.
+def test_stock_picker_scores_are_smoothed_from_the_past():
+    ship = importlib.import_module("fiam.ml.ship")
+    eom = pd.date_range("2020-01-31", periods=4, freq="ME")
+    scores = pd.DataFrame(dict(permno=1, eom=eom, score=[1.0, 0.0, np.nan, 0.0]))
+    out = ship.smooth(scores)["score"].tolist()
+    assert out[0] == 1.0 and 0 < out[1] < 1 and np.isnan(out[2]) and 0 < out[3] < out[1]

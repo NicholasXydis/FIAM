@@ -20,15 +20,26 @@ FIRST_DECISION, FIRST_TRADER_YEAR, FIRST_SHIP_YEAR = (
     ("2021-12-31", 2024, 2024) if paths.SMOKE else ("2016-12-31", 2019, 2021)
 )
 
+# Months for a stock-picker score to count half as much, Garleanu and Pedersen's averaging.
+HALF_LIFE = 3
 # PPO is slow, so it is the trader's yardstick on one book: half scorer, learned hedge.
 REFERENCE = P.candidate_name(0.5, True, False)
+
+
+# Each stock's score averaged with its past scores, three-month half-life (amendment 10).
+def smooth(scores: pd.DataFrame) -> pd.DataFrame:
+    scores = scores.sort_values(["permno", "eom"], ignore_index=True)
+    average = scores.groupby("permno")["score"].transform(
+        lambda s: s.ewm(halflife=HALF_LIFE, ignore_na=True).mean()
+    )
+    return scores.assign(score=average.where(scores["score"].notna()))
 
 
 # The scorer's score, the teachers' beta and crowding, and the crowd score, where they exist.
 def inputs() -> pd.DataFrame | None:
     frames = []
     if SC.CACHE.exists():
-        frames.append(data.read(SC.CACHE, [*data.KEYS, "score"]))
+        frames.append(smooth(data.read(SC.CACHE, [*data.KEYS, "score"])))
     if TE.CACHE.exists():
         frames.append(data.read(TE.CACHE).filter([*data.KEYS, "beta_hat", "crowding_hat"]))
     if SC.CROWD.exists():
@@ -147,7 +158,8 @@ def main() -> None:
         "50% scorer, each with and without the learned hedge and the trader, and each year's "
         "choice by a rule written before any candidate was scored.",
         rule=f"the composite ships unless another candidate's IR over the two prior years beats "
-        f"it by {P.HURDLE} with beta inside +/-{P.MAX_BETA}",
+        f"it by {P.HURDLE} with beta inside +/-{P.MAX_BETA}; then the twin with the other hedge "
+        "ships if its beta over those years sat nearer zero",
         chosen=by_year,
         validation=verdicts,
         candidates_2021_2026={

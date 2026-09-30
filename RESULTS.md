@@ -43,12 +43,10 @@ the rules' regression on the S&P 500 price index with HAC errors; the build fail
 
 ## How the book is chosen
 
-A 3 × 2 × 2 grid of candidate books: the composite of the 12 signals with 0, 25 or 50% of a
-learning-to-rank scorer blended in, each with and without a hedge on the learned beta and a trader
-that decides how far to trade. A rule written before any candidate was scored picks each year's book from the two years
-before it: the composite ships unless another candidate beats its IR there by 0.25 with beta inside
-±0.15. Every candidate counts in the multiple-testing ledger, and `figures/candidates.png` draws
-them all.
+Twelve candidate books: the 12-signal composite with 0, 25 or 50% of the stock picker blended in,
+each with and without the learned hedge and the trader. Each year a rule written in advance looks
+only at the two years before: the composite ships unless another book beat its IR there by 0.25 with
+beta inside ±0.15; then the twin with the other hedge ships if its beta sat nearer zero.
 
 <!--AUTO:ship-->
 
@@ -271,8 +269,8 @@ the $10M weights, so it shows what costs do, not a book re-optimized for size.
 | Positions | 100-500 | 276 on average |
 | Gross exposure | ≤ 200% | max 159.96% |
 | Net exposure | −50% to +50%; ours exact before rounding | max abs 0.00% |
-| Sector, 11 GICS + `XX` | 1% target | max 1.04% |
-| Single name | 1.5% target | max 1.51% |
+| Sector, 11 GICS + `XX` (ours) | 1% before whole-share rounding | max 1.04% after it |
+| Single name (ours) | 1.5% before whole-share rounding | max 1.51% after it |
 | Ex-ante beta | ±0.02 | mean +0.020 |
 | Realized beta | build fails outside ±0.20 | -0.04 (se 0.09) |
 
@@ -297,10 +295,11 @@ characteristics and 8-K counts, which reach August 2026; each year's model sees 
 
 <!--/AUTO:teachers-->
 
-**Scorer.** LightGBM LambdaRank learns each month's ranking of what a neutral book can earn, next
-month's return less its sector's mean and its market bet, one model per tail, averaged over five
-seeds, on the rules' folds. Its inputs are the 147 characteristics, the 8-K counts, the three
-teachers and the crowd score.
+**The stock picker.** LightGBM ranks stocks by next month's return **less** their sector, beta and
+style, so it must pick stocks, not styles. It reads the 147 characteristics, the 8-K counts, FinBERT's
+reading of each filing, the triage and analyst agents, the crowd score and the teachers. It trains on
+the brief's folds, averages five seeds, and its scores are smoothed over three months so it trades
+less.
 
 <!--AUTO:scorer-->
 
@@ -429,10 +428,10 @@ IR by window, months in brackets, on the CRSP market. Picks start in 2019, the f
 
 <!--/AUTO:walk-->
 
-**Construction v2, tested once as pre-registered.** Five rules aimed at the losses Phase 2 traced:
-a lag-corrected hedge beta, a ±10% net band for true beta neutrality, no special-borrow shorts
-with volatility-scaled short caps, liquidity-scaled caps, and Daniel-Moskowitz crash protection.
-Both books carry the Phase 2 costs over 2016-2026.
+**A safer construction, tested once.** Five rules aimed at where losses came from: a better hedge
+beta, a ±10% net band for true beta neutrality, no expensive-to-borrow shorts and smaller volatile
+ones, smaller positions in thinly traded names, and momentum crash protection (Daniel and Moskowitz).
+Both books pay the same costs, 2016-2026.
 
 <!--AUTO:construction-->
 
@@ -451,8 +450,8 @@ IR at least the current book's: **failed**; beta closer to zero, monthly and dai
 
 <!--/AUTO:construction-->
 
-**Is it stock picking or style?** Amendment 4 held the book's size, value, profitability,
-investment and momentum exposures near zero and judged it on all eleven years.
+**Is it stock picking or style?** We held the book's size, value, profitability, investment and
+momentum exposures near zero and judged it on all eleven years.
 
 <!--AUTO:neutral-->
 
@@ -471,11 +470,11 @@ investment and momentum exposures near zero and judged it on all eleven years.
 
 <!--/AUTO:neutral-->
 
-**2016-2020, the years the signals were not designed on:**
+**2016-2020, a historical check.** We have seen these years too, so this is not a clean test:
 
 <!--AUTO:clean-->
 
-|  | 2016-2020, not designed on | 2021-2026, the record |
+|  | 2016-2020, a historical check | 2021-2026, the record |
 |---|---|---|
 | Information ratio | **-1.00** | +0.69 |
 | Net return | -5.7% a year | +12.5% a year |
