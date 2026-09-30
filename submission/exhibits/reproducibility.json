@@ -37,7 +37,7 @@
   {
     "check": "carry-in sees last month's book, never this one",
     "passed": true,
-    "detail": "called at line 519, updated at line 530"
+    "detail": "called at line 522, updated at line 533"
   },
   {
     "check": "model folds are strictly ordered in time",
@@ -67,7 +67,7 @@
   {
     "check": "no result carries a clock time",
     "passed": true,
-    "detail": "19 result files, none dated"
+    "detail": "20 result files, none dated"
   },
   {
     "check": "every artifact matches the run that wrote it",

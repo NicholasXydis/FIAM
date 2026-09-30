@@ -1,0 +1,1131 @@
+{
+  "what": "Each candidate and each way of choosing between them, by window. A rule picks every year from the months before it; random picks over the same years are the control.",
+  "market": "CRSP value-weighted market, for every window",
+  "first_pick": 2019,
+  "tracks": {
+    "ship_rule": {
+      "picks": {
+        "2019": "composite",
+        "2020": "composite",
+        "2021": "composite",
+        "2022": "composite",
+        "2023": "composite",
+        "2024": "composite",
+        "2025": "composite",
+        "2026": "composite"
+      },
+      "windows": {
+        "2016-2020": {
+          "months": 24,
+          "gross_annual": -0.145521,
+          "net_annual": -0.184644,
+          "information_ratio": -1.929167,
+          "sharpe_ratio": -1.58566,
+          "beta_realized": -0.252633,
+          "beta_stderr": 0.064362,
+          "max_drawdown_spread": -0.335271,
+          "turnover": 0.466961,
+          "positions": 278.583333,
+          "net_by_year": {
+            "2019": -0.059316,
+            "2020": -0.277119
+          }
+        },
+        "2021-2022": {
+          "months": 24,
+          "gross_annual": 0.349924,
+          "net_annual": 0.309854,
+          "information_ratio": 1.831303,
+          "sharpe_ratio": 2.102754,
+          "beta_realized": 0.016006,
+          "beta_stderr": 0.121761,
+          "max_drawdown_spread": -0.061056,
+          "turnover": 0.432261,
+          "positions": 278.958333,
+          "net_by_year": {
+            "2021": 0.390739,
+            "2022": 0.299835
+          }
+        },
+        "2023-2026": {
+          "months": 44,
+          "gross_annual": 0.080707,
+          "net_annual": 0.042713,
+          "information_ratio": 0.028008,
+          "sharpe_ratio": 0.440998,
+          "beta_realized": -0.152423,
+          "beta_stderr": 0.066124,
+          "max_drawdown_spread": -0.153739,
+          "turnover": 0.437647,
+          "positions": 276.204545,
+          "net_by_year": {
+            "2023": 0.099542,
+            "2024": -0.087492,
+            "2025": 0.010705,
+            "2026": 0.133804
+          }
+        },
+        "2021-2026": {
+          "months": 68,
+          "gross_annual": 0.175724,
+          "net_annual": 0.136998,
+          "information_ratio": 0.795895,
+          "sharpe_ratio": 1.124106,
+          "beta_realized": -0.096924,
+          "beta_stderr": 0.087404,
+          "max_drawdown_spread": -0.153739,
+          "turnover": 0.435746,
+          "positions": 277.176471,
+          "net_by_year": {
+            "2021": 0.390739,
+            "2022": 0.299835,
+            "2023": 0.099542,
+            "2024": -0.087492,
+            "2025": 0.010705,
+            "2026": 0.133804
+          }
+        }
+      },
+      "against_chance": {
+        "information_ratio": 0.103355,
+        "random_mean": -0.038403,
+        "share_of_random_beaten": 0.8194
+      }
+    },
+    "always_composite": {
+      "picks": {
+        "2019": "composite",
+        "2020": "composite",
+        "2021": "composite",
+        "2022": "composite",
+        "2023": "composite",
+        "2024": "composite",
+        "2025": "composite",
+        "2026": "composite"
+      },
+      "windows": {
+        "2016-2020": {
+          "months": 24,
+          "gross_annual": -0.145521,
+          "net_annual": -0.184644,
+          "information_ratio": -1.929167,
+          "sharpe_ratio": -1.58566,
+          "beta_realized": -0.252633,
+          "beta_stderr": 0.064362,
+          "max_drawdown_spread": -0.335271,
+          "turnover": 0.466961,
+          "positions": 278.583333,
+          "net_by_year": {
+            "2019": -0.059316,
+            "2020": -0.277119
+          }
+        },
+        "2021-2022": {
+          "months": 24,
+          "gross_annual": 0.349924,
+          "net_annual": 0.309854,
+          "information_ratio": 1.831303,
+          "sharpe_ratio": 2.102754,
+          "beta_realized": 0.016006,
+          "beta_stderr": 0.121761,
+          "max_drawdown_spread": -0.061056,
+          "turnover": 0.432261,
+          "positions": 278.958333,
+          "net_by_year": {
+            "2021": 0.390739,
+            "2022": 0.299835
+          }
+        },
+        "2023-2026": {
+          "months": 44,
+          "gross_annual": 0.080707,
+          "net_annual": 0.042713,
+          "information_ratio": 0.028008,
+          "sharpe_ratio": 0.440998,
+          "beta_realized": -0.152423,
+          "beta_stderr": 0.066124,
+          "max_drawdown_spread": -0.153739,
+          "turnover": 0.437647,
+          "positions": 276.204545,
+          "net_by_year": {
+            "2023": 0.099542,
+            "2024": -0.087492,
+            "2025": 0.010705,
+            "2026": 0.133804
+          }
+        },
+        "2021-2026": {
+          "months": 68,
+          "gross_annual": 0.175724,
+          "net_annual": 0.136998,
+          "information_ratio": 0.795895,
+          "sharpe_ratio": 1.124106,
+          "beta_realized": -0.096924,
+          "beta_stderr": 0.087404,
+          "max_drawdown_spread": -0.153739,
+          "turnover": 0.435746,
+          "positions": 277.176471,
+          "net_by_year": {
+            "2021": 0.390739,
+            "2022": 0.299835,
+            "2023": 0.099542,
+            "2024": -0.087492,
+            "2025": 0.010705,
+            "2026": 0.133804
+          }
+        }
+      },
+      "against_chance": {
+        "information_ratio": 0.103355,
+        "random_mean": -0.038403,
+        "share_of_random_beaten": 0.8194
+      }
+    }
+  },
+  "shipped": {
+    "2021-2022": {
+      "months": 24,
+      "gross_annual": 0.349321,
+      "net_annual": 0.308225,
+      "information_ratio": 1.812634,
+      "sharpe_ratio": 2.082949,
+      "beta_realized": 0.015653,
+      "beta_stderr": 0.121896,
+      "max_drawdown_spread": -0.061056,
+      "turnover": 0.45014,
+      "positions": 276.916667,
+      "net_by_year": {
+        "2021": 0.386077,
+        "2022": 0.299835
+      }
+    },
+    "2023-2026": {
+      "months": 44,
+      "gross_annual": 0.080707,
+      "net_annual": 0.042713,
+      "information_ratio": 0.028008,
+      "sharpe_ratio": 0.440998,
+      "beta_realized": -0.152423,
+      "beta_stderr": 0.066124,
+      "max_drawdown_spread": -0.153739,
+      "turnover": 0.437647,
+      "positions": 276.204545,
+      "net_by_year": {
+        "2023": 0.099542,
+        "2024": -0.087492,
+        "2025": 0.010705,
+        "2026": 0.133804
+      }
+    },
+    "2021-2026": {
+      "months": 68,
+      "gross_annual": 0.175512,
+      "net_annual": 0.136423,
+      "information_ratio": 0.789955,
+      "sharpe_ratio": 1.117659,
+      "beta_realized": -0.096893,
+      "beta_stderr": 0.087418,
+      "max_drawdown_spread": -0.153739,
+      "turnover": 0.442056,
+      "positions": 276.455882,
+      "net_by_year": {
+        "2021": 0.386077,
+        "2022": 0.299835,
+        "2023": 0.099542,
+        "2024": -0.087492,
+        "2025": 0.010705,
+        "2026": 0.133804
+      }
+    }
+  },
+  "candidates": {
+    "composite": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.023284,
+        "net_annual": -0.06122,
+        "information_ratio": -1.014807,
+        "sharpe_ratio": -0.613778,
+        "beta_realized": -0.233112,
+        "beta_stderr": 0.069744,
+        "max_drawdown_spread": -0.335271,
+        "turnover": 0.462241,
+        "positions": 286.479167,
+        "net_by_year": {
+          "2017": -0.013089,
+          "2018": 0.142659,
+          "2019": -0.059316,
+          "2020": -0.277119
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.349924,
+        "net_annual": 0.309854,
+        "information_ratio": 1.831303,
+        "sharpe_ratio": 2.102754,
+        "beta_realized": 0.016006,
+        "beta_stderr": 0.121761,
+        "max_drawdown_spread": -0.061056,
+        "turnover": 0.432261,
+        "positions": 278.958333,
+        "net_by_year": {
+          "2021": 0.390739,
+          "2022": 0.299835
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.080707,
+        "net_annual": 0.042713,
+        "information_ratio": 0.028008,
+        "sharpe_ratio": 0.440998,
+        "beta_realized": -0.152423,
+        "beta_stderr": 0.066124,
+        "max_drawdown_spread": -0.153739,
+        "turnover": 0.437647,
+        "positions": 276.204545,
+        "net_by_year": {
+          "2023": 0.099542,
+          "2024": -0.087492,
+          "2025": 0.010705,
+          "2026": 0.133804
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.175724,
+        "net_annual": 0.136998,
+        "information_ratio": 0.795895,
+        "sharpe_ratio": 1.124106,
+        "beta_realized": -0.096924,
+        "beta_stderr": 0.087404,
+        "max_drawdown_spread": -0.153739,
+        "turnover": 0.435746,
+        "positions": 277.176471,
+        "net_by_year": {
+          "2021": 0.390739,
+          "2022": 0.299835,
+          "2023": 0.099542,
+          "2024": -0.087492,
+          "2025": 0.010705,
+          "2026": 0.133804
+        }
+      }
+    },
+    "composite+hedged": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.030093,
+        "net_annual": -0.068971,
+        "information_ratio": -1.051081,
+        "sharpe_ratio": -0.665261,
+        "beta_realized": -0.264025,
+        "beta_stderr": 0.070552,
+        "max_drawdown_spread": -0.353516,
+        "turnover": 0.479757,
+        "positions": 288.354167,
+        "net_by_year": {
+          "2017": -0.013089,
+          "2018": 0.146946,
+          "2019": -0.068458,
+          "2020": -0.296216
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.338827,
+        "net_annual": 0.296688,
+        "information_ratio": 1.648564,
+        "sharpe_ratio": 1.905462,
+        "beta_realized": -0.013383,
+        "beta_stderr": 0.132948,
+        "max_drawdown_spread": -0.065461,
+        "turnover": 0.468081,
+        "positions": 284.875,
+        "net_by_year": {
+          "2021": 0.348519,
+          "2022": 0.303427
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.089614,
+        "net_annual": 0.051563,
+        "information_ratio": 0.131404,
+        "sharpe_ratio": 0.585956,
+        "beta_realized": -0.085078,
+        "beta_stderr": 0.065055,
+        "max_drawdown_spread": -0.109964,
+        "turnover": 0.439981,
+        "positions": 304.159091,
+        "net_by_year": {
+          "2023": 0.112022,
+          "2024": -0.061473,
+          "2025": 0.027318,
+          "2026": 0.110861
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.177572,
+        "net_annual": 0.138078,
+        "information_ratio": 0.815818,
+        "sharpe_ratio": 1.14854,
+        "beta_realized": -0.077324,
+        "beta_stderr": 0.090282,
+        "max_drawdown_spread": -0.109964,
+        "turnover": 0.449899,
+        "positions": 297.352941,
+        "net_by_year": {
+          "2021": 0.348519,
+          "2022": 0.303427,
+          "2023": 0.112022,
+          "2024": -0.061473,
+          "2025": 0.027318,
+          "2026": 0.110861
+        }
+      }
+    },
+    "composite+hedged+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.010193,
+        "net_annual": -0.043599,
+        "information_ratio": -0.92929,
+        "sharpe_ratio": -0.484646,
+        "beta_realized": -0.195847,
+        "beta_stderr": 0.053139,
+        "max_drawdown_spread": -0.27739,
+        "turnover": 0.406401,
+        "positions": 291.104167,
+        "net_by_year": {
+          "2017": -0.013089,
+          "2018": 0.146946,
+          "2019": -0.07408,
+          "2020": -0.211649
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.30157,
+        "net_annual": 0.266964,
+        "information_ratio": 1.715703,
+        "sharpe_ratio": 2.018078,
+        "beta_realized": -0.037622,
+        "beta_stderr": 0.136636,
+        "max_drawdown_spread": -0.064122,
+        "turnover": 0.37938,
+        "positions": 292.166667,
+        "net_by_year": {
+          "2021": 0.280751,
+          "2022": 0.302952
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.0835,
+        "net_annual": 0.04763,
+        "information_ratio": 0.088015,
+        "sharpe_ratio": 0.549401,
+        "beta_realized": -0.066401,
+        "beta_stderr": 0.069909,
+        "max_drawdown_spread": -0.112055,
+        "turnover": 0.417243,
+        "positions": 284.522727,
+        "net_by_year": {
+          "2023": 0.111045,
+          "2024": -0.064753,
+          "2025": 0.024943,
+          "2026": 0.102804
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.160465,
+        "net_annual": 0.125042,
+        "information_ratio": 0.784199,
+        "sharpe_ratio": 1.15305,
+        "beta_realized": -0.077639,
+        "beta_stderr": 0.091192,
+        "max_drawdown_spread": -0.112055,
+        "turnover": 0.403879,
+        "positions": 287.220588,
+        "net_by_year": {
+          "2021": 0.280751,
+          "2022": 0.302952,
+          "2023": 0.111045,
+          "2024": -0.064753,
+          "2025": 0.024943,
+          "2026": 0.102804
+        }
+      }
+    },
+    "composite+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.011042,
+        "net_annual": -0.044645,
+        "information_ratio": -0.947105,
+        "sharpe_ratio": -0.499538,
+        "beta_realized": -0.189731,
+        "beta_stderr": 0.053921,
+        "max_drawdown_spread": -0.284947,
+        "turnover": 0.402096,
+        "positions": 292.125,
+        "net_by_year": {
+          "2017": -0.013089,
+          "2018": 0.142659,
+          "2019": -0.063213,
+          "2020": -0.220999
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.313003,
+        "net_annual": 0.279518,
+        "information_ratio": 1.829828,
+        "sharpe_ratio": 2.135413,
+        "beta_realized": -0.006141,
+        "beta_stderr": 0.123005,
+        "max_drawdown_spread": -0.060776,
+        "turnover": 0.357605,
+        "positions": 284.041667,
+        "net_by_year": {
+          "2021": 0.316061,
+          "2022": 0.300003
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.080724,
+        "net_annual": 0.045968,
+        "information_ratio": 0.063779,
+        "sharpe_ratio": 0.491289,
+        "beta_realized": -0.139044,
+        "beta_stderr": 0.072442,
+        "max_drawdown_spread": -0.138588,
+        "turnover": 0.400119,
+        "positions": 260.363636,
+        "net_by_year": {
+          "2023": 0.096589,
+          "2024": -0.087998,
+          "2025": 0.026398,
+          "2026": 0.134791
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.162705,
+        "net_annual": 0.128397,
+        "information_ratio": 0.78895,
+        "sharpe_ratio": 1.145952,
+        "beta_realized": -0.097615,
+        "beta_stderr": 0.086542,
+        "max_drawdown_spread": -0.138588,
+        "turnover": 0.385114,
+        "positions": 268.720588,
+        "net_by_year": {
+          "2021": 0.316061,
+          "2022": 0.300003,
+          "2023": 0.096589,
+          "2024": -0.087998,
+          "2025": 0.026398,
+          "2026": 0.134791
+        }
+      }
+    },
+    "scorer25": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.019479,
+        "net_annual": -0.060756,
+        "information_ratio": -1.125004,
+        "sharpe_ratio": -0.678378,
+        "beta_realized": -0.231627,
+        "beta_stderr": 0.07401,
+        "max_drawdown_spread": -0.279349,
+        "turnover": 0.559404,
+        "positions": 252.416667,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.085528,
+          "2019": -0.044288,
+          "2020": -0.239319
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.266915,
+        "net_annual": 0.217193,
+        "information_ratio": 1.334436,
+        "sharpe_ratio": 1.635675,
+        "beta_realized": 0.044372,
+        "beta_stderr": 0.093874,
+        "max_drawdown_spread": -0.075429,
+        "turnover": 0.642406,
+        "positions": 243.5,
+        "net_by_year": {
+          "2021": 0.336822,
+          "2022": 0.131721
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.082024,
+        "net_annual": 0.035102,
+        "information_ratio": -0.050262,
+        "sharpe_ratio": 0.36019,
+        "beta_realized": -0.156234,
+        "beta_stderr": 0.068087,
+        "max_drawdown_spread": -0.155368,
+        "turnover": 0.64065,
+        "positions": 235.75,
+        "net_by_year": {
+          "2023": 0.081652,
+          "2024": -0.092665,
+          "2025": 0.027554,
+          "2026": 0.10875
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.14728,
+        "net_annual": 0.099369,
+        "information_ratio": 0.524993,
+        "sharpe_ratio": 0.878707,
+        "beta_realized": -0.073539,
+        "beta_stderr": 0.069438,
+        "max_drawdown_spread": -0.155368,
+        "turnover": 0.64127,
+        "positions": 238.485294,
+        "net_by_year": {
+          "2021": 0.336822,
+          "2022": 0.131721,
+          "2023": 0.081652,
+          "2024": -0.092665,
+          "2025": 0.027554,
+          "2026": 0.10875
+        }
+      }
+    },
+    "scorer25+hedged": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.007872,
+        "net_annual": -0.05008,
+        "information_ratio": -0.950369,
+        "sharpe_ratio": -0.528356,
+        "beta_realized": -0.233032,
+        "beta_stderr": 0.089557,
+        "max_drawdown_spread": -0.272904,
+        "turnover": 0.572537,
+        "positions": 256.291667,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.076982,
+          "2019": 0.000721,
+          "2020": -0.237044
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.305188,
+        "net_annual": 0.253901,
+        "information_ratio": 1.470123,
+        "sharpe_ratio": 1.745039,
+        "beta_realized": -0.032296,
+        "beta_stderr": 0.116651,
+        "max_drawdown_spread": -0.076346,
+        "turnover": 0.667518,
+        "positions": 248.75,
+        "net_by_year": {
+          "2021": 0.327809,
+          "2022": 0.220585
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.085341,
+        "net_annual": 0.038384,
+        "information_ratio": -0.018488,
+        "sharpe_ratio": 0.43923,
+        "beta_realized": -0.07257,
+        "beta_stderr": 0.06435,
+        "max_drawdown_spread": -0.155875,
+        "turnover": 0.647342,
+        "positions": 250.090909,
+        "net_by_year": {
+          "2023": 0.101866,
+          "2024": -0.077994,
+          "2025": 0.004565,
+          "2026": 0.112523
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.162934,
+        "net_annual": 0.114449,
+        "information_ratio": 0.651315,
+        "sharpe_ratio": 1.001254,
+        "beta_realized": -0.078248,
+        "beta_stderr": 0.075451,
+        "max_drawdown_spread": -0.155875,
+        "turnover": 0.654463,
+        "positions": 249.617647,
+        "net_by_year": {
+          "2021": 0.327809,
+          "2022": 0.220585,
+          "2023": 0.101866,
+          "2024": -0.077994,
+          "2025": 0.004565,
+          "2026": 0.112523
+        }
+      }
+    },
+    "scorer25+hedged+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.003016,
+        "net_annual": -0.038459,
+        "information_ratio": -1.026998,
+        "sharpe_ratio": -0.503413,
+        "beta_realized": -0.169196,
+        "beta_stderr": 0.072873,
+        "max_drawdown_spread": -0.20689,
+        "turnover": 0.473798,
+        "positions": 251.625,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.076982,
+          "2019": -0.01692,
+          "2020": -0.181154
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.239608,
+        "net_annual": 0.203161,
+        "information_ratio": 1.540757,
+        "sharpe_ratio": 1.918485,
+        "beta_realized": -0.026752,
+        "beta_stderr": 0.086497,
+        "max_drawdown_spread": -0.045527,
+        "turnover": 0.463393,
+        "positions": 236.708333,
+        "net_by_year": {
+          "2021": 0.246171,
+          "2022": 0.188141
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.07142,
+        "net_annual": 0.035603,
+        "information_ratio": -0.059919,
+        "sharpe_ratio": 0.485187,
+        "beta_realized": -0.071602,
+        "beta_stderr": 0.055488,
+        "max_drawdown_spread": -0.125495,
+        "turnover": 0.482955,
+        "positions": 241.522727,
+        "net_by_year": {
+          "2023": 0.077024,
+          "2024": -0.058101,
+          "2025": 0.006359,
+          "2026": 0.105406
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.130781,
+        "net_annual": 0.094741,
+        "information_ratio": 0.617934,
+        "sharpe_ratio": 1.069465,
+        "beta_realized": -0.068763,
+        "beta_stderr": 0.057874,
+        "max_drawdown_spread": -0.125495,
+        "turnover": 0.476051,
+        "positions": 239.823529,
+        "net_by_year": {
+          "2021": 0.246171,
+          "2022": 0.188141,
+          "2023": 0.077024,
+          "2024": -0.058101,
+          "2025": 0.006359,
+          "2026": 0.105406
+        }
+      }
+    },
+    "scorer25+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": -0.014924,
+        "net_annual": -0.052028,
+        "information_ratio": -1.126317,
+        "sharpe_ratio": -0.636764,
+        "beta_realized": -0.219879,
+        "beta_stderr": 0.075092,
+        "max_drawdown_spread": -0.245014,
+        "turnover": 0.49568,
+        "positions": 249.458333,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.085528,
+          "2019": -0.036593,
+          "2020": -0.216338
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.226707,
+        "net_annual": 0.187038,
+        "information_ratio": 1.349821,
+        "sharpe_ratio": 1.717024,
+        "beta_realized": 0.043628,
+        "beta_stderr": 0.072757,
+        "max_drawdown_spread": -0.052741,
+        "turnover": 0.506867,
+        "positions": 236.083333,
+        "net_by_year": {
+          "2021": 0.285475,
+          "2022": 0.115098
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.067585,
+        "net_annual": 0.027972,
+        "information_ratio": -0.159122,
+        "sharpe_ratio": 0.370032,
+        "beta_realized": -0.131787,
+        "beta_stderr": 0.051612,
+        "max_drawdown_spread": -0.12529,
+        "turnover": 0.536374,
+        "positions": 223.886364,
+        "net_by_year": {
+          "2023": 0.070273,
+          "2024": -0.0764,
+          "2025": 0.030781,
+          "2026": 0.07628
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.123746,
+        "net_annual": 0.084113,
+        "information_ratio": 0.48627,
+        "sharpe_ratio": 0.927205,
+        "beta_realized": -0.059581,
+        "beta_stderr": 0.054568,
+        "max_drawdown_spread": -0.12529,
+        "turnover": 0.52596,
+        "positions": 228.191176,
+        "net_by_year": {
+          "2021": 0.285475,
+          "2022": 0.115098,
+          "2023": 0.070273,
+          "2024": -0.0764,
+          "2025": 0.030781,
+          "2026": 0.07628
+        }
+      }
+    },
+    "scorer50": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": 0.002939,
+        "net_annual": -0.042662,
+        "information_ratio": -0.928288,
+        "sharpe_ratio": -0.479091,
+        "beta_realized": -0.17738,
+        "beta_stderr": 0.084701,
+        "max_drawdown_spread": -0.23676,
+        "turnover": 0.636503,
+        "positions": 246.270833,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.085528,
+          "2019": -0.036512,
+          "2020": -0.188226
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.197921,
+        "net_annual": 0.140586,
+        "information_ratio": 0.731447,
+        "sharpe_ratio": 1.022321,
+        "beta_realized": 0.13473,
+        "beta_stderr": 0.100686,
+        "max_drawdown_spread": -0.10816,
+        "turnover": 0.794339,
+        "positions": 223.416667,
+        "net_by_year": {
+          "2021": 0.234622,
+          "2022": 0.052081
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.062789,
+        "net_annual": 0.008836,
+        "information_ratio": -0.290769,
+        "sharpe_ratio": 0.082441,
+        "beta_realized": -0.133364,
+        "beta_stderr": 0.084007,
+        "max_drawdown_spread": -0.185966,
+        "turnover": 0.770823,
+        "positions": 205.772727,
+        "net_by_year": {
+          "2023": 0.04208,
+          "2024": -0.092479,
+          "2025": -0.019621,
+          "2026": 0.091945
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.110483,
+        "net_annual": 0.055336,
+        "information_ratio": 0.128699,
+        "sharpe_ratio": 0.464378,
+        "beta_realized": -0.010471,
+        "beta_stderr": 0.07997,
+        "max_drawdown_spread": -0.185966,
+        "turnover": 0.779123,
+        "positions": 212.0,
+        "net_by_year": {
+          "2021": 0.234622,
+          "2022": 0.052081,
+          "2023": 0.04208,
+          "2024": -0.092479,
+          "2025": -0.019621,
+          "2026": 0.091945
+        }
+      }
+    },
+    "scorer50+hedged": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": 0.01718,
+        "net_annual": -0.029112,
+        "information_ratio": -0.733564,
+        "sharpe_ratio": -0.309,
+        "beta_realized": -0.193356,
+        "beta_stderr": 0.089341,
+        "max_drawdown_spread": -0.215649,
+        "turnover": 0.645468,
+        "positions": 250.6875,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.076982,
+          "2019": 0.027364,
+          "2020": -0.191261
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.216753,
+        "net_annual": 0.156985,
+        "information_ratio": 0.775742,
+        "sharpe_ratio": 1.040987,
+        "beta_realized": 0.016564,
+        "beta_stderr": 0.113381,
+        "max_drawdown_spread": -0.106941,
+        "turnover": 0.829769,
+        "positions": 227.083333,
+        "net_by_year": {
+          "2021": 0.223492,
+          "2022": 0.092748
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.071348,
+        "net_annual": 0.016214,
+        "information_ratio": -0.239676,
+        "sharpe_ratio": 0.163385,
+        "beta_realized": -0.058051,
+        "beta_stderr": 0.088712,
+        "max_drawdown_spread": -0.182459,
+        "turnover": 0.797628,
+        "positions": 229.75,
+        "net_by_year": {
+          "2023": 0.06987,
+          "2024": -0.071614,
+          "2025": -0.023555,
+          "2026": 0.07542
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.122668,
+        "net_annual": 0.065898,
+        "information_ratio": 0.214995,
+        "sharpe_ratio": 0.547057,
+        "beta_realized": -0.037008,
+        "beta_stderr": 0.07268,
+        "max_drawdown_spread": -0.182459,
+        "turnover": 0.808972,
+        "positions": 228.808824,
+        "net_by_year": {
+          "2021": 0.223492,
+          "2022": 0.092748,
+          "2023": 0.06987,
+          "2024": -0.071614,
+          "2025": -0.023555,
+          "2026": 0.07542
+        }
+      }
+    },
+    "scorer50+hedged+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": 0.017034,
+        "net_annual": -0.02257,
+        "information_ratio": -0.819137,
+        "sharpe_ratio": -0.295477,
+        "beta_realized": -0.148877,
+        "beta_stderr": 0.070774,
+        "max_drawdown_spread": -0.168451,
+        "turnover": 0.548329,
+        "positions": 245.541667,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.076982,
+          "2019": 0.009091,
+          "2020": -0.149715
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.160277,
+        "net_annual": 0.113286,
+        "information_ratio": 0.613208,
+        "sharpe_ratio": 0.947901,
+        "beta_realized": 0.018085,
+        "beta_stderr": 0.086752,
+        "max_drawdown_spread": -0.079868,
+        "turnover": 0.65028,
+        "positions": 216.25,
+        "net_by_year": {
+          "2021": 0.14887,
+          "2022": 0.075831
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.065068,
+        "net_annual": 0.020385,
+        "information_ratio": -0.222299,
+        "sharpe_ratio": 0.231027,
+        "beta_realized": -0.054836,
+        "beta_stderr": 0.078985,
+        "max_drawdown_spread": -0.147123,
+        "turnover": 0.635129,
+        "positions": 224.113636,
+        "net_by_year": {
+          "2023": 0.055461,
+          "2024": -0.056703,
+          "2025": -0.008272,
+          "2026": 0.076625
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.098671,
+        "net_annual": 0.053174,
+        "information_ratio": 0.1313,
+        "sharpe_ratio": 0.529972,
+        "beta_realized": -0.02849,
+        "beta_stderr": 0.058569,
+        "max_drawdown_spread": -0.147123,
+        "turnover": 0.640476,
+        "positions": 221.338235,
+        "net_by_year": {
+          "2021": 0.14887,
+          "2022": 0.075831,
+          "2023": 0.055461,
+          "2024": -0.056703,
+          "2025": -0.008272,
+          "2026": 0.076625
+        }
+      }
+    },
+    "scorer50+traded": {
+      "2016-2020": {
+        "months": 48,
+        "gross_annual": 0.004696,
+        "net_annual": -0.035619,
+        "information_ratio": -1.004746,
+        "sharpe_ratio": -0.473268,
+        "beta_realized": -0.153113,
+        "beta_stderr": 0.068734,
+        "max_drawdown_spread": -0.205439,
+        "turnover": 0.561103,
+        "positions": 240.104167,
+        "net_by_year": {
+          "2017": -0.022553,
+          "2018": 0.085528,
+          "2019": -0.028327,
+          "2020": -0.168347
+        }
+      },
+      "2021-2022": {
+        "months": 24,
+        "gross_annual": 0.163829,
+        "net_annual": 0.120602,
+        "information_ratio": 0.760741,
+        "sharpe_ratio": 1.138271,
+        "beta_realized": 0.118646,
+        "beta_stderr": 0.067838,
+        "max_drawdown_spread": -0.079444,
+        "turnover": 0.583622,
+        "positions": 237.083333,
+        "net_by_year": {
+          "2021": 0.195493,
+          "2022": 0.052052
+        }
+      },
+      "2023-2026": {
+        "months": 44,
+        "gross_annual": 0.057854,
+        "net_annual": 0.012638,
+        "information_ratio": -0.288353,
+        "sharpe_ratio": 0.133187,
+        "beta_realized": -0.125499,
+        "beta_stderr": 0.075635,
+        "max_drawdown_spread": -0.146786,
+        "turnover": 0.636955,
+        "positions": 202.159091,
+        "net_by_year": {
+          "2023": 0.025734,
+          "2024": -0.071518,
+          "2025": -0.011753,
+          "2026": 0.09574
+        }
+      },
+      "2021-2026": {
+        "months": 68,
+        "gross_annual": 0.095257,
+        "net_annual": 0.050743,
+        "information_ratio": 0.108204,
+        "sharpe_ratio": 0.511083,
+        "beta_realized": -0.01194,
+        "beta_stderr": 0.06388,
+        "max_drawdown_spread": -0.146786,
+        "turnover": 0.618132,
+        "positions": 214.485294,
+        "net_by_year": {
+          "2021": 0.195493,
+          "2022": 0.052052,
+          "2023": 0.025734,
+          "2024": -0.071518,
+          "2025": -0.011753,
+          "2026": 0.09574
+        }
+      }
+    }
+  }
+}
