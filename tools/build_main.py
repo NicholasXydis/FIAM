@@ -1,8 +1,4 @@
-# Builds MAIN.py, the single file the brief asks for, from the repo as it stands:
-#   python tools/build_main.py [--out MAIN.py] [--with-edgar]
-# MAIN.py carries every source file byte for byte and writes them out next to itself on first
-# run, so the audit, the code hashes and every result are exactly those of the repo. Then it
-# runs run.py with the same arguments. `uv run MAIN.py` installs what it needs from its header.
+# Builds MAIN.py, the one file the brief asks for: uv run tools/build_main.py [--with-edgar].
 
 import base64
 import re
@@ -41,6 +37,7 @@ def unpack() -> int:
     return written
 
 
+# Unpacks what is missing, then runs run.py with the same arguments.
 def main() -> int:
     written = unpack()
     if written:
@@ -78,12 +75,16 @@ def script_header() -> str:
 # The process, in the words run.py already uses for each step.
 def description() -> str:
     run = (ROOT / "run.py").read_text(encoding="utf-8")
-    header = run.split("\n\n")[0]
-    step = r'\(\["(src/[\w/]+\.py)"[^\]]*\], "([^"]+)"\)'
+    usage = run.split('HELP = """')[1].split('"""')[0]
+    header = "\n".join(f"#   {line}" for line in usage.splitlines())
+    step = r'\("(fiam\.[\w.]+)[^"]*", "([^"]+)"\)'
     blocks = [
-        ("", "STEPS = ["),
+        ("with --agents", "CROWD_STEPS = ["),
         ("with --ml", "ML_STEPS = ["),
+        ("with --ml", "RESEARCH_STEPS = ["),
+        ("", "STEPS = ["),
         ("with --agents", "AGENT_STEPS = ["),
+        ("", "REPORT = ["),
     ]
     listed = []
     for flag, start in blocks:
@@ -98,6 +99,7 @@ def description() -> str:
     )
 
 
+# Every file git ships, as text or base64.
 def carried(with_edgar: bool) -> dict[str, tuple[str, str]]:
     names = subprocess.run(
         ["git", "ls-files", "-co", "--exclude-standard", "-z"],
@@ -124,6 +126,7 @@ def carried(with_edgar: bool) -> dict[str, tuple[str, str]]:
     return files
 
 
+# Writes MAIN.py: the header, the steps, the launcher and every file.
 def main() -> None:
     args = sys.argv[1:]
     out = Path(args[args.index("--out") + 1]) if "--out" in args else ROOT / "MAIN.py"
