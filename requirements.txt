@@ -1,28 +1,23 @@
-# Pinned to the versions that produced the numbers in RESULTS.md. The same pins as pyproject.toml,
-# for anyone not using uv:  python -m pip install -r requirements.txt  (Python 3.14)
+# The same pins as pyproject.toml, for pip: python -m pip install -r requirements.txt (Python 3.14).
 
 # PyPI has no +cpu torch builds; this index serves the pinned one below.
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Needed to reproduce the book. Nothing else here matters for the submitted numbers.
-pyarrow==25.0.1        # reads the organizer's Parquet files
+pyarrow==25.0.1        # reads the data bundle
 pandas==3.0.3          # the panel and every table
 numpy==2.5.1           # the arithmetic under pandas
 scipy==1.18.1          # the deflated Sharpe
 cvxpy==1.9.3           # the portfolio optimizer
 statsmodels==0.15.0    # alpha and beta with HAC standard errors
 matplotlib==3.11.0     # every chart
+scikit-learn==1.9.1    # ElasticNet and the template models
+lightgbm==4.7.0        # the teachers, the scorer and the comparison trees
+gymnasium==1.3.0       # the trader's simulator, as an environment PPO can train on
+stable-baselines3==2.9.0  # PPO, the reinforcement-learning comparison for the trader
 
-# The comparison exhibits, the models we built and rejected. Not part of the book.
-scikit-learn==1.9.1    # ElasticNet, the competition's own baseline
-lightgbm==4.7.0        # gradient-boosted trees, IR -0.35
-# PyTorch, the neural network, IR -0.26. macOS has no +cpu build, and its own is CPU-only and
-# needs Apple silicon on macOS 14; older Macs skip it and only --ml is unavailable there.
+# CPU-only on purpose; macOS needs Apple silicon and macOS 14, older Macs lose only --ml.
 torch==2.14.0+cpu; sys_platform != "darwin"
 torch==2.14.0; sys_platform == "darwin" and platform_machine == "arm64" and platform_release >= "23"
 
-# Style only, not imported by anything that produces a number.
 ruff==0.15.17          # lint and format, configured in pyproject.toml
-pytest==9.1.1          # mechanics tests in tests/, synthetic data only
-
-# torch here is CPU-only and that is deliberate. Nothing submitted needs a GPU.
+pytest==9.1.1          # tests on synthetic data, no data folder needed
