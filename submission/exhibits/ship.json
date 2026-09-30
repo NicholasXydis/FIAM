@@ -12,578 +12,578 @@
   "validation": {
     "2021": {
       "composite": {
-        "information_ratio": -1.929167,
-        "beta": -0.24552
+        "information_ratio": -2.062332,
+        "beta": -0.250009
       },
       "composite+traded": {
-        "information_ratio": -1.894623,
-        "beta": -0.195491
+        "information_ratio": -1.984115,
+        "beta": -0.185004
       },
       "composite+hedged": {
-        "information_ratio": -2.009696,
-        "beta": -0.285896
+        "information_ratio": -2.136971,
+        "beta": -0.288886
       },
       "composite+hedged+traded": {
-        "information_ratio": -1.899468,
-        "beta": -0.203918
+        "information_ratio": -2.21299,
+        "beta": -0.227195
       },
       "scorer25": {
-        "information_ratio": -1.785589,
-        "beta": -0.264219
+        "information_ratio": -1.941543,
+        "beta": -0.26836
       },
       "scorer25+traded": {
-        "information_ratio": -1.830559,
-        "beta": -0.253597
+        "information_ratio": -1.998163,
+        "beta": -0.253982
       },
       "scorer25+hedged": {
-        "information_ratio": -1.420463,
-        "beta": -0.259328
+        "information_ratio": -1.564433,
+        "beta": -0.262604
       },
       "scorer25+hedged+traded": {
-        "information_ratio": -1.637368,
-        "beta": -0.17958
+        "information_ratio": -1.733538,
+        "beta": -0.189441
       },
       "scorer50": {
-        "information_ratio": -1.429935,
-        "beta": -0.194653
+        "information_ratio": -1.646566,
+        "beta": -0.20044
       },
       "scorer50+traded": {
-        "information_ratio": -1.641788,
-        "beta": -0.165838
+        "information_ratio": -1.793739,
+        "beta": -0.174973
       },
       "scorer50+hedged": {
-        "information_ratio": -1.054715,
-        "beta": -0.21208
+        "information_ratio": -1.262817,
+        "beta": -0.21789
       },
       "scorer50+hedged+traded": {
-        "information_ratio": -1.251436,
-        "beta": -0.15677
+        "information_ratio": -1.410968,
+        "beta": -0.159435
       }
     },
     "2022": {
       "composite": {
-        "information_ratio": -0.146956,
-        "beta": -0.16023
+        "information_ratio": -0.210044,
+        "beta": -0.163334
       },
       "composite+traded": {
-        "information_ratio": -0.150386,
-        "beta": -0.125715
+        "information_ratio": -0.105331,
+        "beta": -0.117808
       },
       "composite+hedged": {
-        "information_ratio": -0.307192,
-        "beta": -0.194903
+        "information_ratio": -0.365853,
+        "beta": -0.196692
       },
       "composite+hedged+traded": {
-        "information_ratio": -0.229658,
-        "beta": -0.13345
+        "information_ratio": -0.434293,
+        "beta": -0.146288
       },
       "scorer25": {
-        "information_ratio": -0.148125,
-        "beta": -0.19935
+        "information_ratio": -0.258287,
+        "beta": -0.203325
       },
       "scorer25+traded": {
-        "information_ratio": -0.208189,
-        "beta": -0.204781
+        "information_ratio": -0.351497,
+        "beta": -0.202874
       },
       "scorer25+hedged": {
-        "information_ratio": -0.144307,
-        "beta": -0.219297
+        "information_ratio": -0.24421,
+        "beta": -0.222353
       },
       "scorer25+hedged+traded": {
-        "information_ratio": -0.203512,
-        "beta": -0.163213
+        "information_ratio": -0.280746,
+        "beta": -0.164706
       },
       "scorer50": {
-        "information_ratio": -0.239454,
-        "beta": -0.169412
+        "information_ratio": -0.431428,
+        "beta": -0.176496
       },
       "scorer50+traded": {
-        "information_ratio": -0.334822,
-        "beta": -0.136475
+        "information_ratio": -0.50351,
+        "beta": -0.14703
       },
       "scorer50+hedged": {
-        "information_ratio": -0.23986,
-        "beta": -0.192795
+        "information_ratio": -0.404817,
+        "beta": -0.198929
       },
       "scorer50+hedged+traded": {
-        "information_ratio": -0.384379,
-        "beta": -0.138284
+        "information_ratio": -0.490082,
+        "beta": -0.141343
       }
     },
     "2023": {
       "composite": {
-        "information_ratio": 1.831303,
-        "beta": 0.084681
+        "information_ratio": 1.761754,
+        "beta": 0.088204
       },
       "composite+traded": {
-        "information_ratio": 1.829828,
-        "beta": 0.051243
+        "information_ratio": 1.769404,
+        "beta": 0.059089
       },
       "composite+hedged": {
-        "information_ratio": 1.648564,
-        "beta": 0.059386
+        "information_ratio": 1.582377,
+        "beta": 0.062796
       },
       "composite+hedged+traded": {
-        "information_ratio": 1.715703,
-        "beta": 0.019855
+        "information_ratio": 1.529878,
+        "beta": 0.024469
       },
       "scorer25": {
-        "information_ratio": 1.334436,
-        "beta": 0.104284
+        "information_ratio": 1.215413,
+        "beta": 0.106983
       },
       "scorer25+traded": {
-        "information_ratio": 1.349821,
-        "beta": 0.092175
+        "information_ratio": 1.221372,
+        "beta": 0.091105
       },
       "scorer25+hedged": {
-        "information_ratio": 1.470123,
-        "beta": 0.035128
+        "information_ratio": 1.362775,
+        "beta": 0.038783
       },
       "scorer25+hedged+traded": {
-        "information_ratio": 1.540757,
-        "beta": 0.020683
+        "information_ratio": 1.420864,
+        "beta": 0.094753
       },
       "scorer50": {
-        "information_ratio": 0.731447,
-        "beta": 0.187979
+        "information_ratio": 0.563472,
+        "beta": 0.18914
       },
       "scorer50+traded": {
-        "information_ratio": 0.760741,
-        "beta": 0.159648
+        "information_ratio": 0.628987,
+        "beta": 0.144915
       },
       "scorer50+hedged": {
-        "information_ratio": 0.775742,
-        "beta": 0.084304
+        "information_ratio": 0.627736,
+        "beta": 0.088887
       },
       "scorer50+hedged+traded": {
-        "information_ratio": 0.613208,
-        "beta": 0.071504
+        "information_ratio": 0.603156,
+        "beta": 0.065689
       }
     },
     "2024": {
       "composite": {
-        "information_ratio": 1.204312,
-        "beta": -0.072576
+        "information_ratio": 1.114553,
+        "beta": -0.070555
       },
       "composite+traded": {
-        "information_ratio": 1.191679,
-        "beta": -0.073962
+        "information_ratio": 0.972516,
+        "beta": -0.063956
       },
       "composite+hedged": {
-        "information_ratio": 1.240057,
-        "beta": -0.073694
+        "information_ratio": 1.152087,
+        "beta": -0.071477
       },
       "composite+hedged+traded": {
-        "information_ratio": 1.238678,
-        "beta": -0.072254
+        "information_ratio": 1.134206,
+        "beta": -0.071312
       },
       "scorer25": {
-        "information_ratio": 0.572791,
-        "beta": -0.06029
+        "information_ratio": 0.440681,
+        "beta": -0.060356
       },
       "scorer25+traded": {
-        "information_ratio": 0.600019,
-        "beta": -0.055663
+        "information_ratio": 0.485251,
+        "beta": -0.056377
       },
       "scorer25+hedged": {
-        "information_ratio": 0.927924,
-        "beta": -0.094133
+        "information_ratio": 0.810777,
+        "beta": -0.092712
       },
       "scorer25+hedged+traded": {
-        "information_ratio": 0.959572,
-        "beta": -0.082236
+        "information_ratio": 0.758784,
+        "beta": -0.031914
       },
       "scorer50": {
-        "information_ratio": 0.109509,
-        "beta": 0.052028
+        "information_ratio": -0.072897,
+        "beta": 0.050258
       },
       "scorer50+traded": {
-        "information_ratio": 0.02338,
-        "beta": 0.039081
+        "information_ratio": -0.075293,
+        "beta": 0.025336
       },
       "scorer50+hedged": {
-        "information_ratio": 0.353421,
-        "beta": -0.035386
+        "information_ratio": 0.195447,
+        "beta": -0.033677
       },
       "scorer50+hedged+traded": {
-        "information_ratio": 0.283187,
-        "beta": -0.029039
+        "information_ratio": 0.248264,
+        "beta": -0.032902
       }
     },
     "2025": {
       "composite": {
-        "information_ratio": -0.350224,
-        "beta": -0.095832
+        "information_ratio": -0.460782,
+        "beta": -0.095657
       },
       "composite+traded": {
-        "information_ratio": -0.373198,
-        "beta": -0.087854
+        "information_ratio": -0.701083,
+        "beta": -0.095905
       },
       "composite+hedged": {
-        "information_ratio": -0.179656,
-        "beta": -0.022869
+        "information_ratio": -0.303718,
+        "beta": -0.0231
       },
       "composite+hedged+traded": {
-        "information_ratio": -0.206235,
-        "beta": -0.011655
+        "information_ratio": -0.336143,
+        "beta": -0.015754
       },
       "scorer25": {
-        "information_ratio": -0.418009,
-        "beta": -0.122404
+        "information_ratio": -0.552324,
+        "beta": -0.124316
       },
       "scorer25+traded": {
-        "information_ratio": -0.526592,
-        "beta": -0.111635
+        "information_ratio": -0.610619,
+        "beta": -0.105585
       },
       "scorer25+hedged": {
-        "information_ratio": -0.292186,
-        "beta": -0.023949
+        "information_ratio": -0.426322,
+        "beta": -0.024615
       },
       "scorer25+hedged+traded": {
-        "information_ratio": -0.42271,
-        "beta": -0.0346
+        "information_ratio": -0.701355,
+        "beta": -0.048898
       },
       "scorer50": {
-        "information_ratio": -0.644506,
-        "beta": -0.010124
+        "information_ratio": -0.860076,
+        "beta": -0.012291
       },
       "scorer50+traded": {
-        "information_ratio": -0.856592,
-        "beta": -0.011375
+        "information_ratio": -1.059878,
+        "beta": -0.00745
       },
       "scorer50+hedged": {
-        "information_ratio": -0.408985,
-        "beta": 0.031715
+        "information_ratio": -0.608009,
+        "beta": 0.029074
       },
       "scorer50+hedged+traded": {
-        "information_ratio": -0.531283,
-        "beta": 0.017702
+        "information_ratio": -0.681884,
+        "beta": 0.01797
       }
     },
     "2026": {
       "composite": {
-        "information_ratio": -0.810991,
-        "beta": -0.073486
+        "information_ratio": -0.972725,
+        "beta": -0.072148
       },
       "composite+traded": {
-        "information_ratio": -0.785024,
-        "beta": -0.030703
+        "information_ratio": -1.44039,
+        "beta": -0.020999
       },
       "composite+hedged": {
-        "information_ratio": -0.660083,
-        "beta": 0.013094
+        "information_ratio": -0.834192,
+        "beta": 0.014155
       },
       "composite+hedged+traded": {
-        "information_ratio": -0.700132,
-        "beta": 0.051747
+        "information_ratio": -0.909077,
+        "beta": 0.02655
       },
       "scorer25": {
-        "information_ratio": -0.840956,
-        "beta": -0.048693
+        "information_ratio": -1.017265,
+        "beta": -0.044057
       },
       "scorer25+traded": {
-        "information_ratio": -0.888329,
-        "beta": -0.054769
+        "information_ratio": -1.110237,
+        "beta": -0.031893
       },
       "scorer25+hedged": {
-        "information_ratio": -1.024465,
-        "beta": 0.044228
+        "information_ratio": -1.221685,
+        "beta": 0.048488
       },
       "scorer25+hedged+traded": {
-        "information_ratio": -1.136186,
-        "beta": 0.024586
+        "information_ratio": -1.435918,
+        "beta": 0.054945
       },
       "scorer50": {
-        "information_ratio": -1.172552,
-        "beta": 0.009015
+        "information_ratio": -1.419037,
+        "beta": 0.013798
       },
       "scorer50+traded": {
-        "information_ratio": -1.210534,
-        "beta": 0.002537
+        "information_ratio": -1.459658,
+        "beta": 0.003528
       },
       "scorer50+hedged": {
-        "information_ratio": -1.173587,
-        "beta": 0.121222
+        "information_ratio": -1.433707,
+        "beta": 0.123553
       },
       "scorer50+hedged+traded": {
-        "information_ratio": -1.196481,
-        "beta": 0.106368
+        "information_ratio": -1.426315,
+        "beta": 0.111677
       }
     }
   },
   "candidates_2021_2026": {
     "composite": {
-      "information_ratio": 0.795895,
+      "information_ratio": 0.698668,
       "gross_annual": 0.175724,
-      "net_annual": 0.136998,
-      "cost_annual": 0.038727,
-      "turnover": 0.435746,
+      "net_annual": 0.1253,
+      "cost_annual": 0.050424,
+      "turnover": 0.435984,
       "positions": 277.176471,
       "months": 68,
-      "beta": -0.046875
+      "beta": -0.045173
     },
     "composite+traded": {
-      "information_ratio": 0.78895,
-      "gross_annual": 0.162705,
-      "net_annual": 0.128397,
-      "cost_annual": 0.034308,
-      "turnover": 0.385114,
-      "positions": 268.720588,
+      "information_ratio": 0.40548,
+      "gross_annual": 0.114109,
+      "net_annual": 0.07994,
+      "cost_annual": 0.034169,
+      "turnover": 0.293498,
+      "positions": 293.191176,
       "months": 68,
-      "beta": -0.055004
+      "beta": -0.046134
     },
     "composite+hedged": {
-      "information_ratio": 0.815818,
+      "information_ratio": 0.719306,
       "gross_annual": 0.177572,
-      "net_annual": 0.138078,
-      "cost_annual": 0.039494,
-      "turnover": 0.449899,
+      "net_annual": 0.126556,
+      "cost_annual": 0.051016,
+      "turnover": 0.450133,
       "positions": 297.352941,
       "months": 68,
-      "beta": -0.030106
+      "beta": -0.028703
     },
     "composite+hedged+traded": {
-      "information_ratio": 0.784199,
-      "gross_annual": 0.160465,
-      "net_annual": 0.125042,
-      "cost_annual": 0.035423,
-      "turnover": 0.403879,
-      "positions": 287.220588,
+      "information_ratio": 0.634257,
+      "gross_annual": 0.156343,
+      "net_annual": 0.109601,
+      "cost_annual": 0.046742,
+      "turnover": 0.419863,
+      "positions": 277.044118,
       "months": 68,
-      "beta": -0.039725
+      "beta": -0.041674
     },
     "scorer25": {
-      "information_ratio": 0.524993,
+      "information_ratio": 0.408888,
       "gross_annual": 0.14728,
-      "net_annual": 0.099369,
-      "cost_annual": 0.047911,
-      "turnover": 0.64127,
+      "net_annual": 0.086329,
+      "cost_annual": 0.060951,
+      "turnover": 0.64165,
       "positions": 238.485294,
       "months": 68,
-      "beta": -0.023459
+      "beta": -0.022514
     },
     "scorer25+traded": {
-      "information_ratio": 0.48627,
-      "gross_annual": 0.123746,
-      "net_annual": 0.084113,
-      "cost_annual": 0.039633,
-      "turnover": 0.52596,
-      "positions": 228.191176,
+      "information_ratio": 0.360002,
+      "gross_annual": 0.116853,
+      "net_annual": 0.071499,
+      "cost_annual": 0.045354,
+      "turnover": 0.486118,
+      "positions": 226.955882,
       "months": 68,
-      "beta": -0.019339
+      "beta": -0.013184
     },
     "scorer25+hedged": {
-      "information_ratio": 0.651315,
+      "information_ratio": 0.542519,
       "gross_annual": 0.162934,
-      "net_annual": 0.114449,
-      "cost_annual": 0.048485,
-      "turnover": 0.654463,
+      "net_annual": 0.102105,
+      "cost_annual": 0.060829,
+      "turnover": 0.654824,
       "positions": 249.617647,
       "months": 68,
-      "beta": -0.025946
+      "beta": -0.024203
     },
     "scorer25+hedged+traded": {
-      "information_ratio": 0.617934,
-      "gross_annual": 0.130781,
-      "net_annual": 0.094741,
-      "cost_annual": 0.036039,
-      "turnover": 0.476051,
-      "positions": 239.823529,
+      "information_ratio": 0.370794,
+      "gross_annual": 0.102539,
+      "net_annual": 0.06945,
+      "cost_annual": 0.033089,
+      "turnover": 0.338094,
+      "positions": 290.25,
       "months": 68,
-      "beta": -0.030613
+      "beta": 0.010385
     },
     "scorer50": {
-      "information_ratio": 0.128699,
+      "information_ratio": -0.033228,
       "gross_annual": 0.110483,
-      "net_annual": 0.055336,
-      "cost_annual": 0.055147,
-      "turnover": 0.779123,
+      "net_annual": 0.036042,
+      "cost_annual": 0.074441,
+      "turnover": 0.779798,
       "positions": 212.0,
       "months": 68,
-      "beta": 0.03739
+      "beta": 0.037804
     },
     "scorer50+traded": {
-      "information_ratio": 0.108204,
-      "gross_annual": 0.095257,
-      "net_annual": 0.050743,
-      "cost_annual": 0.044514,
-      "turnover": 0.618132,
-      "positions": 214.485294,
+      "information_ratio": -0.041047,
+      "gross_annual": 0.0962,
+      "net_annual": 0.035823,
+      "cost_annual": 0.060378,
+      "turnover": 0.648018,
+      "positions": 206.029412,
       "months": 68,
-      "beta": 0.025797
+      "beta": 0.016343
     },
     "scorer50+hedged": {
-      "information_ratio": 0.214995,
+      "information_ratio": 0.066397,
       "gross_annual": 0.122668,
-      "net_annual": 0.065898,
-      "cost_annual": 0.056769,
-      "turnover": 0.808972,
+      "net_annual": 0.047999,
+      "cost_annual": 0.074669,
+      "turnover": 0.809624,
       "positions": 228.808824,
       "months": 68,
-      "beta": 0.014813
+      "beta": 0.016719
     },
     "scorer50+hedged+traded": {
-      "information_ratio": 0.1313,
-      "gross_annual": 0.098671,
-      "net_annual": 0.053174,
-      "cost_annual": 0.045497,
-      "turnover": 0.640476,
-      "positions": 221.338235,
+      "information_ratio": 0.062367,
+      "gross_annual": 0.103007,
+      "net_annual": 0.046182,
+      "cost_annual": 0.056825,
+      "turnover": 0.631561,
+      "positions": 222.647059,
       "months": 68,
-      "beta": 0.012176
+      "beta": 0.009029
     }
   },
   "trader_book": "scorer50+hedged",
   "trader": {
     "2019": {
       "deep_hedging": {
-        "net_annual": 0.012359,
-        "utility": -0.000268
+        "net_annual": 0.004168,
+        "utility": -0.000933
       },
       "ppo": {
-        "net_annual": 0.010255,
-        "utility": -0.000452
+        "net_annual": 0.005194,
+        "utility": -0.000848
       },
       "fixed_rate": {
-        "net_annual": 0.020705,
-        "utility": -0.000332
+        "net_annual": 0.012433,
+        "utility": -0.00101
       },
       "trade_all_the_way": {
-        "net_annual": 0.032516,
-        "utility": 0.000463
+        "net_annual": 0.016818,
+        "utility": -0.000839
       },
       "fixed_rate_chosen": 0.75
     },
     "2020": {
       "deep_hedging": {
-        "net_annual": -0.155615,
-        "utility": -0.014674
+        "net_annual": -0.170198,
+        "utility": -0.015848
       },
       "ppo": {
-        "net_annual": -0.148946,
-        "utility": -0.014019
+        "net_annual": -0.14238,
+        "utility": -0.0134
       },
       "fixed_rate": {
-        "net_annual": -0.203007,
-        "utility": -0.019856
+        "net_annual": -0.216219,
+        "utility": -0.020881
       },
       "trade_all_the_way": {
-        "net_annual": -0.203007,
-        "utility": -0.019856
+        "net_annual": -0.231765,
+        "utility": -0.022268
       },
-      "fixed_rate_chosen": 1.0
+      "fixed_rate_chosen": 0.75
     },
     "2021": {
       "deep_hedging": {
-        "net_annual": 0.146477,
-        "utility": 0.009212
+        "net_annual": 0.141762,
+        "utility": 0.008976
       },
       "ppo": {
-        "net_annual": 0.172573,
-        "utility": 0.011751
+        "net_annual": 0.172996,
+        "utility": 0.01185
       },
       "fixed_rate": {
-        "net_annual": 0.214424,
-        "utility": 0.013772
+        "net_annual": 0.211729,
+        "utility": 0.013521
       },
       "trade_all_the_way": {
-        "net_annual": 0.214424,
-        "utility": 0.013772
+        "net_annual": 0.199567,
+        "utility": 0.012482
       },
-      "fixed_rate_chosen": 1.0
+      "fixed_rate_chosen": 0.75
     },
     "2022": {
       "deep_hedging": {
-        "net_annual": 0.079718,
-        "utility": 0.00395
+        "net_annual": 0.08368,
+        "utility": 0.004412
       },
       "ppo": {
-        "net_annual": 0.102906,
-        "utility": 0.006453
+        "net_annual": 0.09803,
+        "utility": 0.006044
       },
       "fixed_rate": {
-        "net_annual": 0.154002,
-        "utility": 0.00983
+        "net_annual": 0.150763,
+        "utility": 0.009562
       },
       "trade_all_the_way": {
-        "net_annual": 0.101687,
-        "utility": 0.003606
+        "net_annual": 0.079915,
+        "utility": 0.001833
       },
       "fixed_rate_chosen": 0.25
     },
     "2023": {
       "deep_hedging": {
-        "net_annual": 0.053757,
-        "utility": 0.00306
+        "net_annual": 0.047905,
+        "utility": 0.00258
       },
       "ppo": {
-        "net_annual": 0.061943,
-        "utility": 0.003785
+        "net_annual": 0.059566,
+        "utility": 0.003576
       },
       "fixed_rate": {
-        "net_annual": 0.079433,
-        "utility": 0.00476
+        "net_annual": 0.078808,
+        "utility": 0.004709
       },
       "trade_all_the_way": {
-        "net_annual": 0.073469,
-        "utility": 0.003987
+        "net_annual": 0.061327,
+        "utility": 0.002968
       },
       "fixed_rate_chosen": 0.25
     },
     "2024": {
       "deep_hedging": {
-        "net_annual": -0.054708,
-        "utility": -0.005305
+        "net_annual": -0.065916,
+        "utility": -0.006227
       },
       "ppo": {
-        "net_annual": -0.051891,
-        "utility": -0.005096
+        "net_annual": -0.057812,
+        "utility": -0.005502
       },
       "fixed_rate": {
-        "net_annual": -0.109098,
-        "utility": -0.010067
+        "net_annual": -0.107972,
+        "utility": -0.009973
       },
       "trade_all_the_way": {
-        "net_annual": -0.069892,
-        "utility": -0.007145
+        "net_annual": -0.087371,
+        "utility": -0.008577
       },
       "fixed_rate_chosen": 0.25
     },
     "2025": {
       "deep_hedging": {
-        "net_annual": -0.008672,
-        "utility": -0.001446
+        "net_annual": -0.017154,
+        "utility": -0.002156
       },
       "ppo": {
-        "net_annual": -0.020297,
-        "utility": -0.002416
+        "net_annual": -0.028671,
+        "utility": -0.003038
       },
       "fixed_rate": {
-        "net_annual": -0.007144,
-        "utility": -0.001425
+        "net_annual": -0.00642,
+        "utility": -0.001367
       },
       "trade_all_the_way": {
-        "net_annual": -0.021308,
-        "utility": -0.002602
+        "net_annual": -0.032399,
+        "utility": -0.003528
       },
       "fixed_rate_chosen": 0.25
     },
     "2026": {
       "deep_hedging": {
-        "net_annual": 0.118467,
-        "utility": 0.005747
+        "net_annual": 0.124225,
+        "utility": 0.006253
       },
       "ppo": {
-        "net_annual": 0.093067,
-        "utility": 0.005643
+        "net_annual": 0.08169,
+        "utility": 0.005254
       },
       "fixed_rate": {
-        "net_annual": 0.104751,
-        "utility": 0.007244
+        "net_annual": 0.105305,
+        "utility": 0.007292
       },
       "trade_all_the_way": {
-        "net_annual": 0.119631,
-        "utility": 0.005848
+        "net_annual": 0.116005,
+        "utility": 0.005548
       },
       "fixed_rate_chosen": 0.25
     }

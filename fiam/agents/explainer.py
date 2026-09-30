@@ -49,7 +49,7 @@ def main() -> None:
                 dict(role="user", content=json.dumps(facts, default=str)),
             ]
             reply = server.chat(messages, schema=SCHEMA)
-            why = json.loads(reply.get("content") or "{}").get("why", "")
+            why = H.parse(reply).get("why", "")
             out.append(
                 dict(
                     ticker=name["ticker"],
@@ -65,7 +65,7 @@ def main() -> None:
         model=server.name,
         positions=out,
     )
-    OUT.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, summary, rounded=False, default=str)
     print(f"{len(out)} positions explained")
 
 

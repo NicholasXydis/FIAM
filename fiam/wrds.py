@@ -109,7 +109,7 @@ def main(exports: list[str]) -> None:
             converted_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
         print(f"  {name}: {table.num_rows:,} rows from {path.name}")
-    sources.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(sources, record, rounded=False)
     table = exits()
     table.to_parquet(OUT / "exits.parquet")
     print(f"  exits: {len(table):,} securities with a dated delisting or deletion")

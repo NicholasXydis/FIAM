@@ -7,6 +7,7 @@ import torch
 
 from fiam import benchmarks as B
 from fiam import book as P
+from fiam import costs as C
 from fiam import paths
 
 # One thread and deterministic kernels, so every machine computes the same policy.
@@ -24,19 +25,17 @@ STEPS, MONTHLY_STEPS = (20, 5) if paths.SMOKE else (300, 25)
 PPO_STEPS = 480 if paths.SMOKE else 24_000
 SEED = 42
 
-# Costs per unit traded: the book's commission and impact, plus its scaled half-spread.
-LINEAR = (P.COSTS["commission_bps"] + P.COSTS["impact_bps"]) / 1e4
-HALF_SPREAD = P.COSTS["spread_scale"] / 2
-BORROW = P.COSTS["borrow_gc_bps"] / 1e4 / 12, P.COSTS["borrow_htb_bps"] / 1e4 / 12
+# Cash and short proceeds earn the benchmark less the broker's spread, charged every month.
+FINANCING = C.FINANCING_SPREAD / 12
 FEATURES = ["aim_churn", "book_volatility", "market_volatility", "book_momentum"]
 
 
-# The target path as dense arrays over every name: weights, returns, spreads, borrow and listing.
+# The target path as dense arrays over every name: weights, returns, the book's costs and listing.
 def arrays(steps: list) -> dict:
     names = sorted({p for _, w, *_ in steps for p in w.index})
     column = {p: i for i, p in enumerate(names)}
     shape = (len(steps), len(names))
-    out = {k: np.zeros(shape) for k in ("aim", "ret", "spread", "htb", "listed")}
+    out = {k: np.zeros(shape) for k in ("aim", "ret", "linear", "impact", "borrow", "listed")}
     rates = B.benchmarks().set_index("month")["rf"]
     out["rf"], out["months"] = np.zeros(len(steps)), []
     for i, (month, weights, _, cross, *_) in enumerate(steps):
@@ -45,8 +44,12 @@ def arrays(steps: list) -> dict:
         listed = listed[listed.index.isin(column)]
         at = [column[p] for p in listed.index]
         out["ret"][i, at] = listed["ret_exc_lead1m"].fillna(0.0).to_numpy()
-        out["spread"][i, at] = listed["bidaskhl_21d"].fillna(0.0).to_numpy()
-        out["htb"][i, at] = listed["htb"].astype(float).to_numpy()
+        quotes = listed[C.COLUMNS].copy()
+        numeric = quotes.drop(columns="size_grp")
+        quotes[numeric.columns] = numeric.fillna(numeric.median())
+        linear, impact = C.unit_costs(quotes)
+        out["linear"][i, at], out["impact"][i, at] = linear.to_numpy(), impact.to_numpy()
+        out["borrow"][i, at] = quotes["borrow"].to_numpy() / 12
         out["listed"][i, at] = 1.0
         out["rf"][i] = rates.get((month + pd.offsets.MonthBegin(1)).normalize(), 0.0)
         out["months"].append(pd.Timestamp(month))
@@ -73,10 +76,10 @@ def step_torch(held, t: dict, now, rate, gross, scale):
     mixed = longs * half / longs.sum(-1, keepdim=True) - shorts * half / shorts.sum(
         -1, keepdim=True
     )
-    traded = (mixed - held).abs() * (LINEAR + t["spread"][now] * HALF_SPREAD)
-    shorts = mixed.clamp(max=0).abs()
-    borrow = shorts * (BORROW[0] + t["htb"][now] * BORROW[1])
-    net = (mixed * t["ret"][now]).sum(-1) - traded.sum(-1) * scale - borrow.sum(-1)
+    move = (mixed - held).abs()
+    traded = move * t["linear"][now] + move**1.5 * t["impact"][now]
+    borrow = mixed.clamp(max=0).abs() * t["borrow"][now]
+    net = (mixed * t["ret"][now]).sum(-1) - traded.sum(-1) * scale - borrow.sum(-1) - FINANCING
     rf = t["rf"][now].unsqueeze(-1)
     return net, mixed * (1 + rf + t["ret"][now]) / (1 + rf + net.unsqueeze(-1))
 
@@ -86,9 +89,10 @@ def step_numpy(held, t: dict, now: int, rate: float, gross: float, scale: float)
     mixed = (1 - rate) * held * t["listed"][now] + rate * t["aim"][now] * (gross / GROSS[1])
     longs, shorts = mixed.clip(min=0), mixed.clip(max=0)
     mixed = longs * (gross / 2) / longs.sum() - shorts * (gross / 2) / shorts.sum()
-    traded = np.abs(mixed - held) * (LINEAR + t["spread"][now] * HALF_SPREAD)
-    borrow = np.abs(mixed.clip(max=0)) * (BORROW[0] + t["htb"][now] * BORROW[1])
-    net = float((mixed * t["ret"][now]).sum() - traded.sum() * scale - borrow.sum())
+    move = np.abs(mixed - held)
+    traded = move * t["linear"][now] + move**1.5 * t["impact"][now]
+    borrow = np.abs(mixed.clip(max=0)) * t["borrow"][now]
+    net = float((mixed * t["ret"][now]).sum() - traded.sum() * scale - borrow.sum() - FINANCING)
     rf = t["rf"][now]
     return net, mixed * (1 + rf + t["ret"][now]) / (1 + rf + net)
 

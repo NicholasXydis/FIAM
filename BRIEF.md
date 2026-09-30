@@ -20,15 +20,15 @@ It shipped the composite in all 6 years: no learned book beat it clearly.
 
 |  |  |
 |---|---|
-| Net return | **13.6% a year** after every modelled fee |
-| Information ratio | **0.79** |
-| Alpha | 14.1% a year, t = 2.46 |
-| Beta to the S&P 500, monthly | -0.05, standard error 0.09 |
+| Net return | **12.5% a year** after every modelled fee |
+| Information ratio | **0.69** |
+| Alpha | 12.9% a year, t = 2.23 |
+| Beta to the S&P 500, monthly | -0.04, standard error 0.09 |
 | Beta, daily returns 2021-25 | -0.10, t = -3.5: a short market tilt |
-| Worst drawdown | -10.5% |
-| Split in half | 2021-22 IR 1.81, 2023-26 IR +0.03 |
-| CRSP years only | 2021-25 IR 0.71 |
-| 2016-2020, not designed on | IR -0.83, beta -0.25 (se 0.07) |
+| Worst drawdown | -11.0% |
+| Split in half | 2021-22 IR 1.74, 2023-26 IR -0.11 |
+| CRSP years only | 2021-25 IR 0.62 |
+| 2016-2020, not designed on | IR -1.00, beta -0.25 (se 0.07) |
 
 <!--/AUTO:brief-->
 

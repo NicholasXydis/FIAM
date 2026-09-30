@@ -66,10 +66,12 @@ def test_builder_keeps_january_2015_and_matches_items_exactly(tmp_path):
             items=[["2.02", "9.01"], ["12.02"], None],
             word_count=[10, 20, 30],
             text=["A loss and a decline", "growth", ""],
+            **{column: None for column in [*build.NAMES, *build.TICKERS]},
         )
     )
     filings.to_parquet(tmp_path / build.FILINGS)
-    table = build.filing_table(tmp_path)
+    table, texts = build.filing_table(tmp_path)
+    assert texts["excerpt"].tolist() == ["A loss and a decline", "growth", ""]
     assert table["item_202_earnings"].tolist() == [1, 0, 0]
     assert table["text_negative"].tolist() == [2, 0, 0]
     events = build.monthly_events(table).set_index(["permno", "eom"])
@@ -112,3 +114,18 @@ def test_import_refuses_a_zip_that_escapes_the_bundle(tmp_path):
     with pytest.raises(SystemExit):
         run.unzip(bad, tmp_path / "other")
     assert not (tmp_path / "escaped.txt").exists() and not (tmp_path / "other").exists()
+
+
+# The excerpt starts at the first item, and names, tickers, the CIK and every date are masked.
+def test_filing_excerpt_is_masked():
+    build = importlib.import_module("fiam.build_data")
+    row = dict(company_name="PFIZER INC", ticker="PFE", cik="0000078003", provider_ticker="PFE")
+    text = (
+        "COVER PAGE PFIZER INC 0000078003 Item 8.01 Other Events. On October 5, 2015, Pfizer Inc. "
+        "(NYSE: PFE) completed its offers, as filed July 2014 and on 10/05/2015. CIK 78003."
+    )
+    out = build.excerpt(text, row)
+    assert out.startswith("Item 8.01")
+    for leak in ("Pfizer", "PFIZER", "PFE", "2015", "2014", "October", "July", "78003"):
+        assert leak not in out, leak
+    assert "Securities Act of 1933" == build.excerpt("Item 1.01 Securities Act of 1933", {})[10:]

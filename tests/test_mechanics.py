@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from fiam import book as P
+from fiam import costs as C
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,32 +48,76 @@ def test_drift_of_an_empty_book_is_nothing():
     assert P.drift(pd.Series(dtype=float), pd.DataFrame(), {}, 0.0) is None
 
 
-# The cost lines add up, and selling out of a name is charged.
-def test_costs_reconcile_and_an_exit_counts_as_a_trade(held):
+# One month's quotes for the cost model, with a known spread ratio for every size group.
+def quotes(prc, spread, vol, volume, borrow, index) -> pd.DataFrame:
+    return pd.DataFrame(
+        dict(
+            prc=prc,
+            bidaskhl_21d=spread,
+            size_grp="large",
+            rvol_21d=vol,
+            dolvol_126d=volume,
+            borrow=borrow,
+        ),
+        index=index,
+    )
+
+
+# The cost lines match a hand calculation; a name sold out is priced on last month's quotes.
+def test_costs_match_a_hand_calculation(held, monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.5})
     weights, _ = held
     today = pd.Series([0.02, -0.02], index=[1, 4])
-    info = pd.DataFrame(dict(htb=[False, True]), index=[1, 4])
-    spreads = pd.Series([0.01, 0.02], index=[1, 4])
-    parts, turnover = P.trading_cost(today, weights, info, spreads, pd.Series(0.01, [1, 2, 3]))
+    now = quotes(50.0, 0.01, 0.02, 1e8, [0.003, 0.03], [1, 4])
+    before = quotes(20.0, 0.02, 0.03, 5e7, 0.003, [1, 2, 3])
+    parts, turnover = P.trading_cost(today, weights, now, before)
     assert set(parts) == {
         "cost_commission",
         "cost_spread",
-        "cost_borrow_gc",
-        "cost_borrow_htb",
         "cost_impact",
+        "cost_borrow",
+        "cost_financing",
     }
-    # Name 1 unchanged, names 2 and 3 sold out, name 4 opened: 0.04 traded, one way 0.02.
+    # Name 1 unchanged, 2 and 3 bought back ($100k each at $20), 4 sold short ($200k at $50).
     assert turnover == pytest.approx(0.02)
-    assert parts["cost_commission"] == pytest.approx(0.04 * 5 / 1e4)
-    assert parts["cost_borrow_htb"] == pytest.approx(0.02 * 250 / 1e4 / 12)
+    fees = 27.80e-6 * 200e3 + 0.000195 * 4000 + 0.000003 * 14000
+    assert parts["cost_commission"] == pytest.approx((25 + 25 + 20 + fees) / 1e7)
+    assert parts["cost_spread"] == pytest.approx((100e3 * 0.01 * 2 + 200e3 * 0.005) / 1e7)
+    impact = 2 * 0.03 * np.sqrt(100e3 / 5e7) * 100e3 + 0.02 * np.sqrt(200e3 / 1e8) * 200e3
+    assert parts["cost_impact"] == pytest.approx(impact / 1e7)
+    assert parts["cost_borrow"] == pytest.approx(0.02 * 0.03 / 12)
+    assert parts["cost_financing"] == pytest.approx(0.005 / 12)
 
 
 # The first month pays to buy the whole book.
-def test_first_month_is_a_full_entry():
+def test_first_month_is_a_full_entry(monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.5})
     today = pd.Series([0.01, -0.01], index=[1, 2])
-    info = pd.DataFrame(dict(htb=[False, False]), index=[1, 2])
-    _, turnover = P.trading_cost(today, None, info, pd.Series(0.0, [1, 2]), None)
+    _, turnover = P.trading_cost(today, None, quotes(30.0, 0.01, 0.02, 1e8, 0.003, [1, 2]), None)
     assert turnover == pytest.approx(0.01)
+
+
+# IBKR's minimum and 1% cap, FINRA's per-trade cap, and the borrow tiers.
+def test_commission_caps_and_borrow_tiers(monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.0})
+    tiny = C.month_costs(
+        pd.Series([1e-6]), pd.Series([1e-6]), quotes(10.0, 0.0, 0.0, 1e9, 0.003, [0])
+    )
+    assert tiny["cost_commission"] * 1e7 == pytest.approx(0.1 + 0.000003)
+    sale = C.month_costs(
+        pd.Series([-0.01]), pd.Series([0.0]), quotes(1.0, 0.0, 0.0, 1e9, 0.003, [0])
+    )
+    assert sale["cost_commission"] * 1e7 == pytest.approx(500 + 27.80e-6 * 1e5 + 9.79 + 0.3)
+    rates = C.tier(pd.Series([0.0, 0.049, 0.05, 0.12, 0.25, np.nan]))
+    assert rates.tolist() == [0.003, 0.003, 0.01, 0.03, 0.08, 0.003]
+
+
+# The spread calibration reads only quotes from before the record starts.
+def test_spread_calibration_stops_in_2020(monkeypatch):
+    asked = []
+    monkeypatch.setattr(C.data, "research", lambda name, cols, filters=None: asked.append(filters))
+    assert C.calibrate_spreads() is None
+    assert max(v for c, op, v in asked[0] if op == "<=") == pd.Timestamp("2020-12-31")
 
 
 # Truncation can leave net exposure, and the repair adds shares back, so one share is the bound.
@@ -126,7 +171,7 @@ def test_missing_returns_are_booked_at_zero_and_recorded():
             ret_exc_lead1m=[0.05, np.nan],
             hedge_beta=[1.0, 1.0],
             sector=["10", "10"],
-            htb=[False, False],
+            borrow=[0.003, 0.003],
         ),
         index=[1, 2],
     )

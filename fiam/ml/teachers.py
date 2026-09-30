@@ -1,6 +1,5 @@
 # Teachers: models that learn what 2025-only data would say, from inputs that reach 2026.
 
-import json
 
 import lightgbm as lgb
 import numpy as np
@@ -10,6 +9,7 @@ from fiam import benchmarks as B
 from fiam import book as P
 from fiam import data, paths
 from fiam.ml import dataset as D
+from fiam.ml import text as T
 
 OUT = paths.EXHIBITS / "teachers.json"
 CACHE = P.CACHE / "teachers.parquet"
@@ -93,6 +93,33 @@ def monthly_revisions() -> pd.Series | None:
     return pd.Series(net.to_numpy(), index=pd.MultiIndex.from_arrays([ibes["permno"], month]))
 
 
+# Next quarter's surprise: niq_su a month after the next report (rdq), if due within four months.
+def monthly_surprise() -> pd.Series | None:
+    quarters = data.wrds("compustat_quarterly", ["gvkey", "rdq"])
+    if quarters is None:
+        return None
+    reports = quarters.dropna().assign(
+        rdq=lambda d: pd.to_datetime(d["rdq"]).astype("datetime64[s]")
+    )
+    reports = reports.drop_duplicates().sort_values("rdq").rename(columns={"rdq": "report"})
+    panel = data.features(["gvkey", "niq_su"]).dropna(subset=["gvkey"])
+    decided = pd.merge_asof(
+        panel[["permno", "eom", "gvkey"]].sort_values("eom"),
+        reports,
+        left_on="eom",
+        right_on="report",
+        by="gvkey",
+        direction="forward",
+        allow_exact_matches=False,
+    )
+    decided = decided[(decided["report"] - decided["eom"]).dt.days <= 122]
+    decided["when"] = (decided["report"] + pd.DateOffset(months=1)) + pd.offsets.MonthEnd(0)
+    known = panel.set_index(["permno", "eom"])["niq_su"]
+    value = known.reindex(pd.MultiIndex.from_arrays([decided["permno"], decided["when"]]))
+    month = (decided["eom"] + pd.offsets.MonthBegin(1)).dt.normalize()
+    return pd.Series(value.to_numpy(), index=pd.MultiIndex.from_arrays([decided["permno"], month]))
+
+
 # Each row's target: what the layer shows in the holding month, the month after the decision.
 def attach(frame: pd.DataFrame, target: pd.Series, rank: bool) -> pd.Series:
     key = pd.MultiIndex.from_arrays([frame["permno"], frame["holding_month"]])
@@ -101,7 +128,7 @@ def attach(frame: pd.DataFrame, target: pd.Series, rank: bool) -> pd.Series:
 
 
 # Year by year, trained only on holding months before that year. Never sees its own year.
-def walk_forward(frame: pd.DataFrame, cols: list[str], target: pd.Series) -> pd.Series:
+def walk_forward(frame: pd.DataFrame, cols: list[str], target: pd.Series, text=None) -> pd.Series:
     out = pd.Series(np.nan, index=frame.index)
     year = frame["holding_month"].dt.year
     for test_year in YEARS:
@@ -109,8 +136,13 @@ def walk_forward(frame: pd.DataFrame, cols: list[str], target: pd.Series) -> pd.
         test = year == test_year
         if train.sum() < 10_000 or not test.any():
             continue
-        model = lgb.train(PARAMS, lgb.Dataset(frame.loc[train, cols], label=target[train]), ROUNDS)
-        out[test] = model.predict(frame.loc[test, cols], num_threads=PARAMS["num_threads"])
+        x = frame[cols]
+        # Text components fitted on the training years alone, so the test year never shapes them.
+        if text is not None:
+            parts = T.components(text, (year < test_year).to_numpy())
+            x = pd.concat([x, pd.DataFrame(parts, index=frame.index, columns=T.NAMES)], axis=1)
+        model = lgb.train(PARAMS, lgb.Dataset(x.loc[train], label=target[train]), ROUNDS)
+        out[test] = model.predict(x.loc[test], num_threads=PARAMS["num_threads"])
     return out
 
 
@@ -134,6 +166,7 @@ def main() -> None:
     frame, cols = inputs()
     layers = dict(beta=(monthly_beta, False), crowding=(monthly_crowding, True))
     layers["revisions"] = (monthly_revisions, True)
+    layers["surprise"] = (monthly_surprise, True)
     out = frame[[*data.KEYS]].copy()
     report = {}
     for name, (build, rank) in layers.items():
@@ -142,18 +175,21 @@ def main() -> None:
             print(f"  {name}: its layer is not in the bundle, skipped")
             continue
         target = attach(frame, raw, rank)
-        pred = walk_forward(frame, cols, target)
+        # Only the earnings-surprise teacher reads the text, as PREREGISTRATION.md fixes.
+        text = T.aligned(frame) if name == "surprise" else None
+        pred = walk_forward(frame, cols, target, text)
         out[f"{name}_hat"] = pred
         report[name] = accuracy(frame, pred, target, name)
         print(f"  {name}: {report[name]['rank_correlation_by_year']}")
     CACHE.parent.mkdir(exist_ok=True)
     out.to_parquet(CACHE, index=False)
     summary = dict(
-        what="Year-ahead predictions of daily beta, short-interest crowding and analyst revisions, "
-        "each trained only on earlier years, from the characteristics and 8-K counts alone.",
+        what="Year-ahead predictions of daily beta, short-interest crowding, analyst revisions and "
+        "next quarter's earnings surprise, each trained only on earlier years from the "
+        "characteristics and 8-K counts; the surprise teacher also reads the text components.",
         teachers=report,
     )
-    OUT.write_text(json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, summary)
 
 
 if __name__ == "__main__":

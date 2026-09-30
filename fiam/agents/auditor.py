@@ -238,7 +238,7 @@ def main() -> None:
                 score=score(findings, landed) if plant else dict(false_alarms=len(findings)),
                 transcript=result["transcript"].relative_to(ROOT).as_posix(),
             )
-    (OUT / "auditor.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT / "auditor.json", out, rounded=False)
     print(json.dumps({k: v["score"] for k, v in out["runs"].items()}, indent=2))
 
 

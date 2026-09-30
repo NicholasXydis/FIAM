@@ -1,6 +1,7 @@
 # The models, the ship rule and the agents' plumbing on tiny synthetic inputs. No data, no network.
 
 import importlib
+from operator import itemgetter
 
 import numpy as np
 import pandas as pd
@@ -64,8 +65,9 @@ def test_trader_is_deterministic_and_warm_starts(monkeypatch):
     t = dict(
         aim=aim,
         ret=rng.normal(0, 0.05, (months, n)),
-        spread=np.full((months, n), 0.01),
-        htb=np.zeros((months, n)),
+        linear=np.full((months, n), 0.001),
+        impact=np.full((months, n), 0.01),
+        borrow=np.full((months, n), 0.0025),
         listed=np.ones((months, n)),
         rf=np.full(months, 0.003),
     )
@@ -102,8 +104,9 @@ def test_trader_steps_agree():
     t = dict(
         aim=np.r_[np.full(15, 0.1), np.full(15, -0.1)][None, :].repeat(2, 0) * 1.6 / 3,
         ret=rng.normal(0, 0.05, (2, n)),
-        spread=np.full((2, n), 0.01),
-        htb=np.zeros((2, n)),
+        linear=np.full((2, n), 0.001),
+        impact=np.full((2, n), 0.01),
+        borrow=np.full((2, n), 0.0025),
         listed=np.ones((2, n)),
         rf=np.full(2, 0.003),
     )
@@ -164,3 +167,72 @@ def test_nested_rule_sees_only_the_past():
     assert seen == {2021: pd.Timestamp("2020-12-01"), 2022: pd.Timestamp("2021-12-01")}
     assert picks == {"2021": "a", "2022": "b"} and len(joined) == 24
     assert joined.loc["2021", "net"].eq(0.01).all() and joined.loc["2022", "net"].eq(0.02).all()
+
+
+# The current design keeps 1.5% everywhere; v2 shrinks illiquid and volatile names, bans specials.
+def test_construction_v2_caps():
+    month = pd.DataFrame(
+        dict(
+            rvol_21d=[0.02, 0.02, 0.08, 0.02],
+            dolvol_126d=[1e8, 1e6, 1e8, 1e8],
+            borrow=[0.003, 0.003, 0.003, 0.08],
+        )
+    )
+    side = np.array([1.0, 1.0, -1.0, -1.0])
+    assert (P.caps(month, month, side, P.CURRENT) == P.LIMITS["name"]).all()
+    cap = P.caps(month, month, side, P.V2)
+    impact = month["rvol_21d"] / np.sqrt(month["dolvol_126d"])
+    assert cap[0] == P.LIMITS["name"]
+    assert cap[1] == pytest.approx(P.LIMITS["name"] * impact.median() / impact[1])
+    assert cap[2] == pytest.approx(P.LIMITS["name"] * min(impact.median() / impact[2], 0.02 / 0.08))
+    assert cap[3] == 0.0
+
+
+# The bear-market state follows the market's own past 24 months, known at each decision.
+def test_bear_months_follow_the_past_two_years(monkeypatch):
+    months = pd.date_range("2018-01-01", periods=30, freq="MS")
+    down = [-0.02] * 24 + [0.05] * 6
+    frame = pd.DataFrame(dict(month=months, mkt_rf_crsp=down, rf=0.0))
+    monkeypatch.setattr(P, "benchmarks", lambda: frame)
+    P.bear_months.cache_clear()
+    bear = P.bear_months()
+    P.bear_months.cache_clear()
+    assert pd.Timestamp("2019-12-31") in bear and pd.Timestamp("2019-11-30") not in bear
+
+
+# Text components are fitted on the training rows alone: test rows cannot change them.
+def test_text_components_fit_on_training_rows_only():
+    text = importlib.import_module("fiam.ml.text")
+    rng = np.random.default_rng(0)
+    matrix = rng.normal(size=(800, text.WIDTH)).astype(np.float32)
+    matrix[700:, 0] = np.nan
+    train = np.arange(800) < 500
+    first = text.components(matrix, train)
+    shifted = matrix.copy()
+    shifted[500:700] += 100.0
+    second = text.components(shifted, train)
+    assert np.allclose(first[:500], second[:500], atol=1e-4)
+    assert np.isnan(first[700:]).all()
+
+
+# The stock picker's target carries no beta or style: it is uncorrelated with each exposure.
+def test_stock_picker_target_is_free_of_style():
+    scorer = importlib.import_module("fiam.ml.scorer")
+    rng = np.random.default_rng(0)
+    n = 400
+    frame = pd.DataFrame({c: rng.normal(size=n) for c in scorer.STYLE})
+    frame["holding_month"] = pd.Timestamp("2020-01-01")
+    frame["sector"] = rng.choice(["10", "20"], n)
+    frame[scorer.D.TARGET] = frame[scorer.STYLE].sum(axis=1) + rng.normal(size=n)
+    out = scorer.residual(frame)
+    assert all(abs(np.corrcoef(out, frame[c])[0, 1]) < 1e-8 for c in scorer.STYLE)
+
+
+# The agents' answer log resumes: a second session sees what the first one saved.
+def test_agent_answers_resume(tmp_path, monkeypatch):
+    harness = importlib.import_module("fiam.agents.harness")
+    monkeypatch.setattr(harness, "RUNS", tmp_path)
+    with harness.answers("demo", itemgetter("id")) as (done, save):
+        save(dict(id="a", label="good"))
+    with harness.answers("demo", itemgetter("id")) as (done, _):
+        assert done == {"a": dict(id="a", label="good")}

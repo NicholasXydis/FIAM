@@ -1,12 +1,12 @@
 # The book against CRSP and Compustat: exits, returns, market, report dates. Writes wrds.json.
 
-import json
 import sys
 
 import pandas as pd
 
 from fiam import benchmarks as B
 from fiam import book as P
+from fiam import costs as C
 from fiam import data, paths
 
 OUT = paths.EXHIBITS / "wrds.json"
@@ -34,15 +34,15 @@ def exit_record(table: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame)
     months = book["Date"].nunique()
 
     # Closing a name that left is a trade the backtest already charged, priced here on its own.
-    spreads = universe.set_index(["eom", "permno"])["bidaskhl_21d"]
+    # Borrow is not part of closing a name, so it is left at zero here.
+    quotes = universe.assign(borrow=0.0).set_index(["eom", "permno"])[C.COLUMNS]
     closing = 0.0
     for date, group in during.groupby("Date"):
         decided = date - pd.offsets.MonthEnd(1)
         weights = group.set_index("PERMNO")["w"]
-        own = spreads.xs(decided, level="eom").reindex(weights.index)
-        nothing = pd.DataFrame(dict(htb=pd.Series(dtype=bool)))
-        parts, _ = P.trading_cost(pd.Series(dtype=float), weights, nothing, own, None)
-        closing += sum(parts.values()) - parts["cost_borrow_gc"] - parts["cost_borrow_htb"]
+        own = quotes.xs(decided, level="eom").reindex(weights.index)
+        parts, _ = P.trading_cost(pd.Series(dtype=float), weights, own.iloc[:0], own)
+        closing += parts["cost_commission"] + parts["cost_spread"] + parts["cost_impact"]
 
     kind = during["source"].str.replace("CRSP delisting ", "", regex=False).str.strip()
     return dict(
@@ -231,7 +231,7 @@ def main() -> None:
         release_day_sensitivity=release_day_sensitivity(reports),
         organizer_data_only=without_wrds(),
     )
-    OUT.write_text(json.dumps(P.round_floats(out), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, out)
 
     r, m, t = out["returns_against_crsp"], out["market_with_dividends"], out["report_dates"]
     print(f"returns: {r['share_within_1bp']:.1%} within 1bp of CRSP, corr {r['correlation']:.4f}")

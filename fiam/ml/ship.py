@@ -1,6 +1,5 @@
 # The ship rule: builds every candidate book, trains the trader, and picks each year's book.
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -29,18 +28,17 @@ REFERENCE = P.candidate_name(0.5, True, False)
 def inputs() -> pd.DataFrame | None:
     frames = []
     if SC.CACHE.exists():
-        frames.append(pd.read_parquet(SC.CACHE, columns=[*data.KEYS, "score"]))
+        frames.append(data.read(SC.CACHE, [*data.KEYS, "score"]))
     if TE.CACHE.exists():
-        taught = pd.read_parquet(TE.CACHE)
-        frames.append(taught.filter([*data.KEYS, "beta_hat", "crowding_hat"]))
+        frames.append(data.read(TE.CACHE).filter([*data.KEYS, "beta_hat", "crowding_hat"]))
     if SC.CROWD.exists():
-        frames.append(pd.read_parquet(SC.CROWD))
+        frames.append(data.read(SC.CROWD))
     if not frames:
         return None
     out = frames[0]
     for extra in frames[1:]:
         out = out.merge(extra, on=data.KEYS, how="outer")
-    return out.assign(eom=out["eom"].astype("datetime64[s]"))
+    return out
 
 
 # One candidate walked through every month, its records and the steps the trader learns from.
@@ -69,7 +67,7 @@ def learn_trades(steps: list, nets: pd.Series, card: bool) -> tuple[dict, dict]:
     return trades, scorecard(path, raw, tensors, years, trades) if card else {}
 
 
-# Each test year replayed four ways: the monthly policy, PPO, the best fixed rate, no trader.
+# Each test year four ways: the monthly policy, PPO, Garleanu-Pedersen's constant rate, no trader.
 def scorecard(path: dict, raw, tensors: dict, years: np.ndarray, trades: dict) -> dict:
     card = {}
     for year in range(FIRST_TRADER_YEAR, int(years.max()) + 1):
@@ -134,8 +132,7 @@ def main() -> None:
     }
     policy = dict(by_year=by_year, trades=dict(sorted(kept.items())))
     P.MODELS.mkdir(parents=True, exist_ok=True)
-    policy_text = json.dumps(P.round_floats(policy), indent=2) + "\n"
-    (P.MODELS / "policy.json").write_text(policy_text, encoding="utf-8", newline="\n")
+    paths.write_json(P.MODELS / "policy.json", policy, end="\n")
     if extra is not None:
         recent = extra[extra["eom"] >= P.FIRST_FORECAST].sort_values(data.KEYS)
         recent.to_parquet(P.MODELS / "book_inputs.parquet", index=False)
@@ -162,7 +159,7 @@ def main() -> None:
         trader_book=REFERENCE,
         trader=card,
     )
-    OUT.write_text(json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, summary)
     print(f"  chosen: {by_year}")
 
 

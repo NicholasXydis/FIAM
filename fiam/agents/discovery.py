@@ -206,9 +206,7 @@ def main() -> None:
         out["random_search_control"] = control(Sandbox(panel, False), panel)
     book = paths.read_json(paths.METRICS)
     out["shipped_book_ir"] = book["performance"]["information_ratio"]
-    (OUT / "discovery.json").write_text(
-        json.dumps(out, indent=2, default=str), encoding="utf-8", newline="\n"
-    )
+    paths.write_json(OUT / "discovery.json", out, rounded=False, default=str)
     print(json.dumps({k: v for k, v in out["runs"].items()}, indent=2, default=str)[:3000])
 
 

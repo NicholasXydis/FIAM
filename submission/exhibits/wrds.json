@@ -39,7 +39,7 @@
       "long_weight_monthly": 0.000763,
       "short_weight_monthly": 0.004048,
       "payout_contribution_annual": -8e-06,
-      "closing_cost_annual_already_charged": 9e-05,
+      "closing_cost_annual_already_charged": 4.9e-05,
       "what": "Names taken over or delisted after the decision. Their final CRSP return is booked, where booking zero would drop the payout_contribution_annual above."
     }
   },
@@ -58,16 +58,16 @@
     "months": 60,
     "window": "2021-01 to 2025-12",
     "total_return_crsp": {
-      "beta": -0.020269,
-      "beta_stderr": 0.100798,
-      "alpha_annual": 0.130991,
-      "alpha_tstat": 2.013451
+      "beta": -0.018654,
+      "beta_stderr": 0.100962,
+      "alpha_annual": 0.119204,
+      "alpha_tstat": 1.814892
     },
     "price_only_fred": {
-      "beta": -0.014926,
-      "beta_stderr": 0.100674,
-      "alpha_annual": 0.130131,
-      "alpha_tstat": 2.008095
+      "beta": -0.01331,
+      "beta_stderr": 0.100839,
+      "alpha_annual": 0.11837,
+      "alpha_tstat": 1.80902
     },
     "dividend_gap_annual": 0.014776,
     "fred_vs_crsp_price_correlation": 0.999808
@@ -220,13 +220,13 @@
   "release_day_sensitivity": {
     "what": "Accounting updates whose report is dated on the decision day, which may have come after the close, held back a month. A sensitivity only: the shipped book is unchanged.",
     "panel_rows_affected_share": 0.012474,
-    "information_ratio": 0.817551,
-    "net_annual": 0.139916
+    "information_ratio": 0.676078,
+    "net_annual": 0.122737
   },
   "organizer_data_only": {
-    "information_ratio": 0.789596,
-    "return_net_annual": 0.136447,
-    "beta_realized": -0.04612,
-    "beta_stderr": 0.091763
+    "information_ratio": 0.69233,
+    "return_net_annual": 0.124737,
+    "beta_realized": -0.044342,
+    "beta_stderr": 0.091951
   }
 }

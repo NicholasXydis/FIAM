@@ -1,6 +1,5 @@
 # The research director: an agent picks each year's book from the months before it, scored after.
 
-import json
 
 import pandas as pd
 
@@ -137,7 +136,7 @@ def main() -> None:
         rule=E.chance(E.candidates(), rule),
         agreed_with_rule=sum(picks[y] == rule[y] for y in picks),
     )
-    OUT.write_text(json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, summary)
     d = summary["director"]
     print(f"director IR {d['information_ratio']:+.2f}, above {d['share_of_random_beaten']:.0%}")
 

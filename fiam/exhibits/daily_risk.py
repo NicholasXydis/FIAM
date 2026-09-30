@@ -1,6 +1,5 @@
 # The monthly book, weights fixed, marked every trading day of 2021-2025. Writes daily_risk.json.
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -16,6 +15,15 @@ FIRST, LAST = pd.Timestamp("2021-01-01"), pd.Timestamp("2025-12-31")
 
 # Shares short above this share of shares outstanding: crowded, and plausibly costly to borrow.
 CROWDED = 0.10
+
+# The stress windows fixed in PREREGISTRATION.md, by calendar day.
+STRESS = {
+    "2020 crash, Feb 19 to Mar 23": ("2020-02-19", "2020-03-23"),
+    "2020 rebound, Mar 24 to Jun 8": ("2020-03-24", "2020-06-08"),
+    "2022, rates up": ("2022-01-01", "2022-12-31"),
+    "2023 AI rally, Jan to Jul": ("2023-01-01", "2023-07-31"),
+    "October 2024, the worst month": ("2024-10-01", "2024-10-31"),
+}
 
 
 # One holding month, day by day: each position grows with its own return, fees paid on day one.
@@ -152,17 +160,86 @@ def short_interest(book: pd.DataFrame) -> dict | None:
     )
 
 
+# Daily total returns for a set of names over a span of days, one column per name.
+def daily_returns(permnos, first, last) -> pd.DataFrame | None:
+    filters = [("permno", "in", sorted(set(permnos))), ("date", ">=", pd.Timestamp(first))]
+    filters.append(("date", "<=", pd.Timestamp(last)))
+    daily = data.research("daily_market", ["permno", "date", "total_return"], filters)
+    if daily is None:
+        return None
+    return daily.pivot_table(index="date", columns="permno", values="total_return")
+
+
+# The same code's book through early 2020, marked daily, since the record starts in 2021.
+def path_2020() -> pd.DataFrame:
+    universe = P.build_signal(P.screen(P.load_panel(), "2015-12-31", "2020-05-31"))
+    rf = B.benchmarks().set_index("month")["rf"]
+    books, records = [], []
+    for step in P.walk(universe):
+        record = P.month_record(*step)
+        if record["holding_month"] >= pd.Timestamp("2020-02-01"):
+            month, weights = record["holding_month"], step[1]
+            books.append(pd.DataFrame(dict(Date=month, PERMNO=weights.index, WEIGHT=weights * 100)))
+            records.append(dict(month=month, cost=record["cost"], rf=rf.get(month, 0.0)))
+    book = pd.concat(books, ignore_index=True)
+    returns = pd.DataFrame(records).set_index("month")
+    daily = daily_returns(book["PERMNO"], "2020-02-01", "2020-06-30")
+    return paths_by_day(book, returns, daily)
+
+
+# Each stress window on the daily path: return, the S&P 500 beside it, and the deepest fall.
+def stress(path: pd.DataFrame) -> dict:
+    close = pd.read_csv(B.pinned("SP500.csv"), parse_dates=["observation_date"]).dropna()
+    market = close.set_index("observation_date")["SP500"]
+    out = {}
+    for name, (first, last) in STRESS.items():
+        part = path.loc[first:last, "ret"]
+        if part.empty:
+            continue
+        level = (1 + part).cumprod()
+        index = market.loc[first:last]
+        out[name] = dict(
+            strategy=float(level.iloc[-1] - 1),
+            sp500=float(index.iloc[-1] / index.iloc[0] - 1) if len(index) else None,
+            worst_drawdown=drawdown(level),
+            days=int(len(part)),
+        )
+    return out
+
+
+# Trading a day late: the old book earns the first day, the new one only after it.
+def delay(book: pd.DataFrame, returns: pd.DataFrame, daily: pd.DataFrame) -> dict:
+    shift, previous = {}, None
+    for month, group in book.groupby("Date"):
+        days = daily[(daily.index >= month) & (daily.index < month + pd.offsets.MonthBegin(1))]
+        first = days.iloc[0]
+        weights = group.set_index("PERMNO")["w"]
+        new = float((weights * first.reindex(weights.index).fillna(0.0)).sum())
+        old = (
+            new
+            if previous is None
+            else float((previous * first.reindex(previous.index).fillna(0.0)).sum())
+        )
+        shift[month], previous = old - new, weights
+    shift = pd.Series(shift)
+    actual = returns.loc[shift.index, "net"]
+    return dict(
+        months=int(len(shift)),
+        information_ratio_on_time=P.information_ratio(actual),
+        information_ratio_one_day_late=P.information_ratio(actual + shift),
+        cost_annual=float(-shift.mean() * 12),
+    )
+
+
 # Marks the book every trading day of 2021-2025 and writes daily_risk.json.
 def main() -> None:
     returns = paths.returns()
     book = paths.holdings()
     book = book[book["Date"].between(FIRST, LAST)].assign(w=lambda b: b["WEIGHT"] / 100)
-    filters = [("permno", "in", sorted(set(book["PERMNO"]))), ("date", ">=", FIRST)]
-    daily = data.research("daily_market", ["permno", "date", "total_return"], filters)
+    daily = daily_returns(book["PERMNO"], FIRST, LAST)
     if daily is None:
         print("skipped: the bundle has no daily prices, so the committed daily_risk.json stands")
         return
-    daily = daily.pivot_table(index="date", columns="permno", values="total_return")
     path = paths_by_day(book, returns, daily)
     out = dict(
         what="The monthly book marked every trading day with CRSP daily total returns, "
@@ -173,8 +250,10 @@ def main() -> None:
         beta_to_sp500_daily=daily_beta(path),
         reconciliation=reconcile(path, returns),
         short_interest=short_interest(book),
+        stress=stress(pd.concat([path_2020(), path])),
+        execution_delay=delay(book, returns, daily),
     )
-    OUT.write_text(json.dumps(P.round_floats(out), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, out)
     g, b = out["risk"]["gross_exposure"], out["beta_to_sp500_daily"]
     print(
         f"{out['days']} days: gross peaks at {g['intra_month_max']:.1%} within a month, "

@@ -1,0 +1,65 @@
+{
+  "what": "The shipped book's trades, charged under other cost models and capital levels. Weights stay as shipped, so capacity shows what costs do, not a re-optimized book.",
+  "participation": 0.2,
+  "sensitivities": {
+    "as_modelled": {
+      "information_ratio": 0.691994,
+      "net_annual": 0.124638,
+      "cost_annual": 0.050874
+    },
+    "every_cost_doubled": {
+      "information_ratio": 0.273892,
+      "net_annual": 0.07357,
+      "cost_annual": 0.101942
+    },
+    "impact_coefficient_half": {
+      "information_ratio": 0.783397,
+      "net_annual": 0.13574,
+      "cost_annual": 0.039772
+    }
+  },
+  "capacity": {
+    "10m": {
+      "information_ratio": 0.691994,
+      "net_annual": 0.124638,
+      "cost_annual": 0.050874
+    },
+    "100m": {
+      "information_ratio": 0.297208,
+      "net_annual": 0.076526,
+      "cost_annual": 0.098986
+    },
+    "500m": {
+      "information_ratio": -0.412883,
+      "net_annual": -0.011449,
+      "cost_annual": 0.186961
+    },
+    "1000m": {
+      "information_ratio": -0.934505,
+      "net_annual": -0.07816,
+      "cost_annual": 0.253672
+    }
+  },
+  "liquidity": {
+    "10m": {
+      "share_of_book_out_in_one_day": 0.996051,
+      "days_p95": 0.120171,
+      "days_max": 3.395776
+    },
+    "100m": {
+      "share_of_book_out_in_one_day": 0.902446,
+      "days_p95": 1.201711,
+      "days_max": 33.957761
+    },
+    "500m": {
+      "share_of_book_out_in_one_day": 0.642799,
+      "days_p95": 6.008555,
+      "days_max": 169.788807
+    },
+    "1000m": {
+      "share_of_book_out_in_one_day": 0.496297,
+      "days_p95": 12.017109,
+      "days_max": 339.577614
+    }
+  }
+}

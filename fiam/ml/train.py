@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import lightgbm as lgb
@@ -14,6 +13,7 @@ from sklearn.linear_model import ElasticNet
 from torch import nn
 
 from fiam import book as P
+from fiam import paths
 from fiam.ml import dataset as D
 
 PREDS = P.CACHE / "preds"
@@ -40,7 +40,7 @@ LGBM = dict(
 # Plenty of rounds, and early stopping decides how many we actually use.
 ROUNDS, EARLY = 2000, 50
 
-# Fixed so a judge rerunning this gets our numbers. The seed sweep varies it and reports all five.
+# Fixed so a judge rerunning this gets our numbers.
 SEED = 42
 # Three narrowing layers, the depth Gu-Kelly-Xiu found best. Deeper measured no better.
 HIDDEN = (32, 16, 8)
@@ -211,9 +211,7 @@ def main() -> None:
             months_with_a_defined_ic=ic["months"],
             months_with_no_view=months - ic["months"],
         )
-        (PREDS / f"{name}_ic.json").write_text(
-            json.dumps(stats, indent=2), encoding="utf-8", newline="\n"
-        )
+        paths.write_json(PREDS / f"{name}_ic.json", stats, rounded=False)
 
         book = score_book(preds)
         portfolio = dict(
@@ -223,9 +221,7 @@ def main() -> None:
             # The rules' floor, already enforced above, recorded so the table can show it.
             months_below_100_positions=int((book["n"] < 100).sum()),
         )
-        (PREDS / f"{name}_portfolio.json").write_text(
-            json.dumps(portfolio, indent=2), encoding="utf-8", newline="\n"
-        )
+        paths.write_json(PREDS / f"{name}_portfolio.json", portfolio, rounded=False)
         print(
             f"{name}: IC {stats['ic_mean']:.4f} (t {stats['ic_t']:.2f}), "
             f"IR {portfolio['information_ratio']:+.2f}, net {portfolio['net_annual']:+.1%}/yr"

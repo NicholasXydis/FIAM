@@ -1,7 +1,7 @@
 # Builds the data bundle: uv run -m fiam.build_data <organizer folder> [--archive <folder>].
 
-import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -50,6 +50,31 @@ TERMS = {
 
 FILING_COLUMNS = ["document_id", "permno", "gvkey", "iid", "cik", "ticker", "company_name"]
 FILING_COLUMNS += ["filing_date", "form_type", "is_amendment", "items", "word_count"]
+# Every name and ticker the provider, CRSP and Compustat give a filing, all masked from its text.
+NAMES = ["provider_company_name", "content_company_name", "historical_crsp_company_name"]
+NAMES += ["compustat_header_company_name"]
+TICKERS = ["provider_ticker", "compustat_header_ticker"]
+
+# The excerpt a model reads: from the first item heading, masked, this many characters.
+EXCERPT = 3000
+HEADING = re.compile(r"\bitem\s+\d{1,2}\.\d{2}", re.I)
+MONTHS = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?"
+DATES = re.compile(
+    rf"\b{MONTHS}\s+(?:\d{{1,2}}(?!\d)(?:st|nd|rd|th)?,?(?:\s+\d{{4}})?|\d{{4}})"
+    r"|\b\d{1,2}/\d{1,2}/\d{2,4}\b",
+    re.I,
+)
+YEARS = re.compile(r"\b(?:19[89]\d|20[0-3]\d)\b")
+# First words too common to mask when a company goes by its short name.
+COMMON = set(
+    "american general united national first international global pacific southern northern "
+    "western eastern central great capital financial energy health home bank community royal "
+    "standard federal universal advanced applied digital service services systems technologies "
+    "resources holdings group trust silver gold premier select summit liberty".split()
+)
+SUFFIX = re.compile(
+    r"[\s,.]+(?:inc|corp|corporation|co|company|ltd|llc|plc|lp|/[a-z]{2}/)\.?$", re.I
+)
 
 # What each extra layer is for, written into the manifest and the data card.
 LAYERS = {
@@ -91,23 +116,63 @@ def organizer(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     return features, labels, listed
 
 
+# One filing's names, tickers and CIK: each name also without its corporate suffix.
+def identities(row: dict) -> tuple[list[str], list[str]]:
+    names, short = set(), set()
+    for raw in [row.get(c) for c in ("company_name", *NAMES)]:
+        if isinstance(raw, str) and raw.strip(" ."):
+            core = SUFFIX.sub("", raw.strip(" ."))
+            names |= {raw.strip(" ."), core}
+            first = core.split()[0].strip(",.") if core.split() else ""
+            if len(first) >= 5 and first.lower() not in COMMON:
+                short |= {first.title(), first.upper()}
+    cik = row.get("cik")
+    words = {cik.lstrip("0")} if isinstance(cik, str) and cik.strip("0") else set()
+    tickers = (row.get(c) for c in ("ticker", *TICKERS))
+    words |= {t for t in tickers if isinstance(t, str) and len(t) >= 2}
+    words |= short
+    return sorted((n for n in names if len(n) >= 4), key=len, reverse=True), sorted(words)
+
+
+# The excerpt a model reads: from the first item heading, names, tickers, CIK and dates masked.
+def excerpt(text: str, row: dict) -> str:
+    found = HEADING.search(text)
+    body = text[found.start() if found else 0 :][: EXCERPT + 500]
+    names, words = identities(row)
+    for name in names:
+        body = re.sub(re.escape(name), "[COMPANY]", body, flags=re.I)
+    for word in words:
+        body = re.sub(rf"\b{re.escape(word)}\b", "[ID]", body)
+    body = YEARS.sub("[YEAR]", DATES.sub("[DATE]", body))
+    return body[:EXCERPT]
+
+
 # Every 8-K once, without its text, plus its item flags and word counts. One pass over the text.
-def filing_table(folder: Path) -> pd.DataFrame:
-    parts = []
+def filing_table(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    parts, texts = [], []
     source = pq.ParquetFile(folder / FILINGS)
-    for batch in source.iter_batches(batch_size=30_000, columns=[*FILING_COLUMNS, "text"]):
+    columns = [*FILING_COLUMNS, *NAMES, *TICKERS, "text"]
+    for batch in source.iter_batches(batch_size=30_000, columns=columns):
         part = batch.to_pandas()
         part["filing_date"] = pd.to_datetime(part["filing_date"])
         part = part[part["filing_date"].between(FIRST_DAY, LAST_MONTH)].copy()
-        text = part.pop("text").fillna("").str.lower()
+        raw = part.pop("text").fillna("")
+        rows = part.to_dict("records")
+        texts.append(
+            part[["document_id", "permno", "filing_date"]].assign(
+                eom=month_end(part["filing_date"]),
+                excerpt=[excerpt(t, r) for t, r in zip(raw, rows)],
+            )
+        )
+        text = raw.str.lower()
         for name, pattern in TERMS.items():
             part[name] = text.str.count(pattern).astype("int32")
-        parts.append(part)
+        parts.append(part.drop(columns=[*NAMES, *TICKERS]))
     table = pd.concat(parts, ignore_index=True)
     table["items"] = table["items"].apply(lambda x: [] if x is None else [str(i) for i in x])
     for name, code in ITEMS.items():
         table[name] = table["items"].apply(lambda x, code=code: code in x).astype("int8")
-    return table
+    return table, pd.concat(texts, ignore_index=True)
 
 
 # Filings summed into the month they were filed in, known by that month's end.
@@ -264,11 +329,12 @@ def main(args: list[str]) -> None:
 
     print(f"Building {data.DIR} from {folder}", flush=True)
     features, labels, listed = organizer(folder)
-    table = filing_table(folder)
+    table, texts = filing_table(folder)
     features = join_events(features, monthly_events(table))
     write(features, "features_monthly")
     write(labels, "labels_monthly")
     write(table, "filings")
+    write(texts, "filing_text")
 
     if archive:
         permnos = set(features["permno"].astype(int))
@@ -279,6 +345,7 @@ def main(args: list[str]) -> None:
     present = {"features_monthly": "the 147 characteristics, identifiers and 8-K counts"}
     present |= {"labels_monthly": "next month's excess return, kept apart"}
     present |= {"filings": "one row per 8-K: dates, identifiers, item codes, no text"}
+    present |= {"filing_text": "each 8-K from its first item heading, 3,000 characters, masked"}
     present |= {n: w for n, w in LAYERS.items() if (data.DIR / f"{n}.parquet").exists()}
     if data.WRDS.exists():
         present["wrds/"] = "CRSP monthly, S&P 500 index, Compustat dates and dated exits"
@@ -302,7 +369,7 @@ def main(args: list[str]) -> None:
         files=present,
         stock_months=len(features),
     )
-    data.MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    paths.write_json(data.MANIFEST, manifest, rounded=False, end="\n")
     (data.DIR / "DATA_CARD.md").write_text(card(present), encoding="utf-8")
     mismatched = data.checksum_mismatches()
     print(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -155,7 +154,7 @@ def main() -> None:
     print(f"  composite: {out['methods']['composite']}")
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "oos_r2.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT / "oos_r2.json", out, rounded=False)
 
 
 if __name__ == "__main__":

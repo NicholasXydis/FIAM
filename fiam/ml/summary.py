@@ -71,9 +71,7 @@ def main() -> None:
     # Summarised once by the selection controls, so it is never recomputed differently here.
     selection = paths.read_json(EXHIBITS / "selection.json")
     out["subset_sweep"] = selection["subset_sweep"]
-    (EXHIBITS / "ml_metrics.json").write_text(
-        json.dumps(out, indent=2), encoding="utf-8", newline="\n"
-    )
+    paths.write_json(EXHIBITS / "ml_metrics.json", out, rounded=False)
 
 
 if __name__ == "__main__":

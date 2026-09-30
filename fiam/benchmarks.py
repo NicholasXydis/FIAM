@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from fiam import paths
+
 BENCH = Path("data/benchmarks")
 SOURCES = BENCH / "sources.json"
 FRENCH = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
@@ -94,7 +96,7 @@ def refresh(names: list[str]) -> None:
             bytes=len(body),
         )
         print(f"  {name}: {len(body):,} bytes")
-    SOURCES.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(SOURCES, record, rounded=False)
 
 
 if __name__ == "__main__":

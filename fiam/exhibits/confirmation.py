@@ -1,6 +1,5 @@
 # The frozen book on 2016-2020, years the signals were not designed on. Writes confirmation.json.
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -59,7 +58,7 @@ def main() -> None:
         shipped_2021_2026=summarise(shipped, market),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(path, out, rounded=False)
 
     for label in ("confirmation_2016_2020", "shipped_2021_2026"):
         s = out[label]

@@ -14,7 +14,7 @@ import tarfile
 import time
 import urllib.error
 import urllib.request
-import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -192,8 +192,7 @@ def server_binary() -> Path:
     for name, sha in BUILDS[build]:
         archive = fetch(RELEASE + name, MODELS_DIR / "downloads" / name, sha)
         if name.endswith(".zip"):
-            with zipfile.ZipFile(archive) as zf:
-                zf.extractall(home)
+            paths.safe_unzip(archive, home)
         else:
             with tarfile.open(archive) as tf:
                 tf.extractall(home, filter="tar")
@@ -406,6 +405,32 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
     )
 
 
+# A reply's JSON answer, or an empty one when the model's reply was cut off or unreadable.
+def parse(reply: dict) -> dict:
+    try:
+        answer = json.loads(reply.get("content") or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return answer if isinstance(answer, dict) else {}
+
+
+# An agent's answers so far, keyed, and a way to save each new one at once, so a stop resumes.
+@contextmanager
+def answers(name: str, key):
+    log = RUNS / f"{name}.jsonl"
+    RUNS.mkdir(parents=True, exist_ok=True)
+    lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    done = {key(row): row for row in map(json.loads, lines)}
+    with log.open("a", encoding="utf-8", newline="\n") as fh:
+        # One answer to the log and to what is done.
+        def save(row: dict) -> None:
+            fh.write(json.dumps(row) + "\n")
+            fh.flush()
+            done[key(row)] = row
+
+        yield done, save
+
+
 # Two runs of one agent, compared call by call. Identical means repeatable, never correct.
 def repeatable(first: Path, second: Path) -> dict:
     # Each call in a transcript as its tool and arguments.
@@ -459,8 +484,7 @@ def export() -> None:
         for name, tools in agents.items()
     }
     TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(out, indent=2)
-    (TRANSCRIPTS / "tools.json").write_text(text, encoding="utf-8", newline="\n")
+    paths.write_json(TRANSCRIPTS / "tools.json", out, rounded=False)
     print(f"tool definitions for {len(out)} agents written")
 
 

@@ -126,8 +126,8 @@ def labels_are_backward_only():
 @check("carry-in sees last month's book, never this one")
 def carry_in_uses_prior_month():
     lines = (PACKAGE / "book.py").read_text(encoding="utf-8").splitlines()
-    call = next((i for i, x in enumerate(lines) if "= rebalance(cross_section" in x), -1)
-    update = "previous, previous_spreads ="
+    call = next((i for i, x in enumerate(lines) if "step = rebalance(" in x), -1)
+    update = "previous, previous_quotes ="
     # The update that follows the call, not the reset before the loop starts.
     assign = next((i for i, x in enumerate(lines) if i > call and x.strip().startswith(update)), -1)
     return 0 < call < assign, f"called at line {call + 1}, updated at line {assign + 1}"
@@ -355,9 +355,7 @@ def main() -> int:
     results = [(name, *function()) for name, function in CHECKS]
     OUT.mkdir(parents=True, exist_ok=True)
     report = [dict(check=n, passed=bool(p), detail=d) for n, p, d in results]
-    (OUT / "reproducibility.json").write_text(
-        json.dumps(report, indent=2), encoding="utf-8", newline="\n"
-    )
+    paths.write_json(OUT / "reproducibility.json", report, rounded=False)
     for name, passed, detail in results:
         print(f"  [{'PASS' if passed else 'FAIL'}] {name:<48} {detail}")
     failed = sum(1 for _, p, _ in results if not p)

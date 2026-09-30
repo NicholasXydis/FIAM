@@ -18,27 +18,27 @@ Anyone rerunning the code on the same data gets the same numbers.
 |  |  |
 |---|---|
 | Gross return (annualized) | 17.6% |
-| **Net return (annualized)** | **13.6%** |
-| CAGR (total return) | 17.5% |
+| **Net return (annualized)** | **12.5%** |
+| CAGR (total return) | 16.1% |
 | Volatility | 12.2% |
-| **Information ratio vs TB3MS + 4%** | **0.79** |
-| Sharpe ratio | 1.12 |
-| Max drawdown (total return) | -10.5% |
-| Hit rate | 55.9% |
-| **Alpha** | **14.1%** (se 5.7%, t = 2.46, HAC) |
-| **Realized beta** | **-0.05** (se 0.09) |
+| **Information ratio vs TB3MS + 4%** | **0.69** |
+| Sharpe ratio | 1.02 |
+| Max drawdown (total return) | -11.0% |
+| Hit rate | 54.4% |
+| **Alpha** | **12.9%** (se 5.8%, t = 2.23, HAC) |
+| **Realized beta** | **-0.04** (se 0.09) |
 | Correlation with market | -0.06 |
 | Market series | S&P 500 price index (FRED SP500), excludes dividends |
 | Positions | 276 |
 | Turnover, one-way monthly | 44% |
-| Costs as share of gross | 22% |
+| Costs as share of gross | 29% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_From code `d420b4f07365f663`._
+_From code `4945ecd22bced975`._
 
 <!--/AUTO:headline-->
 
-IR <!--N:metrics.json:performance.information_ratio:.2f-->0.79<!--/N--> against cash plus 4%. Beta is
+IR <!--N:metrics.json:performance.information_ratio:.2f-->0.69<!--/N--> against cash plus 4%. Beta is
 the rules' regression on the S&P 500 price index with HAC errors; the build fails outside ±0.20.
 
 ## How the book is chosen
@@ -54,27 +54,27 @@ them all.
 
 | holding year | shipped book | composite IR, two years before | best other |
 |---|---|---|---|
-| 2021 | Composite | -1.93 | -1.05, Composite + 50% scorer + hedge |
-| 2022 | Composite | -0.15 | -0.14, Composite + 25% scorer + hedge |
-| 2023 | Composite | +1.83 | +1.83, Composite + trader |
-| 2024 | Composite | +1.20 | +1.24, Composite + hedge |
-| 2025 | Composite | -0.35 | -0.18, Composite + hedge |
-| 2026 | Composite | -0.81 | -0.66, Composite + hedge |
+| 2021 | Composite | -2.06 | -1.26, Composite + 50% scorer + hedge |
+| 2022 | Composite | -0.21 | -0.11, Composite + trader |
+| 2023 | Composite | +1.76 | +1.77, Composite + trader |
+| 2024 | Composite | +1.11 | +1.15, Composite + hedge |
+| 2025 | Composite | -0.46 | -0.30, Composite + hedge |
+| 2026 | Composite | -0.97 | -0.83, Composite + hedge |
 
 | candidate, 2021-2026 | IR | net | cost | turnover | beta |
 |---|---:|---:|---:|---:|---:|
-| **Composite** | +0.80 | +13.7% | 3.9% | 44% | -0.05 |
-| Composite + trader | +0.79 | +12.8% | 3.4% | 39% | -0.06 |
-| Composite + hedge | +0.82 | +13.8% | 3.9% | 45% | -0.03 |
-| Composite + hedge + trader | +0.78 | +12.5% | 3.5% | 40% | -0.04 |
-| Composite + 25% scorer | +0.52 | +9.9% | 4.8% | 64% | -0.02 |
-| Composite + 25% scorer + trader | +0.49 | +8.4% | 4.0% | 53% | -0.02 |
-| Composite + 25% scorer + hedge | +0.65 | +11.4% | 4.8% | 65% | -0.03 |
-| Composite + 25% scorer + hedge + trader | +0.62 | +9.5% | 3.6% | 48% | -0.03 |
-| Composite + 50% scorer | +0.13 | +5.5% | 5.5% | 78% | +0.04 |
-| Composite + 50% scorer + trader | +0.11 | +5.1% | 4.5% | 62% | +0.03 |
-| Composite + 50% scorer + hedge | +0.21 | +6.6% | 5.7% | 81% | +0.01 |
-| Composite + 50% scorer + hedge + trader | +0.13 | +5.3% | 4.5% | 64% | +0.01 |
+| **Composite** | +0.70 | +12.5% | 5.0% | 44% | -0.05 |
+| Composite + trader | +0.41 | +8.0% | 3.4% | 29% | -0.05 |
+| Composite + hedge | +0.72 | +12.7% | 5.1% | 45% | -0.03 |
+| Composite + hedge + trader | +0.63 | +11.0% | 4.7% | 42% | -0.04 |
+| Composite + 25% scorer | +0.41 | +8.6% | 6.1% | 64% | -0.02 |
+| Composite + 25% scorer + trader | +0.36 | +7.1% | 4.5% | 49% | -0.01 |
+| Composite + 25% scorer + hedge | +0.54 | +10.2% | 6.1% | 65% | -0.02 |
+| Composite + 25% scorer + hedge + trader | +0.37 | +6.9% | 3.3% | 34% | +0.01 |
+| Composite + 50% scorer | -0.03 | +3.6% | 7.4% | 78% | +0.04 |
+| Composite + 50% scorer + trader | -0.04 | +3.6% | 6.0% | 65% | +0.02 |
+| Composite + 50% scorer + hedge | +0.07 | +4.8% | 7.5% | 81% | +0.02 |
+| Composite + 50% scorer + hedge + trader | +0.06 | +4.6% | 5.7% | 63% | +0.01 |
 
 <!--/AUTO:ship-->
 
@@ -84,12 +84,12 @@ them all.
 
 |  |  |
 |---|---|
-| Average monthly return, total | 1.41% |
-| Annualized, arithmetic / geometric (CAGR) | 16.9% / 17.5% |
-| Cumulative return, Jan 2021 to Aug 2026 | 149.2% |
-| Best month | +10.3%, 2022-04 |
-| Worst month | -7.6%, 2024-10 |
-| Months beating the benchmark | 56% |
+| Average monthly return, total | 1.31% |
+| Annualized, arithmetic / geometric (CAGR) | 15.7% / 16.1% |
+| Cumulative return, Jan 2021 to Aug 2026 | 133.3% |
+| Best month | +10.2%, 2022-04 |
+| Worst month | -7.7%, 2024-10 |
+| Months beating the benchmark | 54% |
 | Holdings, long / short | 144 / 132 |
 | Gross exposure, average (range) | 159.93% (159.87% to 159.96%) |
 | Net exposure, average (range) | 0.00% (0.00% to 0.00%) |
@@ -103,14 +103,14 @@ them all.
 
 |  | strategy | T-bill + 4% | S&P 500 (price) |
 |---|---:|---:|---:|
-| Return a year, arithmetic | 16.9% | 7.3% | 13.8% |
-| Return a year, geometric (CAGR) | 17.5% | 7.5% | 13.5% |
-| Cumulative | 149.2% | 50.9% | 104.6% |
-| Volatility | 12.0% | 0.6% | 15.1% |
-| Sharpe ratio | 1.12 |  | 0.70 |
-| Max drawdown | -10.5% | 0.0% | -24.8% |
-| Best month | +10.3%, 2022-04 | +0.8%, 2023-10 | +10.4%, 2026-04 |
-| Worst month | -7.6%, 2024-10 | +0.3%, 2021-04 | -9.3%, 2022-09 |
+| Return a year, arithmetic | 15.7% | 7.3% | 13.8% |
+| Return a year, geometric (CAGR) | 16.1% | 7.5% | 13.5% |
+| Cumulative | 133.3% | 50.9% | 104.6% |
+| Volatility | 12.1% | 0.6% | 15.1% |
+| Sharpe ratio | 1.02 |  | 0.70 |
+| Max drawdown | -11.0% | 0.0% | -24.8% |
+| Best month | +10.2%, 2022-04 | +0.8%, 2023-10 | +10.4%, 2026-04 |
+| Worst month | -7.7%, 2024-10 | +0.3%, 2021-04 | -9.3%, 2022-09 |
 
 <!--/AUTO:comparison-->
 
@@ -118,12 +118,12 @@ them all.
 
 | year | strategy | T-bill + 4% | S&P 500 (price) | active |
 |---|---:|---:|---:|---:|
-| 2021 | +38.7% | +4.1% | +26.9% | +34.5% |
-| 2022 | +32.6% | +6.2% | -19.4% | +26.4% |
-| 2023 | +15.6% | +9.5% | +24.2% | +6.2% |
-| 2024 | -4.1% | +9.3% | +23.3% | -13.4% |
-| 2025 | +5.3% | +8.4% | +16.4% | -3.1% |
-| 2026 (Jan-Aug) | +16.1% | +5.2% | +12.3% | +10.9% |
+| 2021 | +37.6% | +4.1% | +26.9% | +33.5% |
+| 2022 | +31.1% | +6.2% | -19.4% | +24.9% |
+| 2023 | +14.5% | +9.5% | +24.2% | +5.1% |
+| 2024 | -5.2% | +9.3% | +23.3% | -14.5% |
+| 2025 | +3.5% | +8.4% | +16.4% | -4.9% |
+| 2026 (Jan-Aug) | +15.1% | +5.2% | +12.3% | +9.9% |
 
 <!--/AUTO:years-->
 
@@ -136,7 +136,7 @@ Each side before costs, its contribution to NAV and its return per dollar held:
 | long | +14.1% | +17.7% | 15.8% | 144 | $6.1bn | $65m |
 | short | +3.4% | +4.3% | 20.3% | 132 | $1.8bn | $24m |
 
-Short book by weight: 68% small-cap or below, 20% micro-cap, 48% charged as hard to borrow. In 2021-2025, 23% of it had more than 10% of its shares already sold short.
+Short book by weight: 68% small-cap or below, 20% micro-cap, 24% in borrow tiers of 3% a year or more. In 2021-2025, 23% of it had more than 10% of its shares already sold short.
 
 <!--/AUTO:legs-->
 
@@ -168,10 +168,10 @@ pin it far tighter, and show a small short tilt.
 
 | period | beta | se | t |
 |---|---:|---:|---:|
-| 2021-2023 | +0.02 | 0.11 | +0.19 |
-| 2024-2026 | -0.16 | 0.09 | -1.87 |
-| full period | -0.05 | 0.09 | -0.51 |
-| 2021-2025, 1,255 days | -0.10 | 0.03 | -3.52 |
+| 2021-2023 | +0.02 | 0.11 | +0.21 |
+| 2024-2026 | -0.16 | 0.09 | -1.86 |
+| full period | -0.04 | 0.09 | -0.49 |
+| 2021-2025, 1,255 days | -0.10 | 0.03 | -3.51 |
 
 30% of 57 rolling 12-month windows sit outside ±0.20, and 0% outside the range a zero-beta book with our residual risk would reach 95% of the time.
 
@@ -187,36 +187,82 @@ measure the limits at each rebalance.
 |---|---|
 | Trading days | 1,255, 2021-01 to 2025-12 |
 | Gross at rebalance, largest | 160.0% |
-| Gross within a month, largest | 193.6%, 2021-02 |
+| Gross within a month, largest | 193.9%, 2021-02 |
 | Months above 200% on some day | 0 of 60 |
 | Net within a month, largest absolute | 10.8% |
-| Volatility, daily / monthly | 13.6% / 12.5% |
-| Max drawdown, daily / monthly | -16.3% / -10.5% |
-| One-day VaR 95% / 99%, CVaR 95% | -1.30% / -1.98%, -1.73% |
+| Volatility, daily / monthly | 13.7% / 12.5% |
+| Max drawdown, daily / monthly | -18.1% / -11.0% |
+| One-day VaR 95% / 99%, CVaR 95% | -1.31% / -1.98%, -1.74% |
 | Worst day | -3.09%, 2021-02-03 |
 | Daily path compounded to months, against returns.csv | correlation 1.0000, largest gap 0.013% |
 
 <!--/AUTO:daily-->
 
+**Stress windows**, fixed in advance, on the daily path. The 2020 windows use the same code started
+in December 2015, since the record starts in 2021.
+
+<!--AUTO:stress-->
+
+| window | strategy | S&P 500 | worst fall inside |
+|---|---:|---:|---:|
+| 2020 crash, Feb 19 to Mar 23 | +1.3% | -33.9% | -5.2% |
+| 2020 rebound, Mar 24 to Jun 8 | -6.4% | +32.1% | -13.4% |
+| 2022, rates up | +31.1% | -20.0% | -11.0% |
+| 2023 AI rally, Jan to Jul | +8.0% | +20.0% | -6.0% |
+| October 2024, the worst month | -7.7% | -0.1% | -9.7% |
+
+Trading a day late, 60 months: IR +0.63 against +0.62 on time, +0.0% a year.
+
+<!--/AUTO:stress-->
+
 ## Costs and compliance
 
-Commission 5 bp and impact 8 bp per side, half of `bidaskhl_21d` × 0.20 as spread, borrow 50 bp a
-year plus 250 bp for hard-to-borrow shorts: micro-caps, the least liquid twentieth, and the tenth
-the crowding teacher expects to be most shorted. All assumed, not observed.
+Every rule was fixed in `PREREGISTRATION.md` before it ran, and lives in `fiam/costs.py`:
+
+- **Commission:** IBKR Pro fixed, $0.005 a share, at least $1 and at most 1% of the trade, on the
+  book's real whole shares at $10M.
+- **Regulatory fees:** the SEC Section 31 fee on sales at its 2021-2026 high ($27.80 a million),
+  FINRA's Trading Activity Fee ($0.000195 a share sold, at most $9.79) and its audit-trail fee
+  ($0.000003 a share).
+- **Spread:** half the closing quoted spread, calibrated to CRSP bid and ask quotes on 2015-2020
+  only.
+- **Impact:** the square-root law: daily volatility × √(trade ÷ daily dollar volume), coefficient 1.
+- **Borrow:** by short interest over shares outstanding: 0.3% a year under 5%, 1% to 10%, 3% to
+  20%, 8% above; micro-caps at least 1%. Short interest is used a month late, as it is published.
+- **Financing:** cash and short proceeds earn the benchmark less 0.5%, as IBKR pays.
+
+Spread, impact and borrow are models, not observed fills.
 
 <!--AUTO:costs-->
 
 |  | % of NAV a year |
 |---|---|
-| Commission, exchange, regulatory | 0.53% |
-| Market impact | 0.85% |
-| Borrow, general collateral | 0.40% |
-| Borrow, hard-to-borrow surcharge | 0.97% |
-| Half-spread (scaled Corwin-Schultz) | 1.16% |
-| **Total** | 3.91% |
-| Annual cost at which active return reaches zero | 13.6%, 3.47 times today's |
+| Commission and regulatory fees (IBKR Pro fixed, SEC, FINRA) | 0.26% |
+| Half-spread (calibrated to CRSP quotes) | 0.84% |
+| Market impact (square-root law) | 2.22% |
+| Borrow (short-interest tiers) | 1.27% |
+| Financing (benchmark less 0.5% on cash) | 0.50% |
+| **Total** | 5.09% |
+| Annual cost at which active return reaches zero | 13.6%, 2.66 times today's |
 
 <!--/AUTO:costs-->
+
+**If the costs are wrong, or the fund is bigger.** The same trades, charged again. Capacity keeps
+the $10M weights, so it shows what costs do, not a book re-optimized for size.
+
+<!--AUTO:implementation-->
+
+|  | IR | net | cost | sold in a day at 20% of volume; 95th percentile |
+|---|---:|---:|---:|---:|
+| As modelled, $10M | +0.69 | +12.5% | 5.1% |  |
+| Every cost doubled | +0.27 | +7.4% | 10.2% |  |
+| Impact coefficient 0.5 | +0.78 | +13.6% | 4.0% |  |
+| $10M of capital | +0.69 | +12.5% | 5.1% | 100%; 0.1 days |
+| $100M of capital | +0.30 | +7.7% | 9.9% | 90%; 1.2 days |
+| $500M of capital | -0.41 | -1.1% | 18.7% | 64%; 6.0 days |
+| $1B of capital | -0.93 | -7.8% | 25.4% | 50%; 12.0 days |
+
+<!--/AUTO:implementation-->
 
 <!--AUTO:compliance-->
 
@@ -228,7 +274,7 @@ the crowding teacher expects to be most shorted. All assumed, not observed.
 | Sector, 11 GICS + `XX` | 1% target | max 1.04% |
 | Single name | 1.5% target | max 1.51% |
 | Ex-ante beta | ±0.02 | mean +0.020 |
-| Realized beta | build fails outside ±0.20 | -0.05 (se 0.09) |
+| Realized beta | build fails outside ±0.20 | -0.04 (se 0.09) |
 
 <!--/AUTO:compliance-->
 
@@ -277,18 +323,27 @@ its yardsticks, on the half-scorer hedged book.
 
 <!--AUTO:trader-->
 
-| year | deep hedging, monthly | PPO, yearly | best fixed rate | trade all the way |
+| year | deep hedging, monthly | PPO, yearly | Gârleanu-Pedersen constant rate | trade all the way |
 |---|---:|---:|---:|---:|
-| 2019 | +1.2% | +1.0% | +2.1% | +3.3% |
-| 2020 | -15.6% | -14.9% | -20.3% | -20.3% |
-| 2021 | +14.6% | +17.3% | +21.4% | +21.4% |
-| 2022 | +8.0% | +10.3% | +15.4% | +10.2% |
-| 2023 | +5.4% | +6.2% | +7.9% | +7.3% |
-| 2024 | -5.5% | -5.2% | -10.9% | -7.0% |
-| 2025 | -0.9% | -2.0% | -0.7% | -2.1% |
-| 2026 | +11.8% | +9.3% | +10.5% | +12.0% |
+| 2019 | +0.4% | +0.5% | +1.2% | +1.7% |
+| 2020 | -17.0% | -14.2% | -21.6% | -23.2% |
+| 2021 | +14.2% | +17.3% | +21.2% | +20.0% |
+| 2022 | +8.4% | +9.8% | +15.1% | +8.0% |
+| 2023 | +4.8% | +6.0% | +7.9% | +6.1% |
+| 2024 | -6.6% | -5.8% | -10.8% | -8.7% |
+| 2025 | -1.7% | -2.9% | -0.6% | -3.2% |
+| 2026 | +12.4% | +8.2% | +10.5% | +11.6% |
 
 <!--/AUTO:trader-->
+
+**The learning curve.** Each year's models train on every year before it, so they see more
+data as time passes. The stock picker's IC and each teacher's accuracy, year by year:
+
+<!--AUTO:learning-->
+
+The stock picker has not run yet.
+
+<!--/AUTO:learning-->
 
 **The comparison.** ElasticNet, LightGBM and NN3 on all 147 characteristics through the same book.
 They predict; costs sink them.
@@ -297,10 +352,10 @@ They predict; costs sink them.
 
 |  | IC t | gross | cost | net | turnover | **net IR** |
 |---|---:|---:|---:|---:|---:|---:|
-| **12-signal composite** | 3.78 | 17.6% | 3.9% | **+13.7%** | 44% | **+0.80** |
-| LightGBM | 3.60 | 7.2% | 6.7% | +0.6% | 101% | -0.32 |
-| NN3, seed 42 | 3.91 | 6.1% | 5.2% | +0.9% | 80% | -0.30 |
-| ElasticNet | 2.62 | 2.5% | 6.3% | -3.8% | 100% | -0.78 |
+| **12-signal composite** | 3.78 | 17.6% | 5.0% | **+12.5%** | 44% | **+0.70** |
+| LightGBM | 3.60 | 7.2% | 10.1% | -2.9% | 101% | -0.65 |
+| NN3, seed 42 | 3.91 | 6.1% | 7.3% | -1.2% | 80% | -0.51 |
+| ElasticNet | 2.62 | 2.5% | 9.8% | -7.3% | 100% | -1.13 |
 
 <!--/AUTO:models-->
 
@@ -366,13 +421,55 @@ these tables.
 
 |  | 2016-2020 | 2021-2022 | 2023-2026 | 2021-2026 |
 |---|---:|---:|---:|---:|
-| Shipped book |  | +1.81 (24) | +0.03 (44) | +0.79 (68) |
-| Ship rule, walked forward | -1.93 (24) | +1.83 (24) | +0.03 (44) | +0.80 (68) |
-| Composite every year | -1.93 (24) | +1.83 (24) | +0.03 (44) | +0.80 (68) |
+| Shipped book |  | +1.74 (24) | -0.11 (44) | +0.69 (68) |
+| Ship rule, walked forward | -2.06 (24) | +1.76 (24) | -0.11 (44) | +0.70 (68) |
+| Composite every year | -2.06 (24) | +1.76 (24) | -0.11 (44) | +0.70 (68) |
 
-IR by window, months in brackets, on the CRSP market. Picks start in 2019, the first year with two years of candidates behind it. Random picks of one candidate a year average IR -0.04; the rule beats 82% of them.
+IR by window, months in brackets, on the CRSP market. Picks start in 2019, the first year with two years of candidates behind it. Random picks of one candidate a year average IR -0.19; the rule beats 90% of them.
 
 <!--/AUTO:walk-->
+
+**Construction v2, tested once as pre-registered.** Five rules aimed at the losses Phase 2 traced:
+a lag-corrected hedge beta, a ±10% net band for true beta neutrality, no special-borrow shorts
+with volatility-scaled short caps, liquidity-scaled caps, and Daniel-Moskowitz crash protection.
+Both books carry the Phase 2 costs over 2016-2026.
+
+<!--AUTO:construction-->
+
+|  | current | v2 |
+|---|---:|---:|
+| IR, 2016-2026 | -0.00 | -0.17 |
+| IR, 2016-2020 | -1.00 | -1.28 |
+| IR, 2021-2026 | +0.70 | +0.68 |
+| Net a year / costs a year | +4.0% / 5.1% | +2.3% / 3.7% |
+| Beta, monthly (se) | -0.18 (0.06) | -0.15 (0.07) |
+| Beta, daily 2016-2025 (se) | -0.018 (0.018) | -0.039 (0.013) |
+| Worst drawdown | -38.2% | -33.8% |
+| Largest gross on any day | 202.6% | 200.5% |
+
+IR at least the current book's: **failed**; beta closer to zero, monthly and daily: **failed**; worst drawdown no deeper: passed; every rule, every month and day: **failed**. **Not shipped: the current construction stays.** Each rule alone, IR on 2016-2026: adjusted beta -0.02, net band -0.10, short rules -0.09, liquidity caps -0.07, crash protection -0.01.
+
+<!--/AUTO:construction-->
+
+**Is it stock picking or style?** Amendment 4 held the book's size, value, profitability,
+investment and momentum exposures near zero and judged it on all eleven years.
+
+<!--AUTO:neutral-->
+
+|  | current | factor-neutral |
+|---|---|---|
+| IR, 2016-2026 | -0.00 | -0.89 |
+| IR, 2016-2020 | -1.00 | -1.46 |
+| IR, 2021-2022 | +1.76 | +0.00 |
+| IR, 2023-2026 | -0.11 | -0.85 |
+| Beta, monthly / daily | -0.18 / -0.018 | -0.07 / -0.001 |
+| Worst drawdown | -38.2% | -32.2% |
+| Loadings: size, value, profitability, investment, momentum | -0.30, +0.21, +0.49, +0.19, +0.07 | -0.17, +0.04, +0.31, +0.03, -0.05 |
+| **Six-factor alpha a year (t)** | +2.9% (+1.05) | -4.2% (-1.69) |
+
+**Not shipped: the current construction stays.**
+
+<!--/AUTO:neutral-->
 
 **2016-2020, the years the signals were not designed on:**
 
@@ -380,19 +477,19 @@ IR by window, months in brackets, on the CRSP market. Picks start in 2019, the f
 
 |  | 2016-2020, not designed on | 2021-2026, the record |
 |---|---|---|
-| Information ratio | **-0.83** | +0.79 |
-| Net return | -4.0% a year | +13.6% a year |
+| Information ratio | **-1.00** | +0.69 |
+| Net return | -5.7% a year | +12.5% a year |
 | Realized beta, CRSP market | **-0.25** (se 0.07) | -0.10 (se 0.09) |
-| Worst spread drawdown | -33% | -15% |
+| Worst spread drawdown | -35% | -17% |
 | Turnover, one-way monthly | 46% | 44% |
-| Net by year, compounded | 2016 +2%, 2017 0%, 2018 +15%, 2019 -6%, 2020 -27% | 2021 +39%, 2022 +30%, 2023 +10%, 2024 -9%, 2025 +1%, 2026 +13% |
+| Net by year, compounded | 2016 +0%, 2017 -2%, 2018 +13%, 2019 -7%, 2020 -29% | 2021 +38%, 2022 +28%, 2023 +9%, 2024 -10%, 2025 -1%, 2026 +12% |
 
 <!--/AUTO:clean-->
 
 **WRDS.** Delisted stocks leave on the decision date, takeover payouts are booked, and at most
 <!--N:exhibits/wrds.json:report_dates.worst_early_share:.1%-->0.1%<!--/N--> of accounting updates came
 before their report. 2021-2025 alone, the CRSP years, gives IR
-<!--N:exhibits/pack.json:subperiod.crsp_era_2021_2025.information_ratio:.2f-->0.71<!--/N-->.
+<!--N:exhibits/pack.json:subperiod.crsp_era_2021_2025.information_ratio:.2f-->0.62<!--/N-->.
 
 <!--AUTO:wrds-->
 
@@ -401,13 +498,13 @@ before their report. 2021-2025 alone, the CRSP years, gives IR
 | Dated delistings and deletions applied | 8,346 securities |
 | Rows already delisted at the decision, screened out | 598 |
 | Held names already delisted | 0 |
-| Held names taken over in their holding month | 50, 35 for cash; payouts -0.1 bp a year, closing cost 0.9 bp, already charged |
+| Held names taken over in their holding month | 50, 35 for cash; payouts -0.1 bp a year, closing cost 0.5 bp, already charged |
 | Panel returns against CRSP, 2021-2025 | 83.9% within 1 bp, correlation 0.9995, 0.03% off by over 1% |
 | Beta, S&P 500 with dividends, 2021-01 to 2025-12 | -0.02 (se 0.10) against -0.01 price-only; dividends 1.5% a year |
 | Accounting updates with no new report behind them | worst signal 0.10%, rule 1%; a random month holds a release 33% of the time |
-| Updates from a report dated on the decision day, held back a month | IR 0.82, net 14.0%; 1.2% of rows |
-| Same code without WRDS, as a judge rebuilds it | IR 0.79, net 13.6%, beta -0.05 |
-| IR on CRSP years only, 2021-2025 | 0.71 over 60 months |
+| Updates from a report dated on the decision day, held back a month | IR 0.68, net 12.3%; 1.2% of rows |
+| Same code without WRDS, as a judge rebuilds it | IR 0.69, net 12.5%, beta -0.04 |
+| IR on CRSP years only, 2021-2025 | 0.62 over 60 months |
 | 2026, returns from Compustat | monthly spread 0.149 against 0.111-0.119; moves past ±50% 1.25% against 0.45%-0.75% |
 
 <!--/AUTO:wrds-->
@@ -416,11 +513,11 @@ before their report. 2021-2025 alone, the CRSP years, gives IR
 
 | period | months | gross | cost | net | IR | 95% interval |
 |---|---:|---:|---:|---:|---:|---:|
-| **Full, 2021-2026** | 68 | 17.6% | 3.9% | 13.6% | 0.79 | [-0.14, 1.68] |
-| 2021-2022 | 24 | 34.9% | 4.1% | 30.8% | 1.81 | [1.18, 3.15] |
-| **2023-2026** | 44 | 8.1% | 3.8% | 4.3% | 0.03 | [-1.17, 0.87] |
-| 2022-2026 | 56 | 13.1% | 3.8% | 9.2% | 0.47 | [-0.64, 1.18] |
-| CRSP years, 2021-2025 | 60 | 16.7% | 3.9% | 12.9% | 0.71 | [-0.29, 1.70] |
+| **Full, 2021-2026** | 68 | 17.6% | 5.1% | 12.5% | 0.69 | [-0.24, 1.60] |
+| 2021-2022 | 24 | 34.9% | 5.1% | 29.9% | 1.74 | [1.10, 3.09] |
+| **2023-2026** | 44 | 8.1% | 5.1% | 3.0% | -0.11 | [-1.33, 0.71] |
+| 2022-2026 | 56 | 13.1% | 5.1% | 8.0% | 0.36 | [-0.76, 1.06] |
+| CRSP years, 2021-2025 | 60 | 16.7% | 5.0% | 11.7% | 0.62 | [-0.41, 1.62] |
 
 <!--/AUTO:halves-->
 
@@ -428,19 +525,36 @@ before their report. 2021-2025 alone, the CRSP years, gives IR
 
 |  | loading | t |
 |---|---:|---:|
-| Market (CRSP) | +0.05 | +1.03 |
-| Size | -0.31 | -2.88 |
-| Value | +0.21 | +2.09 |
-| Profitability | +0.51 | +3.73 |
-| Investment | +0.13 | +1.13 |
-| Momentum | +0.00 | +0.02 |
-| **Alpha after all six** | **8.3%** | **+1.85** |
-| Alpha after three | 8.5% | +1.80 |
-| Alpha after the S&P 500 alone | 14.1% | +2.46 |
+| Market (CRSP) | +0.05 | +1.09 |
+| Size | -0.31 | -2.96 |
+| Value | +0.21 | +2.12 |
+| Profitability | +0.52 | +3.75 |
+| Investment | +0.13 | +1.14 |
+| Momentum | +0.00 | +0.03 |
+| **Alpha after all six** | **7.0%** | **+1.56** |
+| Alpha after three | 7.3% | +1.52 |
+| Alpha after the S&P 500 alone | 12.9% | +2.23 |
 
-The six explain 47% of the variance, over 67 months.
+The six explain 48% of the variance, over 67 months.
 
 <!--/AUTO:factors-->
+
+**The same loadings in each half.** Twelve months cannot pin six loadings, so the split is by
+window, not by year.
+
+<!--AUTO:factor_windows-->
+
+| loading (t) | 2021-2022 | 2023-2026 |
+|---|---:|---:|
+| Market | -0.04 (-0.8) | -0.01 (-0.2) |
+| Size | -0.35 (-2.0) | -0.11 (-0.7) |
+| Value | +0.43 (+4.0) | -0.12 (-0.8) |
+| Profitability | +0.92 (+7.9) | +0.30 (+2.8) |
+| Investment | -0.12 (-0.7) | +0.23 (+0.9) |
+| Momentum | +0.21 (+1.8) | -0.02 (-0.3) |
+| Alpha a year | +4.7% (+1.9) | +5.7% (+0.7) |
+
+<!--/AUTO:factor_windows-->
 
 <!--AUTO:attribution-->
 
@@ -463,15 +577,55 @@ The six explain 47% of the variance, over 67 months.
 
 <!--/AUTO:attribution-->
 
+**Each signal by year**, % of NAV, before costs:
+
+<!--AUTO:signal_years-->
+
+| signal | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---:|---:|---:|---:|---:|---:|
+| `ope_be` | +9.5% | +8.1% | +2.2% | +3.0% | -1.3% | -3.9% |
+| `ret_12_1` | +3.3% | +6.4% | -2.3% | +3.9% | -0.0% | +0.9% |
+| `noa_gr1a` | +3.2% | +2.7% | +1.1% | +2.1% | +0.7% | +1.9% |
+| `eqnetis_at` | +12.8% | -3.4% | +1.0% | +1.5% | -4.7% | +3.4% |
+| `o_score` | +0.4% | +3.3% | +4.9% | -1.0% | +1.9% | +0.6% |
+| `be_me` | +6.1% | +0.6% | +0.1% | +0.4% | +0.1% | +0.4% |
+| `niq_su` | -0.3% | +3.0% | -0.1% | +2.9% | -0.9% | +1.7% |
+| `chcsho_12m` | -1.9% | +3.9% | +4.7% | -6.3% | +0.3% | +2.8% |
+| `at_gr1` | +2.1% | +6.3% | -2.9% | -1.5% | -0.7% | -0.0% |
+| `qmj` | -1.8% | +0.2% | -5.5% | +3.9% | +0.3% | +0.8% |
+| `ivol_capm_21d` | -0.9% | +1.3% | -1.7% | +1.2% | -2.2% | -1.6% |
+| `gp_at` | +3.6% | -5.4% | +3.5% | -6.4% | -6.5% | -2.5% |
+
+<!--/AUTO:signal_years-->
+
+**The ten worst months**, traced to their source:
+
+<!--AUTO:worst-->
+
+| month | gross | long / short leg | worst sectors (GICS) | worst signals |
+|---|---|---|---|---|
+| 2024-10 | -7.7% | -3.6% / -4.1% | 35 -3.8%, 45 -1.8% | `gp_at` -3.3%, `chcsho_12m` -2.5% |
+| 2021-01 | -4.4% | +6.1% / -10.5% | 35 -2.8%, 20 -1.7% | `chcsho_12m` -3.2%, `qmj` -3.1% |
+| 2022-08 | -4.3% | -3.4% / -0.9% | 35 -3.0%, 20 -1.5% | `gp_at` -2.4%, `o_score` -1.4% |
+| 2025-07 | -4.2% | +0.8% / -4.9% | 35 -4.6%, 10 -0.7% | `gp_at` -2.4%, `ret_12_1` -0.6% |
+| 2023-12 | -3.6% | +9.2% / -12.8% | 35 -2.3%, 45 -1.3% | `gp_at` -2.1%, `ret_12_1` -1.8% |
+| 2023-05 | -2.6% | -1.1% / -1.5% | 25 -2.2%, 45 -0.8% | `ope_be` -2.2%, `at_gr1` -1.0% |
+| 2024-07 | -2.2% | +5.2% / -7.5% | 50 -1.8%, 45 -0.4% | `gp_at` -2.2%, `o_score` -2.1% |
+| 2026-08 | -2.0% | +0.3% / -2.3% | 35 -2.1%, 20 -0.9% | `ope_be` -2.3%, `ret_12_1` -1.5% |
+| 2025-06 | -1.8% | +3.2% / -5.0% | 45 -1.1%, 35 -1.0% | `gp_at` -3.3%, `chcsho_12m` -1.2% |
+| 2021-06 | -1.8% | +3.3% / -5.1% | 25 -1.8%, 15 -1.1% | `chcsho_12m` -2.2%, `ope_be` -2.1% |
+
+<!--/AUTO:worst-->
+
 <!--AUTO:tails-->
 
 |  |  |
 |---|---:|
-| 95% VaR, monthly | -4.61% |
-| 95% CVaR, monthly | -5.83% |
-| Skew | +0.34 |
-| Excess kurtosis | +0.30 |
-| Rolling 12-month windows with a negative IR | 35% of 57 |
+| 95% VaR, monthly | -4.70% |
+| 95% CVaR, monthly | -5.93% |
+| Skew | +0.35 |
+| Excess kurtosis | +0.29 |
+| Rolling 12-month windows with a negative IR | 42% of 57 |
 
 <!--/AUTO:tails-->
 
@@ -479,9 +633,9 @@ The six explain 47% of the variance, over 67 months.
 
 | control | what changes | what happened |
 |---|---|---|
-| Permutation null | scores shuffled within sector and liquidity, 200 draws | gross +0.33% a year (sd 2.51%) against +17.6%; net IR -2.04 at 146% turnover |
+| Permutation null | scores shuffled within sector and liquidity, 200 draws | gross +0.33% a year (sd 2.51%) against +17.6%; net IR -2.38 at 146% turnover |
 | Inversion | every score times -1 | gross -17.6% against +17.6% |
-| Stale scores | last month's ranking traded this month | net IR +0.45 against +0.94 over the same 67 months |
+| Stale scores | last month's ranking traded this month | net IR +0.35 against +0.79 over the same 67 months |
 
 <!--/AUTO:placebo-->
 
@@ -512,9 +666,9 @@ and <!--N:exhibits/selection.json:search_control.chosen_ir_in_sealed:+.2f-->+0.3
 
 |  | Sharpe luck alone produces | deflated-Sharpe probability |
 |---|---:|---:|
-| **At 123 eligible attempts** | 1.09 | **0.52** |
-| At 1,641, every fit we ever ran | 1.43 | 0.23 |
-| Missing returns at −30%, longs / both sides |  | IR 0.79 / 0.80 |
+| **At 123 eligible attempts** | 1.09 | **0.43** |
+| At 1,642, every fit we ever ran | 1.43 | 0.16 |
+| Missing returns at −30%, longs / both sides |  | IR 0.69 / 0.70 |
 
 <!--/AUTO:deflation-->
 

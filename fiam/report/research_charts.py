@@ -170,8 +170,8 @@ def costs() -> None:
     parts, even = pack["costs"]["components"], pack["costs"]["break_even"]
     split = pack["subperiod"]
     gross = split["full_2021_2026"]["gross_annual"]
-    names = ["commission", "impact", "borrow_general_collateral", "borrow_hard_to_borrow", "spread"]
-    labels = ["gross", "commission", "impact", "borrow GC", "borrow HTB", "spread", "net"]
+    names = ["commission", "spread", "impact", "borrow", "financing"]
+    labels = ["gross", "commission", "spread", "impact", "borrow", "financing", "net"]
 
     fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.2))
 
@@ -212,8 +212,8 @@ def costs() -> None:
 
     figure_caption(
         fig,
-        f"Jan 2021 to Aug 2026; 2026 is January to August. Every rate is a stated assumption, not "
-        f"observed execution; the spread is a scaled estimator. Costs would have to reach "
+        f"Jan 2021 to Aug 2026; 2026 is January to August. Rates follow IBKR, the SEC and FINRA; "
+        f"spread, impact and borrow are models, not observed fills. Costs would have to reach "
         f"{even['break_even_annual_cost']:.1%} a year, {even['break_even_multiple']:.1f} times our "
         f"{even['current_annual_cost']:.1%}, before active return over T-bill + 4% is zero.",
     )

@@ -1,13 +1,12 @@
 # Sub-periods, costs, the rules' statistics, risk and signal attribution. Writes exhibits/pack.json.
 
-import json
 
 import numpy as np
 import pandas as pd
 
 from fiam import benchmarks as B
 from fiam import book as P
-from fiam import paths
+from fiam import data, paths
 
 OUT = paths.EXHIBITS
 
@@ -27,9 +26,9 @@ def cost_components(df: pd.DataFrame) -> dict:
     names = dict(
         commission="cost_commission",
         spread="cost_spread",
-        borrow_general_collateral="cost_borrow_gc",
-        borrow_hard_to_borrow="cost_borrow_htb",
         impact="cost_impact",
+        borrow="cost_borrow",
+        financing="cost_financing",
         total="cost",
     )
     return {name: float(df[column].mean() * 12) for name, column in names.items()}
@@ -307,10 +306,9 @@ def beta_drift(df: pd.DataFrame) -> dict:
 # How much of each leg sits where the AI crowd would buy: 50 is the market's middle, 100 the top.
 def crowding(book: pd.DataFrame) -> dict | None:
     path = P.MODELS / "book_inputs.parquet"
-    inputs = pd.read_parquet(path) if path.exists() else pd.DataFrame()
+    inputs = data.read(path) if path.exists() else pd.DataFrame()
     if "crowd_score" not in inputs:
         return None
-    inputs["eom"] = inputs["eom"].astype("datetime64[s]")
     inputs["crowd"] = inputs.groupby("eom")["crowd_score"].rank(pct=True) * 100
     held = book.assign(eom=(book["Date"] - pd.offsets.MonthEnd(1)).astype("datetime64[s]"))
     held = held.merge(
@@ -346,6 +344,10 @@ def risk(df: pd.DataFrame) -> dict:
     return dict(
         attribution=factor_fit(excess, three),
         five_factor_momentum=factor_fit(excess, extended),
+        # Twelve monthly points cannot pin six loadings, so the split is by window, not by year.
+        five_factor_momentum_by_window={
+            k: factor_fit(excess.loc[a:b], extended) for k, (a, b) in HALVES.items()
+        },
         book={
             leg: dict(
                 annual=float(df[leg].mean() * 12),
@@ -405,7 +407,7 @@ def attribution(book: pd.DataFrame, universe: pd.DataFrame, gross: pd.Series) ->
     for col, sign in P.SIGNALS.items():
         universe[col] = (P.rank_z(universe, col) * sign).fillna(0.0)
     held = book.assign(eom=book["Date"] - pd.offsets.MonthEnd(1)).merge(
-        universe[["permno", "eom", *cols]],
+        universe[["permno", "eom", "sector", "ret_exc_lead1m", *cols]],
         left_on=["PERMNO", "eom"],
         right_on=["permno", "eom"],
         how="left",
@@ -431,7 +433,33 @@ def attribution(book: pd.DataFrame, universe: pd.DataFrame, gross: pd.Series) ->
         months=int(len(table)),
         full=contribution_summary(table, cols),
         halves={k: contribution_summary(table.loc[a:b], cols) for k, (a, b) in HALVES.items()},
+        by_year={
+            str(y): {c: float(g[f"con_{c}"].sum()) for c in cols}
+            for y, g in table.groupby(table.index.year)
+        },
+        worst_months=worst_months(held, table, gross, cols),
     )
+
+
+# The ten worst months split by leg, sector and signal, so a loss can be traced to its source.
+def worst_months(held: pd.DataFrame, table: pd.DataFrame, gross: pd.Series, cols: list) -> list:
+    held = held.assign(earned=held["w"] * held["ret_exc_lead1m"].fillna(0.0))
+    out = []
+    for month in gross.nsmallest(10).index:
+        mine = held[held["Date"] == month]
+        by_sector = mine.groupby("sector")["earned"].sum()
+        signals = {c: float(table.loc[month, f"con_{c}"]) for c in cols}
+        out.append(
+            dict(
+                month=f"{month:%Y-%m}",
+                gross=float(gross[month]),
+                long=float(mine.loc[mine["w"] > 0, "earned"].sum()),
+                short=float(mine.loc[mine["w"] < 0, "earned"].sum()),
+                worst_sectors={k: float(v) for k, v in by_sector.nsmallest(3).items()},
+                worst_signals=dict(sorted(signals.items(), key=lambda kv: kv[1])[:3]),
+            )
+        )
+    return out
 
 
 # Every committee statistic, written to pack.json.
@@ -451,7 +479,7 @@ def main() -> None:
         attribution=attribution(book, P.universe(), df["gross"]),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "pack.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT / "pack.json", out, rounded=False)
 
     for name in ("full_2021_2026", "first_half_2021_2022", "second_half_2023_2026"):
         s = out["subperiod"][name]

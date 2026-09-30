@@ -1,0 +1,10 @@
+{
+  "what": "Half the CRSP closing quoted spread over bidaskhl_21d, median by size group, 2015-2020 only.",
+  "ratio_by_size_grp": {
+    "large": 0.030424836685131327,
+    "mega": 0.022053049469540387,
+    "micro": 0.18809952133183944,
+    "nano": 0.4919947546868379,
+    "small": 0.04916570984391531
+  }
+}

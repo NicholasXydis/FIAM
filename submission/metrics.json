@@ -14,32 +14,32 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "code_sha256": "d420b4f07365f663",
+    "code_sha256": "4945ecd22bced975",
     "holding_months": 68,
     "window": "2021-01 to 2026-08"
   },
   "performance": {
     "return_gross_annual": 0.175512,
-    "return_net_annual": 0.136423,
-    "return_total_cagr": 0.17484,
-    "volatility_annual": 0.122061,
-    "information_ratio": 0.789955,
-    "sharpe_ratio": 1.117659,
-    "max_drawdown_total": -0.104723,
-    "max_drawdown_spread": -0.153739,
-    "hit_rate_positive_active_months": 0.558824,
-    "alpha_annual": 0.141342,
-    "alpha_tstat": 2.461023,
-    "alpha_stderr_annual": 0.057432,
-    "beta_realized": -0.046649,
-    "beta_stderr": 0.09149,
-    "correlation_with_market": -0.0575
+    "return_net_annual": 0.124638,
+    "return_total_cagr": 0.161213,
+    "volatility_annual": 0.12231,
+    "information_ratio": 0.691994,
+    "sharpe_ratio": 1.019031,
+    "max_drawdown_total": -0.110294,
+    "max_drawdown_spread": -0.173212,
+    "hit_rate_positive_active_months": 0.544118,
+    "alpha_annual": 0.129375,
+    "alpha_tstat": 2.232403,
+    "alpha_stderr_annual": 0.057953,
+    "beta_realized": -0.044918,
+    "beta_stderr": 0.091661,
+    "correlation_with_market": -0.055254
   },
   "costs": {
-    "cost_annual": 0.039089,
-    "cost_share_of_gross": 0.222714,
-    "turnover_monthly_one_way": 0.442056,
-    "hard_to_borrow_share_of_short_book": 0.483938
+    "cost_annual": 0.050874,
+    "cost_share_of_gross": 0.289861,
+    "turnover_monthly_one_way": 0.442282,
+    "hard_to_borrow_share_of_short_book": 0.23802
   },
   "compliance": {
     "positions_average": 276.455882,
@@ -51,13 +51,13 @@
   },
   "robustness": {
     "attempts_eligible": 123,
-    "attempts_all": 1641,
-    "deflated_sharpe_probability_eligible": 0.523553,
-    "deflated_sharpe_probability_all": 0.227565,
+    "attempts_all": 1642,
+    "deflated_sharpe_probability_eligible": 0.428422,
+    "deflated_sharpe_probability_all": 0.161733,
     "sharpe_luck_alone_eligible": 1.09331,
-    "sharpe_luck_alone_all": 1.42552,
-    "ir_missing_returns_conservative": 0.786314,
-    "ir_missing_returns_symmetric": 0.796938,
+    "sharpe_luck_alone_all": 1.42559,
+    "ir_missing_returns_conservative": 0.688286,
+    "ir_missing_returns_symmetric": 0.698909,
     "missing_long_weight_monthly": 0.000143,
     "missing_short_weight_monthly": 0.000362
   },

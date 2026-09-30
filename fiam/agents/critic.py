@@ -259,7 +259,7 @@ def repeat() -> None:
         comparison=H.repeatable(first, result["transcript"]),
         runtime=header[1]["server"],
     )
-    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(EXHIBITS / "critic.json", out, rounded=False)
     print(json.dumps(out["repeatability"], indent=2))
 
 
@@ -281,7 +281,7 @@ def main() -> None:
         unsupported=sum(1 for c in checked if not c["numbers_supported"]),
         transcript=result["transcript"].relative_to(ROOT).as_posix(),
     )
-    (EXHIBITS / "critic.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(EXHIBITS / "critic.json", out, rounded=False)
     print(f"{len(checked)} critiques, {out['unsupported']} with numbers no tool showed")
 
 

@@ -1,6 +1,5 @@
 # The research harness: any book or rule scored window by window, choices walked forward in time.
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -34,7 +33,8 @@ def by_window(book: pd.DataFrame) -> dict:
     for name, (first, last) in WINDOWS.items():
         part = book.loc[first:last]
         if len(part) >= 12:
-            out[name] = summarise(part, market())
+            span = f"{part.index.min():%Y-%m} to {part.index.max():%Y-%m}"
+            out[name] = dict(**summarise(part, market()), span=span)
     return out
 
 
@@ -103,7 +103,7 @@ def main() -> None:
         shipped=by_window(paths.returns()),
         candidates={n: by_window(b) for n, b in books.items()},
     )
-    OUT.write_text(json.dumps(P.round_floats(out), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, out)
     for name, track in tracks.items():
         irs = {w: round(s["information_ratio"], 2) for w, s in track["windows"].items()}
         beaten = track["against_chance"]["share_of_random_beaten"]

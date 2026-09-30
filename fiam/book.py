@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
@@ -14,6 +14,7 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy.stats import kurtosis, norm, skew
 
+from fiam import costs as C
 from fiam import data, paths
 from fiam.benchmarks import benchmarks
 from fiam.exhibits import config_log
@@ -74,9 +75,6 @@ LABEL_FIXES = [
 ]
 
 # Assumed, not measured. Deliberately pessimistic, and stated openly in the deck.
-COSTS = dict(
-    commission_bps=5.0, spread_scale=0.20, borrow_gc_bps=50.0, borrow_htb_bps=250.0, impact_bps=8.0
-)
 
 
 # Loads the stock data and works out which sector each company belongs to.
@@ -99,6 +97,8 @@ def load_panel(extra: tuple[str, ...] = ()) -> pd.DataFrame:
             "rvol_21d",
             "betadown_252d",
             "betabab_1260d",
+            "beta_dimson_21d",
+            "market_equity",
             "ticker",
             "company_name",
         ]
@@ -195,40 +195,89 @@ def spread(df: pd.DataFrame, signal: pd.Series) -> pd.Series:
     return monthly
 
 
+# How the book is built: each switch is one pre-registered rule of construction v2.
+@dataclass(frozen=True)
+class Design:
+    # Hedge on 0.67 x the mean of the 60-month and Dimson betas, plus 0.33.
+    adjusted_beta: bool = False
+    # Net exposure allowed either side of zero, so the beta-weighted legs can cancel.
+    net_band: float = 0.0
+    # No short above 20% short interest, and short caps scaled down for volatile names.
+    short_rules: bool = False
+    # Every cap scaled so no name carries more impact per dollar than the median (amendment 2).
+    liquidity_caps: bool = False
+    # Momentum leaves the composite after two years of falling markets (Daniel & Moskowitz 2016).
+    crash_protection: bool = False
+    # Exposure to five Fama-French characteristics held near zero, so what is left is selection.
+    factor_neutral: bool = False
+
+
+# Size, value, profitability, investment and momentum, as Fama and French build their factors.
+FACTORS = ("market_equity", "be_me", "ope_be", "at_gr1", "ret_12_1")
+
+# The construction before Phase 3, and construction v2 as PREREGISTRATION.md fixes it.
+CURRENT = Design()
+# The factor-neutral book, amendment 4: the current construction plus the five factor limits.
+NEUTRAL = Design(factor_neutral=True)
+V2 = Design(
+    adjusted_beta=True, net_band=0.10, short_rules=True, liquidity_caps=True, crash_protection=True
+)
+# The construction in force: v2 only if it passed all four of its pre-registered rules.
+SHIPPED = CURRENT
+
+
+# Decision months after the market fell over the past 24 months, the paper's bear-market state.
+@cache
+def bear_months() -> frozenset:
+    bm = benchmarks().set_index("month")
+    total = (bm["mkt_rf_crsp"] + bm["rf"]).dropna()
+    past = (1 + total).rolling(24).apply(np.prod, raw=True) - 1
+    return frozenset(m + pd.offsets.MonthEnd(0) for m, v in past.items() if v < 0)
+
+
 # Turns the twelve measures into a single score per stock, with unwanted bets removed.
 def build_signal(
-    df: pd.DataFrame, signals: dict | None = None, min_signals: int = MIN_SIGNALS
+    df: pd.DataFrame,
+    signals: dict | None = None,
+    min_signals: int = MIN_SIGNALS,
+    design: Design = SHIPPED,
 ) -> pd.DataFrame:
     # Only a declared challenger passes its own set. The book always uses SIGNALS.
     table = scores(df, SIGNALS if signals is None else signals)
+    if design.crash_protection and "ret_12_1" in table:
+        table.loc[df["eom"].isin(bear_months()).to_numpy(), "ret_12_1"] = np.nan
     # Equal weight, and most measures present, so scores stay comparable.
     df["n_signals"] = table.notna().sum(axis=1)
     df["composite"] = table.mean(axis=1).where(df["n_signals"] >= min_signals)
     df = df.dropna(subset=["composite", "beta_60m", "bidaskhl_21d"]).copy()
     # The beta every book is neutral to: the 60-month estimate unless a candidate hedges better.
     df["hedge_beta"] = df["beta_60m"]
+    if design.adjusted_beta:
+        raw = df[["beta_60m", "beta_dimson_21d"]].mean(axis=1)
+        df["hedge_beta"] = 0.67 * raw + 0.33
     df["signal"] = neutralize(df, df["composite"])
 
-    # Stocks expensive to borrow. An earlier version flagged 73% of shorts, so it was tightened.
-    q05 = df.groupby("eom")["dolvol_126d"].transform(lambda s: s.quantile(0.05))
-    df["htb"] = (df["size_grp"] == "micro") | (df["dolvol_126d"] <= q05)
+    # Each name's borrow a year, from its short-interest tier.
+    df["borrow"] = C.borrow_rate(df)
 
     # Leaning away from jumpy stocks is a hidden bet the market falls. Our main finding.
     parts = [
         rank_z(df, col) for col in ("ivol_capm_21d", "rvol_21d", "betadown_252d", "betabab_1260d")
     ]
     df["risk_rank"] = pd.concat(parts, axis=1).mean(axis=1).fillna(0.0)
+    if design.factor_neutral:
+        for col in FACTORS:
+            df[f"factor_{col}"] = rank_z(df, col).fillna(0.0)
     return df
 
 
 # The shipped universe, built once per code and data version and shared by every script.
 def universe() -> pd.DataFrame:
-    key = data.signature().encode() + Path(__file__).read_bytes()
+    key = data.signature().encode() + Path(__file__).read_bytes() + Path(C.__file__).read_bytes()
     path = CACHE / f"universe_{hashlib.sha256(key).hexdigest()[:12]}.parquet"
     if path.exists():
         # Parquet stores dates in milliseconds; a fresh build keeps seconds, so restore them.
-        cached = pd.read_parquet(path)
-        return cached.assign(eom=cached["eom"].astype("datetime64[s]"))
+        return data.read(path)
     built = build_signal(screen(load_panel()))
     CACHE.mkdir(exist_ok=True)
     # Older versions are dead weight once the code or data behind them has changed.
@@ -275,9 +324,9 @@ def candidate(universe: pd.DataFrame, inputs: pd.DataFrame | None, name: str) ->
         if inputs is None
         else universe.merge(inputs, on=["permno", "eom"], how="left")
     )
-    # A name the crowding teacher puts in the month's most-shorted tenth pays hard-to-borrow rates.
+    # Once short-interest reports stop, the crowding teacher sets each name's borrow tier.
     if "crowding_hat" in df:
-        df["htb"] = df["htb"] | (df.groupby("eom")["crowding_hat"].rank(pct=True) > 0.9)
+        df["borrow"] = C.borrow_rate(df)
     if not spec["blend"] and not spec["hedge"]:
         return df
     if spec["hedge"] and "beta_hat" in df:
@@ -296,8 +345,7 @@ def shipped(universe: pd.DataFrame) -> tuple[pd.DataFrame, dict | None]:
     policy = paths.read_json(MODELS / "policy.json")
     if not policy:
         return universe, None
-    inputs = pd.read_parquet(MODELS / "book_inputs.parquet")
-    inputs["eom"] = inputs["eom"].astype("datetime64[s]")
+    inputs = data.read(MODELS / "book_inputs.parquet")
     year = (universe["eom"] + pd.offsets.MonthBegin(1)).dt.year.astype(str)
     chosen = policy["by_year"]
     parts = [
@@ -308,16 +356,13 @@ def shipped(universe: pd.DataFrame) -> tuple[pd.DataFrame, dict | None]:
 
 # Works out how much to hold in each stock for one month, inside every rule.
 def optimize_month(
-    month: pd.DataFrame,
-    previous: pd.Series | None = None,
-    constrained: bool = True,
-    penalty: float = 0.0,
+    month: pd.DataFrame, previous: pd.Series | None = None, design: Design = SHIPPED
 ) -> pd.Series | None:
     month = month.sort_values("signal")
     # The extremes first; if they cannot make a neutral book at full gross, reach deeper.
     for depth in (LIMITS["pool"], 2 * LIMITS["pool"], len(month)):
         pool = pd.concat([month.tail(depth), month.head(depth)]).drop_duplicates("permno")
-        weights = solve(month, pool, previous, constrained, penalty)
+        weights = solve(month, pool, previous, design)
         if weights is not None:
             return weights
     return None
@@ -325,11 +370,7 @@ def optimize_month(
 
 # Best score from one pool of candidates without breaking any limit. Exactly one right answer.
 def solve(
-    month: pd.DataFrame,
-    pool: pd.DataFrame,
-    previous: pd.Series | None,
-    constrained: bool,
-    penalty: float,
+    month: pd.DataFrame, pool: pd.DataFrame, previous: pd.Series | None, design: Design
 ) -> pd.Series | None:
     # Held stocks drift out of the pool and get force-sold. Adding them back cut turnover.
     if previous is not None:
@@ -341,40 +382,58 @@ def solve(
     w = cp.Variable(len(pool))
     # Good scores can only be bought, bad ones only shorted, so the book is explainable.
     side = np.where(a >= 0, 1.0, -1.0)
-    lo, hi = np.minimum(side, 0) * LIMITS["name"], np.maximum(side, 0) * LIMITS["name"]
+    cap = caps(month, pool, side, design)
+    lo, hi = np.minimum(side, 0) * cap, np.maximum(side, 0) * cap
     constraints = [
-        # Dollar neutral.
-        cp.sum(w) == 0,
+        # Dollar neutral, or inside the design's band so the beta-weighted legs can cancel.
+        cp.sum(w) == 0 if not design.net_band else cp.abs(cp.sum(w)) <= design.net_band,
         # Signs are fixed, so gross is linear and exact; at 1.5% a name that means 107+ names.
         side @ w == LIMITS["gross"],
         w >= lo,
         # Per-name cap, sign matches the signal.
         w <= hi,
     ]
-    # Off only in the constraint-survival exhibit, which adds one restriction at a time.
-    if constrained:
-        beta = hedge(pool).to_numpy()
-        risk = pool["risk_rank"].to_numpy()
-        sectors = pd.get_dummies(pool["sector"]).to_numpy(dtype=float)
-        constraints += [
-            # Beta neutral (trailing estimate).
-            cp.abs(beta @ w) <= LIMITS["beta"],
-            # And neutral on the volatility complex.
-            cp.abs(risk @ w) <= LIMITS["risk"],
-            cp.abs(sectors.T @ w) <= LIMITS["sector"],
-        ]
+    beta = hedge(pool).to_numpy()
+    risk = pool["risk_rank"].to_numpy()
+    sectors = pd.get_dummies(pool["sector"]).to_numpy(dtype=float)
+    constraints += [
+        # Beta neutral on the hedge beta.
+        cp.abs(beta @ w) <= LIMITS["beta"],
+        # And neutral on the volatility complex.
+        cp.abs(risk @ w) <= LIMITS["risk"],
+        cp.abs(sectors.T @ w) <= LIMITS["sector"],
+    ]
+    # The factor-neutral design holds each Fama-French exposure inside the volatility limit.
+    if design.factor_neutral:
+        exposures = pool[[f"factor_{col}" for col in FACTORS]].to_numpy()
+        constraints.append(cp.abs(exposures.T @ w) <= LIMITS["risk"])
     # Chase the score but penalise big positions, or we end up with 144 stocks and a 43% loss.
     objective = a @ w - 0.5 * LIMITS["ridge"] * cp.sum_squares(w)
-    # Only the turnover sweep sets this. It charges for moving away from last month's book.
-    if penalty > 0 and previous is not None:
-        held_weights = previous.reindex(pool["permno"].to_numpy()).fillna(0.0).to_numpy()
-        objective = objective - penalty * cp.norm1(w - held_weights)
     problem = cp.Problem(cp.Maximize(objective), constraints)
     problem.solve(solver=cp.CLARABEL)
     if w.value is None:
         return None
     weights = pd.Series(w.value, index=pool["permno"].to_numpy())
-    return weights[weights.abs() > 1e-5]
+    kept = weights[weights.abs() > 1e-5]
+    # Only a banded design carries its chosen net into the whole-share repair.
+    if design.net_band:
+        kept.attrs["net"] = float(kept.sum())
+    return kept
+
+
+# Each name's cap: 1.5%, scaled down by the design's liquidity and short rules; 0 where banned.
+def caps(month: pd.DataFrame, pool: pd.DataFrame, side: np.ndarray, design: Design) -> np.ndarray:
+    cap = np.full(len(pool), LIMITS["name"])
+    if design.liquidity_caps:
+        impact = (month["rvol_21d"] / np.sqrt(month["dolvol_126d"])).median()
+        own = (pool["rvol_21d"] / np.sqrt(pool["dolvol_126d"])).fillna(impact).to_numpy()
+        cap = cap * np.minimum(1.0, impact / own)
+    if design.short_rules:
+        vol = pool["rvol_21d"].fillna(month["rvol_21d"].median()).to_numpy()
+        short_cap = LIMITS["name"] * np.minimum(1.0, month["rvol_21d"].median() / vol)
+        banned = pool["borrow"].to_numpy() >= C.TIERS[-1][1]
+        cap = np.where(side < 0, np.where(banned, 0.0, np.minimum(cap, short_cap)), cap)
+    return cap
 
 
 # Converts target position sizes into whole numbers of shares.
@@ -385,8 +444,10 @@ def to_whole_shares(weights: pd.Series, prices: pd.Series) -> pd.Series:
     held = shares * px / NAV
 
     # Rounding shrinks both sides; each pass adds a share to every name on the smaller one.
+    # A dollar-neutral book is repaired to zero; a banded one to the net its optimizer chose.
+    target = weights.attrs.get("net", 0.0)
     for _ in range(500):
-        residual = held.sum()
+        residual = held.sum() - target
         if abs(residual) < 1e-5:
             break
         # If we are holding more than we are shorting, add to a short, and vice versa.
@@ -394,7 +455,7 @@ def to_whole_shares(weights: pd.Series, prices: pd.Series) -> pd.Series:
         shortfall = (weights[side.index].abs() - side.abs()).sort_values(ascending=False)
         added = False
         for name in shortfall.index:
-            residual = held.sum()
+            residual = held.sum() - target
             if px[name] / NAV <= abs(residual) + 1e-12:
                 shares[name] += -1 if residual > 0 else 1
                 held = shares * px / NAV
@@ -408,35 +469,23 @@ def to_whole_shares(weights: pd.Series, prices: pd.Series) -> pd.Series:
 def trading_cost(
     weights: pd.Series,
     previous: pd.Series | None,
-    info: pd.DataFrame,
-    spreads: pd.Series,
-    previous_spreads: pd.Series | None,
+    quotes: pd.DataFrame,
+    previous_quotes: pd.DataFrame | None,
+    model: C.Model = C.DEFAULT,
 ) -> tuple[dict, float]:
-    if previous is None:
-        traded = weights.abs()
-    else:
-        # Both months' names, so selling out of a position still counts as a trade.
-        idx = weights.index.union(previous.index)
-        traded = (
-            weights.reindex(idx, fill_value=0.0) - previous.reindex(idx, fill_value=0.0)
-        ).abs()
-
-    shorts = weights[weights < 0]
-    htb = shorts[info.loc[shorts.index, "htb"].to_numpy()]
-    # Names we are exiting are a third of all trading, so each one is charged its own spread.
-    own = spreads.reindex(traded.index)
-    if previous_spreads is not None:
-        own = own.fillna(previous_spreads.reindex(traded.index))
-    # Recorded line by line, so the cost breakdown is read, never reverse-engineered.
-    parts = dict(
-        cost_commission=traded.sum() * COSTS["commission_bps"] / 1e4,
-        cost_spread=(traded * own.fillna(spreads.median()) * COSTS["spread_scale"] / 2).sum(),
-        cost_borrow_gc=shorts.abs().sum() * COSTS["borrow_gc_bps"] / 1e4 / 12,
-        cost_borrow_htb=htb.abs().sum() * COSTS["borrow_htb_bps"] / 1e4 / 12,
-        cost_impact=traded.sum() * COSTS["impact_bps"] / 1e4,
-    )
+    # Both months' names, so selling out of a position still counts as a trade.
+    before = pd.Series(dtype=float) if previous is None else previous
+    idx = weights.index.union(before.index)
+    traded = weights.reindex(idx, fill_value=0.0) - before.reindex(idx, fill_value=0.0)
+    # A name we are exiting is priced on last month's quotes; any gap takes the month's median.
+    known = quotes.reindex(idx)
+    if previous_quotes is not None:
+        known = known.combine_first(previous_quotes.reindex(idx))
+    numeric = known.drop(columns="size_grp")
+    known[numeric.columns] = numeric.fillna(quotes[numeric.columns].median())
+    parts = C.month_costs(traded, weights, known, model)
     # Turnover is quoted one way throughout, so halve the two-way total.
-    return parts, traded.sum() / 2
+    return parts, float(traded.abs().sum() / 2)
 
 
 # Part of the way from last month's book to the target, at the trader's gross, still neutral.
@@ -474,10 +523,11 @@ def fill(side: pd.Series, total: float) -> pd.Series:
 def rebalance(
     cross_section: pd.DataFrame,
     previous: pd.Series | None,
-    previous_spreads: pd.Series | None,
+    previous_quotes: pd.DataFrame | None,
     optimize=optimize_month,
     round_shares: bool = True,
     trade: tuple[float, float] | None = None,
+    model: C.Model = C.DEFAULT,
 ) -> tuple | None:
     weights = optimize(cross_section, previous)
     # No solution and an empty book both come back as None. The caller decides what that means.
@@ -492,9 +542,9 @@ def rebalance(
         info = info.loc[weights.index]
         if not len(weights):
             return None
-    spreads = cross_section.set_index("permno")["bidaskhl_21d"]
-    parts, turnover = trading_cost(weights, previous, info, spreads, previous_spreads)
-    return weights, info, spreads, parts, turnover
+    quotes = cross_section.set_index("permno")[C.COLUMNS]
+    parts, turnover = trading_cost(weights, previous, quotes, previous_quotes, model)
+    return weights, info, quotes, parts, turnover
 
 
 # Weights after a month of total returns, as a share of the NAV that month left behind.
@@ -513,24 +563,27 @@ def walk(
     optimize=optimize_month,
     round_shares: bool = True,
     trades: dict | None = None,
+    model: C.Model = C.DEFAULT,
 ):
     rf = benchmarks().set_index("month")["rf"]
-    previous, previous_spreads = None, None
+    previous, previous_quotes = None, None
     for month in sorted(universe["eom"].unique()):
         cross_section = universe[universe["eom"] == month]
         trade = (trades or {}).get(pd.Timestamp(month).strftime("%Y-%m-%d"))
-        step = rebalance(cross_section, previous, previous_spreads, optimize, round_shares, trade)
+        step = rebalance(
+            cross_section, previous, previous_quotes, optimize, round_shares, trade, model
+        )
         # No view means an empty book that pays to exit. Dropping the month would be survivorship.
         if step is None:
             weights, info = pd.Series(dtype=float), cross_section.set_index("permno").iloc[:0]
-            spreads = cross_section.set_index("permno")["bidaskhl_21d"]
-            parts, turnover = trading_cost(weights, previous, info, spreads, previous_spreads)
+            quotes = cross_section.set_index("permno")[C.COLUMNS]
+            parts, turnover = trading_cost(weights, previous, quotes, previous_quotes, model)
         else:
-            weights, info, spreads, parts, turnover = step
+            weights, info, quotes, parts, turnover = step
         yield month, weights, info, cross_section, parts, turnover
         # An empty month leaves nothing to carry, so the next one is charged as a full entry.
         cash = rf.get((month + pd.offsets.MonthBegin(1)).normalize(), 0.0)
-        previous, previous_spreads = drift(weights, info, parts, cash), spreads
+        previous, previous_quotes = drift(weights, info, parts, cash), quotes
 
 
 # Any score through the book, month by month. Returns what each month earned and cost.
@@ -539,8 +592,10 @@ def backtest(
     optimize=optimize_month,
     round_shares: bool = True,
     trades: dict | None = None,
+    model: C.Model = C.DEFAULT,
 ) -> pd.DataFrame:
-    rows = [month_record(*step) for step in walk(universe, optimize, round_shares, trades)]
+    steps = walk(universe, optimize, round_shares, trades, model)
+    rows = [month_record(*step) for step in steps]
     book = pd.DataFrame(rows).set_index("holding_month")
     book.attrs["months_with_no_position"] = int((book["n"] == 0).sum())
     return book
@@ -674,7 +729,8 @@ def month_record(
     # A missing return usually means the company failed, so count it zero, never drop it.
     missing = info["ret_exc_lead1m"].isna()
     shorts = weights[weights < 0]
-    htb_weight = shorts[info.loc[shorts.index, "htb"].to_numpy()].abs().sum()
+    # Hard to borrow means a tier of 3% a year or more.
+    htb_weight = shorts[info.loc[shorts.index, "borrow"].to_numpy() >= 0.03].abs().sum()
     gross_ret = (weights * info["ret_exc_lead1m"].fillna(0.0)).sum()
     cost = sum(parts.values())
     return dict(
@@ -739,9 +795,7 @@ def run() -> dict:
     out["portfolio_total_return"] = out["rf"] + out["net"]
     out["active_return"] = out["portfolio_total_return"] - (out["rf"] + 0.04 / 12)
     out.reset_index().to_csv(OUT / "returns.csv", index=False, lineterminator="\n")
-    (OUT / "metrics.json").write_text(
-        json.dumps(stats, indent=2, default=str), encoding="utf-8", newline="\n"
-    )
+    paths.write_json(OUT / "metrics.json", stats, rounded=False, default=str)
     return stats
 
 
@@ -749,7 +803,7 @@ def run() -> dict:
 def check_compliance(book: pd.DataFrame, traded: bool = False) -> None:
     # Stops the run rather than warning. Whole shares cannot hit a target exactly.
     assert len(book) == N_HOLDING_MONTHS, f"{len(book)} holding months"
-    assert book["net_exposure"].abs().max() < 0.005, "net exposure outside tolerance"
+    assert book["net_exposure"].abs().max() < SHIPPED.net_band + 0.005, "net exposure outside band"
     assert book["gross_exposure"].max() <= 2.0, "gross above 200%"
     assert book["n"].between(100, 500).all(), "position count outside 100-500"
     # A traded month keeps part of last month's book, so its tilts are looser but still small.
@@ -785,20 +839,8 @@ def source_fingerprint() -> dict:
     return {"code_sha256": digest.hexdigest()[:16]}
 
 
-# Rounds the numbers once, just before saving.
-def round_floats(obj, places: int = 6):
-    # Six decimals. The maths runs at full precision, only the saved file is rounded.
-    if isinstance(obj, dict):
-        # Step into each group.
-        return {k: round_floats(v, places) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [round_floats(v, places) for v in obj]
-    if isinstance(obj, (float, np.floating)):
-        return round(float(obj), places)
-    # A bool is an int to Python, so it is let through before it turns into 1.
-    if isinstance(obj, (int, np.integer)) and not isinstance(obj, bool):
-        return int(obj)
-    return obj
+# Rounds the numbers once, just before saving; kept here so every module can reach it as P.
+round_floats = paths.round_floats
 
 
 # Deflated Sharpe. Returns a PROBABILITY our Sharpe beats zero, not a Sharpe ratio.

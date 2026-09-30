@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from concurrent.futures import ProcessPoolExecutor
 
@@ -141,7 +140,7 @@ def main() -> None:
         ),
     )
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "placebo_lab.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT / "placebo_lab.json", out, rounded=False)
     print(
         f"\nnull mean {null.mean():+.3f} (sd {null.std():.3f}), "
         f"shipped at the {percentile:.1f}th percentile"

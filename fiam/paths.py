@@ -3,8 +3,10 @@
 import hashlib
 import json
 import os
+import zipfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 OUT_ROOT = Path(os.environ.get("FIAM_OUT", "."))
@@ -28,6 +30,37 @@ def read_json(path: Path) -> dict:
 # An exhibit by name, from wherever this run writes.
 def exhibit(name: str) -> dict:
     return read_json(EXHIBITS / name)
+
+
+# Six decimals on write. The maths runs at full precision; only the saved file is rounded.
+def round_floats(obj, places: int = 6):
+    if isinstance(obj, dict):
+        return {k: round_floats(v, places) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [round_floats(v, places) for v in obj]
+    if isinstance(obj, (float, np.floating)):
+        return round(float(obj), places)
+    # A bool is an int to Python, so it is let through before it turns into 1.
+    if isinstance(obj, (int, np.integer)) and not isinstance(obj, bool):
+        return int(obj)
+    return obj
+
+
+# Every JSON file the pipeline writes: indented, LF line endings, rounded unless told otherwise.
+def write_json(path: Path, obj, rounded: bool = True, end: str = "", default=None) -> None:
+    text = json.dumps(round_floats(obj) if rounded else obj, indent=2, default=default)
+    path.write_text(text + end, encoding="utf-8", newline="\n")
+
+
+# Unpacks a zip, refusing it whole if any entry would land outside the folder it belongs in.
+def safe_unzip(source: Path, target: Path, inside: Path | None = None) -> None:
+    root = (inside or target).resolve()
+    with zipfile.ZipFile(source) as zf:
+        names = zf.namelist()
+        outside = [n for n in names if not (target.resolve() / n).resolve().is_relative_to(root)]
+        if outside:
+            raise ValueError(f"{source.name} has entries outside {root.name}/: {outside[:3]}")
+        zf.extractall(target)
 
 
 # The monthly returns file, indexed by holding month.

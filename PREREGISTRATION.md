@@ -82,3 +82,65 @@ the earnings-surprise forecast become scorer inputs. The candidate grid and the 
 unchanged: they reach the book only if a scorer book beats the composite by 0.25 IR over the two
 years before, with beta inside ±0.15. The folds are the rules': expanding training, two years of
 validation, annual refit. OOS R² is reported for every new model.
+
+## Amendments
+
+Each change is dated, made before the test it touches ran, and kept here rather than edited in.
+
+1. **2026-09-30, before any Phase 2 code ran.** IBKR's US stock commission page lists three
+   regulatory fees charged on top of the fixed commission. The FINRA Trading Activity Fee takes its
+   highest rate in 2021-2026, the rule the SEC fee already follows: $0.000195 a share sold, at most
+   $9.79 a trade, in force since January 2026 (the $0.000166 above was the 2024-2025 rate). The FINRA
+   Consolidated Audit Trail fee, $0.000003 a share on every buy and sale, is added; it was missing.
+   Together they move costs by well under 0.01% a year.
+
+2. **2026-09-30, after Phase 2 and before any Phase 3 code ran.** Phase 2 showed market impact is
+   now the largest cost (2.2% a year of 5.1%). Construction v2 adds liquidity-scaled caps: each
+   name's cap, long or short, is 1.5% × the lesser of 1 and m ÷ kᵢ, where kᵢ = `rvol_21d` ÷
+   √`dolvol_126d` is its impact per dollar under the Phase 2 square-root law and m is that month's
+   median k. No position then carries more expected impact per dollar than the median name. A short
+   takes the smaller of this cap and its volatility cap. The pass rules are unchanged. Nothing about
+   which names or signals lost money in Phase 2 enters any rule.
+
+3. **2026-09-30, before any Phase 4 code ran.** Every 8-K opens with a cover page of about 1,250
+   characters (registrant, address, file numbers, checkboxes), about half of FinBERT's 512 tokens.
+   FinBERT and every agent read each filing from its first "Item N.NN" heading instead, or from the
+   start when it has none (12% of filings). The embedding is the mean of FinBERT's last layer over
+   the filing's tokens, a detail the plan left open. Tickers are masked as whole words of two or
+   more letters, so a one-letter ticker cannot erase ordinary words. The masked excerpt, 3,000
+   characters from that heading, becomes a layer of the data bundle, built once from the
+   organizer's file.
+
+4. **2026-09-30, a new test, before its code ran: the factor-neutral book.** The book's six-factor
+   alpha is 7% a year with t = 1.56; its good and bad years follow the value factor (HML -31% in
+   2020, +32% in 2022). The brief calls neutralizing size, value and momentum an optional
+   refinement. On top of the current construction (v2 was rejected), the book's exposure to five
+   Fama-French characteristics is held within ±0.02, the limit its volatility complex already has:
+   size `market_equity`, value `be_me`, profitability `ope_be`, investment `at_gr1`, momentum
+   `ret_12_1`, each ranked within its month as the composite ranks. It ships only if all four hold
+   on 2016-01 to 2026-08, with the Phase 2 costs on both books: IR higher than the current book's;
+   monthly beta closer to zero; worst drawdown shallower; 100-500 names, gross at most 200% and net
+   within ±50% every month, and no day above 200% gross in 2021-2025, the record's daily data.
+   Judged on all eleven years, not the window that flatters us. It counts as one more attempt.
+5. **2026-09-30, before the analyst agent ran.** Qwen3.8-27B takes about 5-10 seconds a call, so
+   20,000 calls would take 30-55 hours. The analyst reads at most 5,000 stock-months, drawn from the
+   same eligible set with the same seed. The reason is compute time; no result has been seen.
+6. **2026-09-30, before the analyst agent ran.** So every agent can run in one unattended night on
+   the Windows GPU, the analyst chooses stock-months by the filings' own item codes rather than by
+   the triage model, which needs FinBERT vectors built on another machine. A filing is material if
+   it carries item 1.01, 1.02, 2.01, 2.02, 2.05, 2.06, 4.01, 4.02 or 5.02, the events the brief
+   singles out; routine items 7.01, 8.01 and 9.01 alone do not count. Everything else in
+   amendment 5 stands. The reason is scheduling; no result has been seen.
+7. **2026-09-30, before the scorer ran with any Phase 4 input.** The factor-neutral test showed the
+   book's return is style. So the scorer becomes a stock picker: it learns next month's return less
+   its sector's mean and its exposure to beta and the five characteristics of amendment 4, each
+   month by least squares, instead of beta alone. Everything else about it is unchanged, and it
+   still reaches the book only through the candidate grid and the ship rule.
+8. **2026-09-30, before the trader or the live book ran.** The trader's constant-rate yardstick is
+   named for what it is: Gârleanu and Pedersen's (2013) optimal policy trades a constant fraction of
+   the way to its aim each month; ours takes that fraction from 25%, 50%, 75% or 100% on earlier
+   years only. Separately, each month from October 2026 the book for the coming month is built from
+   the latest data and committed before that month begins, then scored once its returns are known.
+   Until the organizer's panel updates, it is built from August 2026 characteristics.
+9. **2026-09-30.** The live book of amendment 8 is dropped: the submission is due before October's
+   returns exist, so it could not be scored in time. The rest of amendment 8 stands.

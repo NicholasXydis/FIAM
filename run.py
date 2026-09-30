@@ -27,9 +27,11 @@ HELP = """uv run run.py [options]
 # The book and everything read from it, in order. Each step is a module run with python -m.
 STEPS = [
     ("fiam.data", "checking the data bundle"),
+    ("fiam.costs", "calibrating spreads to CRSP quotes and borrow to short interest"),
     ("fiam.book", "building the portfolio"),
     ("fiam.exhibits.pack", "sub-periods, costs, risk and signal attribution"),
-    ("fiam.exhibits.daily_risk", "marking the book every trading day, 2021-2025"),
+    ("fiam.exhibits.daily_risk", "marking the book every trading day, with stress tests"),
+    ("fiam.exhibits.implementation", "cost sensitivities, capacity and liquidity"),
     ("fiam.checks.wrds_checks", "checking exits, returns, market and report dates on WRDS"),
     ("fiam.exhibits.confirmation", "running the same book on 2016-2020"),
     ("fiam.evaluate", "scoring every candidate and the ship rule window by window, walked forward"),
@@ -52,13 +54,17 @@ REPORT = [
 CROWD_STEPS = [
     ("fiam.agents.harness prepare", "downloading and checking the agents' models, once"),
     ("fiam.agents.crowd", "crowd agent: where AI assistants would buy, 60 months of 2016-2020"),
+    ("fiam.agents.triage", "triage agent: labels 6,000 masked 8-Ks from 2015-2018"),
 ]
 
 # The models, the ship decision, then the comparison and research controls. Each reads the last.
 ML_STEPS = [
     ("fiam.ml.dataset", "building the training folds"),
+    ("fiam.ml.text", "FinBERT reads every masked 8-K, once; a stopped run resumes"),
+    ("fiam.ml.triage", "the triage labels learned from the text, applied to every filing"),
     ("fiam.ml.teachers", "teachers: daily beta, crowding and revisions, learned year by year"),
     ("fiam.ml.crowd", "learning where the agents invest, for every month to 2026"),
+    ("fiam.agents.analyst", "analyst agent: material filings in the composite's tails"),
     ("fiam.ml.scorer", "scorer: learning to rank what a neutral book earns, five seeds"),
     ("fiam.ml.ship", "the 3 x 2 x 2 candidate grid, the monthly trader, each year's choice"),
 ]
@@ -70,6 +76,11 @@ RESEARCH_STEPS = [
     ("fiam.ml.summary", "decile tables and the model numbers"),
     ("fiam.ml.oos_r2", "measuring out-of-sample R-squared for every method"),
     ("fiam.exhibits.placebo_lab", "running the permutation and falsification controls"),
+    (
+        "fiam.exhibits.construction",
+        "construction v2 against the current book, the pre-registered test",
+    ),
+    ("fiam.exhibits.factor_neutral", "the factor-neutral book against the current one"),
 ]
 
 # The local-model agents that read the finished book.
@@ -123,6 +134,8 @@ AGENT_READS = {
         "submission/exhibits/discovery.json",
     ],
     "fiam.agents.auditor": ["prompts/agents/auditor.md"],
+    "fiam.agents.triage": ["prompts/agents/triage.md"],
+    "fiam.agents.analyst": ["prompts/agents/analyst.md"],
     "fiam.agents.director": [
         "prompts/agents/director.md",
         "submission/exhibits/ship.json",
@@ -191,16 +204,12 @@ def ready(ml: bool) -> bool:
 
 # Unpacks a bundle zip, refusing it whole if any entry would land outside the bundle folder.
 def unzip(source: Path, target: Path) -> None:
-    root = (target / BUNDLE.name).resolve()
-    with zipfile.ZipFile(source) as zf:
-        outside = [
-            n for n in zf.namelist() if not (target.resolve() / n).resolve().is_relative_to(root)
-        ]
-        if outside:
-            raise SystemExit(
-                f"--import: {source.name} has entries outside {BUNDLE.name}/: {outside[:3]}"
-            )
-        zf.extractall(target)
+    from fiam import paths
+
+    try:
+        paths.safe_unzip(source, target, target / BUNDLE.name)
+    except ValueError as err:
+        raise SystemExit(f"--import: {err}") from err
 
 
 # A zip is unpacked into data/; a folder gives organizer files by name, WRDS exports by columns.
@@ -270,8 +279,9 @@ def unpack_edgar() -> None:
     target, partial = Path("cache/edgar"), Path("cache/unpacking")
     if archive.exists() and not target.exists():
         shutil.rmtree(partial, ignore_errors=True)
-        with zipfile.ZipFile(archive) as zf:
-            zf.extractall(partial)
+        from fiam import paths
+
+        paths.safe_unzip(archive, partial)
         (partial / "edgar").rename(target)
         shutil.rmtree(partial)
 
@@ -430,7 +440,9 @@ def main() -> int:
 
     # The manifest records the model section only on a run that rebuilt it.
     report = [(f"{c} --ml" if ml and c == "fiam.checks.provenance" else c, d) for c, d in REPORT]
-    models = ML_STEPS + ([] if smoke else RESEARCH_STEPS)
+    # The analyst is an agent inside the model steps, so a run without --agents skips it.
+    learning = [s for s in ML_STEPS if agents or not s[0].startswith("fiam.agents.")]
+    models = learning + ([] if smoke else RESEARCH_STEPS)
     steps = (CROWD_STEPS if agents else []) + (models if ml else []) + STEPS
     steps += (AGENT_STEPS if agents else []) + report
     done = run(steps, env, official, fresh)

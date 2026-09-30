@@ -94,6 +94,10 @@ ship rule, +0.25 IR over 2 prior years  | control        | no  |    1 | see ship
 crowd agent, 2 models x 60 months       | control        | no  |    2 | see crowd.json                                  | control
 crowding teacher's top tenth as HTB     | costs          | no  |    1 | costs can only rise                             | SHIPPED
 research director agent, one run a year | control        | no  |    6 | see director.json                               | control
+cost model v2: IBKR, CRSP quotes, tiers   | costs          | no  |    1 | pre-registered measurement, every book          | SHIPPED
+construction v2, one pre-registered test | construction   | yes |    1 | IR -0.17 vs -0.00 on 2016-26, 3 of 4 rules fail | rejected by rule
+construction v2, each rule alone         | construction   | no  |    5 | every rule alone lowers IR                      | control
+factor-neutral book, five FF limits      | construction   | yes |    1 | IR -0.89 vs -0.00 on 2016-26; alpha -4.2%, t -1.7 | rejected by rule
 """
 
 COLUMNS = ["experiment", "family", "eligible_for_deployment", "attempts", "result", "verdict"]

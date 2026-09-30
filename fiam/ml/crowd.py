@@ -1,6 +1,5 @@
 # The crowd score: where AI agents picking for retail clients would buy, learned from their picks.
 
-import json
 
 import lightgbm as lgb
 import pandas as pd
@@ -78,8 +77,7 @@ def main() -> None:
     if not PICKS.exists():
         print("skipped: the crowd agent has not run yet, so there is no crowd score")
         return
-    picks = pd.read_parquet(PICKS)
-    picks["eom"] = picks["eom"].astype("datetime64[s]")
+    picks = data.read(PICKS)
     rate = picks.groupby(data.KEYS)["picked"].mean().rename("rate").reset_index()
     both = picks.pivot_table(index=data.KEYS, columns="model", values="picked")
     agreement = float(both.corr().iloc[0, 1]) if both.shape[1] > 1 else None
@@ -107,7 +105,7 @@ def main() -> None:
         against_the_crowd_ic_by_year=ic_by_year(scored, "against_the_crowd"),
         note="2016-2020 are the months the agents picked in; 2021-2026 they never saw.",
     )
-    OUT.write_text(json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT, summary)
     print(f"  crowd score learned from {len(picks):,} picks; agreement {agreement}")
     print(f"  against the crowd, IC by year: {summary['against_the_crowd_ic_by_year']}")
 

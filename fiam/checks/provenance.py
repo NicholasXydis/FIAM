@@ -45,15 +45,21 @@ ML_ARTIFACTS = [
         "scorer.json",
         "ship.json",
         "ship_candidates.csv",
+        "triage.json",
+        "construction.json",
+        "factor_neutral.json",
     )
 ] + [(paths.SUBMISSION / "models" / n).as_posix() for n in ("policy.json", "book_inputs.parquet")]
 
 # The code those artifacts depend on. Editing a chart does not make a model result stale.
 ML_CODE = [
     "fiam/book.py",
+    "fiam/costs.py",
     "fiam/data.py",
     "fiam/ml",
     "fiam/exhibits/placebo_lab.py",
+    "fiam/exhibits/construction.py",
+    "fiam/exhibits/factor_neutral.py",
     "requirements.txt",
 ]
 
@@ -134,7 +140,7 @@ def main() -> None:
         if "--ml" in sys.argv
         else previous.get("ml"),
     )
-    MANIFEST.write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(MANIFEST, out, rounded=False)
     models = f"{len(out['ml']['files'])} model artifacts" if out["ml"] else "no model run yet"
     print(f"{len(out['book']['files'])} book artifacts, {models}")
 

@@ -1,6 +1,6 @@
 # The crowd agent: local models pick stocks for retail clients from anonymous cards, 2016-2020.
 
-import json
+from operator import itemgetter
 
 import numpy as np
 import pandas as pd
@@ -36,15 +36,9 @@ def batches(frame: pd.DataFrame, month: pd.Timestamp) -> list[pd.DataFrame]:
 
 # One model through every month and batch. Each answer is saved as it comes, so a stop resumes.
 def pick(model: str, frame: pd.DataFrame, months: list) -> list[dict]:
-    log = H.RUNS / f"crowd_{model}.jsonl"
-    H.RUNS.mkdir(parents=True, exist_ok=True)
-    done = {}
-    if log.exists():
-        for line in log.read_text(encoding="utf-8").splitlines():
-            row = json.loads(line)
-            done[(row["eom"], row["batch"])] = row
     system = PROMPT.read_text(encoding="utf-8")
-    with H.Server(model) as server, log.open("a", encoding="utf-8", newline="\n") as fh:
+    saved = H.answers(f"crowd_{model}", itemgetter("eom", "batch"))
+    with H.Server(model) as server, saved as (done, save):
         for month in months:
             for number, batch in enumerate(batches(frame, month)):
                 key = (month.strftime("%Y-%m-%d"), number)
@@ -67,7 +61,7 @@ def pick(model: str, frame: pd.DataFrame, months: list) -> list[dict]:
                 task = f"Pick the {want} stocks you would buy.\n\n{table(batch, codes)}"
                 messages = [dict(role="system", content=system), dict(role="user", content=task)]
                 reply = server.chat(messages, schema=schema)
-                chosen = set(json.loads(reply.get("content") or "{}").get("buy", []))
+                chosen = set(H.parse(reply).get("buy", []))
                 row = dict(
                     eom=key[0],
                     batch=number,
@@ -75,9 +69,7 @@ def pick(model: str, frame: pd.DataFrame, months: list) -> list[dict]:
                     permnos=[int(p) for p in batch["permno"]],
                     picked=[int(c in chosen) for c in codes],
                 )
-                fh.write(json.dumps(row) + "\n")
-                fh.flush()
-                done[key] = row
+                save(row)
     return list(done.values())
 
 

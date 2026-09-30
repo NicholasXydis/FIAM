@@ -237,9 +237,7 @@ def main() -> None:
         ],
         edgar_filers_cached=len(list(EDGAR.glob("*.json"))) if EDGAR.exists() else 0,
     )
-    (OUT / "labels.json").write_text(
-        json.dumps(P.round_floats(summary), indent=2), encoding="utf-8", newline="\n"
-    )
+    paths.write_json(OUT / "labels.json", summary)
     print(json.dumps(summary["by_period"], indent=2))
 
 

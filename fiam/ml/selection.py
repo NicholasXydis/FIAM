@@ -1,7 +1,6 @@
 # Why nothing is chosen from history: subset sweep, budgeted search, atlas. Writes selection.json.
 
 import itertools
-import json
 
 import numpy as np
 import pandas as pd
@@ -178,7 +177,7 @@ def main() -> None:
         search_control=search(spreads, baseline),
         atlas=atlas(history.dropna(subset=["ret_exc_lead1m", "beta_60m"]), cols),
     )
-    (OUT / "selection.json").write_text(json.dumps(out, indent=2), encoding="utf-8", newline="\n")
+    paths.write_json(OUT / "selection.json", out, rounded=False)
     s, c, a = out["subset_sweep"], out["search_control"], out["atlas"]
     print(f"{s['n_subsets']} subsets, IR {s['ir_full_min']:.2f} to {s['ir_full_max']:.2f}")
     looked, sealed = c["chosen_ir_in_search"], c["chosen_ir_in_sealed"]
