@@ -1,6 +1,5 @@
-# Converts WRDS exports and derives dated exits. Writes data/wrds/, never committed.
+# Converts WRDS exports and derives dated exits into the bundle's wrds/ folder, never committed.
 
-import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -10,8 +9,9 @@ import pandas as pd
 import pyarrow.csv as pv
 import pyarrow.parquet as pq
 
-OUT = Path("data/wrds")
-CHARS = Path("data/chars_final_with_names.parquet")
+from fiam import data, paths
+
+OUT = data.WRDS
 
 # Real delisting actions. Securities without one carry the end of the data, never an event date.
 DELISTED = {"MER", "GDR", "GLI", "GEX"}
@@ -45,15 +45,6 @@ TABLES = {
 }
 
 
-# Read in blocks, so a 2 GB export never has to fit in memory twice.
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for block in iter(lambda: fh.read(1 << 22), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 # Which table an export is, from its header line alone.
 def kind(path: Path) -> str:
     header = path.open(encoding="utf-8", errors="replace").readline().strip().split(",")
@@ -84,8 +75,8 @@ def exits() -> pd.DataFrame:
     comp["dldte"] = pd.to_datetime(comp["dldte"])
     deleted = comp.groupby("gvkey").agg(exit_date=("dldte", "max"), reason=("dlrsn", "last"))
     deleted = deleted[deleted["exit_date"] >= "2026-01-01"]
-    panel = pq.read_table(CHARS, columns=["permno", "gvkey", "eom"]).to_pandas()
-    panel = panel[pd.to_datetime(panel["eom"]) >= "2026-01-01"].dropna(subset=["gvkey"])
+    panel = data.features(["gvkey"])
+    panel = panel[panel["eom"] >= "2026-01-01"].dropna(subset=["gvkey"])
     panel["gvkey"] = panel["gvkey"].astype("int64").astype(str).str.zfill(6)
     late = panel.drop_duplicates("permno").join(deleted, on="gvkey", how="inner")
     late = late.set_index("permno")[["exit_date", "reason"]]
@@ -96,11 +87,12 @@ def exits() -> pd.DataFrame:
     return table[["exit_date", "final_month", "final_return", "source"]]
 
 
-def main(paths: list[str]) -> None:
+# Converts each WRDS export found into the bundle's wrds/ folder.
+def main(exports: list[str]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     sources = OUT / "sources.json"
     record = json.loads(sources.read_text(encoding="utf-8")) if sources.exists() else {}
-    for path in map(Path, paths):
+    for path in map(Path, exports):
         name = kind(path)
         columns = TABLES[name][1]
         # Codes and identifiers stay text, so a leading zero in a gvkey or CUSIP survives.
@@ -112,7 +104,7 @@ def main(paths: list[str]) -> None:
         record[name] = dict(
             source=path.name,
             bytes=path.stat().st_size,
-            sha256=sha256(path),
+            sha256=paths.sha256(path),
             rows=table.num_rows,
             converted_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )

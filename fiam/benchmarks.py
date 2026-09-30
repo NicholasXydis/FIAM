@@ -29,7 +29,7 @@ URLS = {
 def pinned(name: str) -> Path:
     path = BENCH / name
     if not path.exists():
-        raise FileNotFoundError(f"{path} is missing: run python src/benchmarks.py --refresh {name}")
+        raise FileNotFoundError(f"{path} is missing: uv run -m fiam.benchmarks --refresh {name}")
     return path
 
 
