@@ -1,4 +1,79 @@
 {
+  "director": [
+    {
+      "name": "list_candidates",
+      "description": "Each candidate's name and what it adds.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "compare",
+      "description": "Every candidate over holding months from first_year to the decision: IR, beta, net, cost, turnover, drawdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first_year": {
+            "type": "integer",
+            "description": "first holding year"
+          }
+        },
+        "required": [
+          "first_year"
+        ]
+      }
+    },
+    {
+      "name": "by_year",
+      "description": "One candidate's net return and IR in each past year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "final_answer",
+      "description": "The candidate to trade next year, and why.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate": {
+            "type": "string",
+            "enum": [
+              "composite",
+              "composite+traded",
+              "composite+hedged",
+              "composite+hedged+traded",
+              "scorer25",
+              "scorer25+traded",
+              "scorer25+hedged",
+              "scorer25+hedged+traded",
+              "scorer50",
+              "scorer50+traded",
+              "scorer50+hedged",
+              "scorer50+hedged+traded"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "why, quoting only numbers a tool returned"
+          }
+        },
+        "required": [
+          "candidate",
+          "reason"
+        ]
+      }
+    }
+  ],
   "discovery": [
     {
       "name": "list_characteristics",

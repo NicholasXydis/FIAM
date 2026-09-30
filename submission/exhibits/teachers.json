@@ -1,0 +1,48 @@
+{
+  "what": "Year-ahead predictions of daily beta, short-interest crowding and analyst revisions, each trained only on earlier years, from the characteristics and 8-K counts alone.",
+  "teachers": {
+    "beta": {
+      "rank_correlation_by_year": {
+        "2018": 0.364694,
+        "2019": 0.433369,
+        "2020": 0.369651,
+        "2021": 0.371815,
+        "2022": 0.666982,
+        "2023": 0.440052,
+        "2024": 0.441735,
+        "2025": 0.515836
+      },
+      "rows": 220817,
+      "mean_abs_error": 0.554253,
+      "beta_60m_mean_abs_error": 0.635381
+    },
+    "crowding": {
+      "rank_correlation_by_year": {
+        "2017": 0.706646,
+        "2018": 0.681599,
+        "2019": 0.695982,
+        "2020": 0.64415,
+        "2021": 0.568092,
+        "2022": 0.619918,
+        "2023": 0.624757,
+        "2024": 0.615398,
+        "2025": 0.641989
+      },
+      "rows": 246148
+    },
+    "revisions": {
+      "rank_correlation_by_year": {
+        "2017": 0.541736,
+        "2018": 0.547068,
+        "2019": 0.549382,
+        "2020": 0.487967,
+        "2021": 0.526826,
+        "2022": 0.517815,
+        "2023": 0.557709,
+        "2024": 0.599666,
+        "2025": 0.551079
+      },
+      "rows": 236154
+    }
+  }
+}

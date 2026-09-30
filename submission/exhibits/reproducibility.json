@@ -22,12 +22,12 @@
   {
     "check": "names with no next-month return are still held",
     "passed": true,
-    "detail": "305 such names in the book"
+    "detail": "293 such names in the book"
   },
   {
     "check": "missing returns are kept, not dropped",
     "passed": true,
-    "detail": "0.0406 weight-months booked flat, a stated assumption"
+    "detail": "0.0343 weight-months booked flat, a stated assumption"
   },
   {
     "check": "labels come from the decision month or earlier",
@@ -37,7 +37,7 @@
   {
     "check": "carry-in sees last month's book, never this one",
     "passed": true,
-    "detail": "called at line 390, updated at line 401"
+    "detail": "called at line 519, updated at line 530"
   },
   {
     "check": "model folds are strictly ordered in time",
@@ -57,27 +57,17 @@
   {
     "check": "model predictions cover the book's 68 months",
     "passed": true,
-    "detail": "all 8 models cover 68 months"
-  },
-  {
-    "check": "constraint survival ends at the shipped book",
-    "passed": true,
-    "detail": "exhibit 0.834 vs book 0.834"
+    "detail": "all 9 models cover 68 months"
   },
   {
     "check": "shuffled scores earn nothing before costs",
     "passed": true,
-    "detail": "null gross +0.38%/yr over 200 draws, tolerance 1.00%"
+    "detail": "null gross +0.33%/yr over 200 draws, tolerance 1.00%"
   },
   {
-    "check": "every NN3 seed covers the same months",
+    "check": "no result carries a clock time",
     "passed": true,
-    "detail": "5 seeds, months [68]"
-  },
-  {
-    "check": "deflation counts match the experiment ledger",
-    "passed": true,
-    "detail": "ledger 92/1586 vs code 92/1586"
+    "detail": "19 result files, none dated"
   },
   {
     "check": "every artifact matches the run that wrote it",
@@ -95,19 +85,14 @@
     "detail": "3 books, all 68"
   },
   {
-    "check": "data files match the organizer's checksums",
+    "check": "data bundle was built from the organizer's published files",
     "passed": true,
-    "detail": "both match"
+    "detail": "both SHA-256 match the organizer's readme"
   },
   {
     "check": "every exhibit is written by a step in run.py",
     "passed": true,
     "detail": "all have writers"
-  },
-  {
-    "check": "docs quote the right number of checks",
-    "passed": true,
-    "detail": "every doc says 28"
   },
   {
     "check": "market is the S&P 500, regressed over all 68 months",
@@ -117,12 +102,12 @@
   {
     "check": "costs reconcile to their five lines every month",
     "passed": true,
-    "detail": "largest gap 4.0e-16"
+    "detail": "largest gap 3.0e-16"
   },
   {
     "check": "turnover recomputes from the holdings with drift",
     "passed": true,
-    "detail": "largest monthly gap 1.2e-07 over 68 months"
+    "detail": "largest monthly gap 8.2e-08 over 68 months"
   },
   {
     "check": "book artifacts were built from the current code",

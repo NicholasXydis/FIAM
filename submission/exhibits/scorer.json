@@ -1,0 +1,25 @@
+{
+  "what": "Two LightGBM LambdaRank models per test year, one for each tail, trained on the rules' folds to rank next month's return net of sector and beta, averaged over seeds. Scores for 2019-2020 feed the ship rule's first validation years only.",
+  "features": 167,
+  "uses_crowd_score": false,
+  "ic_2021_2026": {
+    "ic_mean": 0.056572,
+    "ic_t": 3.512421,
+    "months": 68
+  },
+  "ic_by_year": {
+    "2021": 0.096704,
+    "2022": 0.095749,
+    "2023": 0.015232,
+    "2024": 0.073136,
+    "2025": 0.020717,
+    "2026": 0.028557
+  },
+  "ic_by_seed": {
+    "seed_42": 0.046173,
+    "seed_43": 0.04544,
+    "seed_44": 0.043046,
+    "seed_45": 0.065415,
+    "seed_46": 0.044553
+  }
+}
