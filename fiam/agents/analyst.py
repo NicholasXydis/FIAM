@@ -102,8 +102,11 @@ def probe(server: H.Server, texts: pd.DataFrame) -> dict:
 
 
 def main() -> None:
-    keys = chosen()
     texts = data.research("filing_text", ["document_id", *data.KEYS, "excerpt"])
+    if texts is None:
+        raise SystemExit("No 8-K text layer: import the new fiam_v1.zip, then run this again.")
+    keys = chosen()
+    print(f"  analyst: {len(keys):,} stock-months to read", flush=True)
     texts = texts[texts["document_id"].isin(material()["document_id"])]
     cards = C.cards()
     system = PROMPT.read_text(encoding="utf-8")

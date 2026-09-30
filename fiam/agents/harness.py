@@ -422,11 +422,13 @@ def answers(name: str, key):
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
     done = {key(row): row for row in map(json.loads, lines)}
     with log.open("a", encoding="utf-8", newline="\n") as fh:
-        # One answer to the log and to what is done.
+        # One answer to the log and to what is done, with a line every 50 so progress shows.
         def save(row: dict) -> None:
             fh.write(json.dumps(row) + "\n")
             fh.flush()
             done[key(row)] = row
+            if len(done) % 50 == 0:
+                print(f"  {name}: {len(done):,} answered", flush=True)
 
         yield done, save
 

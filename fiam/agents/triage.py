@@ -29,7 +29,10 @@ def sample() -> pd.DataFrame:
 
 # Each filing labelled once; every answer is saved as it comes, so a stop resumes.
 def main() -> None:
+    if data.research("filing_text", ["document_id"]) is None:
+        raise SystemExit("No 8-K text layer: import the new fiam_v1.zip, then run this again.")
     chosen = sample()
+    print(f"  triage: {len(chosen):,} filings to label", flush=True)
     system = PROMPT.read_text(encoding="utf-8")
     saved = H.answers("triage", itemgetter("document_id"))
     with H.Server("gemma") as server, saved as (done, save):
