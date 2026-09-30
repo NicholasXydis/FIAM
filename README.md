@@ -1,89 +1,68 @@
 # FIAM
 
-Market-neutral US equity strategy, McGill-FIAM Hackathon 2026. `BRIEF.md` is the story,
-`RESULTS.md` every number.
+Market-neutral US equity strategy, McGill-FIAM Hackathon 2026: neutral by construction, with the
+realized beta measured monthly and daily. `BRIEF.md` is the story,
+`RESULTS.md` every number. The same code and data give the same numbers on any machine.
 
-## Run it: Windows, macOS or Linux
+## Run it: Windows, macOS, Linux or Lightning AI
 
 1. Install [uv](https://docs.astral.sh/uv/) once. It brings Python 3.14 and the pinned packages.
    - macOS, Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
    - Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 2. In this folder: `uv run run.py`
 
-What it does depends on what is in `data/`. Only `--official` changes the committed results:
-
 | in `data/` | what `uv run run.py` does | time |
 |---|---|---|
-| nothing | checks `submission/holdings.csv` and `returns.csv` against the brief; recomputes IR, Sharpe and beta | seconds |
-| the organizer's files | rebuilds the book into `out/` and compares it with the official results | 1 min |
-| plus the WRDS exports | the same, and the book matches the official one exactly | 1 min |
+| nothing | checks `submission/holdings.csv` and `returns.csv` against the brief | seconds |
+| the organizer's files | builds the data bundle once, rebuilds the book into `out/`, compares it | 1 min |
+| the full bundle, `fiam_v1/` | the same, and the book matches the official one exactly | 1 min |
 
-To add data, point it at the folder holding it: `uv run run.py --import ~/Downloads`. It copies
-the organizer's files by their names and converts WRDS exports, recognised by their columns;
-everything else in the folder is ignored.
+    uv run run.py --import ~/Downloads       # organizer files, WRDS exports or fiam_v1.zip
+    uv run run.py --all --smoke              # every step on a small slice, a 10-minute rehearsal
+    uv run run.py --official --all           # the team's overnight run: models, agents, results
+    uv run run.py --export-data              # fiam_v1.zip for a teammate
+    uv run pytest                            # tests on synthetic data, seconds
 
-    uv run run.py --ml          # plus the model comparison, 20 min
-    uv run run.py --official    # the team's run: rewrites submission/ and RESULTS.md, needs WRDS
-    uv run pytest               # mechanics tests, seconds
+`uv run run.py --help` lists every option. Without uv: `python -m pip install -r requirements.txt`
+in Python 3.14, then `python run.py`.
 
-Without uv: in a Python 3.14 virtual environment, `python -m pip install -r requirements.txt`,
-then `python run.py`.
+## Data
+
+Every step reads one private folder, `data/fiam_v1/`, never committed or submitted. The first run
+builds its core from the organizer's files; teammates get all of it with `--export-data` and
+`--import fiam_v1.zip`, and share it only among those covered by our WRDS access. Its `DATA_CARD.md`
+lists each file. `uv run -m fiam.data` checks it; `FIAM_DATA_DIR` moves it.
+
+## Agents
+
+`--agents` downloads one pinned llama.cpp build for the machine (Vulkan on Windows, Metal on Apple
+silicon, CUDA or Vulkan on Linux and Lightning AI, CPU otherwise) and the two pinned models, about
+30 GB once, each checked against its SHA-256. They need a 16 GB GPU or an Apple silicon Mac with
+24 GB. A stopped run resumes where it left off. On Lightning AI: a Studio with an L4 GPU, then the
+commands above.
 
 ## If something goes wrong
 
 - **macOS, `--ml` or `pytest`:** `brew install libomp` (LightGBM needs it).
-- **Intel Mac, or macOS 13 and older:** everything except `--ml` runs; PyTorch 2.14 has no
-  build there.
-- **Windows on ARM:** pyarrow has no ARM build; use x64 Python:
-  `uv run --python cpython-3.14-windows-x86_64-none run.py`.
-- **No WRDS:** the book moves in the third decimal (IR 0.833 against 0.834) and the run says
-  provisional, as `RESULTS.md` records.
-- **Audit: "model exhibits were built from the current code" fails:** code changed after the last
-  official model run. Rerun `uv run run.py --official --ml` on the team's machine.
-
-## Optional inputs
-
-- **WRDS:** these exports, shared privately and never committed. Columns kept are in `src/wrds.py`.
-
-  | export | WRDS dataset | dates | our file's SHA-256 |
-  |---|---|---|---|
-  | CRSP monthly | Monthly Stock File, CIZ, with security info and delistings | 2010-01 to 2025-12 | `2796c030f9ed6f34…` |
-  | S&P 500 index | CRSP index series, S&P 500 universe | 2010-01 to 2025-12 | `382a3f33c2c6b6d6…` |
-  | Compustat quarterly | Fundamentals Quarterly (`fundq`) with `rdq`, `dldte`, `dlrsn` | 2010-01 to 2026-08 | `5f943fea4ec4debd…` |
-
-- **Labels:** the SEC records they were checked against are in `data/edgar_cache.zip`, unpacked
-  by the first rebuild. `uv run src/exhibits/labels.py --fetch` with `SEC_CONTACT` in `.env`
-  fetches missing filers; SEC's current records can differ, which changes the labels.
-- **Live score:** `uv run src/exhibits/live_score.py --fetch`, with `TIINGO_API_KEY` in `.env`.
-- **Benchmarks:** pinned in `data/benchmarks/`; `uv run src/benchmarks.py --refresh <file>`
-  updates one.
-
-## Agents
-
-    uv run src/agents/harness.py verify     # model files against models/MANIFEST.txt
-    uv run src/agents/harness.py register   # sets up the dedicated fiam-runs Hermes profile
-    uv run src/agents/harness.py serve qwen # a model for the Hermes app
-
-Windows: llama.cpp's Vulkan build in `models/llama.cpp/`. Lightning AI: create a Studio on a 24 GB
-GPU, clone the repo, upload `data/`, run `bash src/agents/setup_lightning.sh` once, then
-`python run.py --official --agents`. Stop the Studio when done.
+- **Intel Mac, or macOS 13 and older:** everything but `--ml` runs; PyTorch 2.14 has no build.
+- **Windows on ARM:** use x64 Python: `uv run --python cpython-3.14-windows-x86_64-none run.py`.
+- **Qwen on a 24 GB Mac:** raise the GPU memory limit once, `sudo sysctl iogpu.wired_limit_mb=20000`.
+- **Audit says model exhibits are stale:** code changed since the models ran; run
+  `uv run run.py --official --ml` again.
 
 ## MAIN.py
 
-The brief asks for one file. `uv run tools/build_main.py` (in this git checkout) writes `MAIN.py`,
-which carries every file the run needs except the tests and the EDGAR archive. `uv run MAIN.py` in
-an empty folder unpacks them and runs `run.py`: the same results and 28-check audit, except the
-labels, which need the archive (`--with-edgar` adds it: 21 MB instead of 3 MB).
+The brief asks for one file. `uv run tools/build_main.py` writes `MAIN.py`, which carries every file
+the run needs; `uv run MAIN.py` beside the organizer's files unpacks them and runs `run.py` with the
+same results. `--with-edgar` adds the SEC records the labels were checked against.
 
 ## Layout
 
-`run.py` the one command · `src/pipeline.py` the book and shared maths · `src/exhibits/` and
-`src/controls/` exhibits and the audit · `src/verify.py` the brief's rules · `src/compare.py` a run
-against the official results · `src/paths.py` where outputs go · `src/ml/` the model comparison ·
-`src/agents/` Hermes runner, tool server, agents · `prompts/agents/` what the models are sent ·
-`submission/` the official results · `out/`, `data/`, `cache/` gitignored.
+`run.py` the one command · `fiam/data.py`, `build_data.py`, `wrds.py` the data · `fiam/book.py` the
+book · `fiam/ml/` teachers, scorer, trader, ship rule and the comparison · `fiam/agents/` the agents
+and their runner · `fiam/exhibits/`, `fiam/checks/`, `fiam/report/` exhibits, audit, charts and
+docs · `prompts/agents/` what the models are sent · `submission/` the official results.
 
-Offline and reproducible for supplied data; benchmarks versioned with sources. Nicholas commits;
-assistants only write files.
+Nicholas commits; assistants only write files.
 
 Nicholas Xydis · Yohannah Ilieva · Jérémie Caussignac · Agamjot Singh Bawa · Nokto Lapointe
