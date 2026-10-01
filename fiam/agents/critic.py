@@ -44,7 +44,8 @@ def load(name: str) -> dict:
 
 
 # The ten largest longs and shorts, averaged over every month so one-month bets never outrank.
-def positions() -> list[dict]:
+# by="pnl" takes the ten largest winners and losers instead, the names behind the result.
+def positions(by: str = "weight") -> list[dict]:
     book = paths.holdings()
     book["w"] = book["WEIGHT"] / 100
     months = book["Date"].nunique()
@@ -55,7 +56,6 @@ def positions() -> list[dict]:
     latest = book.sort_values("Date").groupby("PERMNO").last()[["TICKER", "COMPANY NAME"]]
     held = held.merge(latest.rename(columns={"COMPANY NAME": "company"}), on="PERMNO", how="left")
     held["mean_weight"] = held["weight_while_held"] * held["months_held"] / months
-    names = pd.concat([held.nlargest(TOP_N, "mean_weight"), held.nsmallest(TOP_N, "mean_weight")])
 
     panel = data.panel(["ret_exc_lead1m", "me", "dolvol_126d", "size_grp"])
     panel["eom"] = panel["eom"].astype("datetime64[ns]")
@@ -63,6 +63,9 @@ def positions() -> list[dict]:
     panel["Date"] = (panel["eom"] + pd.offsets.MonthBegin(1)).dt.normalize()
     pnl = book.merge(panel, left_on=["PERMNO", "Date"], right_on=["permno", "Date"], how="left")
     pnl = (pnl["w"] * pnl["ret_exc_lead1m"].fillna(0.0)).groupby(pnl["PERMNO"]).sum()
+    held["pnl"] = held["PERMNO"].map(pnl).fillna(0.0)
+    key = "pnl" if by == "pnl" else "mean_weight"
+    names = pd.concat([held.nlargest(TOP_N, key), held.nsmallest(TOP_N, key)])
     # Characteristics as of the last decision month. A later row would add facts nobody had.
     names["eom"] = (names["as_of"] - pd.offsets.MonthEnd(1)).astype("datetime64[ns]")
     facts = pd.merge_asof(
@@ -138,14 +141,37 @@ class Evidence:
     # What a risk committee asks first: factor loadings, borrow, and the clean test.
     def book_risk(self) -> dict:
         metrics = paths.read_json(paths.METRICS)
+        pack = load("pack.json")
         return self.show(
             dict(
-                five_factor_momentum=load("pack.json").get("risk", {}).get("five_factor_momentum"),
+                five_factor_momentum=pack.get("risk", {}).get("five_factor_momentum"),
+                # Each year's return split into what the six factors paid and stock selection.
+                style_or_selection_by_year=pack.get("risk", {}).get("style_by_year"),
                 hard_to_borrow_share_of_short_book=metrics["costs"][
                     "hard_to_borrow_share_of_short_book"
                 ],
+                # Where our longs and shorts sit among what the AI crowd agents would buy.
+                crowd_percentile_of_our_book=pack.get("crowding"),
                 realized_beta=metrics["performance"]["beta_realized"],
                 frozen_book_on_2016_2020=load("confirmation.json").get("confirmation_2016_2020"),
+            )
+        )
+
+    # The ship rule's yearly choices beside every candidate's record, and the recall test.
+    def ship_rule(self) -> dict:
+        ship = load("ship.json")
+        candidates = ship.get("candidates_2021_2026", {})
+        return self.show(
+            dict(
+                rule=ship.get("rule"),
+                chosen_by_year=ship.get("chosen"),
+                shipped_information_ratio=paths.read_json(paths.METRICS)["performance"][
+                    "information_ratio"
+                ],
+                candidates_information_ratio={
+                    k: v.get("information_ratio") for k, v in candidates.items()
+                },
+                analyst_recall_test=load("analyst_learned.json").get("recall_test"),
             )
         )
 
@@ -210,9 +236,15 @@ def tools(evidence: Evidence) -> list[H.Tool]:
         ),
         H.Tool(
             "book_risk",
-            "Factor loadings, borrow exposure, and the 2016-2020 test.",
+            "Factor loadings, style or selection by year, borrow, crowding, the 2016-2020 test.",
             empty,
             evidence.book_risk,
+        ),
+        H.Tool(
+            "ship_rule",
+            "The rule's book each year, every candidate's IR, and the analyst recall test.",
+            empty,
+            evidence.ship_rule,
         ),
         H.Tool(
             "signal_attribution",

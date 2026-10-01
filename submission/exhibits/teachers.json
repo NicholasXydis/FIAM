@@ -1,5 +1,5 @@
 {
-  "what": "Year-ahead predictions of daily beta, short-interest crowding and analyst revisions, each trained only on earlier years, from the characteristics and 8-K counts alone.",
+  "what": "Year-ahead predictions of daily beta, short-interest crowding, analyst revisions and next quarter's earnings surprise, each trained only on earlier years from the characteristics and 8-K counts; the surprise teacher also reads the text components.",
   "teachers": {
     "beta": {
       "rank_correlation_by_year": {
@@ -43,6 +43,21 @@
         "2025": 0.551079
       },
       "rows": 236154
+    },
+    "surprise": {
+      "rank_correlation_by_year": {
+        "2017": 0.454824,
+        "2018": 0.459177,
+        "2019": 0.512048,
+        "2020": 0.466619,
+        "2021": 0.518025,
+        "2022": 0.547937,
+        "2023": 0.614913,
+        "2024": 0.564655,
+        "2025": 0.510565,
+        "2026": 0.501586
+      },
+      "rows": 240194
     }
   }
 }

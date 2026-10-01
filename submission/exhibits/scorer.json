@@ -1,25 +1,38 @@
 {
-  "what": "Two LightGBM LambdaRank models per test year, one for each tail, trained on the rules' folds to rank next month's return net of sector and beta, averaged over seeds. Scores for 2019-2020 feed the ship rule's first validation years only.",
-  "features": 167,
-  "uses_crowd_score": false,
+  "what": "Two LightGBM LambdaRank models per test year, one for each tail, trained on the rules' folds to rank next month's return net of sector, beta and style, averaged over seeds. Scores for 2019-2020 feed the ship rule's first validation years only.",
+  "features": 174,
+  "uses_crowd_score": true,
+  "uses_text": true,
+  "uses_triage": true,
+  "uses_analyst": true,
   "ic_2021_2026": {
-    "ic_mean": 0.056572,
-    "ic_t": 3.512421,
+    "ic_mean": 0.067454,
+    "ic_t": 3.553489,
     "months": 68
   },
   "ic_by_year": {
-    "2021": 0.096704,
-    "2022": 0.095749,
-    "2023": 0.015232,
-    "2024": 0.073136,
-    "2025": 0.020717,
-    "2026": 0.028557
+    "2021": 0.137596,
+    "2022": 0.120191,
+    "2023": 0.013902,
+    "2024": 0.081396,
+    "2025": 0.00563,
+    "2026": 0.035286
   },
   "ic_by_seed": {
-    "seed_42": 0.046173,
-    "seed_43": 0.04544,
-    "seed_44": 0.043046,
-    "seed_45": 0.065415,
-    "seed_46": 0.044553
+    "seed_42": 0.070796,
+    "seed_43": 0.060814,
+    "seed_44": 0.065873,
+    "seed_45": 0.052974,
+    "seed_46": 0.066714
+  },
+  "ic_every_year": {
+    "2019": 0.045656,
+    "2020": -0.000141,
+    "2021": 0.137596,
+    "2022": 0.120191,
+    "2023": 0.013902,
+    "2024": 0.081396,
+    "2025": 0.00563,
+    "2026": 0.035286
   }
 }

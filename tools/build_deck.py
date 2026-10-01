@@ -106,6 +106,37 @@ NAMES = dict(
 )
 
 
+# Each candidate's net return by calendar year, and the composite's IR kept every year.
+def candidates():
+    import pandas as pd
+
+    from fiam import book as P
+    from fiam import paths
+
+    books = pd.read_csv(paths.EXHIBITS / "ship_candidates.csv", parse_dates=["holding_month"])
+    year = books["holding_month"].dt.year
+    net = books.groupby([books["candidate"], year])["net"].sum()
+    kept = books[(books["candidate"] == "composite") & (year >= 2021)]["net"]
+    policy = paths.read_json(paths.SUBMISSION / "models" / "policy.json")["by_year"]
+    return net, P.information_ratio(kept), policy
+
+
+# The ship rule's switches away from the composite, in the candidates' own numbers.
+def switches(R, m: dict) -> str:
+    net, kept, policy = candidates()
+    moved = [int(y) for y, name in policy.items() if name.startswith("scorer")]
+    if not moved:
+        return f"The AI: {plain(R.shipped(m))}"
+    y, name = moved[0], policy[str(moved[0])]
+    return (
+        f"The AI: after the composite lost {-net['composite', y - 1]:.1%} in {y - 1} (the "
+        f"stock-picker book {-net[name, y - 1]:.1%}), our rule moved {y} to the stock picker, "
+        f"which then missed the rebound ({net[name, y]:+.1%} against {net['composite', y]:+.1%}). "
+        f"Composite every year: IR {kept:.2f}; the rule's book, which we ship: "
+        f"{m['performance']['information_ratio']:.2f}."
+    )
+
+
 # Page 8 from the results: how each year went, which signals paid, where the losses came from.
 def discussion(R, m: dict) -> list[str]:
     years = {row[0]: row for row in parse(R.years(m))[0][1:]}
@@ -118,9 +149,9 @@ def discussion(R, m: dict) -> list[str]:
     crash = R.load("exhibits/confirmation.json")["confirmation_2016_2020"]["net_by_year"]["2020"]
     split = R.load("exhibits/pack.json")["risk"].get("style_by_year")
     lines = [
-        f"Trained for and got: a neutral quality-and-value book. 2021 {years['2021'][1]} and "
-        f"2022 {years['2022'][1]}; in 2022 rate hikes rewarded cheap, profitable firms while the "
-        f"S&P 500 fell {years['2022'][3].lstrip('-')}.",
+        f"Trained for and got: a neutral quality-and-value book. In 2022, {years['2022'][1]}, "
+        f"rate hikes rewarded cheap, profitable firms while the S&P 500 fell "
+        f"{years['2022'][3].lstrip('-')}.",
         f"Fell short: 2024 {years['2024'][1]} and 2025 {years['2025'][1]} against a hurdle near "
         f"9%. 2016-20 lost too, almost all in 2020 ({crash:+.1%}), when cheap, profitable stocks "
         "crashed and speculative ones soared after COVID.",
@@ -138,7 +169,7 @@ def discussion(R, m: dict) -> list[str]:
         f"Short squeezes cost most: short leg {legs.get('2021-01', 0):+.1%} in the January 2021 "
         f"meme squeeze, {legs.get('2023-12', 0):+.1%} in December 2023 as markets priced rate "
         f"cuts. Health care led {health} of the 10 worst months.",
-        f"The AI: {plain(R.shipped(m))}",
+        switches(R, m),
         "Next: let the style-free stock picker carry more once it clears the rule; fewer "
         "squeezable shorts; more capacity. Largest contributors, right, by ticker and name.",
     ]
@@ -167,7 +198,9 @@ def main() -> None:
             "dollar, beta and sector neutral; about 275 names; every trade costed like IBKR.",
             "AI: FinBERT reads every 8-K; agents triage filings, act as analysts and as an AI "
             "crowd; a stock picker learns from it all; a rule written first decides if it ships.",
-            "Honest: two of our own upgrades failed their pre-registered tests and were dropped.",
+            f"Honest: two of our upgrades failed their pre-registered tests; we ship our rule's "
+            f"book (IR {perf['information_ratio']:.2f}) though the composite alone scores "
+            f"{candidates()[1]:.2f}.",
         ],
         left,
         Inches(1.5),
@@ -279,7 +312,7 @@ def main() -> None:
         ("Appendix: a pre-registered factor-neutral book we rejected", [R.neutral]),
         ("Appendix: the ship rule and its candidates", [R.ship]),
         ("Appendix: the machine learning and the recall firewall", [R.teachers, R.firewall]),
-        ("Appendix: the agents", [R.crowd, R.agents]),
+        ("Appendix: the agents", [R.crowd, R.agents, R.explained]),
         ("Appendix: robustness and multiple testing", [R.halves, R.placebo, R.deflation]),
     ):
         page = slide(deck, title)

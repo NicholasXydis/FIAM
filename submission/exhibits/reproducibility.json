@@ -22,12 +22,12 @@
   {
     "check": "names with no next-month return are still held",
     "passed": true,
-    "detail": "293 such names in the book"
+    "detail": "301 such names in the book"
   },
   {
     "check": "missing returns are kept, not dropped",
     "passed": true,
-    "detail": "0.0343 weight-months booked flat, a stated assumption"
+    "detail": "0.0458 weight-months booked flat, a stated assumption"
   },
   {
     "check": "labels come from the decision month or earlier",
@@ -37,7 +37,7 @@
   {
     "check": "carry-in sees last month's book, never this one",
     "passed": true,
-    "detail": "called at line 509, updated at line 522"
+    "detail": "called at line 573, updated at line 586"
   },
   {
     "check": "model folds are strictly ordered in time",
@@ -67,7 +67,7 @@
   {
     "check": "no result carries a clock time",
     "passed": true,
-    "detail": "22 result files, none dated"
+    "detail": "28 result files, none dated"
   },
   {
     "check": "every artifact matches the run that wrote it",

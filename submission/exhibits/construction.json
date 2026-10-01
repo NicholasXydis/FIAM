@@ -5,7 +5,8 @@
     "net_band": 0.1,
     "short_rules": true,
     "liquidity_caps": true,
-    "crash_protection": true
+    "crash_protection": true,
+    "factor_neutral": false
   },
   "market": "CRSP value-weighted market for monthly beta; S&P 500 daily for daily beta",
   "current": {
@@ -24,6 +25,7 @@
     "beta_daily_stderr": 0.018396,
     "days": 2329,
     "gross_max_any_day": 2.026379,
+    "gross_max_2021_2025": 1.942773,
     "by_window": {
       "y2016_2020": -1.001952,
       "y2021_2026": 0.697804,
@@ -46,6 +48,7 @@
     "beta_daily_stderr": 0.012623,
     "days": 2329,
     "gross_max_any_day": 2.004607,
+    "gross_max_2021_2025": 1.913752,
     "by_window": {
       "y2016_2020": -1.278438,
       "y2021_2026": 0.683041,

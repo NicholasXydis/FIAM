@@ -850,6 +850,25 @@ def agents(m: dict) -> str:
     return table(["agent", "model", "what happened"], rows) + note
 
 
+# The explainer's three largest winners and losers, each with its reason in the agent's words.
+def explained(m: dict) -> str:
+    e = load("exhibits/explainer.json")
+    names = sorted(e.get("positions", []), key=lambda p: -p["facts"].get("realized_pnl_pct", 0))
+    if not names or "realized_pnl_pct" not in names[0]["facts"]:
+        return "The explainer has not run on the winners and losers yet; it runs with --agents."
+    rows = [
+        [
+            f"{p['ticker']}, {p['company']}",
+            p["side"].lower(),
+            f"{p['facts']['realized_pnl_pct']:+.2f}%",
+            p["why"].replace("|", "/").replace("\n", " "),
+        ]
+        for p in [*names[:3], *names[-3:]]
+    ]
+    header = ["name", "side", "P&L, % of NAV", "why it was held, in the explainer's words"]
+    return table(header, rows)
+
+
 # Each way of choosing a book, window by window, beside random picks over the same years.
 def walk(m: dict) -> str:
     e = load("exhibits/evaluation.json")
@@ -1252,6 +1271,7 @@ TABLES = dict(
     neutral=neutral,
     learning=learning,
     agents=agents,
+    explained=explained,
     labels=labels,
     deflation=deflation,
 )

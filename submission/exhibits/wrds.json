@@ -28,18 +28,19 @@
     "rows_already_delisted_at_decision_screened": 598,
     "held_and_already_dead": 0,
     "held_exiting_during_holding_month": {
-      "securities": 50,
-      "position_months": 50,
+      "securities": 67,
+      "position_months": 67,
       "by_kind": {
-        "MER CASH": 35,
-        "MER CSHN": 6,
+        "MER CASH": 48,
+        "MER CSHN": 8,
         "MER CST": 5,
-        "MER STK": 4
+        "MER STK": 5,
+        "GDR PRCF": 1
       },
-      "long_weight_monthly": 0.000763,
-      "short_weight_monthly": 0.004048,
-      "payout_contribution_annual": -8e-06,
-      "closing_cost_annual_already_charged": 4.9e-05,
+      "long_weight_monthly": 0.000577,
+      "short_weight_monthly": 0.005404,
+      "payout_contribution_annual": 0.000334,
+      "closing_cost_annual_already_charged": 8.8e-05,
       "what": "Names taken over or delisted after the decision. Their final CRSP return is booked, where booking zero would drop the payout_contribution_annual above."
     }
   },
@@ -58,16 +59,16 @@
     "months": 60,
     "window": "2021-01 to 2025-12",
     "total_return_crsp": {
-      "beta": -0.018654,
-      "beta_stderr": 0.100962,
-      "alpha_annual": 0.119204,
-      "alpha_tstat": 1.814892
+      "beta": -0.024123,
+      "beta_stderr": 0.09932,
+      "alpha_annual": 0.079288,
+      "alpha_tstat": 1.369797
     },
     "price_only_fred": {
-      "beta": -0.01331,
-      "beta_stderr": 0.100839,
-      "alpha_annual": 0.11837,
-      "alpha_tstat": 1.80902
+      "beta": -0.020228,
+      "beta_stderr": 0.098943,
+      "alpha_annual": 0.078509,
+      "alpha_tstat": 1.371188
     },
     "dividend_gap_annual": 0.014776,
     "fred_vs_crsp_price_correlation": 0.999808
@@ -224,9 +225,9 @@
     "net_annual": 0.122737
   },
   "organizer_data_only": {
-    "information_ratio": 0.69233,
-    "return_net_annual": 0.124737,
-    "beta_realized": -0.044342,
-    "beta_stderr": 0.091951
+    "information_ratio": 0.400852,
+    "return_net_annual": 0.08558,
+    "beta_realized": -0.043818,
+    "beta_stderr": 0.088946
   }
 }

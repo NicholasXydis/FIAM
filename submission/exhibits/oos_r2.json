@@ -3,7 +3,7 @@
   "how": "Template models forecast returns directly. Rank-target models and the composite are scaled to returns by a slope estimated only on years before each test year.",
   "template_note": "Organizer's template on our folds, lambda grid stepped at 0.5 not 0.1.",
   "code": {
-    "code_sha256": "4945ecd22bced975"
+    "code_sha256": "4ffd950c7dd38c8e"
   },
   "methods": {
     "template_ols": {
@@ -43,8 +43,8 @@
       "months": 68
     },
     "scorer": {
-      "r2_zero_benchmark": -0.2993261140511392,
-      "r2_cross_sectional": -0.3410598948994503,
+      "r2_zero_benchmark": -0.0006591347895021915,
+      "r2_cross_sectional": -0.0007415493504920878,
       "observations": 159419,
       "months": 68
     },
