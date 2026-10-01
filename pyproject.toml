@@ -1,5 +1,4 @@
-# `uv run run.py` reads this: it fetches Python 3.14 and the locked versions in uv.lock on
-# Windows, macOS and Linux. requirements.txt pins the same versions for pip.
+# uv reads this: Python 3.14 and the versions locked in uv.lock; requirements.txt pins them for pip.
 
 [project]
 name = "fiam"
@@ -15,19 +14,24 @@ dependencies = [
     "matplotlib==3.11.0",
     "scikit-learn==1.9.1",
     "lightgbm==4.7.0",
-    # torch 2.14 for macOS needs Apple silicon and macOS 14 (Darwin 23). Older Macs skip it, and
-    # there only the model comparison (--ml) is unavailable.
+    # torch 2.14 on macOS needs Apple silicon and macOS 14; older Macs skip it and lose only --ml.
     "torch==2.14.0; sys_platform != 'darwin' or (platform_machine == 'arm64' and platform_release >= '23')",
+    "gymnasium==1.3.0",
+    "stable-baselines3==2.9.0",
+    "transformers==5.17.0",
 ]
 
 [dependency-groups]
-dev = ["ruff==0.15.17", "pytest==9.1.1"]
+dev = [
+    "ruff==0.15.17",
+    "pytest==9.1.1",
+    "python-pptx==1.0.2",
+]
 
 [tool.uv]
 package = false
 
-# Windows and Linux use the +cpu builds the numbers were made with, from PyTorch's own index.
-# macOS has no +cpu build; its PyPI build is CPU-only already.
+# Windows and Linux take PyTorch's +cpu builds; macOS's PyPI build is CPU-only already.
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
 
@@ -40,7 +44,7 @@ explicit = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 # E and F catch real bugs. I keeps everyone's imports in the same order.
@@ -48,12 +52,13 @@ select = ["E", "F", "I", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 # The ledger is a wide text table; wrapping its rows would make it unreadable.
-"src/exhibits/config_log.py" = ["E501"]
+"fiam/exhibits/config_log.py" = ["E501"]
 
 [tool.ruff.format]
-# Match what src/ already uses.
+# Match what the code already uses.
 quote-style = "double"
 
 [tool.pytest.ini_options]
 # Synthetic data only, so the tests pass on a fresh clone with no data/ folder.
 testpaths = ["tests"]
+pythonpath = ["."]

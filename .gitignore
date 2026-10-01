@@ -38,6 +38,7 @@ htmlcov/
 *.npz
 
 # Working data; the public benchmarks and SEC records are pinned in git so a clone runs
+/fiam_v1.zip
 /data/*
 !/data/benchmarks/
 !/data/edgar_cache.zip
@@ -54,8 +55,6 @@ cache/
 *.bin
 *.gguf
 /models/*
-# The weights stay out, but manifest tracked
-!/models/MANIFEST.txt
 /mlruns/
 /wandb/
 /lightning_logs/
@@ -106,4 +105,8 @@ Desktop.ini
 !/submission/holdings.csv
 !/submission/returns.csv
 /submission/*.pdf
+!/submission/models/*.parquet
+!/submission/exhibits/agents/*.parquet
 /out/
+# The generated deck; the PDF made from it is submitted, not committed.
+/deck/

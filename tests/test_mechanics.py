@@ -11,10 +11,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-import pipeline as P
+from fiam import book as P
+from fiam import costs as C
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+ROOT = Path(__file__).resolve().parents[1]
 
 
 # Three names held last month, one of which has no return this month.
@@ -25,6 +25,7 @@ def held():
     return weights, info
 
 
+# A month of zero returns leaves the weights as they were.
 def test_drift_is_unchanged_by_a_flat_month(held):
     weights, _ = held
     flat = pd.DataFrame(dict(ret_exc_lead1m=[0.0, 0.0, 0.0]), index=weights.index)
@@ -32,6 +33,7 @@ def test_drift_is_unchanged_by_a_flat_month(held):
     pd.testing.assert_series_equal(P.drift(weights, flat, costs, 0.0), weights)
 
 
+# Winners grow, and a name with no return sits as cash.
 def test_drift_grows_winners_and_holds_an_exit_as_cash(held):
     weights, info = held
     drifted = P.drift(weights, info, dict(cost_commission=0.0), 0.0)
@@ -41,34 +43,81 @@ def test_drift_grows_winners_and_holds_an_exit_as_cash(held):
     assert drifted[3] == pytest.approx(-0.01 / nav)
 
 
+# An empty book carries nothing into next month.
 def test_drift_of_an_empty_book_is_nothing():
     assert P.drift(pd.Series(dtype=float), pd.DataFrame(), {}, 0.0) is None
 
 
-def test_costs_reconcile_and_an_exit_counts_as_a_trade(held):
+# One month's quotes for the cost model, with a known spread ratio for every size group.
+def quotes(prc, spread, vol, volume, borrow, index) -> pd.DataFrame:
+    return pd.DataFrame(
+        dict(
+            prc=prc,
+            bidaskhl_21d=spread,
+            size_grp="large",
+            rvol_21d=vol,
+            dolvol_126d=volume,
+            borrow=borrow,
+        ),
+        index=index,
+    )
+
+
+# The cost lines match a hand calculation; a name sold out is priced on last month's quotes.
+def test_costs_match_a_hand_calculation(held, monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.5})
     weights, _ = held
     today = pd.Series([0.02, -0.02], index=[1, 4])
-    info = pd.DataFrame(dict(htb=[False, True]), index=[1, 4])
-    spreads = pd.Series([0.01, 0.02], index=[1, 4])
-    parts, turnover = P.trading_cost(today, weights, info, spreads, pd.Series(0.01, [1, 2, 3]))
+    now = quotes(50.0, 0.01, 0.02, 1e8, [0.003, 0.03], [1, 4])
+    before = quotes(20.0, 0.02, 0.03, 5e7, 0.003, [1, 2, 3])
+    parts, turnover = P.trading_cost(today, weights, now, before)
     assert set(parts) == {
         "cost_commission",
         "cost_spread",
-        "cost_borrow_gc",
-        "cost_borrow_htb",
         "cost_impact",
+        "cost_borrow",
+        "cost_financing",
     }
-    # Name 1 unchanged, names 2 and 3 sold out, name 4 opened: 0.04 traded, one way 0.02.
+    # Name 1 unchanged, 2 and 3 bought back ($100k each at $20), 4 sold short ($200k at $50).
     assert turnover == pytest.approx(0.02)
-    assert parts["cost_commission"] == pytest.approx(0.04 * 5 / 1e4)
-    assert parts["cost_borrow_htb"] == pytest.approx(0.02 * 250 / 1e4 / 12)
+    fees = 27.80e-6 * 200e3 + 0.000195 * 4000 + 0.000003 * 14000
+    assert parts["cost_commission"] == pytest.approx((25 + 25 + 20 + fees) / 1e7)
+    assert parts["cost_spread"] == pytest.approx((100e3 * 0.01 * 2 + 200e3 * 0.005) / 1e7)
+    impact = 2 * 0.03 * np.sqrt(100e3 / 5e7) * 100e3 + 0.02 * np.sqrt(200e3 / 1e8) * 200e3
+    assert parts["cost_impact"] == pytest.approx(impact / 1e7)
+    assert parts["cost_borrow"] == pytest.approx(0.02 * 0.03 / 12)
+    assert parts["cost_financing"] == pytest.approx(0.005 / 12)
 
 
-def test_first_month_is_a_full_entry():
+# The first month pays to buy the whole book.
+def test_first_month_is_a_full_entry(monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.5})
     today = pd.Series([0.01, -0.01], index=[1, 2])
-    info = pd.DataFrame(dict(htb=[False, False]), index=[1, 2])
-    _, turnover = P.trading_cost(today, None, info, pd.Series(0.0, [1, 2]), None)
+    _, turnover = P.trading_cost(today, None, quotes(30.0, 0.01, 0.02, 1e8, 0.003, [1, 2]), None)
     assert turnover == pytest.approx(0.01)
+
+
+# IBKR's minimum and 1% cap, FINRA's per-trade cap, and the borrow tiers.
+def test_commission_caps_and_borrow_tiers(monkeypatch):
+    monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.0})
+    tiny = C.month_costs(
+        pd.Series([1e-6]), pd.Series([1e-6]), quotes(10.0, 0.0, 0.0, 1e9, 0.003, [0])
+    )
+    assert tiny["cost_commission"] * 1e7 == pytest.approx(0.1 + 0.000003)
+    sale = C.month_costs(
+        pd.Series([-0.01]), pd.Series([0.0]), quotes(1.0, 0.0, 0.0, 1e9, 0.003, [0])
+    )
+    assert sale["cost_commission"] * 1e7 == pytest.approx(500 + 27.80e-6 * 1e5 + 9.79 + 0.3)
+    rates = C.tier(pd.Series([0.0, 0.049, 0.05, 0.12, 0.25, np.nan]))
+    assert rates.tolist() == [0.003, 0.003, 0.01, 0.03, 0.08, 0.003]
+
+
+# The spread calibration reads only quotes from before the record starts.
+def test_spread_calibration_stops_in_2020(monkeypatch):
+    asked = []
+    monkeypatch.setattr(C.data, "research", lambda name, cols, filters=None: asked.append(filters))
+    assert C.calibrate_spreads() is None
+    assert max(v for c, op, v in asked[0] if op == "<=") == pd.Timestamp("2020-12-31")
 
 
 # Truncation can leave net exposure, and the repair adds shares back, so one share is the bound.
@@ -105,6 +154,7 @@ def test_settle_screens_dead_names_and_books_payouts(monkeypatch):
     assert settled[3] == pytest.approx(0.05 - 0.004)
 
 
+# With no exits table the universe is left as it is.
 def test_settle_changes_nothing_without_wrds(monkeypatch):
     panel = pd.DataFrame(
         dict(permno=[1], eom=[pd.Timestamp("2024-03-31")], ret_exc_lead1m=[np.nan])
@@ -113,14 +163,15 @@ def test_settle_changes_nothing_without_wrds(monkeypatch):
     pd.testing.assert_frame_equal(P.settle(panel), panel)
 
 
+# A missing return counts zero and is recorded by side.
 def test_missing_returns_are_booked_at_zero_and_recorded():
     weights = pd.Series([0.01, -0.01], index=[1, 2])
     info = pd.DataFrame(
         dict(
             ret_exc_lead1m=[0.05, np.nan],
-            beta_60m=[1.0, 1.0],
+            hedge_beta=[1.0, 1.0],
             sector=["10", "10"],
-            htb=[False, False],
+            borrow=[0.003, 0.003],
         ),
         index=[1, 2],
     )
@@ -134,15 +185,16 @@ def test_missing_returns_are_booked_at_zero_and_recorded():
 
 # Importing any module must not run it or write anything, so a bundler can pull in just the code.
 def test_every_module_imports_without_side_effects(tmp_path):
-    names = [p.stem for p in SRC.rglob("*.py") if "__pycache__" not in p.parts]
-    folders = sorted({str(p.parent) for p in SRC.rglob("*.py")})
-    script = f"import sys; sys.path[:0] = {folders!r}\nfor n in {names!r}: __import__(n)"
+    files = sorted((ROOT / "fiam").rglob("*.py"))
+    names = [".".join(p.relative_to(ROOT).with_suffix("").parts) for p in files]
+    script = f"import sys; sys.path[:0] = [{str(ROOT)!r}]\nfor n in {names!r}: __import__(n)"
     subprocess.run([sys.executable, "-c", script], cwd=tmp_path, check=True, timeout=300)
     assert not any(tmp_path.iterdir()), "an import wrote a file"
 
 
+# A missing benchmark file stops the run instead of downloading.
 def test_benchmarks_refuse_to_download_on_their_own(tmp_path, monkeypatch):
-    benchmarks = importlib.import_module("benchmarks")
+    benchmarks = importlib.import_module("fiam.benchmarks")
     monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError, match="--refresh"):
         benchmarks.pinned("SP500.csv")
@@ -150,8 +202,7 @@ def test_benchmarks_refuse_to_download_on_their_own(tmp_path, monkeypatch):
 
 # The label rules: a cut-short panel name matches, a typo or a renamed company does not.
 def test_label_names_allow_abbreviation_but_not_a_different_name():
-    sys.path.insert(0, str(SRC / "exhibits"))
-    labels = importlib.import_module("labels")
+    labels = importlib.import_module("fiam.exhibits.labels")
     assert labels.same_name("KULICKE & SOFFA INDS INC", "Kulicke & Soffa Industries, Inc.")
     assert labels.same_name("CLEARWATER ANALYTICS HLDGS INC", "Clearwater Analytics Holdings")
     assert not labels.same_name("H20 AMERICA", "H2O AMERICA")
@@ -160,7 +211,7 @@ def test_label_names_allow_abbreviation_but_not_a_different_name():
 
 # CRSP keeps the share class apart, so BFB is BF class B, but BFXY is a different security.
 def test_crsp_share_class_letter_is_accepted_once():
-    labels = importlib.import_module("labels")
+    labels = importlib.import_module("fiam.exhibits.labels")
     row = dict(eom=pd.Timestamp("2023-03-31"), crsp_ticker="BF", crsp_name="BROWN FORMAN CORP")
     assert (
         labels.verdict({**row, "TICKER": "BFB", "COMPANY NAME": "BROWN FORMAN CORP"})
@@ -170,34 +221,9 @@ def test_crsp_share_class_letter_is_accepted_once():
     assert wrong == "differs from CRSP on ticker"
 
 
+# Rounding for JSON keeps True and False as they are.
 def test_saved_numbers_keep_booleans():
     assert P.round_floats(dict(passed=True, share=0.1234567)) == dict(passed=True, share=0.123457)
-
-
-# The live score: cash on capital, the entry cost, and a missing name at zero with its stress.
-def test_live_score_books_cash_cost_and_missing_names(monkeypatch):
-    sys.path.insert(0, str(SRC / "exhibits"))
-    live = importlib.import_module("live_score")
-    monkeypatch.setattr(live, "market", lambda month: dict(rf=0.003, sp500=0.01))
-    weights = pd.Series([0.5, 0.5, -1.0], index=[1, 2, 3])
-    result = live.score(weights, pd.Series([0.04, np.nan, 0.01], index=[1, 2, 3]), 0.001, "2026-09")
-    assert result["gross"] == pytest.approx(0.5 * 0.04 - 0.01)
-    assert result["total_return"] == pytest.approx(0.003 + 0.01 - 0.001)
-    assert result["active_return"] == pytest.approx(0.01 - 0.001 - 0.04 / 12)
-    assert result["missing_long_weight"] == pytest.approx(0.5)
-    assert result["total_if_missing_longs_lose_30pct"] == pytest.approx(0.012 - 0.15)
-
-
-# Daily closes become month-end to month-end returns, keyed on the holding month.
-def test_live_score_monthly_returns_from_daily_closes(tmp_path, monkeypatch):
-    live = importlib.import_module("live_score")
-    monkeypatch.setattr(live, "PRICES", tmp_path)
-    rows = [dict(date="2026-08-31", adjClose=100.0), dict(date="2026-09-15", adjClose=104.0)]
-    rows.append(dict(date="2026-09-30", adjClose=110.0))
-    (tmp_path / "ABC.json").write_text(json.dumps(dict(ticker="ABC", end="2026-10-01", rows=rows)))
-    table, digest = live.monthly(pd.DataFrame(dict(PERMNO=[7], TICKER=["ABC"])))
-    assert table.loc["2026-09", 7] == pytest.approx(0.10)
-    assert len(digest) == 64
 
 
 # Display names lose only SEC's state tag, so AT&T keeps its ampersand and nothing is renamed.
@@ -209,23 +235,20 @@ def test_display_name_drops_only_the_state_tag():
     assert P.display_name("AT&T INC") == "AT&T INC"
 
 
-# The same rows with LF or CRLF endings are the same file; a binary file must match byte for byte.
-def test_hashes_ignore_line_endings_for_text_only(tmp_path):
-    paths = importlib.import_module("paths")
+# A file matches its recorded hash only byte for byte, and a missing file never matches.
+def test_hashes_match_byte_for_byte(tmp_path):
+    paths = importlib.import_module("fiam.paths")
     lf, crlf = tmp_path / "a.csv", tmp_path / "b.csv"
     lf.write_bytes(b"x,y\n1,2\n")
     crlf.write_bytes(b"x,y\r\n1,2\r\n")
-    digest = next(iter(paths.digests(lf.read_bytes())))
-    assert paths.matches(crlf, digest) and paths.matches(lf, digest)
-    blob = tmp_path / "c.zip"
-    blob.write_bytes(b"x,y\r\n")
-    assert not paths.matches(blob, hashlib.sha256(b"x,y\n").hexdigest())
+    digest = hashlib.sha256(b"x,y\n1,2\n").hexdigest()
+    assert paths.matches(lf, digest) and not paths.matches(crlf, digest)
     assert not paths.matches(tmp_path / "missing.csv", digest)
 
 
 # A book inside every limit passes; one name short or 60% net fails exactly that rule.
 def test_submission_rules_catch_each_breach():
-    verify = importlib.import_module("verify")
+    verify = importlib.import_module("fiam.checks.verify")
     months = pd.date_range("2021-01-01", "2026-08-01", freq="MS")
 
     # Longs and shorts as % of NAV: 95/95 is neutral, 125/65 is 60% net inside 190% gross.
@@ -236,7 +259,11 @@ def test_submission_rules_catch_each_breach():
         return pd.DataFrame(rows, columns=verify.COLUMNS)
 
     returns = pd.DataFrame(dict(holding_month=months.strftime("%Y-%m-%d")))
-    failed = lambda frame: {n for n, ok, _ in verify.rules(frame, returns) if not ok}  # noqa: E731
+
+    # The names of the rules a book breaks.
+    def failed(frame: pd.DataFrame) -> set[str]:
+        return {n for n, ok, _ in verify.rules(frame, returns) if not ok}
+
     assert failed(book(200)) == set()
     assert failed(book(99)) == {"positions 100-500"}
     assert failed(book(200, long=125, short=65)) == {"net inside +/-50%"}
@@ -249,7 +276,7 @@ def test_submission_rules_catch_each_breach():
 
 # The comparison reads results, not run details such as the date or commit.
 def test_comparison_ignores_run_details(tmp_path):
-    compare = importlib.import_module("compare")
+    compare = importlib.import_module("fiam.checks.compare")
     a, b = tmp_path / "a.json", tmp_path / "b.json"
     a.write_text(json.dumps(dict(run=dict(git_commit="x"), ir=0.8341, n=[1, 2])))
     b.write_text(json.dumps(dict(run=dict(git_commit="y"), ir=0.8341, n=[1, 2])))
@@ -261,7 +288,7 @@ def test_comparison_ignores_run_details(tmp_path):
 
 # --import copies the organizer's files by name and leaves everything else, a CV say, alone.
 def test_import_takes_only_organizer_files(tmp_path, monkeypatch):
-    spec = importlib.util.spec_from_file_location("run", SRC.parent / "run.py")
+    spec = importlib.util.spec_from_file_location("run", ROOT / "run.py")
     run = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(run)
     downloads = tmp_path / "Downloads"
@@ -270,17 +297,46 @@ def test_import_takes_only_organizer_files(tmp_path, monkeypatch):
     (downloads / "Someone_CV.pdf").write_bytes(b"%PDF")
     (downloads / "notes.csv").write_text("a,b\n1,2\n")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.syspath_prepend(str(SRC))
     run.import_from(downloads)
     assert sorted(p.name for p in (tmp_path / "data").iterdir()) == ["factor_char_list.csv"]
 
 
 # A number on one side and nothing on the other is a difference, never a match.
 def test_comparison_counts_a_value_missing_on_one_side(tmp_path):
-    compare = importlib.import_module("compare")
+    compare = importlib.import_module("fiam.checks.compare")
     a, b = tmp_path / "a.json", tmp_path / "b.json"
     a.write_text(json.dumps(dict(ir=float("nan"))))
     b.write_text(json.dumps(dict(ir=0.83)))
     assert compare.verdict(compare.difference(a, b)[0]) == "differs"
     b.write_text(json.dumps(dict(ir=float("nan"))))
     assert compare.verdict(compare.difference(a, b)[0]) == "identical"
+
+
+# A score that is one risk bet cannot be neutral at its extremes; the optimizer reaches deeper.
+def test_optimizer_reaches_deeper_rather_than_trading_nothing():
+    rng = np.random.default_rng(0)
+    risk = rng.normal(size=1000)
+    month = pd.DataFrame(
+        dict(
+            permno=range(1000),
+            signal=-risk + rng.normal(scale=0.7, size=1000),
+            risk_rank=risk,
+            hedge_beta=1 + 0.3 * rng.normal(size=1000),
+            sector=rng.choice(["10", "20", "30"], size=1000),
+        )
+    )
+    weights = P.optimize_month(month)
+    assert weights is not None and len(weights) >= 127
+    assert weights.abs().sum() == pytest.approx(P.LIMITS["gross"], abs=1e-4)
+    assert abs(weights.sum()) < 1e-6
+
+
+# A share worth more than its target rounds to nothing. Its gap is spread, not piled on one name.
+def test_rounding_spreads_the_gap_of_a_name_too_dear_to_hold():
+    weights = pd.Series([0.015] + [0.0015] * 10 + [-0.005] * 6, index=range(17))
+    prices = pd.Series([700_000.0] + [1_000.0] * 16, index=range(17))
+    held = P.to_whole_shares(weights, prices)
+    assert 0 not in held.index
+    longs = held[held > 0]
+    assert longs.max() - longs.min() <= 1_000.0 / P.NAV + 1e-12
+    assert abs(held.sum()) < 1e-5

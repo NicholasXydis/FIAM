@@ -1,5 +1,4 @@
-# On Windows, macOS and Linux: install with uv, lint, test, then run the one command with no data,
-# both from the repo and as the single MAIN.py a judge receives. No data is ever needed here.
+# Windows, macOS and Linux: lint, test, then the one command with no data, from the repo and MAIN.py.
 name: ci
 
 on:
@@ -19,8 +18,8 @@ jobs:
       # LightGBM on macOS needs Homebrew's OpenMP; Windows and Linux ship their own.
       - if: runner.os == 'macOS'
         run: brew install libomp
-      - run: uv run ruff check src run.py tests tools
-      - run: uv run ruff format --check src run.py tests tools
+      - run: uv run ruff check fiam run.py tests tools
+      - run: uv run ruff format --check fiam run.py tests tools
       - run: uv run pytest
       - run: uv run run.py
       - name: MAIN.py alone in an empty folder

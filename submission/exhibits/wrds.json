@@ -32,14 +32,15 @@
       "position_months": 60,
       "by_kind": {
         "MER CASH": 42,
-        "MER CST": 6,
-        "MER STK": 6,
-        "MER CSHN": 6
+        "MER CSHN": 8,
+        "MER STK": 5,
+        "MER CST": 4,
+        "GDR PRCF": 1
       },
-      "long_weight_monthly": 0.000967,
-      "short_weight_monthly": 0.005342,
-      "payout_contribution_annual": 7.2e-05,
-      "closing_cost_annual_already_charged": 0.000118,
+      "long_weight_monthly": 0.000778,
+      "short_weight_monthly": 0.004543,
+      "payout_contribution_annual": 0.000112,
+      "closing_cost_annual_already_charged": 6.9e-05,
       "what": "Names taken over or delisted after the decision. Their final CRSP return is booked, where booking zero would drop the payout_contribution_annual above."
     }
   },
@@ -58,16 +59,16 @@
     "months": 60,
     "window": "2021-01 to 2025-12",
     "total_return_crsp": {
-      "beta": -0.016561,
-      "beta_stderr": 0.12094,
-      "alpha_annual": 0.154867,
-      "alpha_tstat": 1.977039
+      "beta": -0.002701,
+      "beta_stderr": 0.100701,
+      "alpha_annual": 0.123682,
+      "alpha_tstat": 1.902508
     },
     "price_only_fred": {
-      "beta": -0.010058,
-      "beta_stderr": 0.120859,
-      "alpha_annual": 0.153951,
-      "alpha_tstat": 1.97142
+      "beta": 0.002432,
+      "beta_stderr": 0.100493,
+      "alpha_annual": 0.123127,
+      "alpha_tstat": 1.903629
     },
     "dividend_gap_annual": 0.014776,
     "fred_vs_crsp_price_correlation": 0.999808
@@ -220,13 +221,13 @@
   "release_day_sensitivity": {
     "what": "Accounting updates whose report is dated on the decision day, which may have come after the close, held back a month. A sensitivity only: the shipped book is unchanged.",
     "panel_rows_affected_share": 0.012474,
-    "information_ratio": 0.817604,
-    "net_annual": 0.158697
+    "information_ratio": 0.676078,
+    "net_annual": 0.122737
   },
   "organizer_data_only": {
-    "information_ratio": 0.832556,
-    "return_net_annual": 0.161007,
-    "beta_realized": -0.047353,
-    "beta_stderr": 0.11104
+    "information_ratio": 0.662608,
+    "return_net_annual": 0.119394,
+    "beta_realized": -0.037907,
+    "beta_stderr": 0.094494
   }
 }

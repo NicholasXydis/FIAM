@@ -13,6 +13,8 @@ What to look for, in this order:
 - The clean test: how the same book did in years its designers never looked at.
 - Implementation: shorts that are small, illiquid or hard to borrow.
 - Concentration: a few names or one signal carrying the result.
+- Crowding: whether our longs are what AI stock pickers would buy anyway.
+- The ship rule: whether the book it chose each year deserved its place.
 - The discovery agent's pick: why it might not survive.
 
 Rules:

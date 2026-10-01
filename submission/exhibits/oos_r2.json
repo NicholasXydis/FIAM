@@ -3,49 +3,7 @@
   "how": "Template models forecast returns directly. Rank-target models and the composite are scaled to returns by a slope estimated only on years before each test year.",
   "template_note": "Organizer's template on our folds, lambda grid stepped at 0.5 not 0.1.",
   "code": {
-    "git_commit": "b7e1612",
-    "working_tree_dirty": true,
-    "src_sha256": "5cd3aa7175e53cd4",
-    "src_files": [
-      "src/agents/auditor.py",
-      "src/agents/critic.py",
-      "src/agents/discovery.py",
-      "src/agents/harness.py",
-      "src/agents/mcp_server.py",
-      "src/benchmarks.py",
-      "src/charts.py",
-      "src/compare.py",
-      "src/controls/reproducibility.py",
-      "src/controls/selection.py",
-      "src/controls/wrds_checks.py",
-      "src/docs.py",
-      "src/exhibits/config_log.py",
-      "src/exhibits/confirmation.py",
-      "src/exhibits/constraint_survival.py",
-      "src/exhibits/earnings.py",
-      "src/exhibits/labels.py",
-      "src/exhibits/live_forecast.py",
-      "src/exhibits/live_score.py",
-      "src/exhibits/pack.py",
-      "src/exhibits/placebo_lab.py",
-      "src/ml/dataset.py",
-      "src/ml/nn3_seeds.py",
-      "src/ml/oos_r2.py",
-      "src/ml/summary.py",
-      "src/ml/train.py",
-      "src/paths.py",
-      "src/pipeline.py",
-      "src/provenance.py",
-      "src/research_charts.py",
-      "src/verify.py",
-      "src/wrds.py",
-      "prompts/agents/auditor.md",
-      "prompts/agents/critic.md",
-      "prompts/agents/discovery.md",
-      "run.py",
-      "requirements.txt",
-      "models/MANIFEST.txt"
-    ]
+    "code_sha256": "4db384c0ff433650"
   },
   "methods": {
     "template_ols": {
@@ -67,8 +25,8 @@
       "months": 68
     },
     "enet": {
-      "r2_zero_benchmark": -0.0010411361781259565,
-      "r2_cross_sectional": -0.001134433851945671,
+      "r2_zero_benchmark": -9.054819704590322e-05,
+      "r2_cross_sectional": -0.00011939988829268167,
       "observations": 159419,
       "months": 68
     },
@@ -84,16 +42,17 @@
       "observations": 159419,
       "months": 68
     },
+    "scorer": {
+      "r2_zero_benchmark": -0.0006591347895021915,
+      "r2_cross_sectional": -0.0007415493504920878,
+      "observations": 159419,
+      "months": 68
+    },
     "composite": {
       "r2_zero_benchmark": -5.1912962061528845e-05,
       "r2_cross_sectional": -5.9796639561904286e-05,
       "observations": 135941,
       "months": 68
     }
-  },
-  "nn3_seed_range": {
-    "seeds": 5,
-    "min": -0.0015837762041328585,
-    "max": 0.0007341407774404951
   }
 }

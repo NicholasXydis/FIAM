@@ -69,3 +69,26 @@ release-day reports held back a month,control,no,1,IR 0.82,control
 "discovery agent, Hermes, real names",control,no,9,sealed IR -2.08,control
 "discovery agent, Hermes, coded names",control,no,1,"sealed IR -1.82, picked on lookups alone",control
 random search beside the agent,control,no,31,sealed IR -0.44,control
+"gross 200/190/180/170/160%, on 2016-20",construction,yes,5,above 200% at month end: 35/12/8/2/1 of 60,"190, then 160"
+"two more ex-ante betas, three ways",neutralization,yes,3,"2016-20 beta -0.30 to -0.34, none better",rejected
+ex-ante beta aimed at trailing beta,neutralization,yes,3,2016-20 beta -0.29,rejected
+market sleeve sized by trailing beta,neutralization,yes,3,"2016-20 beta -0.21, fails the 0.15 rule",rejected
+"ElasticNet penalty: non-empty, rank IC",model,no,2,"squared error kept 2 vars, validation IC -0.007",exhibit
+"gross fixed at target, deeper pool",optimizer,yes,1,shipped IR unchanged; every model book 127+,SHIPPED
+"zero-beta book, 5,000 bootstrap draws",control,no,1,49% of 12-month windows outside +/-0.20,control
+"gross 160-200%, daily peaks 2021-25",construction,yes,5,IR 0.83-0.85 flat; at 160% no day above 200%,160 SHIPPED
+"teachers: beta, crowding, revisions",model,no,3,learned beta error 0.55 vs 0.64; see teachers,input
+"LambdaRank scorer, residual target",model,no,5,see scorer.json,input
+candidates: 3 blends x hedge x trader,construction,yes,11,see ship.json,by ship rule
+"trader: monthly deep hedging, PPO, fixed",model,no,3,"see ship.json, trader",deep in book
+"ship rule, +0.25 IR over 2 prior years",control,no,1,see ship.json,control
+"crowd agent, 2 models x 60 months",control,no,2,see crowd.json,control
+crowding teacher's top tenth as HTB,costs,no,1,costs can only rise,SHIPPED
+"research director agent, one run a year",control,no,6,see director.json,control
+"cost model v2: IBKR, CRSP quotes, tiers",costs,no,1,"pre-registered measurement, every book",SHIPPED
+"construction v2, one pre-registered test",construction,yes,1,"IR -0.17 vs -0.00 on 2016-26, 3 of 4 rules fail",rejected by rule
+"construction v2, each rule alone",construction,no,5,every rule alone lowers IR,control
+"factor-neutral book, five FF limits",construction,yes,1,"IR -0.89 vs -0.00 on 2016-26; alpha -4.2%, t -1.7",rejected by rule
+"screen-then-rank, amendment 13",construction,yes,4,IR 0.23-0.38; most defensive in 2024,chosen for 2026
+"scorer in liquid names, amendment 13",construction,yes,8,IR 0.27-0.49; 50% blend 0.01 to 0.47 with hedge,not chosen
+"distress veto on longs, amendment 13",construction,yes,4,"IR 0.54-0.72, the composite's own record",not chosen

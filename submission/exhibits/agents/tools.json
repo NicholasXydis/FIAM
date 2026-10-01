@@ -1,4 +1,95 @@
 {
+  "director": [
+    {
+      "name": "list_candidates",
+      "description": "Each candidate's name and what it adds.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "compare",
+      "description": "Every candidate over holding months from first_year to the decision: IR, beta, net, cost, turnover, drawdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "first_year": {
+            "type": "integer",
+            "description": "first holding year"
+          }
+        },
+        "required": [
+          "first_year"
+        ]
+      }
+    },
+    {
+      "name": "by_year",
+      "description": "One candidate's net return and IR in each past year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "final_answer",
+      "description": "The candidate to trade next year, and why.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate": {
+            "type": "string",
+            "enum": [
+              "composite",
+              "composite+traded",
+              "composite+hedged",
+              "composite+hedged+traded",
+              "scorer25",
+              "scorer25+traded",
+              "scorer25+hedged",
+              "scorer25+hedged+traded",
+              "scorer50",
+              "scorer50+traded",
+              "scorer50+hedged",
+              "scorer50+hedged+traded",
+              "screened",
+              "screened+traded",
+              "screened+hedged",
+              "screened+hedged+traded",
+              "liquid25",
+              "liquid25+traded",
+              "liquid25+hedged",
+              "liquid25+hedged+traded",
+              "liquid50",
+              "liquid50+traded",
+              "liquid50+hedged",
+              "liquid50+hedged+traded",
+              "veto",
+              "veto+traded",
+              "veto+hedged",
+              "veto+hedged+traded"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "why, quoting only numbers a tool returned"
+          }
+        },
+        "required": [
+          "candidate",
+          "reason"
+        ]
+      }
+    }
+  ],
   "discovery": [
     {
       "name": "list_characteristics",
@@ -130,7 +221,15 @@
     },
     {
       "name": "book_risk",
-      "description": "Factor loadings, borrow exposure, and the 2016-2020 test.",
+      "description": "Factor loadings, style or selection by year, borrow, crowding, the 2016-2020 test.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "ship_rule",
+      "description": "The rule's book each year, every candidate's IR, and the analyst recall test.",
       "parameters": {
         "type": "object",
         "properties": {}

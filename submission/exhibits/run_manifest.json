@@ -1,180 +1,144 @@
 {
-  "what": "The baseline and its pass marks, and which run produced each artifact. The reproducibility audit checks every hash.",
-  "baseline": {
-    "what": "The baseline the pre-WRDS research exhibits are measured against.",
-    "code": {
-      "git_commit": "b7e1612",
-      "working_tree_dirty": true,
-      "src_sha256": "3731057232e8945d",
-      "src_files": [
-        "src/agents/auditor.py",
-        "src/agents/critic.py",
-        "src/agents/discovery.py",
-        "src/agents/harness.py",
-        "src/agents/mcp_server.py",
-        "src/benchmarks.py",
-        "src/charts.py",
-        "src/compare.py",
-        "src/controls/reproducibility.py",
-        "src/controls/selection.py",
-        "src/controls/wrds_checks.py",
-        "src/docs.py",
-        "src/exhibits/config_log.py",
-        "src/exhibits/confirmation.py",
-        "src/exhibits/constraint_survival.py",
-        "src/exhibits/earnings.py",
-        "src/exhibits/labels.py",
-        "src/exhibits/live_forecast.py",
-        "src/exhibits/live_score.py",
-        "src/exhibits/pack.py",
-        "src/exhibits/placebo_lab.py",
-        "src/ml/dataset.py",
-        "src/ml/nn3_seeds.py",
-        "src/ml/oos_r2.py",
-        "src/ml/summary.py",
-        "src/ml/train.py",
-        "src/paths.py",
-        "src/pipeline.py",
-        "src/provenance.py",
-        "src/research_charts.py",
-        "src/verify.py",
-        "src/wrds.py",
-        "prompts/agents/auditor.md",
-        "prompts/agents/critic.md",
-        "prompts/agents/discovery.md",
-        "run.py",
-        "requirements.txt",
-        "models/MANIFEST.txt"
-      ]
+  "what": "What the run read, the pass marks, and the hash of every artifact it wrote. The reproducibility audit checks every hash.",
+  "run": {
+    "command": "uv run run.py --official --ml",
+    "steps": {
+      "fiam.ml.dataset": "skipped, unchanged since the run that made it",
+      "fiam.ml.text": "skipped, unchanged since the run that made it",
+      "fiam.ml.triage": "skipped, unchanged since the run that made it",
+      "fiam.ml.teachers": "skipped, unchanged since the run that made it",
+      "fiam.ml.crowd": "skipped, unchanged since the run that made it",
+      "fiam.ml.analyst": "skipped, unchanged since the run that made it",
+      "fiam.ml.scorer": "skipped, unchanged since the run that made it",
+      "fiam.ml.ship": "ran",
+      "fiam.ml.train": "ran",
+      "fiam.ml.selection": "ran",
+      "fiam.ml.summary": "ran",
+      "fiam.ml.oos_r2": "ran",
+      "fiam.exhibits.placebo_lab": "ran",
+      "fiam.exhibits.construction": "ran",
+      "fiam.exhibits.factor_neutral": "ran",
+      "fiam.data": "ran",
+      "fiam.costs": "ran",
+      "fiam.book": "ran",
+      "fiam.exhibits.pack": "ran",
+      "fiam.exhibits.daily_risk": "ran",
+      "fiam.exhibits.implementation": "ran",
+      "fiam.checks.wrds_checks": "ran",
+      "fiam.exhibits.confirmation": "ran",
+      "fiam.evaluate": "ran",
+      "fiam.exhibits.config_log": "ran",
+      "fiam.exhibits.labels": "ran",
+      "fiam.agents.harness export": "ran"
+    }
+  },
+  "inputs": {
+    "organizer": {
+      "chars_final_with_names.parquet": "797c01ebd59f7a14",
+      "8k_20150101_20260831_identified.parquet": "f333cd02076485ec",
+      "factor_char_list.csv": "066c783d8bae2116"
     },
-    "data": {
-      "data/8k_20150101_20260831_identified.parquet": {
-        "sha256": "f333cd02076485ec",
-        "bytes": 358076009
-      },
-      "data/benchmarks/SP500.csv": {
-        "sha256": "d58f831df2fd37c5",
-        "bytes": 48903
-      },
-      "data/benchmarks/TB3MS.csv": {
-        "sha256": "18d6a3def98fecb7",
-        "bytes": 2263
-      },
-      "data/benchmarks/ff5_factors.zip": {
-        "sha256": "b8653b411cc5e289",
-        "bytes": 11948
-      },
-      "data/benchmarks/ff_factors.zip": {
-        "sha256": "b840dba55d319f48",
-        "bytes": 13067
-      },
-      "data/benchmarks/ff_momentum.zip": {
-        "sha256": "7ee14e892b0f7044",
-        "bytes": 5596
-      },
-      "data/chars_final_with_names.parquet": {
-        "sha256": "797c01ebd59f7a14",
-        "bytes": 412599998
-      },
-      "data/edgar_cache.zip": {
-        "sha256": "37bc2c22fa66ea66",
-        "bytes": 13297827
-      },
-      "data/factor_char_list.csv": {
-        "sha256": "066c783d8bae2116",
-        "bytes": 1647
-      },
-      "data/wrds/compustat_quarterly.parquet": {
-        "sha256": "8eb77e605236e7a3",
-        "bytes": 8098139
-      },
-      "data/wrds/crsp_monthly.parquet": {
-        "sha256": "ea1bd7bd43d631e4",
-        "bytes": 14223872
-      },
-      "data/wrds/exits.parquet": {
-        "sha256": "8ef5808137810ce3",
-        "bytes": 170280
-      },
-      "data/wrds/sp500_index.parquet": {
-        "sha256": "b086d91375924d5e",
-        "bytes": 7244
-      }
+    "wrds": {
+      "crsp_monthly": "2796c030f9ed6f34",
+      "sp500_index": "382a3f33c2c6b6d6",
+      "compustat_quarterly": "5f943fea4ec4debd"
     },
-    "environment": {
-      "python": "3.14.6",
-      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
-      "requirements_sha256": "92081e1dd91d6ccf"
+    "benchmarks": {
+      "SP500.csv": "d58f831df2fd37c5",
+      "TB3MS.csv": "18d6a3def98fecb7",
+      "ff5_factors.zip": "b8653b411cc5e289",
+      "ff_factors.zip": "b840dba55d319f48",
+      "ff_momentum.zip": "7ee14e892b0f7044"
+    }
+  },
+  "agents": {
+    "auditor_clean": {
+      "model": "qwen",
+      "sha256": "40fac4050e940397",
+      "runner": "Hermes Agent"
     },
-    "baseline": {
-      "information_ratio": 0.834141,
-      "sharpe_ratio": 1.109699,
-      "return_gross_annual": 0.201893,
-      "return_net_annual": 0.161084,
-      "max_drawdown_total": -0.127814,
-      "beta_realized": -0.048076,
-      "turnover_monthly_one_way": 0.534231,
-      "positions_average": 316.264706
+    "auditor_planted": {
+      "model": "qwen",
+      "sha256": "40fac4050e940397",
+      "runner": "Hermes Agent"
     },
-    "rounding_drift": {
-      "net_exposure_max_abs": 0.000885,
-      "sector_tilt_max": 0.011095,
-      "position_weight_max": 0.016405
+    "critic": {
+      "model": "gemma",
+      "sha256": "babd1e389d386352",
+      "runner": "Hermes Agent"
     },
-    "acceptance_rules": {
-      "nn3_seeds": "Reporting only. Report every seed, never average them into a model.",
-      "constraint_survival": "Descriptive, no pass mark. Universe, months and parameters fixed.",
-      "permutation_null": "Shipped result above the null's 95th percentile, null gross near zero.",
-      "inversion": "Gross lands near minus the baseline gross, not near zero.",
-      "stale_scores": "Degraded, but not necessarily to zero.",
-      "confirmation": "Reported whatever it says. The design never looked at 2016-2020.",
-      "factor_atlas": "A catalogue. Nothing in it is selected for the book.",
-      "earnings_module": "Ships only if its best variant beats the frozen book by 0.10 IR on 2016-2020, with realized beta inside 0.15 and both tails monotone. The decision is written to disk before 2021-2026 is computed and is not revisited.",
-      "live_forecast": "Scored against public prices once October 2026 has closed."
+    "critic_repeat": {
+      "model": "gemma",
+      "sha256": "babd1e389d386352",
+      "runner": "Hermes Agent"
     },
-    "amended_rules": {
-      "permutation_null": {
-        "original": "The null's net IR should centre near zero.",
-        "why_wrong": "A shuffled ranking re-sorts the book monthly, so it churns at about 179% turnover and pays our real cost rates. Its net IR centres near -2.",
-        "now": "Tested on gross return, which is the only place a null can be zero."
-      }
+    "discovery_coded": {
+      "model": "qwen",
+      "sha256": "40fac4050e940397",
+      "runner": "Hermes Agent"
+    },
+    "discovery_named": {
+      "model": "qwen",
+      "sha256": "40fac4050e940397",
+      "runner": "Hermes Agent"
+    }
+  },
+  "acceptance_rules": {
+    "permutation_null": "Shipped result above the null's 95th percentile, null gross near zero.",
+    "inversion": "Gross lands near minus the baseline gross, not near zero.",
+    "stale_scores": "Degraded, but not necessarily to zero.",
+    "confirmation": "Reported whatever it says. The signals were designed without 2016-2020.",
+    "factor_atlas": "A catalogue. Nothing in it is selected for the book."
+  },
+  "amended_rules": {
+    "permutation_null": {
+      "original": "The null's net IR should centre near zero.",
+      "why_wrong": "A shuffled ranking re-sorts the book monthly, so it churns at about 179% turnover and pays our real cost rates. Its net IR centres near -2.",
+      "now": "Tested on gross return, which is the only place a null can be zero."
     }
   },
   "book": {
-    "written_utc": "2026-09-27T16:59:24+00:00",
-    "code": "21664a7e7f96d88c",
+    "code": "0ca50a92279147bd",
     "files": {
-      "submission/holdings.csv": "48d7ee108e34b69fb235380e1e583d0fa8f1d9d767d64392e87e5c0c809694fd",
-      "submission/returns.csv": "fb6144b2ad367ca7c71dca292904054b2e9c6e0738a31aee1084ca8d1f17379b",
-      "submission/metrics.json": "3c7791f0c1be2a6c738fa37d550e482c6ed838421629679aae1fd794756eddbd",
+      "submission/holdings.csv": "c6a7e688dc3ccdaff30e215b7c94e7e837179b1068953b13374de5224759b728",
+      "submission/returns.csv": "407dbfeeb0640bf707ea274c5628bc7b1bb12a624ffbaaaeac72e7071a79d77e",
+      "submission/metrics.json": "145fa85d614620d81349d7bc20c69afa8b090147d7c7f3a8964b697d57bcba95",
+      "submission/exhibits/analyst.json": "8bb01fce4fca919e6a48ce921d7644784f0a62a02f63f3388d85a2d542d9ff91",
       "submission/exhibits/auditor.json": "ecfd83c5a525719d89df69d1440a4b95699d2ae26b5d321eea7dbbc7a4c4c4f7",
-      "submission/exhibits/config_log.csv": "ebde3ce6a9e8b353e85de74325f1bed726bcba83726ae3369cc1e31be54418cc",
-      "submission/exhibits/confirmation.json": "82f941862f0a2711c43c540b08e61e558cfbe304a543d8d675c8e7f0c9162bd3",
+      "submission/exhibits/config_log.csv": "9e5b299c9c3ad8c51fa722006c6365cb906a395d03a8797ec2baa41d3255266b",
+      "submission/exhibits/confirmation.json": "796db35eea840c944e9e963081a5129f85f50d93a4408dec5abf91626732fce5",
       "submission/exhibits/critic.json": "8decfd03a8272297bea1b491739e14e977260bff6c36b8ad4f87beda19c7ccc9",
+      "submission/exhibits/daily_risk.json": "2112cf86e8ddf6695bd4ae854c20f9064c36f62d8bcf568902cf9365ae74c298",
       "submission/exhibits/discovery.json": "eb2275fdaad7e3514bd48993ae3fbdb60d7cabe16afe1d68022d1170d2ba54a6",
-      "submission/exhibits/labels.csv": "ea9c912b9324b71069c17eaa22e39b1e912971bce31a4f0b07e5bda9d09dba7e",
-      "submission/exhibits/labels.json": "8c9b2620255e5399c2b325ef0c75cdad69f36bce151e7f1d54533670c8fb862d",
-      "submission/exhibits/live_forecast.json": "315f8233f1d22525deed68380eb930de116c5400ef6ad876dfe787a8f1747866",
-      "submission/exhibits/live_forecast_2026-09.csv": "4aca2ba7b2f2a945bc9da3bb7e099fcdd5acdf938d40fa5273b4f03f2c2e9dde",
-      "submission/exhibits/live_forecast_2026-09_corrected.csv": "eb60a983495d15eccd42917b1c687c511fd2b6d0f1271679512244bcfdc28127",
-      "submission/exhibits/pack.json": "6e6643c4709ce69cd623f67682bc1b0294dd559a980b6aa13bded1dcb47819fd",
-      "submission/exhibits/wrds.json": "20eee7538bc84876fe862648d407079759df1c5ca739e5c5a510350bb969f2fe"
+      "submission/exhibits/evaluation.json": "780a4420e7d2344a5983831b6ebdb785faa1203650d26e60058d85c8c7fb4397",
+      "submission/exhibits/implementation.json": "3cd9ec74526340c01413e6738e1ed3c90620c0338e0428e57b155333531f1eea",
+      "submission/exhibits/labels.csv": "14199fabc6f92a4321e27d93c461c12a1ff206eea50926a7d44e625898477216",
+      "submission/exhibits/labels.json": "109f70679b9c5ee5aa6db7e82114eda9f2b74dab19710700064a556d7858d1f6",
+      "submission/exhibits/pack.json": "585d4a54335a60caf477b6da936c16237898bb330513458ea1d67f67579fdd2e",
+      "submission/exhibits/wrds.json": "34578653c65f8c7fe4a4ea9c619af15bab89f81da63192855a28e4dded57bf3a"
     }
   },
   "ml": {
-    "written_utc": "2026-09-27T16:02:34+00:00",
-    "code": "3307359a9df251ba",
+    "code": "1d212ad27d4d57eb",
     "files": {
-      "submission/exhibits/ml_metrics.json": "0a03f151a358444707ab8d8a51de04ac80739300660da4c516422d521f0eb8de",
+      "submission/exhibits/ml_metrics.json": "ee86e09ee585351689e6c9f93ada50531883ac5046f9aa6e121a22f711036403",
       "submission/exhibits/subset_sweep.csv": "8d0b86ce90646305194391f82a876844ad91d78f27ade9b0795f02a9111d61b2",
       "submission/exhibits/selection.json": "6654ff1262cf569ddd40a008af30acf63c59566de1c81b1b2b0e6bdd176d1f26",
-      "submission/exhibits/nn3_seeds.json": "ce723d1b7104505199dd149a024e2bfd5afa738e81840b62ac2e472d705efac9",
-      "submission/exhibits/placebo_lab.json": "cd82a2989c4bdb6518a9ee6805903ac8b91d0c799f0ca6473ba3671897dc44af",
-      "submission/exhibits/constraint_survival.json": "48f101c33126add1cebd9cd61f10fca39d2b318fe3ae3bc97d4bca6529d7b296",
-      "submission/exhibits/oos_r2.json": "1a9d5f06d90b23c08320ed76f0f03bd53cff8956af4369440779247a3d253c5f",
+      "submission/exhibits/placebo_lab.json": "7efeca01b882f2b0ace800d17129bbc224c8032beb314e87d346ecf50403fe90",
+      "submission/exhibits/oos_r2.json": "a2845ca38090000d439d5c19e6bdf2d5ab3016f7994196fe4393c46ed6308327",
       "submission/exhibits/factor_atlas.csv": "6c10acce9d27fd0672582e19605e19db386b16e34862ab2cb8fc0038374fe9eb",
-      "submission/exhibits/earnings_decision.json": "0e34e9c6efa8620a7f1dae915c12d281901290db503b1a40c3051a2c099a84df",
-      "submission/exhibits/earnings_module.json": "38a3797a8709eb2ff883c8455e689faf56b9486649c9dc14c6c477aa9308dca9"
-    }
+      "submission/exhibits/teachers.json": "cc9d2dc5d0f9b735974274a81f92e780340ce17517586e076985f1154740cfca",
+      "submission/exhibits/crowd.json": "f736f308fa4bd2e4a32e7d66d571ba994c6378d707a3b4644528acc111ffa90e",
+      "submission/exhibits/scorer.json": "a1087afb1b2b089e088fb7ec4977818ddac902453994243a2dcaeabe8bf48ea5",
+      "submission/exhibits/ship.json": "31cb96df94fad9c5ccef9e0e03c839cbb5040dd02096261c543bb0837aa62209",
+      "submission/exhibits/ship_candidates.csv": "a18662ac8f7ef1c09bab14a7e2320a27c1d0de555754d82f3629ee58b28d2931",
+      "submission/exhibits/triage.json": "bf0e5a389de2df65f75143567845ac6bdb8b8e6e7b687b54c6c312fff7c7bc14",
+      "submission/exhibits/analyst_learned.json": "ed87282129bc4ce54f38ecdf64c5d552f94781c0d5b79cb9784087c33e7d43f7",
+      "submission/exhibits/construction.json": "62ebcb05a53b4cc19bccc2004a3227626cdc5aa8c8140491afac8337f57c1630",
+      "submission/exhibits/factor_neutral.json": "1f8c6f5c06fa495e99c03abafc4ea5e514a4608f7e3a7d0b9f245f673f39fe98",
+      "submission/models/policy.json": "c764519ff669b940f1766d7370bf6532ed0e002cda524aeef6d27efa4cb122d2",
+      "submission/models/book_inputs.parquet": "7956bd44a98ce4ef8f406e12d73586329b63d38d171ff79ddbd9256496f92de1"
+    },
+    "command": "uv run run.py --official --ml"
   }
 }
