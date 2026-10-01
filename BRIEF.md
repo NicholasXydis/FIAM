@@ -2,7 +2,7 @@
 
 **What it is.** A market-neutral book of US stocks. Each month we rank every stock on twelve
 well-known measures (cheap, profitable, careful with money, rising), buy the best and short the
-worst: about <!--N:metrics.json:compliance.positions_average:.0f-->272<!--/N--> names, as much long
+worst: about <!--N:metrics.json:compliance.positions_average:.0f-->285<!--/N--> names, as much long
 as short, neutral to the market and to every sector, with every trading cost charged.
 
 **What the AI adds.** FinBERT reads every 8-K filing. Local AI agents triage filings, act as analysts
@@ -10,7 +10,7 @@ and play the "AI crowd". A stock picker learns from all of it. A rule we wrote b
 result decides each year whether the learned books replace the simple one.
 <!--AUTO:shipped-->
 
-It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in 2023; Composite + hedge in 2025; Screen-then-rank in 2026, and the composite in the other years.
+It shipped Composite + hedge in 2023; Composite + hedge in 2025; Screen-then-rank in 2026, and the composite in the other years.
 
 <!--/AUTO:shipped-->
 
@@ -20,14 +20,14 @@ It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in
 
 |  |  |
 |---|---|
-| Net return | **7.8% a year** after every modelled fee |
-| Information ratio | **0.34** |
-| Alpha | 8.4% a year, t = 1.68 |
-| Beta to the S&P 500, monthly | -0.06, standard error 0.09 |
-| Beta, daily returns 2021-25 | -0.10, t = -3.7: a short market tilt |
+| Net return | **12.0% a year** after every modelled fee |
+| Information ratio | **0.67** |
+| Alpha | 12.4% a year, t = 2.18 |
+| Beta to the S&P 500, monthly | -0.04, standard error 0.09 |
+| Beta, daily returns 2021-25 | -0.09, t = -3.5: a short market tilt |
 | Worst drawdown | -11.0% |
-| Split in half | 2021-22 IR 0.99, 2023-26 IR -0.20 |
-| CRSP years only | 2021-25 IR 0.32 |
+| Split in half | 2021-22 IR 1.74, 2023-26 IR -0.20 |
+| CRSP years only | 2021-25 IR 0.68 |
 | 2016-2020, a historical check | IR -1.00, beta -0.25 (se 0.07) |
 
 <!--/AUTO:brief-->

@@ -3,52 +3,52 @@
   "days": 1255,
   "risk": {
     "gross_exposure": {
-      "at_rebalance_max": 1.59954,
-      "intra_month_max": 1.99821,
-      "intra_month_max_month": "2021-01",
+      "at_rebalance_max": 1.599444,
+      "intra_month_max": 1.939168,
+      "intra_month_max_month": "2021-02",
       "months_above_200pct_on_any_day": 0,
-      "month_end_mean": 1.525871,
-      "month_end_max": 1.952078
+      "month_end_mean": 1.592601,
+      "month_end_max": 1.893499
     },
     "net_exposure": {
       "intra_month_max_abs": 0.108248,
-      "month_end_max_abs": 0.096214
+      "month_end_max_abs": 0.096021
     },
     "volatility_annual": {
-      "daily": 0.1287,
-      "monthly": 0.115276
+      "daily": 0.13557,
+      "monthly": 0.122851
     },
     "var_one_day": {
-      "p95": -0.012544,
-      "p99": -0.019191,
-      "cvar_95": -0.016862
+      "p95": -0.013068,
+      "p99": -0.019938,
+      "cvar_95": -0.017285
     },
     "max_drawdown": {
       "daily": -0.162714,
       "monthly": -0.110342
     },
     "worst_day": {
-      "date": "2021-01-26",
-      "value": -0.03187
+      "date": "2021-02-03",
+      "value": -0.030905
     },
     "best_day": {
-      "date": "2022-02-02",
-      "value": 0.029053
+      "date": "2021-05-03",
+      "value": 0.029854
     }
   },
   "beta_to_sp500_daily": {
-    "beta": -0.095018,
-    "stderr": 0.02602,
-    "t": -3.651723,
+    "beta": -0.088679,
+    "stderr": 0.025672,
+    "t": -3.454302,
     "days": 1255,
     "by_year": {
       "2021": {
-        "beta": -0.008011,
-        "stderr": 0.100864
+        "beta": 0.038291,
+        "stderr": 0.100169
       },
       "2022": {
-        "beta": -0.157543,
-        "stderr": 0.040674
+        "beta": -0.157673,
+        "stderr": 0.040371
       },
       "2023": {
         "beta": -0.090093,
@@ -64,24 +64,24 @@
       }
     },
     "rolling_252d": {
-      "2021-12": -0.008011,
-      "2022-01": -0.106974,
-      "2022-02": -0.071608,
-      "2022-03": -0.023881,
-      "2022-04": -0.046933,
-      "2022-05": -0.095619,
-      "2022-06": -0.10641,
-      "2022-07": -0.1367,
-      "2022-08": -0.147238,
-      "2022-09": -0.151085,
-      "2022-10": -0.139188,
-      "2022-11": -0.149138,
-      "2022-12": -0.157631,
-      "2023-01": -0.150036,
-      "2023-02": -0.140455,
-      "2023-03": -0.143398,
-      "2023-04": -0.143547,
-      "2023-05": -0.141343,
+      "2021-12": 0.038291,
+      "2022-01": -0.007651,
+      "2022-02": 0.009456,
+      "2022-03": 0.035226,
+      "2022-04": 0.005205,
+      "2022-05": -0.060878,
+      "2022-06": -0.083527,
+      "2022-07": -0.128082,
+      "2022-08": -0.141995,
+      "2022-09": -0.145017,
+      "2022-10": -0.13084,
+      "2022-11": -0.147466,
+      "2022-12": -0.157869,
+      "2023-01": -0.149576,
+      "2023-02": -0.139389,
+      "2023-03": -0.142024,
+      "2023-04": -0.142167,
+      "2023-05": -0.141325,
       "2023-06": -0.147771,
       "2023-07": -0.126686,
       "2023-08": -0.10344,
@@ -117,20 +117,20 @@
   },
   "reconciliation": {
     "months": 60,
-    "correlation": 0.999843,
+    "correlation": 1.0,
     "median_abs_gap": 0.0,
-    "largest_gap": 0.004524,
-    "largest_gap_month": "2021-08",
+    "largest_gap": 0.000159,
+    "largest_gap_month": "2023-04",
     "why": "Delisting payouts and the panel's own return fixes are monthly only."
   },
   "short_interest": {
     "months": 60,
-    "short_book_weight_with_data": 0.9992,
-    "short_book_weight_crowded": 0.222906,
+    "short_book_weight_with_data": 0.999236,
+    "short_book_weight_crowded": 0.225977,
     "crowded_threshold": 0.1,
     "median_short_interest": {
-      "long": 0.015361,
-      "short": 0.035694
+      "long": 0.016186,
+      "short": 0.035077
     }
   },
   "stress": {
@@ -147,9 +147,9 @@
       "days": 53
     },
     "2022, rates up": {
-      "strategy": 0.305626,
+      "strategy": 0.310683,
       "sp500": -0.19953,
-      "worst_drawdown": -0.110885,
+      "worst_drawdown": -0.110067,
       "days": 251
     },
     "2023 AI rally, Jan to Jul": {
@@ -167,8 +167,8 @@
   },
   "execution_delay": {
     "months": 60,
-    "information_ratio_on_time": 0.316591,
-    "information_ratio_one_day_late": 0.265584,
-    "cost_annual": 0.006308
+    "information_ratio_on_time": 0.678621,
+    "information_ratio_one_day_late": 0.674049,
+    "cost_annual": 0.002187
   }
 }

@@ -22,12 +22,12 @@
   {
     "check": "names with no next-month return are still held",
     "passed": true,
-    "detail": "301 such names in the book"
+    "detail": "303 such names in the book"
   },
   {
     "check": "missing returns are kept, not dropped",
     "passed": true,
-    "detail": "0.0359 weight-months booked flat, a stated assumption"
+    "detail": "0.0299 weight-months booked flat, a stated assumption"
   },
   {
     "check": "labels come from the decision month or earlier",

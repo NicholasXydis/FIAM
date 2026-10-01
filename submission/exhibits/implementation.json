@@ -3,62 +3,62 @@
   "participation": 0.2,
   "sensitivities": {
     "as_modelled": {
-      "information_ratio": 0.339651,
-      "net_annual": 0.078303,
-      "cost_annual": 0.052605
+      "information_ratio": 0.665877,
+      "net_annual": 0.119663,
+      "cost_annual": 0.051898
     },
     "every_cost_doubled": {
-      "information_ratio": -0.128539,
-      "net_annual": 0.025468,
-      "cost_annual": 0.105441
+      "information_ratio": 0.229813,
+      "net_annual": 0.067554,
+      "cost_annual": 0.104007
     },
     "impact_coefficient_half": {
-      "information_ratio": 0.446457,
-      "net_annual": 0.090318,
-      "cost_annual": 0.040591
+      "information_ratio": 0.762688,
+      "net_annual": 0.131189,
+      "cost_annual": 0.040372
     }
   },
   "capacity": {
     "10m": {
-      "information_ratio": 0.339651,
-      "net_annual": 0.078303,
-      "cost_annual": 0.052605
+      "information_ratio": 0.665877,
+      "net_annual": 0.119663,
+      "cost_annual": 0.051898
     },
     "100m": {
-      "information_ratio": -0.121854,
-      "net_annual": 0.026194,
-      "cost_annual": 0.104715
+      "information_ratio": 0.247292,
+      "net_annual": 0.069702,
+      "cost_annual": 0.101859
     },
     "500m": {
-      "information_ratio": -0.947815,
-      "net_annual": -0.069212,
-      "cost_annual": 0.200121
+      "information_ratio": -0.507322,
+      "net_annual": -0.021697,
+      "cost_annual": 0.193258
     },
     "1000m": {
-      "information_ratio": -1.546137,
-      "net_annual": -0.141685,
-      "cost_annual": 0.272594
+      "information_ratio": -1.062836,
+      "net_annual": -0.091038,
+      "cost_annual": 0.262599
     }
   },
   "liquidity": {
     "10m": {
-      "share_of_book_out_in_one_day": 0.994812,
-      "days_p95": 0.123776,
+      "share_of_book_out_in_one_day": 0.995225,
+      "days_p95": 0.119096,
       "days_max": 3.395776
     },
     "100m": {
-      "share_of_book_out_in_one_day": 0.897497,
-      "days_p95": 1.237759,
+      "share_of_book_out_in_one_day": 0.902579,
+      "days_p95": 1.190959,
       "days_max": 33.957761
     },
     "500m": {
-      "share_of_book_out_in_one_day": 0.639673,
-      "days_p95": 6.188793,
+      "share_of_book_out_in_one_day": 0.646162,
+      "days_p95": 5.954793,
       "days_max": 169.788807
     },
     "1000m": {
-      "share_of_book_out_in_one_day": 0.49713,
-      "days_p95": 12.377586,
+      "share_of_book_out_in_one_day": 0.49819,
+      "days_p95": 11.909585,
       "days_max": 339.577614
     }
   }
