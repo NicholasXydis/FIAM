@@ -2,7 +2,7 @@
 
 **What it is.** A market-neutral book of US stocks. Each month we rank every stock on twelve
 well-known measures (cheap, profitable, careful with money, rising), buy the best and short the
-worst: about <!--N:metrics.json:compliance.positions_average:.0f-->278<!--/N--> names, as much long
+worst: about <!--N:metrics.json:compliance.positions_average:.0f-->272<!--/N--> names, as much long
 as short, neutral to the market and to every sector, with every trading cost charged.
 
 **What the AI adds.** FinBERT reads every 8-K filing. Local AI agents triage filings, act as analysts
@@ -10,7 +10,7 @@ and play the "AI crowd". A stock picker learns from all of it. A rule we wrote b
 result decides each year whether the learned books replace the simple one.
 <!--AUTO:shipped-->
 
-It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in 2023; Composite + hedge in 2025; Composite + hedge in 2026, and the composite in the other years.
+It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in 2023; Composite + hedge in 2025; Screen-then-rank in 2026, and the composite in the other years.
 
 <!--/AUTO:shipped-->
 
@@ -20,13 +20,13 @@ It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in
 
 |  |  |
 |---|---|
-| Net return | **8.5% a year** after every modelled fee |
-| Information ratio | **0.40** |
-| Alpha | 9.0% a year, t = 1.78 |
-| Beta to the S&P 500, monthly | -0.05, standard error 0.09 |
+| Net return | **7.8% a year** after every modelled fee |
+| Information ratio | **0.34** |
+| Alpha | 8.4% a year, t = 1.68 |
+| Beta to the S&P 500, monthly | -0.06, standard error 0.09 |
 | Beta, daily returns 2021-25 | -0.10, t = -3.7: a short market tilt |
 | Worst drawdown | -11.0% |
-| Split in half | 2021-22 IR 0.99, 2023-26 IR -0.08 |
+| Split in half | 2021-22 IR 0.99, 2023-26 IR -0.20 |
 | CRSP years only | 2021-25 IR 0.32 |
 | 2016-2020, a historical check | IR -1.00, beta -0.25 (se 0.07) |
 
@@ -34,10 +34,10 @@ It shipped Composite + 50% scorer + hedge + trader in 2021; Composite + hedge in
 
 **The honest reading.** Two things shape this record. First, style: about half of 2021-22 came
 from quality and value, and the same tilt lost heavily in 2020, almost all of 2016-2020's loss.
-Second, our own rule: after that 2020 loss it moved 2021 to the stock-picker book, which had lost a
-third as much, just before the composite's best year (+33.8% against +12.2%). The composite kept
-every year scores IR 0.70; the rule's book, which we ship because we wrote the rule first, scores
-0.40. The 2024 loss was stock-specific, mostly squeezes on our shorts, not style.
+Second, our own rule: twice, after the composite's worst stretches, it moved to the book that had
+lost less (the stock picker for 2021, screen-then-rank for 2026), just before the composite
+rebounded. The composite kept every year scores IR 0.70; the rule's book, which we ship because we
+wrote the rule first, scores 0.34. The 2024 loss was stock-specific, mostly squeezes on our shorts, not style.
 
 ## What is new here
 

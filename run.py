@@ -67,7 +67,7 @@ ML_STEPS = [
     ("fiam.agents.analyst", "analyst agent: material filings in the composite's tails"),
     ("fiam.ml.analyst", "the analyst's pre-2021 verdicts learned from the text, every month"),
     ("fiam.ml.scorer", "scorer: learning to rank what a neutral book earns, five seeds"),
-    ("fiam.ml.ship", "the 3 x 2 x 2 candidate grid, the monthly trader, each year's choice"),
+    ("fiam.ml.ship", "the 28-book candidate grid, the monthly trader, each year's choice"),
 ]
 
 # The model comparison and research controls; a smoke rehearsal leaves them as they are.

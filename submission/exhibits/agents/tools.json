@@ -59,7 +59,23 @@
               "scorer50",
               "scorer50+traded",
               "scorer50+hedged",
-              "scorer50+hedged+traded"
+              "scorer50+hedged+traded",
+              "screened",
+              "screened+traded",
+              "screened+hedged",
+              "screened+hedged+traded",
+              "liquid25",
+              "liquid25+traded",
+              "liquid25+hedged",
+              "liquid25+hedged+traded",
+              "liquid50",
+              "liquid50+traded",
+              "liquid50+hedged",
+              "liquid50+hedged+traded",
+              "veto",
+              "veto+traded",
+              "veto+hedged",
+              "veto+hedged+traded"
             ]
           },
           "reason": {
@@ -205,7 +221,15 @@
     },
     {
       "name": "book_risk",
-      "description": "Factor loadings, borrow exposure, and the 2016-2020 test.",
+      "description": "Factor loadings, style or selection by year, borrow, crowding, the 2016-2020 test.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "ship_rule",
+      "description": "The rule's book each year, every candidate's IR, and the analyst recall test.",
       "parameters": {
         "type": "object",
         "properties": {}

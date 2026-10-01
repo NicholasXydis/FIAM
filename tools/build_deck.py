@@ -124,16 +124,22 @@ def candidates():
 # The ship rule's switches away from the composite, in the candidates' own numbers.
 def switches(R, m: dict) -> str:
     net, kept, policy = candidates()
-    moved = [int(y) for y, name in policy.items() if name.startswith("scorer")]
+    moved = [int(y) for y, name in policy.items() if name.split("+")[0] != "composite"]
     if not moved:
         return f"The AI: {plain(R.shipped(m))}"
-    y, name = moved[0], policy[str(moved[0])]
+    from fiam import book as P
+
+    base, shipped = net["composite"], m["performance"]["information_ratio"]
+    times = {1: "once", 2: "twice"}.get(len(moved), f"{len(moved)} times")
+    each = "; ".join(
+        f"{P.candidate_label(policy[str(y)])} in {y} ({net[policy[str(y)], y]:+.1%} against "
+        f"{base[y]:+.1%})"
+        for y in moved
+    )
     return (
-        f"The AI: after the composite lost {-net['composite', y - 1]:.1%} in {y - 1} (the "
-        f"stock-picker book {-net[name, y - 1]:.1%}), our rule moved {y} to the stock picker, "
-        f"which then missed the rebound ({net[name, y]:+.1%} against {net['composite', y]:+.1%}). "
-        f"Composite every year: IR {kept:.2f}; the rule's book, which we ship: "
-        f"{m['performance']['information_ratio']:.2f}."
+        f"The AI: our rule left the composite {times}, each after its worst stretch, "
+        f"for the book that had lost less: {each}. Composite every year: IR {kept:.2f}; the "
+        f"rule's book, which we ship: {shipped:.2f}."
     )
 
 

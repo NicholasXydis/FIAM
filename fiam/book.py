@@ -293,24 +293,39 @@ HURDLE, MAX_BETA = 0.25, 0.15
 # The scorer's share of the blend in each candidate, written before any candidate was scored.
 BLENDS = (0.0, 0.25, 0.5)
 
+# Amendment 13's kinds, each with the scorer share it uses, and how the tables name them.
+KINDS = {"screened": 0.0, "liquid25": 0.25, "liquid50": 0.5, "veto": 0.0}
+KIND_LABELS = dict(
+    screened="Screen-then-rank",
+    liquid25="Composite + 25% scorer in liquid names",
+    liquid50="Composite + 50% scorer in liquid names",
+    veto="Composite + distress veto",
+)
+# Screen-then-rank's longs come from the composite's top fifth, its shorts from the bottom fifth.
+FIFTH = 0.2
 
-# A candidate's name: its blend, then each learned part it adds, scorer25+hedged+traded say.
-def candidate_name(blend: float, hedged: bool, traded: bool) -> str:
-    parts = [f"scorer{round(blend * 100)}" if blend else "composite"]
+
+# A candidate's name: its kind or blend, then each learned part, scorer25+hedged+traded say.
+def candidate_name(blend: float, hedged: bool, traded: bool, kind: str | None = None) -> str:
+    parts = [kind or (f"scorer{round(blend * 100)}" if blend else "composite")]
     return "+".join(parts + ["hedged"] * hedged + ["traded"] * traded)
 
 
 # The name in words for the tables: Composite + 25% scorer + hedge + trader, say.
 def candidate_label(name: str) -> str:
     head, *rest = name.split("+")
-    parts = ["Composite"] + ([f"{head[6:]}% scorer"] if head != "composite" else [])
+    if head in KIND_LABELS:
+        parts = [KIND_LABELS[head]]
+    else:
+        parts = ["Composite"] + ([f"{head[6:]}% scorer"] if head != "composite" else [])
     return " + ".join(parts + [dict(hedged="hedge", traded="trader")[r] for r in rest])
 
 
-# The 3 x 2 x 2 grid the ship rule chooses from: each blend, with and without each learned part.
+# The grid the ship rule chooses from: each blend and each amendment-13 kind, with and without
+# each learned part. 12 books from the start, 16 more from amendment 13.
 CANDIDATES = {
-    candidate_name(b, h, t): dict(blend=b, hedge=h, trader=t)
-    for b in BLENDS
+    candidate_name(b, h, t, k): dict(blend=b, hedge=h, trader=t, kind=k)
+    for k, b in [*((None, b) for b in BLENDS), *KINDS.items()]
     for h in (False, True)
     for t in (False, True)
 }
@@ -327,15 +342,34 @@ def candidate(universe: pd.DataFrame, inputs: pd.DataFrame | None, name: str) ->
     # Once short-interest reports stop, the crowding teacher sets each name's borrow tier.
     if "crowding_hat" in df:
         df["borrow"] = C.borrow_rate(df)
-    if not spec["blend"] and not spec["hedge"]:
+    kind = spec["kind"]
+    if not spec["blend"] and not spec["hedge"] and kind is None:
         return df
     if spec["hedge"] and "beta_hat" in df:
         df["hedge_beta"] = df["beta_hat"].fillna(df["beta_60m"])
     base = df["composite"]
-    if spec["blend"] and "score" in df:
+    if kind == "screened":
+        # Longs only from the composite's top fifth, shorts only from its bottom fifth; inside
+        # each, the scorer sets the order, and a name without a score sits in the middle.
+        fifth = df.groupby("eom")["composite"].rank(pct=True)
+        score = df.groupby("eom")["score"].rank(pct=True) if "score" in df else 0.5
+        score = pd.Series(score, index=df.index).fillna(0.5)
+        df["no_long"], df["no_short"] = fifth < 1 - FIFTH, fifth > FIFTH
+        base = pd.Series(0.0, index=df.index).mask(~df["no_long"], 1 + score)
+        base = base.mask(~df["no_short"], score - 2)
+    elif spec["blend"] and "score" in df:
         # A name without a score keeps its composite rank, on the same scale as the blend.
         ranked, score = rank_z(df, "composite"), rank_z(df, "score")
-        base = ranked.where(score.isna(), (1 - spec["blend"]) * ranked + spec["blend"] * score)
+        mixed = (1 - spec["blend"]) * ranked + spec["blend"] * score
+        if kind in ("liquid25", "liquid50"):
+            # The scorer counts only where impact per dollar is at or below the month's median.
+            impact = df["rvol_21d"] / np.sqrt(df["dolvol_126d"])
+            mixed = mixed.where(impact <= impact.groupby(df["eom"]).transform("median"), ranked)
+        base = ranked.where(score.isna(), mixed)
+    if kind == "veto":
+        # No long in a name that filed a distress-labelled 8-K or item 4.01 or 4.02 this month.
+        flagged = df["distress_filing"] if "distress_filing" in df else False
+        df["no_long"] = pd.Series(flagged, index=df.index).fillna(False).astype(bool)
     df["signal"] = neutralize(df, base)
     return df
 
@@ -424,6 +458,11 @@ def solve(
 # Each name's cap: 1.5%, scaled down by the design's liquidity and short rules; 0 where banned.
 def caps(month: pd.DataFrame, pool: pd.DataFrame, side: np.ndarray, design: Design) -> np.ndarray:
     cap = np.full(len(pool), LIMITS["name"])
+    # A candidate may bar a name from one side: screen-then-rank's fifths, the distress veto.
+    for column, side_of in (("no_long", side > 0), ("no_short", side < 0)):
+        if column in pool:
+            barred = pool[column].fillna(False).to_numpy(dtype=bool)
+            cap = np.where(side_of & barred, 0.0, cap)
     if design.liquidity_caps:
         impact = (month["rvol_21d"] / np.sqrt(month["dolvol_126d"])).median()
         own = (pool["rvol_21d"] / np.sqrt(pool["dolvol_126d"])).fillna(impact).to_numpy()
@@ -534,7 +573,14 @@ def rebalance(
     if weights is None or not len(weights):
         return None
     if trade is not None and previous is not None:
-        weights = blend(weights, previous, pd.Index(cross_section["permno"]), *trade)
+        listed = pd.Index(cross_section["permno"])
+        # A name now barred from the side it is held on is sold in full, like one that left.
+        for column, held in (("no_long", previous > 0), ("no_short", previous < 0)):
+            if column in cross_section:
+                barred = cross_section.loc[cross_section[column].fillna(False).astype(bool)]
+                gone = previous.index[held & previous.index.isin(barred["permno"])]
+                listed = listed.difference(gone)
+        weights = blend(weights, previous, listed, *trade)
     info = cross_section.set_index("permno").loc[weights.index]
     if round_shares:
         weights = to_whole_shares(weights, info["prc"].abs())
@@ -629,7 +675,7 @@ def choose(books: dict, year: int) -> tuple[str, dict]:
     best = max(fit, key=lambda n: fit[n]["information_ratio"]) if fit else "composite"
     # The hedge follows neutrality: the twin with the other beta ships if its beta sat nearer zero.
     spec = CANDIDATES[best]
-    twin = candidate_name(spec["blend"], not spec["hedge"], spec["trader"])
+    twin = candidate_name(spec["blend"], not spec["hedge"], spec["trader"], spec["kind"])
     if twin in scores and abs(scores[twin]["beta"]) < abs(scores[best]["beta"]):
         best = twin
     return best, scores

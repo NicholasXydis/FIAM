@@ -51,7 +51,11 @@ def test_ship_rule_keeps_the_composite_without_a_clear_winner(monkeypatch):
 
 # The 3 x 2 x 2 grid: every blend with and without each learned part, each named in words.
 def test_candidate_grid():
-    assert len(P.CANDIDATES) == 12 and "composite" in P.CANDIDATES
+    assert len(P.CANDIDATES) == 28 and "composite" in P.CANDIDATES
+    assert P.candidate_name(0.0, True, False, "screened") == "screened+hedged"
+    assert P.candidate_label("veto+hedged") == "Composite + distress veto + hedge"
+    heads = {"composite", "scorer25", "scorer50", *P.KINDS}
+    assert all(n.split("+")[0] in heads for n in P.CANDIDATES)
     assert P.candidate_name(0.25, True, True) == "scorer25+hedged+traded"
     label = P.candidate_label("scorer25+hedged+traded")
     assert label == "Composite + 25% scorer + hedge + trader"
@@ -279,3 +283,51 @@ def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
     monkeypatch.setattr(teachers.lgb, "train", fake)
     teachers.walk_forward(frame, ["x"], pd.Series(1.0, index=frame.index), known=known)
     assert frame.loc[seen[0], "holding_month"].max() == pd.Timestamp("2017-08-01")
+
+
+# One month of a toy universe: one sector, one beta, so neutralizing keeps every order.
+def toy_month(n: int = 100) -> pd.DataFrame:
+    rng = np.random.default_rng(1)
+    return pd.DataFrame(
+        dict(
+            eom=pd.Timestamp("2022-06-30"),
+            permno=range(n),
+            composite=rng.normal(size=n),
+            score=rng.normal(size=n),
+            sector="10",
+            beta_60m=1.0,
+            rvol_21d=rng.uniform(0.01, 0.04, n),
+            dolvol_126d=rng.uniform(1e6, 1e8, n),
+        )
+    )
+
+
+# Screen-then-rank: longs only from the top fifth, shorts only from the bottom, scorer orders.
+def test_screen_then_rank_trades_only_the_fifths():
+    df = P.candidate(toy_month(), None, "screened")
+    fifth = df["composite"].rank(pct=True)
+    assert (df["no_long"] == (fifth < 0.8)).all() and (df["no_short"] == (fifth > 0.2)).all()
+    longs = df[~df["no_long"]].sort_values("score")
+    assert longs["signal"].is_monotonic_increasing and (longs["signal"] > 0).all()
+
+
+# Liquid names only: the scorer moves a costly name's signal not at all, a cheap one's a lot.
+def test_liquid_blend_ignores_scores_in_costly_names():
+    month = toy_month()
+    cost = month["rvol_21d"] / np.sqrt(month["dolvol_126d"])
+    costly = (cost > cost.median()).to_numpy()
+    first = P.candidate(month, None, "liquid50")["signal"]
+    month["score"] = -month["score"]
+    second = P.candidate(month, None, "liquid50")["signal"]
+    # Re-centring the month shifts every name alike; only the scorer's own effect varies by name.
+    moved = (first - second).to_numpy()
+    assert np.ptp(moved[costly]) < 1e-12 and np.ptp(moved[~costly]) > 0.1
+
+
+# The distress veto and the fifths bar a side: no cap there, and a held name is sold in full.
+def test_barred_names_get_no_weight():
+    month = toy_month(4).assign(no_long=[True, False, False, False], signal=[1.0, 1.0, -1.0, -1.0])
+    side = np.array([1.0, 1.0, -1.0, -1.0])
+    assert P.caps(month, month, side, P.SHIPPED).tolist() == [0.0, 0.015, 0.015, 0.015]
+    month = toy_month(4).assign(distress_filing=[True, None, False, None])
+    assert P.candidate(month, None, "veto")["no_long"].tolist() == [True, False, False, False]

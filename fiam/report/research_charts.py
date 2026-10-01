@@ -419,8 +419,9 @@ def candidates() -> None:
     style(ax, "The candidate grid, one rule", "Growth of $1, after costs", dates=True)
     caption(
         ax,
-        "Each line is a book in the 3 x 2 x 2 grid: the composite blended with 0, 25 or 50% "
-        "scorer, with and without the learned hedge and the trader. Thick lines are the composite "
+        "Each line is a candidate book: the composite blended with 0, 25 or 50% scorer and "
+        "amendment 13's three kinds, with and without the learned hedge and the trader. Thick "
+        "lines are the composite "
         "and every book the ship rule chose; it chose on the two years before each, never on these "
         "months.",
     )

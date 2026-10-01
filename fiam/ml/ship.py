@@ -35,7 +35,17 @@ def smooth(scores: pd.DataFrame) -> pd.DataFrame:
     return scores.assign(score=average.where(scores["score"].notna()))
 
 
-# The scorer's score, the teachers' beta and crowding, and the crowd score, where they exist.
+# Stock-months whose filings that month carry a distress label or item 4.01 or 4.02 (amendment 13).
+def distress() -> pd.DataFrame:
+    items = data.features(["item_401_auditor_change", "item_402_nonreliance"])
+    flagged = items[(items.drop(columns=data.KEYS).fillna(0) > 0).any(axis=1)][data.KEYS]
+    if SC.TRIAGE.exists():
+        labels = data.read(SC.TRIAGE, [*data.KEYS, "triage_distress"])
+        flagged = pd.concat([flagged, labels[labels["triage_distress"] > 0][data.KEYS]])
+    return flagged.drop_duplicates().assign(distress_filing=True)
+
+
+# The scorer's score, the teachers' beta and crowding, the crowd score and the distress flags.
 def inputs() -> pd.DataFrame | None:
     frames = []
     if SC.CACHE.exists():
@@ -44,6 +54,7 @@ def inputs() -> pd.DataFrame | None:
         frames.append(data.read(TE.CACHE).filter([*data.KEYS, "beta_hat", "crowding_hat"]))
     if SC.CROWD.exists():
         frames.append(data.read(SC.CROWD))
+    frames.append(distress())
     if not frames:
         return None
     out = frames[0]
@@ -154,9 +165,10 @@ def main() -> None:
         MONTHS, index=False, float_format="%.8f", lineterminator="\n"
     )
     summary = dict(
-        what="A 3 x 2 x 2 grid of candidate books from 2017: the composite blended with 0, 25 or "
-        "50% scorer, each with and without the learned hedge and the trader, and each year's "
-        "choice by a rule written before any candidate was scored.",
+        what="A grid of candidate books from 2017: the composite blended with 0, 25 or 50% "
+        "scorer, and amendment 13's screen-then-rank, liquid-names-only blends and distress veto, "
+        "each with and without the learned hedge and the trader, and each year's choice by a "
+        "rule written before any candidate was scored.",
         rule=f"the composite ships unless another candidate's IR over the two prior years beats "
         f"it by {P.HURDLE} with beta inside +/-{P.MAX_BETA}; then the twin with the other hedge "
         "ships if its beta over those years sat nearer zero",
