@@ -15,7 +15,7 @@ OUT = paths.EXHIBITS / "scorer.json"
 CACHE = P.CACHE / "scores.parquet"
 CROWD = P.CACHE / "crowd.parquet"
 # What the triage and analyst agents made of each stock-month's filings, as small models learned
-# them from pre-2021 answers; the analyst's own verdicts never enter (amendment 12).
+# them from pre-2021 answers; the analyst's own verdicts never enter.
 TRIAGE, ANALYST = P.CACHE / "triage.parquet", P.CACHE / "analyst.parquet"
 PREDS = P.CACHE / "preds" / "scorer.parquet"
 

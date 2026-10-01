@@ -1,4 +1,4 @@
-# Every trading and holding cost, IBKR-style, each with its source, as PREREGISTRATION.md fixes.
+# Every trading and holding cost, IBKR-style, each with its source.
 
 import json
 from dataclasses import dataclass
@@ -16,9 +16,9 @@ SPREADS, BORROW = MODELS / "spreads.json", MODELS / "borrow.parquet"
 COMMISSION_PER_SHARE, COMMISSION_MIN, COMMISSION_MAX = 0.005, 1.00, 0.01
 # SEC Section 31 on sales at its highest rate in 2021-2026, $27.80 a million from May 2024.
 SEC_RATE = 27.80e-6
-# FINRA Trading Activity Fee on shares sold at its 2026 high, capped per trade (amendment 1).
+# FINRA Trading Activity Fee on shares sold at its 2026 high, capped per trade.
 TAF_PER_SHARE, TAF_MAX = 0.000195, 9.79
-# FINRA Consolidated Audit Trail fee on every share bought or sold (amendment 1).
+# FINRA Consolidated Audit Trail fee on every share bought or sold.
 CAT_PER_SHARE = 0.000003
 # Square-root impact coefficient (Toth et al. 2011); 0.5 is reported as the sensitivity.
 IMPACT_Y = 1.0

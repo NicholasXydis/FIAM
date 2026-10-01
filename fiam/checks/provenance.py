@@ -17,7 +17,6 @@ ACCEPTANCE = {
     "inversion": "Gross lands near minus the baseline gross, not near zero.",
     "stale_scores": "Degraded, but not necessarily to zero.",
     "confirmation": "Reported whatever it says. The signals were designed without 2016-2020.",
-    "factor_atlas": "A catalogue. Nothing in it is selected for the book.",
 }
 
 # Rules we got wrong. Kept, because swapping one after a failed result is the sin here.
@@ -35,22 +34,15 @@ ML_ARTIFACTS = [
     (paths.EXHIBITS / name).as_posix()
     for name in (
         "ml_metrics.json",
-        "subset_sweep.csv",
-        "selection.json",
         "placebo_lab.json",
         "oos_r2.json",
-        "factor_atlas.csv",
         "teachers.json",
         "crowd.json",
         "scorer.json",
-        "ship.json",
-        "ship_candidates.csv",
         "triage.json",
         "analyst_learned.json",
-        "construction.json",
-        "factor_neutral.json",
     )
-] + [(paths.SUBMISSION / "models" / n).as_posix() for n in ("policy.json", "book_inputs.parquet")]
+] + [(paths.SUBMISSION / "models" / "book_inputs.parquet").as_posix()]
 
 # The code those artifacts depend on. Editing a chart does not make a model result stale.
 ML_CODE = [
@@ -59,8 +51,6 @@ ML_CODE = [
     "fiam/data.py",
     "fiam/ml",
     "fiam/exhibits/placebo_lab.py",
-    "fiam/exhibits/construction.py",
-    "fiam/exhibits/factor_neutral.py",
     "requirements.txt",
 ]
 

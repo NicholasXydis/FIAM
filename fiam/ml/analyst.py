@@ -1,5 +1,5 @@
 # The analyst's verdicts up to November 2020 learned from what it read, then applied to every
-# month, so no language model's reading of 2021-2026 reaches the book (amendment 12).
+# month, so no language model's reading of 2021-2026 reaches the book.
 
 import lightgbm as lgb
 import numpy as np

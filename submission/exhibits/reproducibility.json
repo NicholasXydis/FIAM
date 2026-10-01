@@ -22,12 +22,12 @@
   {
     "check": "names with no next-month return are still held",
     "passed": true,
-    "detail": "303 such names in the book"
+    "detail": "301 such names in the book"
   },
   {
     "check": "missing returns are kept, not dropped",
     "passed": true,
-    "detail": "0.0299 weight-months booked flat, a stated assumption"
+    "detail": "0.0403 weight-months booked flat, a stated assumption"
   },
   {
     "check": "labels come from the decision month or earlier",
@@ -37,7 +37,7 @@
   {
     "check": "carry-in sees last month's book, never this one",
     "passed": true,
-    "detail": "called at line 619, updated at line 632"
+    "detail": "called at line 411, updated at line 422"
   },
   {
     "check": "model folds are strictly ordered in time",
@@ -62,12 +62,12 @@
   {
     "check": "shuffled scores earn nothing before costs",
     "passed": true,
-    "detail": "null gross +0.33%/yr over 200 draws, tolerance 1.00%"
+    "detail": "null gross +1.00%/yr over 200 draws, tolerance 1.00%"
   },
   {
     "check": "no result carries a clock time",
     "passed": true,
-    "detail": "28 result files, none dated"
+    "detail": "20 result files, none dated"
   },
   {
     "check": "every artifact matches the run that wrote it",
@@ -107,7 +107,7 @@
   {
     "check": "turnover recomputes from the holdings with drift",
     "passed": true,
-    "detail": "largest monthly gap 8.2e-08 over 68 months"
+    "detail": "largest monthly gap 1.0e-07 over 68 months"
   },
   {
     "check": "book artifacts were built from the current code",

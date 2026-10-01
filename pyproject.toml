@@ -16,8 +16,6 @@ dependencies = [
     "lightgbm==4.7.0",
     # torch 2.14 on macOS needs Apple silicon and macOS 14; older Macs skip it and lose only --ml.
     "torch==2.14.0; sys_platform != 'darwin' or (platform_machine == 'arm64' and platform_release >= '23')",
-    "gymnasium==1.3.0",
-    "stable-baselines3==2.9.0",
     "transformers==5.17.0",
 ]
 

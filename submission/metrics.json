@@ -14,52 +14,53 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "code_sha256": "4db384c0ff433650",
+    "code_sha256": "c97aca22be53550c",
     "holding_months": 68,
     "window": "2021-01 to 2026-08"
   },
   "performance": {
-    "return_gross_annual": 0.171561,
-    "return_net_annual": 0.119663,
-    "return_total_cagr": 0.155877,
-    "volatility_annual": 0.119636,
-    "information_ratio": 0.665877,
-    "sharpe_ratio": 1.000224,
-    "max_drawdown_total": -0.110342,
-    "max_drawdown_spread": -0.150232,
-    "hit_rate_positive_active_months": 0.514706,
-    "alpha_annual": 0.123683,
-    "alpha_tstat": 2.175638,
-    "alpha_stderr_annual": 0.056849,
-    "beta_realized": -0.038126,
-    "beta_stderr": 0.094141,
-    "correlation_with_market": -0.047947
+    "return_gross_annual": 0.179338,
+    "return_net_annual": 0.127997,
+    "return_total_cagr": 0.16543,
+    "volatility_annual": 0.119622,
+    "information_ratio": 0.735622,
+    "information_ratio_before_costs": 1.164156,
+    "sharpe_ratio": 1.070008,
+    "max_drawdown_total": -0.074005,
+    "max_drawdown_spread": -0.128984,
+    "hit_rate_positive_active_months": 0.529412,
+    "alpha_annual": 0.131077,
+    "alpha_tstat": 2.352402,
+    "alpha_stderr_annual": 0.05572,
+    "beta_realized": -0.029208,
+    "beta_stderr": 0.093564,
+    "correlation_with_market": -0.036735
   },
   "costs": {
-    "cost_annual": 0.051898,
-    "cost_share_of_gross": 0.302505,
-    "turnover_monthly_one_way": 0.481259,
-    "hard_to_borrow_share_of_short_book": 0.22746
+    "cost_annual": 0.051341,
+    "cost_share_of_gross": 0.286281,
+    "turnover_monthly_one_way": 0.456303,
+    "hard_to_borrow_share_of_short_book": 0.234694
   },
   "compliance": {
-    "positions_average": 284.544118,
+    "positions_average": 296.220588,
     "net_exposure_max_abs": 1e-06,
     "gross_exposure_max": 1.599444,
-    "sector_tilt_max": 0.010358,
-    "position_weight_max": 0.015262,
-    "beta_exante_weighted_mean": 0.019955
+    "sector_tilt_max": 0.010353,
+    "position_weight_max": 0.015094,
+    "beta_exante_weighted_mean": 0.019949
   },
   "robustness": {
     "attempts_eligible": 141,
     "attempts_all": 1665,
-    "deflated_sharpe_probability_eligible": 0.391621,
-    "deflated_sharpe_probability_all": 0.148586,
+    "deflated_sharpe_probability_eligible": 0.457912,
+    "deflated_sharpe_probability_all": 0.189333,
     "sharpe_luck_alone_eligible": 1.112891,
     "sharpe_luck_alone_all": 1.427191,
-    "ir_missing_returns_conservative": 0.665877,
-    "ir_missing_returns_symmetric": 0.67905,
-    "missing_long_weight_monthly": 0.0,
-    "missing_short_weight_monthly": 0.00044
+    "ir_missing_returns_conservative": 0.731283,
+    "ir_missing_returns_symmetric": 0.744761,
+    "missing_long_weight_monthly": 0.000164,
+    "missing_short_weight_monthly": 0.000429
   },
   "notes": {
     "market_series": "S&P 500 price index (FRED SP500), excludes dividends",

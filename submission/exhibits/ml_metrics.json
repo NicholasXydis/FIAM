@@ -117,14 +117,5 @@
       "top_minus_bottom": 0.1459046570120326,
       "top_beats_second": 1.0
     }
-  },
-  "subset_sweep": {
-    "n_subsets": 792,
-    "ir_full_min": 0.45219218616727946,
-    "ir_full_max": 1.2563608144231058,
-    "early_late_correlation": -0.35545186443532384,
-    "best_on_early_then_earned": -0.05259689607361814,
-    "median_late_ir": 0.14301408327771045,
-    "all_twelve_ir_full": 0.8852442941897745
   }
 }

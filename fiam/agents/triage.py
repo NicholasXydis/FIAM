@@ -11,7 +11,7 @@ from fiam.ml.triage import KINDS
 
 PROMPT = H.ROOT / "prompts" / "agents" / "triage.md"
 LABELS = paths.EXHIBITS / "agents" / "triage_labels.parquet"
-# The sample PREREGISTRATION.md fixes: 6,000 filings from 2015-2018, drawn once with this seed.
+# The sample: 6,000 filings from 2015-2018, drawn once with this seed.
 SAMPLE, LAST, SEED = 40 if paths.SMOKE else 6_000, "2018-12-31", 42
 
 SCHEMA = dict(

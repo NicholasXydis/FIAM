@@ -16,7 +16,7 @@ FIRST, LAST = pd.Timestamp("2021-01-01"), pd.Timestamp("2025-12-31")
 # Shares short above this share of shares outstanding: crowded, and plausibly costly to borrow.
 CROWDED = 0.10
 
-# The stress windows fixed in PREREGISTRATION.md, by calendar day.
+# The stress windows, by calendar day.
 STRESS = {
     "2020 crash, Feb 19 to Mar 23": ("2020-02-19", "2020-03-23"),
     "2020 rebound, Mar 24 to Jun 8": ("2020-03-24", "2020-06-08"),

@@ -18,8 +18,7 @@ PARTICIPATION = 0.20
 
 # The shipped book rerun under one cost model: its IR and what it costs a year.
 def rerun(model: C.Model) -> dict:
-    universe, trades = P.shipped(P.universe())
-    book = P.backtest(universe, trades=trades, model=model)
+    book = P.backtest(P.shipped(P.universe()), model=model)
     return dict(
         information_ratio=P.information_ratio(book["net"]),
         net_annual=float(book["net"].mean() * 12),

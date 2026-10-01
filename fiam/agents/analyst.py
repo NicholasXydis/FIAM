@@ -13,10 +13,10 @@ from fiam.ml import crowd as C
 PROMPT = H.ROOT / "prompts" / "agents" / "analyst.md"
 OUT = paths.EXHIBITS / "analyst.json"
 CONVICTIONS = paths.EXHIBITS / "agents" / "analyst.parquet"
-# The pre-registered scope: material filings among the 400 best and worst composite scores.
+# The scope: material filings among the 400 best and worst composite scores.
 TAILS, CALLS, SEED = 400, 20 if paths.SMOKE else 5_000, 42
 PROBES = 5 if paths.SMOKE else 500
-# The item codes the brief singles out as material events (amendment 6).
+# The item codes the brief singles out as material events.
 MATERIAL = ["item_101_contract", "item_102_contract_termination", "item_201_acquisition"]
 MATERIAL += ["item_202_earnings", "item_205_impairment", "item_206_distress"]
 MATERIAL += ["item_401_auditor_change", "item_402_nonreliance", "item_502_management_change"]

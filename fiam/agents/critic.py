@@ -22,8 +22,8 @@ TOP_N = 10
 
 TASK = (
     "Attack this market-neutral book. Find the positions, exposures and assumptions a sceptical "
-    "investment committee would challenge first, and the weakest part of the discovery agent's "
-    "pick."
+    "investment committee would challenge first, and whether the book we chose to ship deserved "
+    "it over the others we tried."
 )
 
 # What must match for two runs to count as the same run.
@@ -157,20 +157,17 @@ class Evidence:
             )
         )
 
-    # The ship rule's yearly choices beside every candidate's record, and the recall test.
-    def ship_rule(self) -> dict:
-        ship = load("ship.json")
-        candidates = ship.get("candidates_2021_2026", {})
+    # Every variant we tried with its result, beside the book shipped, and the recall test.
+    def what_we_tried(self) -> dict:
+        from fiam.exhibits import config_log
+
+        tried = [dict(experiment=r[0], result=r[4], verdict=r[5]) for r in config_log.rows()]
         return self.show(
             dict(
-                rule=ship.get("rule"),
-                chosen_by_year=ship.get("chosen"),
                 shipped_information_ratio=paths.read_json(paths.METRICS)["performance"][
                     "information_ratio"
                 ],
-                candidates_information_ratio={
-                    k: v.get("information_ratio") for k, v in candidates.items()
-                },
+                tried=tried,
                 analyst_recall_test=load("analyst_learned.json").get("recall_test"),
             )
         )
@@ -179,13 +176,6 @@ class Evidence:
     def signal_attribution(self) -> dict:
         full = load("pack.json").get("attribution", {}).get("full", {})
         return self.show({k: v.get("contribution_annual") for k, v in full.items()})
-
-    # What the discovery agent committed to, so this one can argue against it.
-    def discovery_pick(self) -> dict:
-        runs = load("discovery.json").get("runs", {})
-        return self.show(
-            {k: dict(pick=v.get("pick"), hypothesis=v.get("hypothesis")) for k, v in runs.items()}
-        )
 
 
 # Numbers in a piece of text, with thousands separators removed so "19,169,939" is one number.
@@ -212,7 +202,7 @@ def tools(evidence: Evidence) -> list[H.Tool]:
     critique = dict(
         type="object",
         properties=dict(
-            target=dict(type="string", description="a ticker, 'book', or 'discovery pick'"),
+            target=dict(type="string", description="a ticker, 'book', or 'the choice'"),
             claim=dict(type="string", description="the objection, quoting only numbers you saw"),
             severity=dict(type="string", enum=["low", "medium", "high"]),
         ),
@@ -241,22 +231,16 @@ def tools(evidence: Evidence) -> list[H.Tool]:
             evidence.book_risk,
         ),
         H.Tool(
-            "ship_rule",
-            "The rule's book each year, every candidate's IR, and the analyst recall test.",
+            "what_we_tried",
+            "Every variant we tested with its result and verdict, and the analyst recall test.",
             empty,
-            evidence.ship_rule,
+            evidence.what_we_tried,
         ),
         H.Tool(
             "signal_attribution",
             "Each signal's contribution to gross return, % a year.",
             empty,
             evidence.signal_attribution,
-        ),
-        H.Tool(
-            "discovery_pick",
-            "The formula the discovery agent committed to.",
-            empty,
-            evidence.discovery_pick,
         ),
         H.Tool(
             "final_answer",

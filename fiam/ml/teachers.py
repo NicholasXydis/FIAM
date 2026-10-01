@@ -138,7 +138,7 @@ def walk_forward(
     year = frame["holding_month"].dt.year
     for test_year in YEARS:
         train = (year < test_year) & target.notna()
-        # A label first known inside the test year stays out, as the brief requires (amendment 12).
+        # A label first known inside the test year stays out, as the brief requires.
         if known is not None:
             train &= ~(known >= pd.Timestamp(year=test_year, month=1, day=1))
         test = year == test_year
@@ -185,7 +185,7 @@ def main() -> None:
         # A layer that dates its labels carries them beside the values.
         known = attach(frame, raw["known"], False) if isinstance(raw, pd.DataFrame) else None
         target = attach(frame, raw["target"] if known is not None else raw, rank)
-        # Only the earnings-surprise teacher reads the text, as PREREGISTRATION.md fixes.
+        # Only the earnings-surprise teacher reads the text.
         text = T.aligned(frame) if name == "surprise" else None
         pred = walk_forward(frame, cols, target, text, known)
         out[f"{name}_hat"] = pred
@@ -193,6 +193,12 @@ def main() -> None:
         print(f"  {name}: {report[name]['rank_correlation_by_year']}")
     CACHE.parent.mkdir(exist_ok=True)
     out.to_parquet(CACHE, index=False)
+    # The book's inputs, committed so anyone rebuilds it untrained: the learned beta it hedges
+    # and the crowding that sets borrow once short-interest reports stop.
+    book = out.filter([*data.KEYS, "beta_hat", "crowding_hat"])
+    book = book[book["eom"] >= P.FIRST_FORECAST].sort_values(data.KEYS, ignore_index=True)
+    P.INPUTS.parent.mkdir(parents=True, exist_ok=True)
+    book.to_parquet(P.INPUTS, index=False)
     summary = dict(
         what="Year-ahead predictions of daily beta, short-interest crowding, analyst revisions and "
         "next quarter's earnings surprise, each trained only on earlier years from the "

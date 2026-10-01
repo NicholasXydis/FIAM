@@ -88,6 +88,11 @@ def main() -> None:
     model = lgb.train(PARAMS, lgb.Dataset(train[cols], label=train["rate"]), 200)
     table["crowd_score"] = model.predict(table[cols], num_threads=PARAMS["num_threads"])
     table[[*data.KEYS, "crowd_score"]].to_parquet(CACHE, index=False)
+    # Beside the book's inputs, so its crowding is measured on any machine without retraining.
+    if P.INPUTS.exists():
+        book = data.read(P.INPUTS).drop(columns="crowd_score", errors="ignore")
+        book = book.merge(table[[*data.KEYS, "crowd_score"]], on=data.KEYS, how="left")
+        book.to_parquet(P.INPUTS, index=False)
 
     returns = data.panel(["ret_exc_lead1m"])
     scored = table.merge(returns, on=data.KEYS, how="left")
