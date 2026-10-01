@@ -250,8 +250,8 @@ def main() -> None:
     )
     boxes(page, BOOK_PATH, Inches(1.45), Inches(0.95), RGBColor(0xDB, 0xEA, 0xFE))
     boxes(page, RESEARCH_PATH, Inches(2.6), Inches(0.7), RGBColor(0xF3, 0xF4, 0xF6))
-    table(page, R.r2(m), left, Inches(3.55), half, 8)
-    table(page, R.agents(m), right, Inches(3.55), half, 8)
+    table(page, R.r2(m), left, Inches(3.55), half, 7)
+    table(page, R.agents(m), right, Inches(3.55), half, 7)
 
     page = slide(deck, "Performance, January 2021 to August 2026", "Net of every modelled cost")
     table(page, R.headline(m), left, Inches(1.5), half, 9)
@@ -296,13 +296,24 @@ def main() -> None:
     table(page, R.factors(m), left, Inches(1.2), half, 8)
     table(page, R.attribution(m), right, Inches(1.2), half, 8)
 
-    page = slide(deck, "Appendix: agent prompts and tools", "Full prompts: prompts/agents/")
+    page = slide(
+        deck, "Appendix: data, prompts, tools and how to run it", "Full prompts: prompts/agents/"
+    )
     tools = paths.read_json(paths.EXHIBITS / "agents" / "tools.json")
     listed = [f"{agent}: " + ", ".join(t["name"] for t in items) for agent, items in tools.items()]
     prompts = sorted(p.stem for p in (ROOT / "prompts" / "agents").glob("*.md"))
     text(
         page,
-        [*listed, "Prompts: " + ", ".join(prompts)],
+        [
+            "Run it: pip install uv, then uv run MAIN.py. With nothing beside it, it checks our "
+            "holdings against the brief; with the organizer's three files, it rebuilds the book.",
+            "Data: the organizer's panel and 8-Ks; from WRDS, CRSP delistings, daily prices and "
+            "quotes, Compustat report dates and short interest, I/B/E/S price targets; public, "
+            "FRED T-bill and S&P 500, Kenneth French's factors, SEC EDGAR names. Joined on PERMNO "
+            "and month; WRDS data is never shared.",
+            *(f"Tools, {line}" for line in listed),
+            "Prompts: " + ", ".join(prompts),
+        ],
         left,
         Inches(1.5),
         Inches(12.3),

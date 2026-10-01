@@ -3,17 +3,17 @@
   "run": {
     "command": "uv run run.py --official --ml",
     "steps": {
-      "fiam.ml.dataset": "skipped, unchanged since the run that made it",
-      "fiam.ml.text": "skipped, unchanged since the run that made it",
-      "fiam.ml.triage": "skipped, unchanged since the run that made it",
-      "fiam.ml.teachers": "skipped, unchanged since the run that made it",
-      "fiam.ml.crowd": "skipped, unchanged since the run that made it",
-      "fiam.ml.analyst": "skipped, unchanged since the run that made it",
-      "fiam.ml.scorer": "skipped, unchanged since the run that made it",
-      "fiam.ml.train": "skipped, unchanged since the run that made it",
-      "fiam.ml.summary": "skipped, unchanged since the run that made it",
-      "fiam.ml.oos_r2": "skipped, unchanged since the run that made it",
-      "fiam.exhibits.placebo_lab": "skipped, unchanged since the run that made it",
+      "fiam.ml.dataset": "ran",
+      "fiam.ml.text": "ran",
+      "fiam.ml.triage": "ran",
+      "fiam.ml.teachers": "ran",
+      "fiam.ml.crowd": "ran",
+      "fiam.ml.analyst": "ran",
+      "fiam.ml.scorer": "ran",
+      "fiam.ml.train": "ran",
+      "fiam.ml.summary": "ran",
+      "fiam.ml.oos_r2": "ran",
+      "fiam.exhibits.placebo_lab": "ran",
       "fiam.data": "ran",
       "fiam.costs": "ran",
       "fiam.book": "ran",
@@ -50,12 +50,12 @@
     "critic": {
       "model": "gemma",
       "sha256": "babd1e389d386352",
-      "runner": "Hermes Agent"
+      "runner": "fiam.agents.harness"
     },
     "critic_repeat": {
       "model": "gemma",
       "sha256": "babd1e389d386352",
-      "runner": "Hermes Agent"
+      "runner": "fiam.agents.harness"
     }
   },
   "acceptance_rules": {
@@ -64,7 +64,7 @@
     "stale_scores": "Degraded, but not necessarily to zero.",
     "confirmation": "Reported whatever it says. The signals were designed without 2016-2020."
   },
-  "amended_rules": {
+  "pass_marks_changed": {
     "permutation_null": {
       "original": "The null's net IR should centre near zero.",
       "why_wrong": "A shuffled ranking re-sorts the book monthly, so it churns at about 179% turnover and pays our real cost rates. Its net IR centres near -2.",
@@ -72,16 +72,17 @@
     }
   },
   "book": {
-    "code": "ca57d5502510f3f1",
+    "code": "8392a763745fffe4",
     "files": {
       "submission/holdings.csv": "ceb1c2f568f9e97419bc891e1fe99d27ad500785020c3e9e7a3fff1c0e84be18",
       "submission/returns.csv": "d27ca44eedb346028fd953fc9198b4ded396c96e1670ec7e9b569f13a286384d",
-      "submission/metrics.json": "2da94d417d529271dd86817fd8ac2a7c8402d678d13a4d8266e6d0f3b88354ea",
+      "submission/metrics.json": "ed4852b2f62e2556ec87ffc08cd0ebf6761746dc89d788ebd8400bc4d5909e07",
       "submission/exhibits/analyst.json": "8bb01fce4fca919e6a48ce921d7644784f0a62a02f63f3388d85a2d542d9ff91",
       "submission/exhibits/config_log.csv": "964443243b5066319bc15f5a91694d71734e5a06f58e2e6d09564dd7ee1a5f21",
       "submission/exhibits/confirmation.json": "4ddb7693165c0b5ea479991015a1b10404969589856d0c4bf05965f923115dae",
-      "submission/exhibits/critic.json": "8decfd03a8272297bea1b491739e14e977260bff6c36b8ad4f87beda19c7ccc9",
+      "submission/exhibits/critic.json": "218a3c32cae0b1f137c0571437a1f530cf529255a00e7d1d1857834d83823b2b",
       "submission/exhibits/daily_risk.json": "11615fcf00f7ac6b00591f05ee23a3835fa7f8107569475b611027688bb3a78e",
+      "submission/exhibits/explainer.json": "de3e719519ba853db5fd01719028eedeeb9500831b29373827a5f88caadb7965",
       "submission/exhibits/implementation.json": "8d8e8e13997b0bf1cbb46244e5736e609c688827bd598ec79cb9cf3e62852275",
       "submission/exhibits/labels.csv": "cae201c785bfe308750183043ada1d2bdbda45926c5cf49b2c680de1d86550e2",
       "submission/exhibits/labels.json": "b84af66609c61eb1eec06d883f8b25d573949d929ba31f818a7216952f026119",
@@ -90,14 +91,14 @@
     }
   },
   "ml": {
-    "code": "b615c40926f5538b",
+    "code": "5f3612fbc633f25c",
     "files": {
       "submission/exhibits/ml_metrics.json": "d433c791b4fd5e4b51754f2f81341f30eae97b33dec22f4084fbd6994cef5732",
-      "submission/exhibits/placebo_lab.json": "798086f007940b80e66694d951a6f28836aac24fe816d2958f01b6d7af662c5e",
-      "submission/exhibits/oos_r2.json": "d07d7629d0a5c70d59facc89ac6e2aa7cc951146d86e321ba2d2c4d139135b2c",
+      "submission/exhibits/placebo_lab.json": "aa8e358814f2de2e4c1a3498a0e364696a91e93827c1d6587818fcb6fd351f44",
+      "submission/exhibits/oos_r2.json": "8c4227ea338c68d39f82c8d293b7952faafa71b13da926da74a8a92e79318616",
       "submission/exhibits/teachers.json": "cc9d2dc5d0f9b735974274a81f92e780340ce17517586e076985f1154740cfca",
       "submission/exhibits/crowd.json": "f736f308fa4bd2e4a32e7d66d571ba994c6378d707a3b4644528acc111ffa90e",
-      "submission/exhibits/scorer.json": "a1087afb1b2b089e088fb7ec4977818ddac902453994243a2dcaeabe8bf48ea5",
+      "submission/exhibits/scorer.json": "4bca106afda3c6db6783b6ba8ef6808d5530f0e937faf2b0c0cacb37f9fa9c79",
       "submission/exhibits/triage.json": "bf0e5a389de2df65f75143567845ac6bdb8b8e6e7b687b54c6c312fff7c7bc14",
       "submission/exhibits/analyst_learned.json": "ed87282129bc4ce54f38ecdf64c5d552f94781c0d5b79cb9784087c33e7d43f7",
       "submission/models/book_inputs.parquet": "2e5c960b3a99cbbb20f1df7aff3569bf5c9e4ced34562beb67b13d88de01454c"

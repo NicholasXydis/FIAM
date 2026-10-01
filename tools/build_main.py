@@ -93,8 +93,10 @@ def description() -> str:
             listed.append(f"#   {what:<66} {script}" + (f"  ({flag})" if flag else ""))
     return (
         "# MAIN.py: McGill-FIAM Asset Management Hackathon 2026, market-neutral US equity book.\n"
-        "#\n# Run:  uv run MAIN.py     (any OS; uv installs Python 3.14 and the packages below)\n"
-        "#   or: python MAIN.py    (with the packages from requirements.txt already installed)\n"
+        "#\n# Run:  pip install uv, then  uv run MAIN.py   (uv brings Python and the packages)\n"
+        "#   With nothing beside it: checks our holdings and returns against the brief.\n"
+        "#   With the organizer's three data files beside it: rebuilds the book, a few minutes.\n"
+        "#   It writes the project's code beside itself to run. It never needs or ships data.\n"
         "#\n" + header + "\n#\n# The steps, in order:\n" + "\n".join(listed) + "\n"
     )
 

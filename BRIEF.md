@@ -1,10 +1,10 @@
-# The project in plain terms
+# The project in one page
 
-**What it is.** A market-neutral book of US stocks. Each month we rank every stock on twelve
-published measures of value, quality, investment and momentum, buy the best and short the worst:
-about <!--N:metrics.json:compliance.positions_average:.0f-->296<!--/N--> names, as much long as short,
-neutral to every sector and hedged to zero beta with a beta our machine learning learned from daily
-prices. Every trade pays broker-level costs.
+**The idea.** Every month we score each US stock on twelve well-known measures: is it cheap, is it
+profitable, is it careful with its money, is it rising. We buy the best and short the worst, about
+<!--N:metrics.json:compliance.positions_average:.0f-->296<!--/N--> stocks, with as much money long as
+short. The book is neutral to the market and to every sector, and every trade pays the costs a real
+broker would charge.
 
 <!--AUTO:brief-->
 
@@ -23,31 +23,28 @@ prices. Every trade pays broker-level costs.
 
 <!--/AUTO:brief-->
 
-## What the AI does
+## Where the AI comes in
 
-- **The hedge.** A small model learns each stock's next-month beta from daily returns, and the book
-  is neutral to it. It is the one learned part of the book we ship.
-- **A firewall against recall.** No language model's reading of a 2021-2026 filing reaches the book:
-  the agents judged older filings, and small models learned their judgments. The analyst named the
-  company in <!--N:exhibits/analyst.json:look_ahead_probe.company_named:.0%-->4%<!--/N--> of masked
-  filings, and its 2021-2026 verdicts predict nothing (IC
-  <!--N:exhibits/analyst_learned.json:recall_test.2021-2026.analyst.rank_correlation:+.3f-->−0.003<!--/N-->).
-- **The AI crowd.** Two AI models, playing retail stock pickers on anonymous cards, mostly buy
-  quality. <!--N:exhibits/pack.json:crowding.long.share_in_top_crowd_decile:.0%-->42%<!--/N--> of our
-  longs sit in their favourite tenth: the crowding the brief warns about, measured.
-- **The stock picker.** A machine-learning ranker predicts next month's returns (IC
-  <!--N:exhibits/scorer.json:ic_2021_2026.ic_mean:.3f-->0.067<!--/N-->, t
-  <!--N:exhibits/scorer.json:ic_2021_2026.ic_t:.2f-->3.55<!--/N-->) but trades too much to beat the
-  composite after costs. Keeping it to cheap-to-trade names is our next step.
+- **It keeps the book neutral.** A small model learns how much each stock moves with the market,
+  from daily prices, and the book is balanced on that. This is the one learned part of the book.
+- **It cannot cheat by remembering.** Language models are trained on recent news, so one reading a
+  2021 filing might already know what happened next. No such reading reaches our book: the AI agents
+  judged older filings, and small models learned from those judgments. A test confirms it: the
+  model recognised the company in only
+  <!--N:exhibits/analyst.json:look_ahead_probe.company_named:.0%-->4%<!--/N--> of hidden filings.
+- **It measures crowding.** We had two AI models play retail stock pickers. They mostly buy
+  high-quality stocks, and
+  <!--N:exhibits/pack.json:crowding.long.share_in_top_crowd_decile:.0%-->42%<!--/N--> of our longs are
+  among their favourites, the crowding risk the brief warns about.
+- **It predicts, but not enough to pay.** A machine-learning stock picker forecasts returns well,
+  yet it trades so much that costs eat the gain. Trading it only in cheap-to-trade stocks is our
+  next step.
 
 ## The honest reading
 
-Style carries much of the return: the same quality-and-value tilt that paid in 2021-22 returned
-<!--N:exhibits/confirmation.json:confirmation_2016_2020.net_by_year.2020:.0%-->−29%<!--/N--> in 2020.
-We tried <!--N:metrics.json:robustness.attempts_all:,-->1,665<!--/N--> fits before choosing this book,
-and after counting them the chance its edge is real is
-<!--N:metrics.json:robustness.deflated_sharpe_probability_eligible:.0%-->46%<!--/N-->. RESULTS.md
-lists what we tried and what each idea did.
+Much of the return comes from one investing style, quality and value. It paid well in 2021-22 and
+lost money in 2020. We tried many variations before picking this book, and RESULTS.md lists every
+one and what it did.
 
-**Limits.** A backtest anyone can rerun, not a live record. Costs are modelled, not observed. 2026
-returns come from Compustat, not CRSP.
+**Limits.** This is a backtest anyone can rerun, not a live record. Costs are modelled, not
+observed.

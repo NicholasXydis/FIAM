@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -119,7 +119,6 @@ class Run:
     task: str
     budget: int
     tag: str = ""
-    options: dict = field(default_factory=dict)
 
     @property
     def name(self) -> str:

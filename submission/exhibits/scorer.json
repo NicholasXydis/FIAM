@@ -1,5 +1,5 @@
 {
-  "what": "Two LightGBM LambdaRank models per test year, one for each tail, trained on the rules' folds to rank next month's return net of sector, beta and style, averaged over seeds. Scores for 2019-2020 feed the ship rule's first validation years only.",
+  "what": "Two LightGBM LambdaRank models per test year, one for each tail, trained on the rules' folds to rank next month's return net of sector, beta and style, averaged over seeds. Scores for 2019-2020 only scale the 2021 forecasts for the out-of-sample R-squared.",
   "features": 174,
   "uses_crowd_score": true,
   "uses_text": true,

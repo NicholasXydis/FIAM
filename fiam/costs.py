@@ -136,14 +136,6 @@ def borrow_rate(frame: pd.DataFrame) -> pd.Series:
     return rate.where(~frame["size_grp"].eq("micro"), np.maximum(rate, MICRO_FLOOR))
 
 
-# Per stock, a trade of x costs x * linear + x ** 1.5 * impact: the trader's view of these lines.
-def unit_costs(quotes: pd.DataFrame, model: Model = DEFAULT) -> tuple[pd.Series, pd.Series]:
-    price = quotes["prc"].abs()
-    fees = COMMISSION_PER_SHARE / price + CAT_PER_SHARE / price + SEC_RATE / 2
-    impact = model.impact_y * quotes["rvol_21d"] * np.sqrt(model.nav / quotes["dolvol_126d"])
-    return (fees + half_spread(quotes)) * model.multiple, impact * model.multiple
-
-
 # One month's cost lines as fractions of NAV, from each name's trade and the book after it.
 def month_costs(
     traded: pd.Series, weights: pd.Series, quotes: pd.DataFrame, model: Model = DEFAULT

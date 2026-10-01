@@ -13,8 +13,6 @@ RESULTS, BRIEF = paths.RESULTS, paths.BRIEF
 # Prose uses a real minus sign, so a negative number has to match either form.
 MINUS = "−"
 
-AUTO = re.compile(r"<!--AUTO:(\w+)-->.*?<!--/AUTO:\1-->", re.S)
-
 # A number in the prose: <!--N:metrics.json:performance.information_ratio:.2f-->0.85<!--/N-->.
 NUMBER = re.compile(r"<!--N:([^:]+):([^:]+):([^>]*)-->.*?<!--/N-->")
 
@@ -241,7 +239,7 @@ def implementation(m: dict) -> str:
     return table(header, rows)
 
 
-# The daily path through each pre-registered stress window, and the cost of trading a day late.
+# The daily path through each stress window, and the cost of trading a day late.
 def stress(m: dict) -> str:
     d = load("exhibits/daily_risk.json")
     windows, late = d.get("stress"), d.get("execution_delay")
@@ -551,7 +549,8 @@ def explained(m: dict) -> str:
             f"{p['ticker']}, {p['company']}",
             p["side"].lower(),
             f"{p['facts']['realized_pnl_pct']:+.2f}%",
-            p["why"].replace("|", "/").replace("\n", " "),
+            # The first sentence carries the reason; the rest is in explainer.json.
+            p["why"].replace("|", "/").replace("\n", " ").split(". ")[0].rstrip(".") + ".",
         ]
         for p in [*names[:3], *names[-3:]]
     ]
@@ -868,6 +867,10 @@ def main() -> None:
     assert m["notes"]["market_series"] == MARKET_NAME, "metrics.json is from an older run"
     fill(RESULTS, TABLES, m)
     fill(BRIEF, TABLES, m)
+    # The README's few numbers too, where a README sits beside RESULTS.md.
+    readme = RESULTS.parent / "README.md"
+    if readme.exists():
+        fill(readme, {}, m)
     perf = m["performance"]
     print(f"filled: IR {perf['information_ratio']:.2f}, net {perf['return_net_annual']:.1%}")
 

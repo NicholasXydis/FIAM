@@ -19,7 +19,7 @@ CROWD = P.CACHE / "crowd.parquet"
 TRIAGE, ANALYST = P.CACHE / "triage.parquet", P.CACHE / "analyst.parquet"
 PREDS = P.CACHE / "preds" / "scorer.parquet"
 
-# Two years before the rules' first test year, so the ship rule has validation years to judge by.
+# Two years before the rules' first test year, so its forecasts can be scaled on earlier years.
 FIRST_YEAR = 2025 if paths.SMOKE else 2019
 SEEDS = (42,) if paths.SMOKE else (42, 43, 44, 45, 46)
 ROUNDS, PATIENCE = (20, 5) if paths.SMOKE else (1000, 50)
@@ -156,7 +156,7 @@ def main() -> None:
         what="Two LightGBM LambdaRank models per test year, one for each tail, trained on the "
         "rules' folds to rank next month's return net of sector, beta and style, averaged over "
         "seeds. "
-        "Scores for 2019-2020 feed the ship rule's first validation years only.",
+        "Scores for 2019-2020 only scale the 2021 forecasts for the out-of-sample R-squared.",
         features=len(cols),
         uses_crowd_score=CROWD.exists(),
         uses_text=text is not None,
@@ -165,7 +165,7 @@ def main() -> None:
         ic_2021_2026=ic,
         ic_by_year=by_year,
         ic_by_seed={k: v["ic_mean"] for k, v in seeds.items()},
-        # Every scored year, the ship rule's validation years included, for the learning curve.
+        # Every scored year, 2019-2020 included, for the learning curve.
         ic_every_year={
             str(y): P.information_coefficient(
                 g.rename(columns={"score": "pred", D.TARGET: "actual"})

@@ -20,7 +20,7 @@ ACCEPTANCE = {
 }
 
 # Rules we got wrong. Kept, because swapping one after a failed result is the sin here.
-AMENDMENTS = {
+PASS_MARKS_CHANGED = {
     "permutation_null": {
         "original": "The null's net IR should centre near zero.",
         "why_wrong": "A shuffled ranking re-sorts the book monthly, so it churns at about "
@@ -122,7 +122,7 @@ def main() -> None:
         inputs=inputs(),
         agents=agents(),
         acceptance_rules=ACCEPTANCE,
-        amended_rules=AMENDMENTS,
+        pass_marks_changed=PASS_MARKS_CHANGED,
         book=section(book, fingerprint(["fiam", "run.py", "requirements.txt"])),
         # A book-only run keeps the last model section, so its age stays visible to the audit.
         ml=dict(

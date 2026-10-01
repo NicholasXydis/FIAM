@@ -166,7 +166,7 @@ def residualize(df: pd.DataFrame, y: pd.Series, x: pd.Series) -> pd.Series:
     return sy - (cov / var.replace(0.0, np.nan)).fillna(0.0) * bx
 
 
-# The beta a book is neutral to: the hedge's learned one where a candidate set it, else 60-month.
+# The beta a book is neutral to: the learned one where the book has it, else the 60-month one.
 def hedge(df: pd.DataFrame) -> pd.Series:
     return df["hedge_beta"] if "hedge_beta" in df else df["beta_60m"]
 

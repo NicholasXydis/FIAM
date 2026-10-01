@@ -1,30 +1,31 @@
 # FIAM
 
-A market-neutral US equity book for the McGill-FIAM Hackathon 2026: twelve published stock
-measures, hedged on a beta our machine learning learned, with every trading cost charged.
-`BRIEF.md` tells the story in a page; `RESULTS.md` has every number.
+A market-neutral book of US stocks for the McGill-FIAM Hackathon 2026. It buys the best and shorts
+the worst on twelve published stock measures, stays neutral to the market with a beta our machine
+learning learned, and pays realistic trading costs. `BRIEF.md` tells the story, `RESULTS.md` has
+the numbers.
 
-## Run it on Windows, macOS or Linux
+**January 2021 to August 2026, after costs:** information ratio
+<!--N:metrics.json:performance.information_ratio:.2f-->0.74<!--/N-->, net return
+<!--N:metrics.json:performance.return_net_annual:.1%-->12.8%<!--/N--> a year, beta
+<!--N:metrics.json:performance.beta_realized:+.2f-->−0.03<!--/N-->, worst drawdown
+<!--N:metrics.json:performance.max_drawdown_total:.1%-->−7.4%<!--/N-->.
 
-1. Install [uv](https://docs.astral.sh/uv/) once: it brings Python and every pinned package.
-   - macOS, Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-   - Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
-2. Run `uv run MAIN.py`.
+## Run it
 
-| what is beside `MAIN.py` | what it does | time |
-|---|---|---|
-| nothing | checks the submitted holdings and returns against every rule in the brief | seconds |
-| the organizer's three files | builds the data, rebuilds the book into `out/`, compares it | a few minutes |
+```
+pip install uv
+uv run MAIN.py
+```
 
-`uv run run.py --help` lists the rest: `--ml` retrains the models, `--agents` runs the local AI
-agents (a 16 GB GPU or a 24 GB Apple silicon Mac), `--official` rewrites `submission/`.
+uv installs the right Python and packages by itself (or use `winget install astral-sh.uv` on
+Windows, `brew install uv` on a Mac). With nothing beside `MAIN.py`, it checks our holdings against
+every rule in the brief in seconds. Put the organizer's three data files beside it and it rebuilds
+the whole book in a few minutes and compares it with ours. `uv run run.py --help` lists the rest.
 
-## Layout
+## What is where
 
-`run.py` the one command · `fiam/book.py`, `costs.py` the book and its costs · `fiam/ml/` the models
-· `fiam/agents/` the agents · `fiam/exhibits/`, `fiam/checks/`, `fiam/report/` results, audit and
-docs · `prompts/agents/` what the models read · `submission/` the official results.
-
-Data from WRDS is licensed, so it is never committed: a run without it is marked provisional.
+`fiam/book.py` builds the book · `fiam/costs.py` charges the costs · `fiam/ml/` the models ·
+`fiam/agents/` the AI agents · `fiam/checks/` the audit · `submission/` our official results.
 
 Nicholas Xydis · Yohannah Ilieva · Jérémie Caussignac · Agamjot Singh Bawa · Nokto Lapointe

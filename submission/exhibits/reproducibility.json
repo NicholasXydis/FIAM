@@ -67,7 +67,7 @@
   {
     "check": "no result carries a clock time",
     "passed": true,
-    "detail": "20 result files, none dated"
+    "detail": "21 result files, none dated"
   },
   {
     "check": "every artifact matches the run that wrote it",
