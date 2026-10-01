@@ -170,3 +170,22 @@ Each change is dated, made before the test it touches ran, and kept here rather 
     months after its decision. A training label first known on or after the test year's first
     day is dropped, as the brief requires for labels realized in the test period. Nothing else
     changes, and neither change's effect has been seen.
+13. **2026-10-01, before any code for it was written.** The ship rule's grid gains three kinds of
+    book, each with and without the learned hedge and the trader: 16 books, 28 in all. The rule,
+    its hurdle and its two-year windows are unchanged, and the book it picks ships, whatever it
+    scores. The stock picker predicts well (IC 0.068, t 3.55) but its blends trade too much; two
+    kinds use it more cheaply, and one uses the triage agent as a risk filter.
+    (a) **Screen, then rank.** Longs come only from each month's top fifth of the composite and
+    shorts only from its bottom fifth, the standard portfolio sort; inside each fifth the stock
+    picker's smoothed score sets the order, and a name without a score sits in the middle.
+    (b) **Liquid names only.** The 25% and 50% blends, with the stock picker's score counting only
+    where a stock's impact per dollar, `rvol_21d` ÷ √`dolvol_126d` as amendment 2 defines it, is
+    at or below that month's median; elsewhere the composite alone.
+    (c) **Distress veto.** The composite, with no long in a stock that, in the decision month,
+    filed an 8-K the triage model labels distress or one carrying item 4.01 or 4.02, the events
+    the brief calls two of the strongest distress signals. Shorts are unaffected.
+    Disclosed: before writing this we had seen every existing candidate's record, the stock
+    picker's decile returns (its edge sits mostly in its bottom deciles), and that the rule's
+    2021 choice cost the record about 0.3 of IR. None of these books was tried before this was
+    written. Each counts as a new attempt in the ledger. A two-sleeve book was considered and
+    dropped: the book builds one score per book, and a second would need a rework on the last day.
