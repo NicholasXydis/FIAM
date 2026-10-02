@@ -197,10 +197,12 @@ def stress(path: pd.DataFrame) -> dict:
         if part.empty:
             continue
         level = (1 + part).cumprod()
-        index = market.loc[first:last]
+        # From the close before the window, so the S&P 500 counts its first day as the book does.
+        index = market.loc[:last]
+        start = index.loc[: pd.Timestamp(first) - pd.Timedelta(days=1)]
         out[name] = dict(
             strategy=float(level.iloc[-1] - 1),
-            sp500=float(index.iloc[-1] / index.iloc[0] - 1) if len(index) else None,
+            sp500=float(index.iloc[-1] / start.iloc[-1] - 1) if len(start) else None,
             worst_drawdown=drawdown(level),
             days=int(len(part)),
         )

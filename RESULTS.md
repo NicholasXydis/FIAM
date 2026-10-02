@@ -27,7 +27,7 @@ below is filled in from the run's own output files.
 | Costs as share of gross | 29% |
 | Holding months | 68, 2021-01 to 2026-08 |
 
-_From code `0a73b67299fdad06`._
+_From code `6d995c6c18e22b1d`._
 
 <!--/AUTO:headline-->
 
@@ -54,7 +54,7 @@ _From code `0a73b67299fdad06`._
 
 <!--AUTO:years-->
 
-| year | strategy | T-bill + 4% | S&P 500 (price) | active |
+| year | strategy, total return | T-bill + 4% | S&P 500 (price) | strategy minus hurdle |
 |---|---:|---:|---:|---:|
 | 2021 | +35.1% | +4.1% | +26.9% | +30.9% |
 | 2022 | +31.4% | +6.2% | -19.4% | +25.2% |
@@ -67,12 +67,12 @@ _From code `0a73b67299fdad06`._
 
 <!--AUTO:legs-->
 
-| leg | contribution a year | per dollar in the leg | volatility | names | median size | median daily $ volume |
-|---|---:|---:|---:|---:|---:|---:|
-| long | +14.5% | +18.1% | 16.0% | 155 | $6.0bn | $64m |
-| short | +3.4% | +4.3% | 20.2% | 142 | $1.9bn | $24m |
+| leg | return added a year | return per $1 in the leg | volatility | stocks | market cap, average | market cap, median | daily $ traded, average | daily $ traded, median |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| long | +14.5% | +18.1% | 16.0% | 155 | $61.1bn | $6.0bn | $441m | $64m |
+| short | +3.4% | +4.3% | 20.2% | 142 | $6.5bn | $1.9bn | $100m | $24m |
 
-Short book by weight: 68% small-cap or below, 20% micro-cap, 23% in borrow tiers of 3% a year or more. In 2021-2025, 23% of it had more than 10% of its shares already sold short.
+Shorts by weight: 68% small or micro caps (20% micro), and 23% cost 3% a year or more to borrow. In 2021-2025, the years with short-interest data, 23% were in stocks with over 10% of their shares already sold short.
 
 <!--/AUTO:legs-->
 
@@ -97,13 +97,13 @@ Short book by weight: 68% small-cap or below, 20% micro-cap, 23% in borrow tiers
 
 | rule | limit | measured |
 |---|---|---|
-| Positions | 100-500 | 296 on average |
-| Gross exposure | ≤ 200% | max 159.94% |
-| Net exposure | −50% to +50%; ours exact before rounding | max abs 0.00% |
-| Sector, 11 GICS + `XX` (ours) | 1% before whole-share rounding | max 1.04% after it |
-| Single name (ours) | 1.5% before whole-share rounding | max 1.51% after it |
-| Ex-ante beta | ±0.02 | mean +0.020 |
-| Realized beta | build fails outside ±0.20 | -0.03 (se 0.09) |
+| Positions | 100 to 500 | 227 to 322, 296 on average |
+| Gross exposure | up to 200% | largest 159.94% |
+| Net exposure | −50% to +50% | largest 0.00% |
+| Each sector (our own limit) | ±1% before rounding to whole shares | largest 1.04% after rounding |
+| Each position (our own limit) | 1.5% before rounding to whole shares | largest 1.51% after rounding |
+| Predicted beta (our own limit) | ±0.02 | average +0.020 |
+| Realized beta (our own check) | run stops outside ±0.20 | -0.03 (standard error 0.09) |
 
 <!--/AUTO:compliance-->
 
@@ -115,14 +115,14 @@ that grows with trade size, borrow fees by how heavily a stock is shorted, and f
 <!--AUTO:costs-->
 
 |  | % of NAV a year |
-|---|---|
+|---|---:|
 | Commission and regulatory fees (IBKR Pro fixed, SEC, FINRA) | 0.27% |
-| Half-spread (calibrated to CRSP quotes) | 0.87% |
-| Market impact (square-root law) | 2.24% |
-| Borrow (short-interest tiers) | 1.26% |
-| Financing (benchmark less 0.5% on cash) | 0.50% |
+| Bid-ask spread (half, from real quotes) | 0.87% |
+| Market impact (grows with trade size) | 2.24% |
+| Borrow fees on shorts (by how heavily shorted) | 1.26% |
+| Financing (cash earns the T-bill less 0.5%) | 0.50% |
 | **Total** | 5.13% |
-| Annual cost at which active return reaches zero | 13.9%, 2.71 times today's |
+| Costs could rise to this before the edge over the hurdle disappears | 13.9% (2.7x) |
 
 <!--/AUTO:costs-->
 
@@ -130,14 +130,14 @@ that grows with trade size, borrow fees by how heavily a stock is shorted, and f
 
 <!--AUTO:drift-->
 
-| period | beta | se | t |
+| period | beta | standard error | t-stat |
 |---|---:|---:|---:|
 | 2021-2023 | +0.02 | 0.11 | +0.14 |
 | 2024-2026 | -0.09 | 0.08 | -1.11 |
 | full period | -0.03 | 0.09 | -0.31 |
 | 2021-2025, 1,255 days | -0.10 | 0.03 | -3.67 |
 
-19% of 57 rolling 12-month windows sit outside ±0.20, and 0% outside the range a zero-beta book with our residual risk would reach 95% of the time.
+19% of the 57 rolling 12-month betas fall outside ±0.20, but none fall outside the range a truly zero-beta portfolio with our risk would show by chance (95%).
 
 <!--/AUTO:drift-->
 
@@ -145,16 +145,16 @@ that grows with trade size, borrow fees by how heavily a stock is shorted, and f
 
 <!--AUTO:r2-->
 
-| method | R², zero benchmark | R², cross-sectional |
-|---|---:|---:|
-| Template OLS | -0.32% | -0.26% |
-| Template ridge | -0.06% | -0.02% |
-| Template ElasticNet | -0.05% | -0.01% |
-| ElasticNet, rank target | -0.01% | -0.01% |
-| LightGBM | +0.08% | +0.05% |
-| NN3, seed 42 | -0.15% | +0.01% |
-| LambdaRank scorer | -0.07% | -0.07% |
-| 12-signal composite | -0.01% | -0.01% |
+| model | out-of-sample R², 2021-2026 |
+|---|---:|
+| Linear regression (template) | -0.32% |
+| Ridge (template) | -0.06% |
+| Elastic net (template) | -0.05% |
+| Elastic net, on ranks | -0.01% |
+| LightGBM | +0.08% |
+| Neural network, 3 layers | -0.15% |
+| Stock-picking model | -0.07% |
+| Our 12-signal score | -0.01% |
 
 <!--/AUTO:r2-->
 
@@ -164,25 +164,25 @@ that grows with trade size, borrow fees by how heavily a stock is shorted, and f
 
 | what we tried | attempts | result | verdict |
 |---|---|---|---|
-| 28 candidate books, hedge and trader variants | 27 | composite 0.70, + hedge 0.72; rest -0.28 to 0.72 | hedge SHIPPED |
-| yearly switching rule among the 28 | 1 | IR 0.34 or 0.67, flipped by the trader | dropped |
-| neutralization: betas, volatility, sectors | 14 | sectors, beta, volatility kept; styles 0.75 | in part |
-| construction: weights, carry-in, gross, vol target | 24 | 160% gross kept; vol targeting 0.15-0.34 | in part |
-| optimizer: ridge, pool, turnover, short limits | 16 | ridge 30, pool 200 kept; penalty 0.49-0.54 | in part |
-| more signals: added, reversal, seasonality | 33 | none helped; best addition 0.86, a coin flip | rejected |
-| text signals: tone, filing intensity, items | 3 | no neutralized t above 2.1 | rejected |
-| ML blends and targets: cost-aware, 3-6 month | 22 | best IR -0.15 | rejected |
-| construction v2: beta, net band, short rules | 1 | IR -0.17 vs -0.00 on 2016-26 | rejected |
-| construction v2, each rule alone | 5 | every rule alone lowers IR | control |
-| factor-neutral book, five style limits | 1 | IR -0.89; alpha -4.2%, t -1.7 | rejected |
-| ML on 147 characteristics: linear, trees, nets | 24 | IC t 2.5-4.1; all lose after costs | exhibit |
-| stock picker, teachers, crowd, director | 16 | picker IC 0.068, t 3.55; beta error 0.55 vs 0.64 | hedge kept |
-| trader: deep hedging and PPO | 3 | IR 0.70 to 0.41; not reproducible | removed |
-| signal search: subsets, combinations, atlas | 1,139 | +1.78 where it looked, +0.33 unseen | control |
-| discovery agent and random search | 95 | unseen IR -1.18 to -2.08; random -0.44 | control |
-| robustness: shuffles, delays, 2016-20, lags | 241 | shuffles earn nothing; a day late costs nothing | control |
+| 28 candidate portfolios: signal sets, hedges, trading rules | 27 | When chosen: 12-signal score 0.70, with the predicted-beta hedge 0.72, others -0.28 to 0.72. Final run 0.74 | Shipped, with the hedge |
+| A yearly rule to switch between candidates | 1 | IR 0.34 or 0.67, unstable between runs | Dropped |
+| What to neutralize: betas, volatility, sectors | 14 | Sectors, beta and volatility kept. Style-neutral variant 0.75 | In part |
+| Construction: weights, carrying positions over, gross exposure, volatility target | 24 | 160% gross kept. Volatility targeting 0.15 to 0.34 | In part |
+| Optimizer: position penalty, candidate pool, turnover, short limits | 16 | Penalty 30 and a 200-stock pool kept. Turnover penalty 0.49 to 0.54 | In part |
+| More signals: additions, reversal, seasonality | 33 | None helped. Best addition 0.86, no better than chance | Rejected |
+| Text signals: tone, filing counts, 8-K items | 3 | None significant once neutralized (best t-stat 2.1) | Rejected |
+| ML blends and targets: cost-aware, 3 to 6 months ahead | 22 | Best IR -0.15 | Rejected |
+| Construction v2: beta, net exposure band, short rules | 1 | IR -0.17 against -0.00, 2016-2026 | Rejected |
+| Construction v2, each rule alone | 5 | Every rule alone lowers IR | Check |
+| Factor-neutral portfolio, five style limits | 1 | IR -0.89, alpha -4.2% (t-stat -1.7) | Rejected |
+| ML on the 147 characteristics: linear, trees, neural nets | 24 | IC t-stat 2.5 to 4.1, all lose money after costs | Reported |
+| Stock-picking model, helper models, AI crowd score | 16 | Picker IC 0.067 (t-stat 3.55). Beta error 0.55 against 0.64 | Beta model kept |
+| Trading models: deep hedging and PPO | 3 | IR 0.70 to 0.41, not reproducible | Removed |
+| Signal search: subsets and combinations | 1,139 | +1.78 where it searched, +0.33 on unseen years | Check |
+| Signal-discovery agent and random search | 95 | Unseen IR -1.18 to -2.08, random -0.44 | Check |
+| Robustness: shuffles, delays, 2016-20, lags | 241 | Shuffled scores earn nothing, a day's delay costs nothing | Check |
 
-1,665 fits in all, 141 of them books we could have shipped. The book we ship was chosen by comparing these results; after counting every one, the deflated Sharpe gives a 46% chance its edge is real.
+1,665 fits in all, 141 of them shippable portfolios. Adjusted for this many tries (deflated Sharpe ratio), the chance our edge is real is 46%.
 
 <!--/AUTO:tried-->
 
@@ -195,10 +195,10 @@ position. Prompts and tool definitions are in `prompts/agents/` and `submission/
 
 | agent | model | what happened |
 |---|---|---|
-| **Triage** | Gemma 4 26B-A4B | 6,000 masked 8-Ks from 2015-18 labelled; FinBERT + LightGBM learns them at 87% against 80% for always routine, then labels every filing |
-| **Analyst** | Qwen3.8-27B | 5,000 verdicts; named the company in 4% of 500 masked filings; its 2021-26 verdicts' IC -0.003, no sign of recall |
-| **AI crowd** | Gemma 4 and Qwen3.8 | 265,590 picks from anonymous cards, 2016-20; the two models agree 0.51; they buy quality and 1-year momentum; 42% of our longs sit in their top tenth |
-| **Devil's advocate** | Gemma 4 26B-A4B | 5 critiques, 0 citing a number no tool showed; run twice, 5 of 5 calls identical |
+| **Triage** | Gemma 4 26B-A4B | 6,000 8-Ks from 2015-18 labelled with names hidden. A small FinBERT-based model learns them, 87% correct against 80% for always guessing routine, then labels every filing |
+| **Analyst** | Qwen3.8-27B | 5,000 verdicts. Named the company in 4% of 500 test filings. Its 2021-26 verdicts have no predictive power (IC -0.003) |
+| **AI crowd** | Gemma 4 and Qwen3.8 | 265,590 picks from anonymous stock cards, 2016-20. The two models' picks correlate 0.51, and both favour quality and 1-year momentum. 42% of our longs are in their top tenth |
+| **Devil's advocate** | Gemma 4 26B-A4B | 5 critiques, 0 citing a number no tool showed. Run twice, identical both times |
 | **Explainer** | Qwen3.8-27B | 20 winners and losers explained from their facts alone |
 
 <!--/AUTO:agents-->
@@ -211,17 +211,17 @@ whether it remembered the future:
 
 |  |  |
 |---|---:|
-| Verdicts that taught, up to November 2020 | 2,299 |
-| Small model against the analyst, held-out rank correlation | 0.24 |
-| Stock-months it scores for the stock picker | 187,004 |
-| Probe: masked filings where the analyst named the company / year, of 500 | 4% / 9% |
+| Analyst verdicts used for training, up to November 2020 | 2,299 |
+| How well the small model copies the analyst, rank correlation on unseen data | 0.24 |
+| Stock-months the small model scores | 187,004 |
+| Test: share of 500 hidden filings where the analyst named the company / the year | 4% / 9% |
 
 |  | analyst's own verdicts | small model |
 |---|---:|---:|
-| IC, 2015-2020 | +0.033 (t 1.5) | +0.003 (t 0.1) |
-| IC, 2021-2026 | -0.003 (t -0.1) | -0.021 (t -0.8) |
+| Predictive power (IC), 2015-2020 | +0.033 (t-stat 1.5) | +0.003 (t-stat 0.1) |
+| Predictive power (IC), 2021-2026 | -0.003 (t-stat -0.1) | -0.021 (t-stat -0.8) |
 
-_Mean monthly rank correlation with next month's return, on the same answered stock-months, t across months. If the analyst beats the small model by far more in 2021-2026 than in 2015-2020, the gap is recall. In 2015-2020 the small model was fitted to these same verdicts._
+IC: the average monthly rank correlation with next month's return. If the analyst remembered what happened, its 2021-2026 IC would far exceed the small model's. It does not.
 
 <!--/AUTO:firewall-->
 
@@ -229,13 +229,13 @@ _Mean monthly rank correlation with next month's return, on the same answered st
 
 <!--AUTO:halves-->
 
-| period | months | gross | cost | net | IR | 95% interval |
+| period | months | gross | costs | net | IR | IR, 95% range |
 |---|---:|---:|---:|---:|---:|---:|
 | **Full, 2021-2026** | 68 | 17.9% | 5.1% | 12.8% | 0.74 | [-0.09, 1.61] |
 | 2021-2022 | 24 | 34.4% | 5.3% | 29.1% | 1.63 | [1.05, 3.02] |
 | **2023-2026** | 44 | 9.0% | 5.1% | 3.9% | -0.01 | [-1.12, 0.78] |
 | 2022-2026 | 56 | 13.9% | 5.1% | 8.8% | 0.44 | [-0.60, 1.11] |
-| CRSP years, 2021-2025 | 60 | 17.6% | 5.1% | 12.5% | 0.69 | [-0.25, 1.65] |
+| 2021-2025, the years with daily prices | 60 | 17.6% | 5.1% | 12.5% | 0.69 | [-0.25, 1.65] |
 
 <!--/AUTO:halves-->
 
@@ -245,10 +245,10 @@ _Mean monthly rank correlation with next month's return, on the same answered st
 |---|---|---|
 | Information ratio | **-1.00** | +0.74 |
 | Net return | -5.7% a year | +12.8% a year |
-| Realized beta, CRSP market | **-0.25** (se 0.07) | -0.08 (se 0.09) |
-| Worst spread drawdown | -35% | -13% |
+| Beta to the whole US market (CRSP) | **-0.25** (standard error 0.07) | -0.08 (standard error 0.09) |
+| Worst drawdown, net return | -35% | -13% |
 | Turnover, one-way monthly | 46% | 46% |
-| Net by year, compounded | 2016 +0%, 2017 -2%, 2018 +13%, 2019 -7%, 2020 -29% | 2021 +35%, 2022 +29%, 2023 +10%, 2024 -7%, 2025 +1%, 2026 +10% |
+| Net return by year, compounded | 2016 +0%, 2017 -2%, 2018 +13%, 2019 -7%, 2020 -29% | 2021 +35%, 2022 +29%, 2023 +10%, 2024 -7%, 2025 +1%, 2026 +10% |
 
 <!--/AUTO:clean-->
 

@@ -14,7 +14,7 @@
     "rounding": "6 decimals, applied once on write. Maths runs at full precision."
   },
   "run": {
-    "code_sha256": "0a73b67299fdad06",
+    "code_sha256": "6d995c6c18e22b1d",
     "holding_months": 68,
     "window": "2021-01 to 2026-08"
   },

@@ -136,31 +136,31 @@
   "stress": {
     "2020 crash, Feb 19 to Mar 23": {
       "strategy": 0.013461,
-      "sp500": -0.33925,
+      "sp500": -0.33614,
       "worst_drawdown": -0.051635,
       "days": 24
     },
     "2020 rebound, Mar 24 to Jun 8": {
       "strategy": -0.063916,
-      "sp500": 0.320782,
+      "sp500": 0.444708,
       "worst_drawdown": -0.134206,
       "days": 53
     },
     "2022, rates up": {
       "strategy": 0.314157,
-      "sp500": -0.19953,
+      "sp500": -0.194428,
       "worst_drawdown": -0.119509,
       "days": 251
     },
     "2023 AI rally, Jan to Jul": {
       "strategy": 0.089397,
-      "sp500": 0.199998,
+      "sp500": 0.195197,
       "worst_drawdown": -0.055778,
       "days": 144
     },
     "October 2024, the worst month": {
       "strategy": -0.064698,
-      "sp500": -0.000578,
+      "sp500": -0.009897,
       "worst_drawdown": -0.086029,
       "days": 23
     }

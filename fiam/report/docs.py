@@ -128,17 +128,17 @@ def clean(m: dict) -> str:
         ],
         ["Net return", f"{old['net_annual']:+.1%} a year", f"{new['net_annual']:+.1%} a year"],
         [
-            "Realized beta, CRSP market",
-            f"**{old['beta_realized']:+.2f}** (se {old['beta_stderr']:.2f})",
-            f"{new['beta_realized']:+.2f} (se {new['beta_stderr']:.2f})",
+            "Beta to the whole US market (CRSP)",
+            f"**{old['beta_realized']:+.2f}** (standard error {old['beta_stderr']:.2f})",
+            f"{new['beta_realized']:+.2f} (standard error {new['beta_stderr']:.2f})",
         ],
         [
-            "Worst spread drawdown",
+            "Worst drawdown, net return",
             f"{old['max_drawdown_spread']:.0%}",
             f"{new['max_drawdown_spread']:.0%}",
         ],
         ["Turnover, one-way monthly", f"{old['turnover']:.0%}", f"{new['turnover']:.0%}"],
-        ["Net by year, compounded", years(old), years(new)],
+        ["Net return by year, compounded", years(old), years(new)],
     ]
     return table(["", "2016-2020, a historical check", "2021-2026, the record"], rows)
 
@@ -171,12 +171,15 @@ def drift(m: dict) -> str:
                 f"{t:+.2f}",
             ]
         )
+    noise = d["rolling_12m_outside_noise_band"]
     note = (
-        f"\n\n{d['rolling_12m_outside_band']:.0%} of {d['rolling_12m_windows']} rolling 12-month "
-        f"windows sit outside ±0.20, and {d['rolling_12m_outside_noise_band']:.0%} outside the "
-        "range a zero-beta book with our residual risk would reach 95% of the time."
+        f"\n\n{d['rolling_12m_outside_band']:.0%} of the {d['rolling_12m_windows']} rolling "
+        "12-month betas fall outside ±0.20, but "
+        + ("none" if noise == 0 else f"{noise:.0%}")
+        + " fall outside the range a truly zero-beta portfolio with our risk would show by "
+        "chance (95%)."
     )
-    return table(["period", "beta", "se", "t"], rows) + note
+    return table(["period", "beta", "standard error", "t-stat"], rows) + note
 
 
 # The five cost lines as the backtest recorded them, and how far they can rise.
@@ -185,18 +188,17 @@ def costs(m: dict) -> str:
     parts, even = c["components"], c["break_even"]
     names = dict(
         commission="Commission and regulatory fees (IBKR Pro fixed, SEC, FINRA)",
-        spread="Half-spread (calibrated to CRSP quotes)",
-        impact="Market impact (square-root law)",
-        borrow="Borrow (short-interest tiers)",
-        financing="Financing (benchmark less 0.5% on cash)",
+        spread="Bid-ask spread (half, from real quotes)",
+        impact="Market impact (grows with trade size)",
+        borrow="Borrow fees on shorts (by how heavily shorted)",
+        financing="Financing (cash earns the T-bill less 0.5%)",
         total="**Total**",
     )
     rows = [(names[k], f"{parts[k]:.2%}") for k in names]
     rows.append(
         (
-            "Annual cost at which active return reaches zero",
-            f"{even['break_even_annual_cost']:.1%}, "
-            f"{even['break_even_multiple']:.2f} times today's",
+            "Costs could rise to this before the edge over the hurdle disappears",
+            f"{even['break_even_annual_cost']:.1%} ({even['break_even_multiple']:.1f}x)",
         )
     )
     return table(["", "% of NAV a year"], [list(r) for r in rows])
@@ -208,9 +210,8 @@ def implementation(m: dict) -> str:
     if not d:
         return "The implementation step has not run yet."
     names = dict(
-        as_modelled="As modelled, $10M",
         every_cost_doubled="Every cost doubled",
-        impact_coefficient_half="Impact coefficient 0.5",
+        impact_coefficient_half="Market impact halved",
     )
     rows = [
         [
@@ -225,17 +226,19 @@ def implementation(m: dict) -> str:
     ]
     for key, s in d["capacity"].items():
         liquid = d["liquidity"][key]
-        exit_text = f"{liquid['share_of_book_out_in_one_day']:.0%}; {liquid['days_p95']:.1f} days"
+        exit_text = f"{liquid['share_of_book_out_in_one_day']:.0%}, {liquid['days_p95']:.1f} days"
+        size = f"${key[:-1]}M of capital" if key != "1000m" else "$1B of capital"
         rows.append(
             [
-                f"${key[:-1]}M of capital" if key != "1000m" else "$1B of capital",
+                size + (", as modelled" if key == "10m" else ""),
                 f"{s['information_ratio']:+.2f}",
                 f"{s['net_annual']:+.1%}",
                 f"{s['cost_annual']:.1%}",
                 exit_text,
             ]
         )
-    header = ["", "IR", "net", "cost", "sold in a day at 20% of volume; 95th percentile"]
+    header = ["", "IR", "net return", "costs"]
+    header += ["sellable in a day, days to exit 95% (at 20% of volume)"]
     return table(header, rows)
 
 
@@ -258,10 +261,10 @@ def stress(m: dict) -> str:
     if late:
         on_time, delayed = late["information_ratio_on_time"], late["information_ratio_one_day_late"]
         note = (
-            f"\n\nTrading a day late, {late['months']} months: IR {delayed:+.2f} against "
-            f"{on_time:+.2f} on time, {late['cost_annual']:+.1%} a year."
+            f"\n\nTrading one day late changes little: IR {delayed:+.2f} against {on_time:+.2f} "
+            f"on time, over the {late['months']} months with daily prices."
         )
-    return table(["window", "strategy", "S&P 500", "worst fall inside"], rows) + note
+    return table(["window", "strategy", "S&P 500", "worst drop within"], rows) + note
 
 
 # The analyst behind the firewall: what taught the small model, and the recall test.
@@ -270,19 +273,19 @@ def firewall(m: dict) -> str:
     if not d:
         return "The analyst's verdicts have not been learned yet; they come from the agents' run."
     rows = [
-        ("Verdicts that taught, up to November 2020", f"{d['taught_on']:,}"),
+        ("Analyst verdicts used for training, up to November 2020", f"{d['taught_on']:,}"),
         (
-            "Small model against the analyst, held-out rank correlation",
+            "How well the small model copies the analyst, rank correlation on unseen data",
             f"{d['cross_validated_rank_correlation']:.2f}",
         ),
-        ("Stock-months it scores for the stock picker", f"{d['scored_stock_months']:,}"),
+        ("Stock-months the small model scores", f"{d['scored_stock_months']:,}"),
     ]
     probe = load("exhibits/analyst.json").get("look_ahead_probe")
     if probe:
         rows.append(
             (
-                f"Probe: masked filings where the analyst named the company / year, of "
-                f"{probe['filings']}",
+                f"Test: share of {probe['filings']} hidden filings where the analyst named the "
+                "company / the year",
                 f"{probe['company_named']:.0%} / {probe['year_named']:.0%}",
             )
         )
@@ -290,41 +293,51 @@ def firewall(m: dict) -> str:
 
     def cell(period: str, who: str) -> str:
         x = test[period][who]
-        return f"{x['rank_correlation']:+.3f} (t {x['t']:.1f})"
+        return f"{x['rank_correlation']:+.3f} (t-stat {x['t']:.1f})"
 
-    body = [[f"IC, {p}", cell(p, "analyst"), cell(p, "learned")] for p in test]
+    body = [[f"Predictive power (IC), {p}", cell(p, "analyst"), cell(p, "learned")] for p in test]
     recall = table(["", "analyst's own verdicts", "small model"], body)
-    return f"{pairs(rows)}\n\n{recall}\n\n_{d['reading']}_"
+    reading = (
+        "IC: the average monthly rank correlation with next month's return. If the analyst "
+        "remembered what happened, its 2021-2026 IC would far exceed the small model's. "
+        "It does not."
+    )
+    return f"{pairs(rows)}\n\n{recall}\n\n{reading}"
 
 
 # The brief's limits and our own, measured after rounding to whole shares.
 def compliance(m: dict) -> str:
     c, perf = m["compliance"], m["performance"]
+    n = load("exhibits/pack.json")["completeness"]["ranges"]["positions"]
     return table(
         ["rule", "limit", "measured"],
         [
-            ["Positions", "100-500", f"{c['positions_average']:.0f} on average"],
-            ["Gross exposure", "≤ 200%", f"max {c['gross_exposure_max']:.2%}"],
             [
-                "Net exposure",
-                "−50% to +50%; ours exact before rounding",
-                f"max abs {c['net_exposure_max_abs']:.2%}",
+                "Positions",
+                "100 to 500",
+                f"{n['min']:.0f} to {n['max']:.0f}, {n['mean']:.0f} on average",
+            ],
+            ["Gross exposure", "up to 200%", f"largest {c['gross_exposure_max']:.2%}"],
+            ["Net exposure", "−50% to +50%", f"largest {c['net_exposure_max_abs']:.2%}"],
+            [
+                "Each sector (our own limit)",
+                "±1% before rounding to whole shares",
+                f"largest {c['sector_tilt_max']:.2%} after rounding",
             ],
             [
-                "Sector, 11 GICS + `XX` (ours)",
-                "1% before whole-share rounding",
-                f"max {c['sector_tilt_max']:.2%} after it",
+                "Each position (our own limit)",
+                "1.5% before rounding to whole shares",
+                f"largest {c['position_weight_max']:.2%} after rounding",
             ],
             [
-                "Single name (ours)",
-                "1.5% before whole-share rounding",
-                f"max {c['position_weight_max']:.2%} after it",
+                "Predicted beta (our own limit)",
+                "±0.02",
+                f"average {c['beta_exante_weighted_mean']:+.3f}",
             ],
-            ["Ex-ante beta", "±0.02", f"mean {c['beta_exante_weighted_mean']:+.3f}"],
             [
-                "Realized beta",
-                "build fails outside ±0.20",
-                f"{perf['beta_realized']:+.2f} (se {perf['beta_stderr']:.2f})",
+                "Realized beta (our own check)",
+                "run stops outside ±0.20",
+                f"{perf['beta_realized']:+.2f} (standard error {perf['beta_stderr']:.2f})",
             ],
         ],
     )
@@ -333,7 +346,7 @@ def compliance(m: dict) -> str:
 # What each teacher learned to predict, and how well a year ahead.
 def teachers(m: dict) -> str:
     d = load("exhibits/teachers.json").get("teachers", {})
-    labels = dict(beta="next month's daily beta", crowding="next month's short crowding")
+    labels = dict(beta="next month's daily beta", crowding="next month's short interest")
     labels["revisions"] = "next month's analyst revisions"
     labels["surprise"] = "next quarter's earnings surprise"
     rows = []
@@ -341,10 +354,12 @@ def teachers(m: dict) -> str:
         by_year = v["rank_correlation_by_year"].values()
         error = v.get("mean_abs_error")
         note = (
-            f"{error:.2f} against {v['beta_60m_mean_abs_error']:.2f} for beta_60m" if error else ""
+            f"{error:.2f} against {v['beta_60m_mean_abs_error']:.2f} for the 60-month beta"
+            if error
+            else ""
         )
         rows.append([labels[k], f"{sum(by_year) / len(by_year):.2f}", note])
-    return table(["teacher predicts", "rank correlation a year ahead", "mean error"], rows)
+    return table(["helper model predicts", "rank correlation a year ahead", "average error"], rows)
 
 
 # The scorer's information coefficient by year, the test years only.
@@ -354,8 +369,8 @@ def scorer(m: dict) -> str:
         return "The scorer has not run yet."
     ic = d["ic_2021_2026"]
     rows = [[y, f"{v:+.3f}"] for y, v in d["ic_by_year"].items()]
-    rows.append(["**2021-2026**", f"**{ic['ic_mean']:+.3f}** (t = {ic['ic_t']:.2f})"])
-    return table(["year", "IC"], rows)
+    rows.append(["**2021-2026**", f"**{ic['ic_mean']:+.3f}** (t-stat {ic['ic_t']:.2f})"])
+    return table(["year", "stock-picking model IC"], rows)
 
 
 # Our book against the three models, all through the same optimizer and costs.
@@ -366,7 +381,7 @@ def models(m: dict) -> str:
     perf, cost = m["performance"], m["costs"]
     rows = [
         [
-            "**Our book**",
+            "**Our portfolio**",
             f"{ml['composite']['ic_t']:.2f}",
             f"{perf['return_gross_annual']:.1%}",
             f"{cost['cost_annual']:.1%}",
@@ -375,7 +390,7 @@ def models(m: dict) -> str:
             f"**{perf['information_ratio']:+.2f}**",
         ]
     ]
-    for key, name in (("lgbm", "LightGBM"), ("nn3", "NN3, seed 42"), ("enet", "ElasticNet")):
+    for key, name in (("lgbm", "LightGBM"), ("nn3", "Neural network"), ("enet", "Elastic net")):
         x = ml[key]
         rows.append(
             [
@@ -388,32 +403,28 @@ def models(m: dict) -> str:
                 f"{x['information_ratio']:+.2f}",
             ]
         )
-    return table(["", "IC t", "gross", "cost", "net", "turnover", "**net IR**"], rows)
+    return table(["", "IC t-stat", "gross", "costs", "net", "turnover", "**IR**"], rows)
 
 
 # Out-of-sample R-squared for every method, both forms.
 def r2(m: dict) -> str:
     o = load("exhibits/oos_r2.json")
     names = dict(
-        template_ols="Template OLS",
-        template_ridge="Template ridge",
-        template_enet="Template ElasticNet",
-        enet="ElasticNet, rank target",
+        template_ols="Linear regression (template)",
+        template_ridge="Ridge (template)",
+        template_enet="Elastic net (template)",
+        enet="Elastic net, on ranks",
         lgbm="LightGBM",
-        nn3="NN3, seed 42",
-        scorer="LambdaRank scorer",
-        composite="12-signal composite",
+        nn3="Neural network, 3 layers",
+        scorer="Stock-picking model",
+        composite="Our 12-signal score",
     )
     rows = [
-        [
-            name,
-            f"{o['methods'][k]['r2_zero_benchmark']:+.2%}",
-            f"{o['methods'][k]['r2_cross_sectional']:+.2%}",
-        ]
+        [name, f"{o['methods'][k]['r2_zero_benchmark']:+.2%}"]
         for k, name in names.items()
         if k in o["methods"]
     ]
-    return table(["method", "R², zero benchmark", "R², cross-sectional"], rows)
+    return table(["model", "out-of-sample R², 2021-2026"], rows)
 
 
 # The record in pieces, with block-bootstrap intervals.
@@ -424,7 +435,7 @@ def halves(m: dict) -> str:
         first_half_2021_2022="2021-2022",
         second_half_2023_2026="**2023-2026**",
         excluding_2021="2022-2026",
-        crsp_era_2021_2025="CRSP years, 2021-2025",
+        crsp_era_2021_2025="2021-2025, the years with daily prices",
     )
     rows = [
         [
@@ -438,7 +449,7 @@ def halves(m: dict) -> str:
         ]
         for k, name in names.items()
     ]
-    return table(["period", "months", "gross", "cost", "net", "IR", "95% interval"], rows)
+    return table(["period", "months", "gross", "costs", "net", "IR", "IR, 95% range"], rows)
 
 
 # Six-factor loadings, and alpha as factors are added.
@@ -446,7 +457,7 @@ def factors(m: dict) -> str:
     risk = load("exhibits/pack.json")["risk"]
     six, three = risk["five_factor_momentum"], risk["attribution"]
     names = dict(
-        mkt_rf="Market (CRSP)",
+        mkt_rf="Market",
         smb="Size",
         hml="Value",
         rmw="Profitability",
@@ -464,9 +475,10 @@ def factors(m: dict) -> str:
         ],
     ]
     note = (
-        f"\n\nThe six explain {six['r_squared']:.0%} of the variance, over {six['months']} months."
+        f"\n\nThese six factors explain {six['r_squared']:.0%} of the monthly ups and downs, "
+        f"over {six['months']} months."
     )
-    return table(["", "loading", "t"], rows) + note
+    return table(["", "exposure", "t-stat"], rows) + note
 
 
 # Each year split into what the market and five styles paid and what stock selection added.
@@ -484,11 +496,12 @@ def styles(m: dict) -> str:
         for y, v in years.items()
     ]
     note = (
-        "\n\nReturn over cash, monthly sums, at the full-period loadings on the market, size, "
-        "value, profitability, investment and momentum (Ken French's factors, which end a month "
-        "before our last). Stock selection is everything the six do not explain."
+        "\n\nNet return by year (monthly sums), split into what the six factors explain and "
+        "stock selection. French's data end in July 2026."
     )
-    return table(["year", "total", "from the six styles", "from stock selection"], rows) + note
+    return (
+        table(["year", "net return", "from the six factors", "from stock selection"], rows) + note
+    )
 
 
 # Each signal's share of gross return, exposure times its pure return.
@@ -503,10 +516,10 @@ def attribution(m: dict) -> str:
         for k in signals
     ]
     rows.append(
-        ["explained by the twelve", f"{full['explained_total']['contribution_annual']:+.1%}", ""]
+        ["from the twelve signals", f"{full['explained_total']['contribution_annual']:+.1%}", ""]
     )
-    rows.append(["residual", f"{full['residual']['contribution_annual']:+.1%}", ""])
-    return table(["signal", "% a year of gross", "t"], rows)
+    rows.append(["not explained by them", f"{full['residual']['contribution_annual']:+.1%}", ""])
+    return table(["signal", "added to gross return a year", "t-stat"], rows)
 
 
 # Three controls that should make the result disappear, and what each did.
@@ -514,24 +527,23 @@ def placebo(m: dict) -> str:
     p = load("exhibits/placebo_lab.json")
     null, inv, stale = p["permutation_null"], p["inversion"], p["stale_scores"]
     return table(
-        ["control", "what changes", "what happened"],
+        ["test", "what changes", "what happened"],
         [
             [
-                "Permutation null",
-                f"scores shuffled within sector and liquidity, {null['draws']} draws",
-                f"gross {null['gross_annual_mean']:+.2%} a year "
-                f"(sd {null['gross_annual_std']:.2%}) against {p['shipped']['gross_annual']:+.1%}; "
-                f"net IR {null['mean']:+.2f} at {null['turnover_mean']:.0%} turnover",
+                "Random scores",
+                f"scores shuffled within sector and liquidity, {null['draws']} times",
+                f"gross {null['gross_annual_mean']:+.1%} a year on average, against our "
+                f"{p['shipped']['gross_annual']:+.1%}",
             ],
             [
-                "Inversion",
-                "every score times -1",
-                f"gross {inv['gross_annual']:+.1%} against {inv['baseline_gross_annual']:+.1%}",
+                "Reversed scores",
+                "long the worst, short the best",
+                f"gross {inv['gross_annual']:+.1%} against our {inv['baseline_gross_annual']:+.1%}",
             ],
             [
-                "Stale scores",
+                "One-month-old scores",
                 "last month's ranking traded this month",
-                f"net IR {stale['net_ir']:+.2f} against {stale['baseline_net_ir_matched']:+.2f} "
+                f"IR {stale['net_ir']:+.2f} against {stale['baseline_net_ir_matched']:+.2f} "
                 f"over the same {stale['months']} months",
             ],
         ],
@@ -633,35 +645,35 @@ def daily(m: dict) -> str:
     return pairs(
         [
             ("Trading days", f"{d['days']:,}, 2021-01 to 2025-12"),
-            ("Gross at rebalance, largest", f"{g['at_rebalance_max']:.1%}"),
+            ("Gross exposure at rebalancing, highest", f"{g['at_rebalance_max']:.1%}"),
             (
-                "Gross within a month, largest",
+                "Gross exposure on any day, highest",
                 f"{g['intra_month_max']:.1%}, {g['intra_month_max_month']}",
             ),
             (
-                "Months above 200% on some day",
+                "Months with any day above 200% gross",
                 f"{g['months_above_200pct_on_any_day']} of {rec['months']}",
             ),
             (
-                "Net within a month, largest absolute",
+                "Net exposure on any day, furthest from zero",
                 f"{r['net_exposure']['intra_month_max_abs']:.1%}",
             ),
             (
-                "Volatility, daily / monthly",
+                "Volatility, daily / monthly, same 60 months",
                 f"{r['volatility_annual']['daily']:.1%} / {r['volatility_annual']['monthly']:.1%}",
             ),
             (
-                "Max drawdown, daily / monthly",
+                "Max drawdown, daily / monthly, same 60 months",
                 f"{r['max_drawdown']['daily']:.1%} / {r['max_drawdown']['monthly']:.1%}",
             ),
             (
-                "One-day VaR 95% / 99%, CVaR 95%",
-                f"{r['var_one_day']['p95']:.2%} / {r['var_one_day']['p99']:.2%}, "
-                f"{r['var_one_day']['cvar_95']:.2%}",
+                "One-day Value at Risk, 95% / 99%",
+                f"{r['var_one_day']['p95']:.2%} / {r['var_one_day']['p99']:.2%}",
             ),
+            ("Expected shortfall, 95%, one day", f"{r['var_one_day']['cvar_95']:.2%}"),
             ("Worst day", f"{r['worst_day']['value']:+.2%}, {r['worst_day']['date']}"),
             (
-                "Daily path compounded to months, against returns.csv",
+                "Daily returns rebuilt into months, against returns.csv",
                 f"correlation {rec['correlation']:.4f}, largest gap {rec['largest_gap']:.3%}",
             ),
         ]
@@ -680,7 +692,8 @@ def years(m: dict) -> str:
         ]
         for y, v in load("exhibits/pack.json")["completeness"]["by_year"].items()
     ]
-    return table(["year", "strategy", "T-bill + 4%", "S&P 500 (price)", "active"], rows)
+    header = ["year", "strategy, total return", "T-bill + 4%", "S&P 500 (price)"]
+    return table(header + ["strategy minus hurdle"], rows)
 
 
 # The long and the short leg separately, and what the short book is made of.
@@ -692,7 +705,9 @@ def legs(m: dict) -> str:
             f"{g[side]['annual_contribution']:+.1%}",
             f"{g[side]['volatility']:.1%}",
             f"{g[side]['names_per_month']:.0f}",
+            f"${g[side]['mean_market_cap_musd'] / 1e3:.1f}bn",
             f"${g[side]['median_market_cap_musd'] / 1e3:.1f}bn",
+            f"${g[side]['mean_dollar_volume'] / 1e6:.0f}m",
             f"${g[side]['median_dollar_volume'] / 1e6:.0f}m",
         ]
         for side in ("long", "short")
@@ -701,17 +716,19 @@ def legs(m: dict) -> str:
         row.insert(2, f"{g[side]['return_per_dollar_annual']:+.1%}")
     htb, short = m["costs"]["hard_to_borrow_share_of_short_book"], g["short"]
     note = (
-        f"\n\nShort book by weight: {short['share_small_or_micro']:.0%} small-cap or below, "
-        f"{short['share_micro']:.0%} micro-cap, {htb:.0%} in borrow tiers of 3% a year or more."
+        f"\n\nShorts by weight: {short['share_small_or_micro']:.0%} small or micro caps "
+        f"({short['share_micro']:.0%} micro), and {htb:.0%} cost 3% a year or more to borrow."
     )
     crowd = load("exhibits/daily_risk.json").get("short_interest") or {}
     if crowd:
         note += (
-            f" In 2021-2025, {crowd['short_book_weight_crowded']:.0%} of it had more than "
-            f"{crowd['crowded_threshold']:.0%} of its shares already sold short."
+            f" In 2021-2025, the years with short-interest data, "
+            f"{crowd['short_book_weight_crowded']:.0%} were in stocks with over "
+            f"{crowd['crowded_threshold']:.0%} of their shares already sold short."
         )
-    header = ["leg", "contribution a year", "per dollar in the leg", "volatility", "names"]
-    header += ["median size", "median daily $ volume"]
+    header = ["leg", "return added a year", "return per $1 in the leg", "volatility", "stocks"]
+    header += ["market cap, average", "market cap, median"]
+    header += ["daily $ traded, average", "daily $ traded, median"]
     return table(header, rows) + note
 
 
@@ -739,9 +756,8 @@ def tried(m: dict) -> str:
     eligible, everything = config_log.attempts()
     chance = m["robustness"]["deflated_sharpe_probability_eligible"]
     note = (
-        f"\n\n{everything:,} fits in all, {eligible} of them books we could have shipped. The book "
-        "we ship was chosen by comparing these results; after counting every one, the deflated "
-        f"Sharpe gives a {chance:.0%} chance its edge is real."
+        f"\n\n{everything:,} fits in all, {eligible} of them shippable portfolios. Adjusted for "
+        f"this many tries (deflated Sharpe ratio), the chance our edge is real is {chance:.0%}."
     )
     return table(["what we tried", "attempts", "result", "verdict"], rows) + note
 
@@ -756,9 +772,9 @@ def agents(m: dict) -> str:
             [
                 "**Triage**",
                 "Gemma 4 26B-A4B",
-                f"{t['labelled']:,} masked 8-Ks from 2015-18 labelled; FinBERT + LightGBM learns "
-                f"them at {t['cross_validated_accuracy']:.0%} against {routine:.0%} for always "
-                "routine, then labels every filing",
+                f"{t['labelled']:,} 8-Ks from 2015-18 labelled with names hidden. A small "
+                f"FinBERT-based model learns them, {t['cross_validated_accuracy']:.0%} correct "
+                f"against {routine:.0%} for always guessing routine, then labels every filing",
             ]
         )
     a, learned = load("exhibits/analyst.json"), load("exhibits/analyst_learned.json")
@@ -766,24 +782,25 @@ def agents(m: dict) -> str:
         probe = a["look_ahead_probe"]
         late = learned.get("recall_test", {}).get("2021-2026", {}).get("analyst", {})
         text = (
-            f"{a['stock_months']:,} verdicts; named the company in {probe['company_named']:.0%} "
-            f"of {probe['filings']} masked filings"
+            f"{a['stock_months']:,} verdicts. Named the company in {probe['company_named']:.0%} "
+            f"of {probe['filings']} test filings"
         )
         if late:
             ic = late["rank_correlation"]
-            text += f"; its 2021-26 verdicts' IC {ic:+.3f}, no sign of recall"
+            text += f". Its 2021-26 verdicts have no predictive power (IC {ic:+.3f})"
         rows.append(["**Analyst**", "Qwen3.8-27B", text])
     c, pack = load("exhibits/crowd.json"), load("exhibits/pack.json")
     if c:
         likes = sorted(c["what_the_crowd_likes"].items(), key=lambda kv: -kv[1])[:2]
         text = (
-            f"{c['picks']:,} picks from anonymous cards, 2016-20; the two models agree "
-            f"{c['agreement_between_models']:.2f}; they buy {' and '.join(k for k, _ in likes)}"
+            f"{c['picks']:,} picks from anonymous stock cards, 2016-20. The two models' picks "
+            f"correlate {c['agreement_between_models']:.2f}, and both favour "
+            f"{' and '.join(k for k, _ in likes)}"
         )
         crowded = (pack.get("crowding") or {}).get("long")
         if crowded:
             share = crowded["share_in_top_crowd_decile"]
-            text += f"; {share:.0%} of our longs sit in their top tenth"
+            text += f". {share:.0%} of our longs are in their top tenth"
         rows.append(["**AI crowd**", "Gemma 4 and Qwen3.8", text])
     k = load("exhibits/critic.json")
     if k:
@@ -791,7 +808,11 @@ def agents(m: dict) -> str:
         repeat = k.get("repeatability", {}).get("comparison", {})
         if repeat:
             same, calls = repeat["identical_prefix"], repeat["calls_first"]
-            text += f"; run twice, {same} of {calls} calls identical"
+            text += (
+                ". Run twice, identical both times"
+                if same == calls
+                else (f". Run twice, {same} of {calls} calls identical")
+            )
         rows.append(["**Devil's advocate**", "Gemma 4 26B-A4B", text])
     e = load("exhibits/explainer.json")
     if e:

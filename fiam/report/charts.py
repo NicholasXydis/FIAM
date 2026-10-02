@@ -13,33 +13,44 @@ import pandas as pd
 
 from fiam import paths
 from fiam.benchmarks import benchmarks
-from fiam.book import MARKET_NAME, display_name, regress, universe
+from fiam.book import display_name, regress, universe
 
 FIGURES = paths.SUBMISSION / "figures"
 EXHIBITS = paths.EXHIBITS
 
-# One colour per role, colourblind-safe. RED MEANS LOSS AND NOTHING ELSE.
-OURS = "#1f4e79"  # the strategy
-BENCH = "#8c8c8c"  # the T-bill + 4% hurdle
-MARKET = "#4a3b6b"  # the market index, charcoal-purple so it is never mistaken for a loss
-NEG = "#c00000"  # losses only
-ALT = "#7030a0"  # a fourth series where one is needed
-MUTED = "#555555"  # captions and axis furniture
+# One colour per role, the same in every chart and on every slide.
+OURS = "#0F5C7A"  # the strategy, deep petrol blue
+BENCH = "#9AA3AE"  # the T-bill + 4% hurdle
+MARKET = "#5B6470"  # the S&P 500, dashed so it reads as context
+NEG = "#C2410C"  # losses and shortfalls only
+ALT = "#7FA7BD"  # a second view of the strategy, a lighter petrol
+MUTED = "#6B7280"  # labels and axis furniture
+INK = "#0B1F33"  # titles
 
-# Two sizes so nothing needs resizing. WIDE for date axes, SQUARE for distributions.
-WIDE, SQUARE = (8, 4.2), (7, 4.2)
+# One clean sans-serif everywhere, with fallbacks so any machine draws the same charts.
+matplotlib.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"],
+        "axes.titlesize": 12.5,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 9.5,
+    }
+)
 
-# Realized beta of the first pipeline, which reported -0.002 ex ante. Our strongest finding.
-PRE_FIX_BETA = -0.52
+# Two sizes, both in the slides' proportions. WIDE for date axes, SQUARE for distributions.
+WIDE, SQUARE = (9, 4.6), (7.5, 4.6)
 
 # A line break inside a label.
 BR = chr(10)
-PERIOD = "Jan 2021 to Aug 2026, net of all modelled costs"
+PERIOD = "Jan 2021 to Aug 2026, after all modelled costs"
 
 
 # A month-keyed series from an exhibit, "2024-03": value, as a dated series.
 def monthly(values: dict) -> pd.Series:
-    return pd.Series(values, index=pd.to_datetime(list(values)), dtype=float)
+    return pd.Series(list(values.values()), index=pd.to_datetime(list(values)), dtype=float)
 
 
 # Loads our monthly returns and works out the benchmark we have to beat.
@@ -52,54 +63,66 @@ def load() -> pd.DataFrame:
 
 # The overall stock market return, month by month, to compare ourselves against.
 def market_series(index: pd.DatetimeIndex) -> pd.Series:
-    # Whatever pipeline.benchmarks() calls the market. MARKET_NAME says which.
     bm = benchmarks().set_index("month")
     # The source gives the market return above cash, so add cash back to get the full return.
     return (bm["mkt_rf"] + bm["rf"]).reindex(index)
 
 
-# Every chart goes through style(), caption() and save(), so they share one look.
-def style(ax, title: str, ylabel: str = "", dates: bool = False) -> None:
-    ax.set_title(title, fontsize=11.5, loc="left", weight="bold", pad=10)
-    ax.set_ylabel(ylabel, fontsize=9, color=MUTED)
-    # Horizontal only and faint, so the gridlines never compete with the data.
-    ax.grid(axis="y", alpha=0.22, linewidth=0.6)
+# Every chart goes through style() and save(), so they share one look: a short title, a grey line
+# under it with the period, faint horizontal gridlines and nothing else.
+def style(ax, title: str, ylabel: str = "", dates: bool = False, subtitle: str = "") -> None:
+    ax.set_title(title, loc="left", weight="bold", color=INK, pad=24 if subtitle else 10)
+    if subtitle:
+        ax.text(0, 1.03, subtitle, transform=ax.transAxes, fontsize=9.5, color=MUTED, va="bottom")
+    ax.set_ylabel(ylabel, color=MUTED)
+    ax.grid(axis="y", color="#E5E7EB", linewidth=0.8)
     ax.set_axisbelow(True)
     ax.spines[["top", "right"]].set_visible(False)
-    ax.spines[["left", "bottom"]].set_color("#cccccc")
-    ax.tick_params(labelsize=8, colors=MUTED, length=3)
+    ax.spines[["left", "bottom"]].set_color("#D1D5DB")
+    ax.tick_params(colors=MUTED, length=0, pad=6)
     if dates:
-        # Six-month ticks. A tick a month is unreadable over 68 of them.
-        ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %y"))
-        for label in ax.get_xticklabels():
-            label.set_rotation(0)
+        # Yearly ticks read cleanly over 68 months.
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
 
-# The x-axis label. Left-aligned and muted like the y-axis, so fourteen charts share one look.
+# The x-axis label, muted like the y-axis.
 def xlabel(ax, text: str) -> None:
-    ax.set_xlabel(text, fontsize=9, loc="left", color=MUTED)
+    ax.set_xlabel(text, color=MUTED)
 
 
-# The line under a chart. The rules want the period and gross/net basis on every exhibit.
+# A note under a research chart: the period and basis the rules ask every exhibit to state.
 def caption(ax, text: str) -> None:
-    # Wrapped, because a caption longer than the axis silently runs off the canvas edge.
-    wrapped = textwrap.fill(text, width=118)
-    ax.text(0, -0.17, wrapped, transform=ax.transAxes, fontsize=7.5, color=MUTED, va="top")
+    wrapped = textwrap.fill(text, width=110)
+    ax.text(0, -0.16, wrapped, transform=ax.transAxes, fontsize=8, color=MUTED, va="top")
 
 
-# The caption for a two-panel chart. On the figure, not an axis, so it cannot push the panels apart.
+# The note under a two-panel chart, on the figure so it cannot push the panels apart.
 def figure_caption(fig, text: str) -> None:
-    fig.text(0.01, 0.0, textwrap.fill(text, width=170), fontsize=7.5, color=MUTED, va="top")
+    fig.text(0.01, 0.0, textwrap.fill(text, width=160), fontsize=8, color=MUTED, va="top")
+
+
+# A label at the right end of a line, in the line's colour, instead of a legend box.
+def end_label(ax, series: pd.Series, text: str, colour: str) -> None:
+    last = series.dropna()
+    ax.annotate(
+        text,
+        (last.index[-1], last.iloc[-1]),
+        xytext=(8, 0),
+        textcoords="offset points",
+        color=colour,
+        fontsize=9.5,
+        va="center",
+        weight="bold" if colour == OURS else "normal",
+    )
 
 
 # Saves one chart as an image file.
 def save(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
-    # Stops long titles getting cut off.
     fig.tight_layout()
     fig.savefig(
-        FIGURES / f"{name}.png", dpi=220, facecolor="white", bbox_inches="tight", pad_inches=0.3
+        FIGURES / f"{name}.png", dpi=220, facecolor="white", bbox_inches="tight", pad_inches=0.25
     )
     plt.close(fig)
     print(f"  {name}.png")
@@ -107,26 +130,26 @@ def save(fig, name: str) -> None:
 
 # Shows what $1 would have grown to, for us, the benchmark, and the market.
 def cumulative(df: pd.DataFrame) -> None:
-    # All three on one axis, so you see we beat the benchmark without tracking the market.
     fig, ax = plt.subplots(figsize=WIDE)
-    for series, label, colour in [
-        (df["portfolio_total_return"], "Strategy (net)", OURS),
-        (df["benchmark"], "T-bill + 4%", BENCH),
-        (market_series(df.index), MARKET_NAME, MARKET),
+    for series, label, colour, width, dash in [
+        (market_series(df.index), "S&P 500", MARKET, 1.4, (4, 3)),
+        (df["benchmark"], "T-bill + 4%", BENCH, 1.6, ()),
+        (df["portfolio_total_return"], "Strategy", OURS, 2.6, ()),
     ]:
         # Market data arrives a month late, so the line stops rather than faking a zero.
         growth = (1 + series.dropna()).cumprod()
-        ax.plot(growth.index, growth, label=label, color=colour, linewidth=1.6)
-    ax.axhline(1.0, color="black", linewidth=0.6)
-    ax.legend(fontsize=8, frameon=False)
-    style(ax, "Cumulative return", "Growth of $1", dates=True)
-    caption(ax, PERIOD)
+        ax.plot(growth.index, growth, color=colour, linewidth=width, dashes=dash)
+        end_label(ax, growth, f"{label}  {growth.iloc[-1]:.2f}", colour)
+    ax.axhline(1.0, color="#D1D5DB", linewidth=0.8)
+    ax.margins(x=0.02)
+    ax.set_xlim(right=df.index[-1] + pd.DateOffset(months=11))
+    style(ax, "Growth of $1", dates=True, subtitle=f"{PERIOD} · total return")
+    ax.set_xticks(pd.to_datetime([f"{y}-01-01" for y in range(2021, 2027)]))
     save(fig, "cumulative_return")
 
 
 # Shows how far below its previous high the strategy fell, and when.
 def underwater(df: pd.DataFrame) -> None:
-    # Only our drawdown is filled. Two overlapping fills go muddy right where you look.
     fig, ax = plt.subplots(figsize=WIDE)
 
     # Percent below the running high.
@@ -134,135 +157,88 @@ def underwater(df: pd.DataFrame) -> None:
         growth = (1 + series.dropna()).cumprod()
         return (growth / growth.cummax() - 1) * 100
 
-    ours = path(df["portfolio_total_return"])
-    ax.fill_between(ours.index, ours, 0, alpha=0.28, color=OURS)
-    ax.plot(ours.index, ours, color=OURS, linewidth=1.6, label="Strategy")
     market = path(market_series(df.index))
-    ax.plot(
-        market.index, market, color=MARKET, linewidth=1.1, alpha=0.75, label="S&P 500 (price index)"
-    )
-    ax.legend(fontsize=8, frameon=False, loc="lower left")
-    style(ax, "Drawdown from the running peak", "Drawdown (%)", dates=True)
-    caption(ax, PERIOD)
+    ax.plot(market.index, market, color=MARKET, linewidth=1.3, dashes=(4, 3), label="S&P 500")
+    ours = path(df["portfolio_total_return"])
+    ax.fill_between(ours.index, ours, 0, color=OURS, alpha=0.18, linewidth=0)
+    ax.plot(ours.index, ours, color=OURS, linewidth=2.2, label="Strategy")
+    ax.legend(frameon=False, loc="lower left")
+    title = "Drawdown From the Previous Peak (%)"
+    style(ax, title, dates=True, subtitle=f"{PERIOD} · total return")
     save(fig, "drawdown")
 
 
-# The beta we thought we had, the beta we had, and how it moved. One chart, two panels.
+# How the book's beta to the market moved, against the range a zero-beta book would wander in.
 def rolling_beta(df: pd.DataFrame) -> None:
     market = market_series(df.index)
     excess, market_excess = df["portfolio_total_return"] - df["rf"], market - df["rf"]
     both = pd.concat([excess, market_excess], axis=1).dropna()
-
     # The same HAC regression as the headline table, so the two can never disagree.
-    def slope(sub):
-        return regress(sub.iloc[:, 0], sub.iloc[:, 1])
-
-    full = slope(both)
+    full = regress(both.iloc[:, 0], both.iloc[:, 1])
     now, se = float(full.params.iloc[1]), float(full.bse.iloc[1])
-    early, late = slope(both[both.index.year <= 2023]), slope(both[both.index.year >= 2024])
-    # Beta over a moving 12-month window, and how far a book with zero beta would wander.
     window = paths.exhibit("pack.json")["beta_drift"]["rolling_12m"]
     beta = monthly({m: v["beta"] for m, v in window.items()})
     noise = monthly({m: v["noise_band"] for m, v in window.items()})
     daily = paths.exhibit("daily_risk.json").get("beta_to_sp500_daily", {})
 
-    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.2), width_ratios=[1, 2.4])
-
-    # Panel A. The old beta is a figure we quote, not a regression we re-run, so no error bar.
-    left.axhspan(-0.2, 0.2, color=BENCH, alpha=0.15, zorder=0)
-    left.axhline(0, color="black", linewidth=0.8)
-    left.scatter([0], [PRE_FIX_BETA], s=120, color=NEG, zorder=3)
-    left.errorbar(
-        [1],
-        [now],
-        yerr=[1.96 * se],
-        fmt="o",
-        markersize=11,
-        color=OURS,
-        capsize=6,
-        capthick=1.4,
-        elinewidth=1.4,
-        zorder=3,
+    fig, ax = plt.subplots(figsize=WIDE)
+    ax.fill_between(
+        noise.index,
+        -noise,
+        noise,
+        color="#E5E7EB",
+        linewidth=0,
+        label="range for a truly zero-beta portfolio (95%)",
     )
-    for x, y, text in [(0, PRE_FIX_BETA, f"{PRE_FIX_BETA:+.2f}"), (1, now, f"{now:+.2f}")]:
-        left.annotate(text, (x, y), xytext=(14, -4), textcoords="offset points", fontsize=10)
-    left.set_xticks([0, 1])
-    left.set_xticklabels(
-        ["Before" + BR + "beta_60m only", "After" + BR + "+ volatility"], fontsize=8
-    )
-    left.set_xlim(-0.5, 1.5)
-    style(left, "A. Before and after the fix", "Beta")
-
-    # Panel B. The band is noise: twelve monthly points cannot pin a beta tighter than this.
-    right.fill_between(
-        noise.index, -noise, noise, color=BENCH, alpha=0.2, zorder=0, label="zero-beta book, 95%"
-    )
-    right.plot(beta.index, beta, color=OURS, linewidth=1.8, label="12 months, monthly returns")
     if daily:
         days = monthly(daily["rolling_252d"])
-        right.plot(days.index, days, color=ALT, linewidth=1.3, label="252 days, daily returns")
-    right.axhline(0, color="black", linewidth=0.8)
-    right.legend(fontsize=7.5, frameon=False, loc="upper right")
-    style(right, "B. Rolling beta to the market", "", dates=True)
-
-    measured = f" Daily, 2021-25: {daily['beta']:+.2f} (se {daily['stderr']:.2f})." if daily else ""
-    figure_caption(
-        fig,
-        f"{len(both)} monthly observations against the {MARKET_NAME}, net of modelled costs, "
-        f"HAC errors, 95% interval. The first book reported an ex-ante beta of -0.002 and "
-        f"realized {PRE_FIX_BETA:+.2f}. Now {now:+.2f} (se {se:.2f}); 2021-23 "
-        f"{early.params.iloc[1]:+.2f}, 2024-26 {late.params.iloc[1]:+.2f}.{measured}",
-    )
+        ax.plot(days.index, days, color=ALT, linewidth=1.6, label="252 trading days, daily")
+    ax.plot(beta.index, beta, color=OURS, linewidth=2.4, label="12 months, monthly")
+    ax.axhline(0, color=INK, linewidth=0.8)
+    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.08), ncol=3)
+    note = f" · daily, 2021-25: {daily['beta']:+.2f}" if daily else ""
+    subtitle = f"{PERIOD} · full period {now:+.2f} (standard error {se:.2f}){note}"
+    style(ax, "Rolling Beta to the S&P 500", dates=True, subtitle=subtitle)
     save(fig, "rolling_beta")
 
 
-# Shows whether we were beating the benchmark, over rolling 12-month windows.
-def rolling_ir(df: pd.DataFrame) -> None:
-    # 12 months shows when conditions changed. Losing-window share goes in the title.
-    active = df["active_return"]
-    # Yearly scale.
-    ir = active.rolling(12).mean() / active.rolling(12).std() * np.sqrt(12)
+# A rolling 12-month line with its losing stretches shaded, for IR and active return alike.
+def rolling(series: pd.Series, title: str, name: str) -> None:
     fig, ax = plt.subplots(figsize=WIDE)
-    ax.plot(ir.index, ir, color=OURS, linewidth=1.6)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.fill_between(ir.index, ir, 0, where=ir < 0, color=NEG, alpha=0.20)
-    share = (ir.dropna() < 0).mean()
-    style(ax, "Rolling 12-month information ratio", "IR", dates=True)
-    caption(ax, f"{PERIOD}. Negative in {share:.0%} of windows.")
-    save(fig, "rolling_ir")
+    ax.fill_between(series.index, series, 0, where=series < 0, color=NEG, alpha=0.18, linewidth=0)
+    ax.fill_between(series.index, series, 0, where=series >= 0, color=OURS, alpha=0.12, linewidth=0)
+    ax.plot(series.index, series, color=OURS, linewidth=2.2)
+    ax.axhline(0, color=INK, linewidth=0.8)
+    share = (series.dropna() < 0).mean()
+    style(ax, title, dates=True, subtitle=f"{PERIOD} · below zero in {share:.0%} of windows")
+    save(fig, name)
 
 
-# Shows how much we beat the benchmark by, over rolling 12-month windows.
+# Whether we were beating the benchmark, over rolling 12-month windows.
+def rolling_ir(df: pd.DataFrame) -> None:
+    active = df["active_return"]
+    ir = active.rolling(12).mean() / active.rolling(12).std() * np.sqrt(12)
+    rolling(ir, "Rolling 12-Month Information Ratio", "rolling_ir")
+
+
+# How much we beat the benchmark by, over rolling 12-month windows, compounded.
 def rolling_active(df: pd.DataFrame) -> None:
-    # Same window and shading as the chart above. Compounded, not summed.
     portfolio = (1 + df["portfolio_total_return"]).rolling(12).apply(np.prod, raw=True) - 1
     benchmark = (1 + df["benchmark"]).rolling(12).apply(np.prod, raw=True) - 1
     rolled = (portfolio - benchmark) * 100
-    fig, ax = plt.subplots(figsize=WIDE)
-    ax.plot(rolled.index, rolled, color=OURS, linewidth=1.6)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.fill_between(rolled.index, rolled, 0, where=rolled < 0, color=NEG, alpha=0.20)
-    share = (rolled.dropna() < 0).mean()
-    style(ax, "Rolling 12-month active return over T-bill + 4%", "Active return (%)", dates=True)
-    caption(ax, f"{PERIOD}. Negative in {share:.0%} of windows.")
-    save(fig, "rolling_active_return")
+    rolling(rolled, "Rolling 12-Month Return Over T-bill + 4% (%)", "rolling_active_return")
 
 
-# Shows the spread of monthly returns and how many months cleared the benchmark.
+# The spread of monthly returns, with the benchmark's monthly hurdle marked.
 def histogram(df: pd.DataFrame) -> None:
-    # The dashed line is the point. Months right of it beat the benchmark.
-    net = df["portfolio_total_return"] * 100
+    total = df["portfolio_total_return"] * 100
     fig, ax = plt.subplots(figsize=SQUARE)
-    # Thirteen bins for 68 observations. Twenty-four made noise look like structure.
-    ax.hist(net, bins=13, color=OURS, alpha=0.85, edgecolor="white", linewidth=0.8)
+    ax.hist(total, bins=13, color=OURS, alpha=0.9, edgecolor="white", linewidth=1.2)
     hurdle = df["benchmark"].mean() * 100
-    ax.axvline(
-        hurdle, color=NEG, linewidth=1.6, linestyle="--", label=f"Monthly hurdle ({hurdle:.2f}%)"
-    )
-    ax.axvline(net.mean(), color="black", linewidth=1.2, label=f"Mean ({net.mean():.2f}%)")
-    ax.legend(fontsize=8, frameon=False)
-    style(ax, "Distribution of monthly returns", "Months")
-    caption(ax, PERIOD)
+    ax.axvline(hurdle, color=NEG, linewidth=1.8, dashes=(4, 3), label=f"Hurdle {hurdle:.2f}%")
+    ax.axvline(total.mean(), color=INK, linewidth=1.4, label=f"Average {total.mean():.2f}%")
+    ax.legend(frameon=False)
+    style(ax, "Monthly Total Returns", "Months", subtitle=PERIOD)
     xlabel(ax, "Monthly return (%)")
     save(fig, "return_histogram")
 
@@ -284,13 +260,15 @@ def contributors() -> None:
     label = merged.sort_values("Date").groupby("PERMNO")[["TICKER", "COMPANY NAME"]].last()
 
     fig, ax = plt.subplots(figsize=(11, 6.5))
-    ax.barh(range(len(both)), both.values, color=[NEG if v < 0 else OURS for v in both.values])
+    colours = [NEG if v < 0 else OURS for v in both.values]
+    ax.barh(range(len(both)), both.values, color=colours, height=0.7)
     ax.set_yticks(range(len(both)))
     ax.set_yticklabels(label.loc[both.index, "TICKER"], fontsize=9)
-    ax.axvline(0, color="black", linewidth=0.8)
+    ax.axvline(0, color=INK, linewidth=0.8)
+    ax.grid(axis="y", visible=False)
     # Room both sides for the full names, or the longest one runs into the ticker axis.
     span = max(abs(both.values.min()), abs(both.values.max()))
-    ax.set_xlim(-span * 2.3, span * 2.1)
+    ax.set_xlim(-span * 1.75, span * 1.75)
     # The full company name, uncut, beside its bar on the far side from the axis.
     for y, (permno, value) in enumerate(both.items()):
         ax.annotate(
@@ -298,16 +276,17 @@ def contributors() -> None:
             (value, y),
             xytext=(6 if value > 0 else -6, 0),
             textcoords="offset points",
-            fontsize=7,
+            fontsize=9,
             color=MUTED,
             va="center",
             ha="left" if value > 0 else "right",
         )
     # Before costs. We charge fees on the portfolio as a whole, not company by company.
-    style(ax, "Ten largest and ten smallest P&L contributors", "")
-    caption(ax, "Jan 2021 to Aug 2026, gross contribution before costs.")
-    # Left-align like every other chart, not centred under bars that start halfway.
-    xlabel(ax, "Contribution to cumulative return (%)")
+    style(
+        ax,
+        "Largest Winners and Losers",
+        subtitle="Jan 2021 to Aug 2026 · contribution to cumulative return before costs (%)",
+    )
     save(fig, "pnl_contributors")
 
 
