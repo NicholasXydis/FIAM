@@ -5,15 +5,13 @@ import re
 from pathlib import Path
 
 from fiam import paths
-from fiam.book import MARKET_NAME, candidate_label, display_name
+from fiam.book import MARKET_NAME, display_name
 
 SUBMISSION = paths.SUBMISSION
 RESULTS, BRIEF = paths.RESULTS, paths.BRIEF
 
 # Prose uses a real minus sign, so a negative number has to match either form.
 MINUS = "−"
-
-AUTO = re.compile(r"<!--AUTO:(\w+)-->.*?<!--/AUTO:\1-->", re.S)
 
 # A number in the prose: <!--N:metrics.json:performance.information_ratio:.2f-->0.85<!--/N-->.
 NUMBER = re.compile(r"<!--N:([^:]+):([^:]+):([^>]*)-->.*?<!--/N-->")
@@ -32,11 +30,6 @@ def table(header: list[str], rows: list[list[str]]) -> str:
     return "\n".join(lines + ["| " + " | ".join(map(str, row)) + " |" for row in rows])
 
 
-# One statistic in a row, the same cell applied to each column's data in turn.
-def across(columns: list, label: str, cell) -> list[str]:
-    return [label, *(cell(c) for c in columns)]
-
-
 # A label and a value per row, the shape most of these tables take.
 def pairs(rows: list[tuple[str, str]]) -> str:
     return table(["", ""], [list(r) for r in rows])
@@ -52,6 +45,7 @@ def headline(m: dict) -> str:
             ("CAGR (total return)", f"{perf['return_total_cagr']:.1%}"),
             ("Volatility", f"{perf['volatility_annual']:.1%}"),
             ("**Information ratio vs TB3MS + 4%**", f"**{perf['information_ratio']:.2f}**"),
+            ("Information ratio before costs", f"{perf['information_ratio_before_costs']:.2f}"),
             ("Sharpe ratio", f"{perf['sharpe_ratio']:.2f}"),
             ("Max drawdown (total return)", f"{perf['max_drawdown_total']:.1%}"),
             ("Hit rate", f"{perf['hit_rate_positive_active_months']:.1%}"),
@@ -76,33 +70,6 @@ def headline(m: dict) -> str:
     return f"{body}\n\n_From code `{run['code_sha256']}`._"
 
 
-# Which command made these numbers and which trained the models, as the provenance step recorded.
-def made(m: dict) -> str:
-    manifest = load("exhibits/run_manifest.json")
-    run, ml = manifest.get("run") or {}, manifest.get("ml") or {}
-    text = f"Made by `{run.get('command', 'uv run run.py --official')}`"
-    reused = sum(v.startswith("skipped") for v in run.get("steps", {}).values())
-    if reused:
-        text += f", reusing {reused} slow steps unchanged since the run that made them"
-    if ml.get("command") and ml["command"] != run.get("command"):
-        text += f"; models trained by `{ml['command']}`"
-    return text + "."
-
-
-# What the ship rule chose, in one sentence.
-def shipped(m: dict) -> str:
-    chosen = load("exhibits/ship.json").get("chosen", {})
-    others = {y: n for y, n in chosen.items() if n != "composite"}
-    if not chosen:
-        return "The ship rule has not run, so the composite ships."
-    if not others:
-        return (
-            f"It shipped the composite in all {len(chosen)} years: no learned book beat it clearly."
-        )
-    picks = "; ".join(f"{candidate_label(n)} in {y}" for y, n in others.items())
-    return f"It shipped {picks}, and the composite in the other years."
-
-
 # The plain-English table in BRIEF.md, with the 2016-2020 check beside the headline.
 def brief(m: dict) -> str:
     perf, split = m["performance"], load("exhibits/pack.json").get("subperiod", {})
@@ -110,6 +77,7 @@ def brief(m: dict) -> str:
     rows = [
         ("Net return", f"**{perf['return_net_annual']:.1%} a year** after every modelled fee"),
         ("Information ratio", f"**{perf['information_ratio']:.2f}**"),
+        ("Information ratio before costs", f"{perf['information_ratio_before_costs']:.2f}"),
         ("Alpha", f"{perf['alpha_annual']:.1%} a year, t = {perf['alpha_tstat']:.2f}"),
         (
             "Beta to the S&P 500, monthly",
@@ -160,95 +128,19 @@ def clean(m: dict) -> str:
         ],
         ["Net return", f"{old['net_annual']:+.1%} a year", f"{new['net_annual']:+.1%} a year"],
         [
-            "Realized beta, CRSP market",
-            f"**{old['beta_realized']:+.2f}** (se {old['beta_stderr']:.2f})",
-            f"{new['beta_realized']:+.2f} (se {new['beta_stderr']:.2f})",
+            "Beta to the whole US market (CRSP)",
+            f"**{old['beta_realized']:+.2f}** (standard error {old['beta_stderr']:.2f})",
+            f"{new['beta_realized']:+.2f} (standard error {new['beta_stderr']:.2f})",
         ],
         [
-            "Worst spread drawdown",
+            "Worst drawdown, net return",
             f"{old['max_drawdown_spread']:.0%}",
             f"{new['max_drawdown_spread']:.0%}",
         ],
         ["Turnover, one-way monthly", f"{old['turnover']:.0%}", f"{new['turnover']:.0%}"],
-        ["Net by year, compounded", years(old), years(new)],
+        ["Net return by year, compounded", years(old), years(new)],
     ]
     return table(["", "2016-2020, a historical check", "2021-2026, the record"], rows)
-
-
-# What the WRDS checks found, each line from wrds.json or pack.json.
-def wrds(m: dict) -> str:
-    w, pack = load("exhibits/wrds.json"), load("exhibits/pack.json")
-    if not w:
-        return "_Not built: no WRDS exports. Add them with `uv run run.py --import <folder>`._"
-    e, r, mk = w["exits"], w["returns_against_crsp"], w["market_with_dividends"]
-    held, dates, day = (
-        e["held_exiting_during_holding_month"],
-        w["report_dates"],
-        w["release_day_sensitivity"],
-    )
-    years = pack["data_by_year"]
-    crsp_std = [v["cross_sectional_std"] for y, v in years.items() if v["returns_from"] == "CRSP"]
-    crsp_tail = [v["share_beyond_50pct"] for y, v in years.items() if v["returns_from"] == "CRSP"]
-    late = years["2026"]
-    total, price = mk["total_return_crsp"], mk["price_only_fred"]
-    alone = w["organizer_data_only"]
-    return pairs(
-        [
-            (
-                "Dated delistings and deletions applied",
-                f"{sum(e['by_source'].values()):,} securities",
-            ),
-            (
-                "Rows already delisted at the decision, screened out",
-                f"{e['rows_already_delisted_at_decision_screened']}",
-            ),
-            ("Held names already delisted", f"{e['held_and_already_dead']}"),
-            (
-                "Held names taken over in their holding month",
-                f"{held['securities']}, {held['by_kind'].get('MER CASH', 0)} for cash; payouts "
-                f"{held['payout_contribution_annual'] * 1e4:+.1f} bp a year, closing cost "
-                f"{held['closing_cost_annual_already_charged'] * 1e4:.1f} bp, already charged",
-            ),
-            (
-                "Panel returns against CRSP, 2021-2025",
-                f"{r['share_within_1bp']:.1%} within 1 bp, correlation {r['correlation']:.4f}, "
-                f"{r['share_off_by_over_1pct']:.2%} off by over 1%",
-            ),
-            (
-                f"Beta, S&P 500 with dividends, {mk['window']}",
-                f"{total['beta']:+.2f} (se {total['beta_stderr']:.2f}) against "
-                f"{price['beta']:+.2f} price-only; "
-                f"dividends {mk['dividend_gap_annual']:.1%} a year",
-            ),
-            (
-                "Accounting updates with no new report behind them",
-                f"worst signal {dates['worst_early_share']:.2%}, rule 1%; a random month holds a "
-                f"release {dates['chance_a_month_has_a_release']:.0%} of the time",
-            ),
-            (
-                "Updates from a report dated on the decision day, held back a month",
-                f"IR {day['information_ratio']:.2f}, net {day['net_annual']:.1%}; "
-                f"{day['panel_rows_affected_share']:.1%} of rows",
-            ),
-            (
-                "Same code without WRDS, as a judge rebuilds it",
-                f"IR {alone['information_ratio']:.2f}, net {alone['return_net_annual']:.1%}, "
-                f"beta {alone['beta_realized']:+.2f}",
-            ),
-            (
-                "IR on CRSP years only, 2021-2025",
-                f"{pack['subperiod']['crsp_era_2021_2025']['information_ratio']:.2f} over "
-                f"{pack['subperiod']['crsp_era_2021_2025']['months']} months",
-            ),
-            (
-                "2026, returns from Compustat",
-                f"monthly spread {late['cross_sectional_std']:.3f} against "
-                f"{min(crsp_std):.3f}-{max(crsp_std):.3f}; moves past ±50% "
-                f"{late['share_beyond_50pct']:.2%} against "
-                f"{min(crsp_tail):.2%}-{max(crsp_tail):.2%}",
-            ),
-        ]
-    )
 
 
 # Realized beta by era and in rolling years, against the full period.
@@ -279,12 +171,15 @@ def drift(m: dict) -> str:
                 f"{t:+.2f}",
             ]
         )
+    noise = d["rolling_12m_outside_noise_band"]
     note = (
-        f"\n\n{d['rolling_12m_outside_band']:.0%} of {d['rolling_12m_windows']} rolling 12-month "
-        f"windows sit outside ±0.20, and {d['rolling_12m_outside_noise_band']:.0%} outside the "
-        "range a zero-beta book with our residual risk would reach 95% of the time."
+        f"\n\n{d['rolling_12m_outside_band']:.0%} of the {d['rolling_12m_windows']} rolling "
+        "12-month betas fall outside ±0.20, but "
+        + ("none" if noise == 0 else f"{noise:.0%}")
+        + " fall outside the range a truly zero-beta portfolio with our risk would show by "
+        "chance (95%)."
     )
-    return table(["period", "beta", "se", "t"], rows) + note
+    return table(["period", "beta", "standard error", "t-stat"], rows) + note
 
 
 # The five cost lines as the backtest recorded them, and how far they can rise.
@@ -293,18 +188,17 @@ def costs(m: dict) -> str:
     parts, even = c["components"], c["break_even"]
     names = dict(
         commission="Commission and regulatory fees (IBKR Pro fixed, SEC, FINRA)",
-        spread="Half-spread (calibrated to CRSP quotes)",
-        impact="Market impact (square-root law)",
-        borrow="Borrow (short-interest tiers)",
-        financing="Financing (benchmark less 0.5% on cash)",
+        spread="Bid-ask spread (half, from real quotes)",
+        impact="Market impact (grows with trade size)",
+        borrow="Borrow fees on shorts (by how heavily shorted)",
+        financing="Financing (cash earns the T-bill less 0.5%)",
         total="**Total**",
     )
     rows = [(names[k], f"{parts[k]:.2%}") for k in names]
     rows.append(
         (
-            "Annual cost at which active return reaches zero",
-            f"{even['break_even_annual_cost']:.1%}, "
-            f"{even['break_even_multiple']:.2f} times today's",
+            "Costs could rise to this before the edge over the hurdle disappears",
+            f"{even['break_even_annual_cost']:.1%} ({even['break_even_multiple']:.1f}x)",
         )
     )
     return table(["", "% of NAV a year"], [list(r) for r in rows])
@@ -316,9 +210,8 @@ def implementation(m: dict) -> str:
     if not d:
         return "The implementation step has not run yet."
     names = dict(
-        as_modelled="As modelled, $10M",
         every_cost_doubled="Every cost doubled",
-        impact_coefficient_half="Impact coefficient 0.5",
+        impact_coefficient_half="Market impact halved",
     )
     rows = [
         [
@@ -333,21 +226,23 @@ def implementation(m: dict) -> str:
     ]
     for key, s in d["capacity"].items():
         liquid = d["liquidity"][key]
-        exit_text = f"{liquid['share_of_book_out_in_one_day']:.0%}; {liquid['days_p95']:.1f} days"
+        exit_text = f"{liquid['share_of_book_out_in_one_day']:.0%}, {liquid['days_p95']:.1f} days"
+        size = f"${key[:-1]}M of capital" if key != "1000m" else "$1B of capital"
         rows.append(
             [
-                f"${key[:-1]}M of capital" if key != "1000m" else "$1B of capital",
+                size + (", as modelled" if key == "10m" else ""),
                 f"{s['information_ratio']:+.2f}",
                 f"{s['net_annual']:+.1%}",
                 f"{s['cost_annual']:.1%}",
                 exit_text,
             ]
         )
-    header = ["", "IR", "net", "cost", "sold in a day at 20% of volume; 95th percentile"]
+    header = ["", "IR", "net return", "costs"]
+    header += ["sellable in a day, days to exit 95% (at 20% of volume)"]
     return table(header, rows)
 
 
-# The daily path through each pre-registered stress window, and the cost of trading a day late.
+# The daily path through each stress window, and the cost of trading a day late.
 def stress(m: dict) -> str:
     d = load("exhibits/daily_risk.json")
     windows, late = d.get("stress"), d.get("execution_delay")
@@ -366,10 +261,10 @@ def stress(m: dict) -> str:
     if late:
         on_time, delayed = late["information_ratio_on_time"], late["information_ratio_one_day_late"]
         note = (
-            f"\n\nTrading a day late, {late['months']} months: IR {delayed:+.2f} against "
-            f"{on_time:+.2f} on time, {late['cost_annual']:+.1%} a year."
+            f"\n\nTrading one day late changes little: IR {delayed:+.2f} against {on_time:+.2f} "
+            f"on time, over the {late['months']} months with daily prices."
         )
-    return table(["window", "strategy", "S&P 500", "worst fall inside"], rows) + note
+    return table(["window", "strategy", "S&P 500", "worst drop within"], rows) + note
 
 
 # The analyst behind the firewall: what taught the small model, and the recall test.
@@ -378,19 +273,19 @@ def firewall(m: dict) -> str:
     if not d:
         return "The analyst's verdicts have not been learned yet; they come from the agents' run."
     rows = [
-        ("Verdicts that taught, up to November 2020", f"{d['taught_on']:,}"),
+        ("Analyst verdicts used for training, up to November 2020", f"{d['taught_on']:,}"),
         (
-            "Small model against the analyst, held-out rank correlation",
+            "How well the small model copies the analyst, rank correlation on unseen data",
             f"{d['cross_validated_rank_correlation']:.2f}",
         ),
-        ("Stock-months it scores for the stock picker", f"{d['scored_stock_months']:,}"),
+        ("Stock-months the small model scores", f"{d['scored_stock_months']:,}"),
     ]
     probe = load("exhibits/analyst.json").get("look_ahead_probe")
     if probe:
         rows.append(
             (
-                f"Probe: masked filings where the analyst named the company / year, of "
-                f"{probe['filings']}",
+                f"Test: share of {probe['filings']} hidden filings where the analyst named the "
+                "company / the year",
                 f"{probe['company_named']:.0%} / {probe['year_named']:.0%}",
             )
         )
@@ -398,130 +293,60 @@ def firewall(m: dict) -> str:
 
     def cell(period: str, who: str) -> str:
         x = test[period][who]
-        return f"{x['rank_correlation']:+.3f} (t {x['t']:.1f})"
+        return f"{x['rank_correlation']:+.3f} (t-stat {x['t']:.1f})"
 
-    body = [[f"IC, {p}", cell(p, "analyst"), cell(p, "learned")] for p in test]
+    body = [[f"Predictive power (IC), {p}", cell(p, "analyst"), cell(p, "learned")] for p in test]
     recall = table(["", "analyst's own verdicts", "small model"], body)
-    return f"{pairs(rows)}\n\n{recall}\n\n_{d['reading']}_"
-
-
-# Each signal's gross contribution by calendar year, to see which ones stopped working.
-def signal_years(m: dict) -> str:
-    years = load("exhibits/pack.json")["attribution"]["by_year"]
-    columns = sorted(years)
-    signals = sorted(years[columns[0]], key=lambda c: -sum(years[y][c] for y in columns))
-    rows = [[f"`{c}`", *(f"{years[y][c]:+.1%}" for y in columns)] for c in signals]
-    return table(["signal", *columns], rows)
-
-
-# The ten worst months, traced to legs, sectors and signals.
-def worst(m: dict) -> str:
-    months = load("exhibits/pack.json")["attribution"]["worst_months"]
-    rows = [
-        [
-            w["month"],
-            f"{w['gross']:+.1%}",
-            f"{w['long']:+.1%} / {w['short']:+.1%}",
-            ", ".join(f"{k} {v:+.1%}" for k, v in list(w["worst_sectors"].items())[:2]),
-            ", ".join(f"`{k}` {v:+.1%}" for k, v in list(w["worst_signals"].items())[:2]),
-        ]
-        for w in months
-    ]
-    return table(
-        ["month", "gross", "long / short leg", "worst sectors (GICS)", "worst signals"], rows
+    reading = (
+        "IC: the average monthly rank correlation with next month's return. If the analyst "
+        "remembered what happened, its 2021-2026 IC would far exceed the small model's. "
+        "It does not."
     )
-
-
-# Six-factor loadings in each half, since one full-period fit can hide a change of style.
-def factor_windows(m: dict) -> str:
-    split = load("exhibits/pack.json")["risk"]["five_factor_momentum_by_window"]
-    names = dict(
-        mkt_rf="Market",
-        smb="Size",
-        hml="Value",
-        rmw="Profitability",
-        cma="Investment",
-        mom="Momentum",
-    )
-    windows = list(split)
-    rows = [
-        [label, *(f"{split[w]['betas'][k]:+.2f} ({split[w]['t_stats'][k]:+.1f})" for w in windows)]
-        for k, label in names.items()
-    ]
-    rows.append(
-        [
-            "Alpha a year",
-            *(f"{split[w]['alpha_annual']:+.1%} ({split[w]['alpha_t']:+.1f})" for w in windows),
-        ]
-    )
-    return table(["loading (t)", *(w.replace("_", "-") for w in windows)], rows)
+    return f"{pairs(rows)}\n\n{recall}\n\n{reading}"
 
 
 # The brief's limits and our own, measured after rounding to whole shares.
 def compliance(m: dict) -> str:
     c, perf = m["compliance"], m["performance"]
+    n = load("exhibits/pack.json")["completeness"]["ranges"]["positions"]
     return table(
         ["rule", "limit", "measured"],
         [
-            ["Positions", "100-500", f"{c['positions_average']:.0f} on average"],
-            ["Gross exposure", "≤ 200%", f"max {c['gross_exposure_max']:.2%}"],
             [
-                "Net exposure",
-                "−50% to +50%; ours exact before rounding",
-                f"max abs {c['net_exposure_max_abs']:.2%}",
+                "Positions",
+                "100 to 500",
+                f"{n['min']:.0f} to {n['max']:.0f}, {n['mean']:.0f} on average",
+            ],
+            ["Gross exposure", "up to 200%", f"largest {c['gross_exposure_max']:.2%}"],
+            ["Net exposure", "−50% to +50%", f"largest {c['net_exposure_max_abs']:.2%}"],
+            [
+                "Each sector (our own limit)",
+                "±1% before rounding to whole shares",
+                f"largest {c['sector_tilt_max']:.2%} after rounding",
             ],
             [
-                "Sector, 11 GICS + `XX` (ours)",
-                "1% before whole-share rounding",
-                f"max {c['sector_tilt_max']:.2%} after it",
+                "Each position (our own limit)",
+                "1.5% before rounding to whole shares",
+                f"largest {c['position_weight_max']:.2%} after rounding",
             ],
             [
-                "Single name (ours)",
-                "1.5% before whole-share rounding",
-                f"max {c['position_weight_max']:.2%} after it",
+                "Predicted beta (our own limit)",
+                "±0.02",
+                f"average {c['beta_exante_weighted_mean']:+.3f}",
             ],
-            ["Ex-ante beta", "±0.02", f"mean {c['beta_exante_weighted_mean']:+.3f}"],
             [
-                "Realized beta",
-                "build fails outside ±0.20",
-                f"{perf['beta_realized']:+.2f} (se {perf['beta_stderr']:.2f})",
+                "Realized beta (our own check)",
+                "run stops outside ±0.20",
+                f"{perf['beta_realized']:+.2f} (standard error {perf['beta_stderr']:.2f})",
             ],
         ],
     )
 
 
-# The ship rule's choice for each year, and every candidate book over 2021-2026.
-def ship(m: dict) -> str:
-    d = load("exhibits/ship.json")
-    if not d:
-        return "The ship rule has not run yet."
-    name = candidate_label
-    years = []
-    for y, chosen in d["chosen"].items():
-        v = d["validation"][y]
-        other = max((k for k in v if k != "composite"), key=lambda k: v[k]["information_ratio"])
-        base, best = v["composite"]["information_ratio"], v[other]["information_ratio"]
-        years.append([y, name(chosen), f"{base:+.2f}", f"{best:+.2f}, {name(other)}"])
-    header = ["holding year", "shipped book", "composite IR, two years before", "best other"]
-    rows = [
-        [
-            f"**{name(n)}**" if n in d["chosen"].values() else name(n),
-            f"{c['information_ratio']:+.2f}",
-            f"{c['net_annual']:+.1%}",
-            f"{c['cost_annual']:.1%}",
-            f"{c['turnover']:.0%}",
-            f"{c['beta']:+.2f}",
-        ]
-        for n, c in d["candidates_2021_2026"].items()
-    ]
-    both = ["candidate, 2021-2026", "IR", "net", "cost", "turnover", "beta"]
-    return table(header, years) + "\n\n" + table(both, rows)
-
-
 # What each teacher learned to predict, and how well a year ahead.
 def teachers(m: dict) -> str:
     d = load("exhibits/teachers.json").get("teachers", {})
-    labels = dict(beta="next month's daily beta", crowding="next month's short crowding")
+    labels = dict(beta="next month's daily beta", crowding="next month's short interest")
     labels["revisions"] = "next month's analyst revisions"
     labels["surprise"] = "next quarter's earnings surprise"
     rows = []
@@ -529,10 +354,12 @@ def teachers(m: dict) -> str:
         by_year = v["rank_correlation_by_year"].values()
         error = v.get("mean_abs_error")
         note = (
-            f"{error:.2f} against {v['beta_60m_mean_abs_error']:.2f} for beta_60m" if error else ""
+            f"{error:.2f} against {v['beta_60m_mean_abs_error']:.2f} for the 60-month beta"
+            if error
+            else ""
         )
         rows.append([labels[k], f"{sum(by_year) / len(by_year):.2f}", note])
-    return table(["teacher predicts", "rank correlation a year ahead", "mean error"], rows)
+    return table(["helper model predicts", "rank correlation a year ahead", "average error"], rows)
 
 
 # The scorer's information coefficient by year, the test years only.
@@ -542,70 +369,28 @@ def scorer(m: dict) -> str:
         return "The scorer has not run yet."
     ic = d["ic_2021_2026"]
     rows = [[y, f"{v:+.3f}"] for y, v in d["ic_by_year"].items()]
-    rows.append(["**2021-2026**", f"**{ic['ic_mean']:+.3f}** (t = {ic['ic_t']:.2f})"])
-    return table(["year", "IC"], rows)
+    rows.append(["**2021-2026**", f"**{ic['ic_mean']:+.3f}** (t-stat {ic['ic_t']:.2f})"])
+    return table(["year", "stock-picking model IC"], rows)
 
 
-# The trader's methods replayed on each test year of one book: net return a year after costs.
-def trader(m: dict) -> str:
-    card = load("exhibits/ship.json").get("trader", {})
-    methods = dict(deep_hedging="deep hedging, monthly", ppo="PPO, yearly")
-    methods["fixed_rate"] = "Gârleanu-Pedersen constant rate"
-    methods["trade_all_the_way"] = "trade all the way"
-    rows = [[y, *(f"{v[k]['net_annual']:+.1%}" for k in methods)] for y, v in card.items()]
-    return table(["year", *methods.values()], rows)
-
-
-# What the AI crowd buys, and whether betting against it paid.
-def crowd(m: dict) -> str:
-    d = load("exhibits/crowd.json")
-    if not d:
-        return "The crowd agent has not run yet; it runs with --agents."
-    likes = sorted(d["what_the_crowd_likes"].items(), key=lambda kv: -kv[1])[:4]
-    ic = d["against_the_crowd_ic_by_year"]
-    early = [v for y, v in ic.items() if "2016" <= y <= "2020"]
-    late = [v for y, v in ic.items() if y >= "2021"]
-    agree = d["agreement_between_models"]
-    rows = [
-        ("Picks", f"{d['picks']:,} stock-months, models {', '.join(d['models'])}"),
-        ("Agreement between the two models", "one model only" if agree is None else f"{agree:.2f}"),
-        ("What the crowd buys most", ", ".join(k for k, _ in likes)),
-        (
-            "Against the crowd, IC 2016-2020 / 2021-2026",
-            f"{sum(early) / max(len(early), 1):+.3f} / {sum(late) / max(len(late), 1):+.3f}",
-        ),
-    ]
-    exposure = load("exhibits/pack.json").get("crowding") or {}
-    if exposure:
-        long, short = (exposure[s]["weighted_crowd_percentile"] for s in ("long", "short"))
-        rows.append(("Our longs / shorts, crowd percentile", f"{long:.0f} / {short:.0f}"))
-    return pairs(rows)
-
-
-# The composite against the three models, all through the same optimizer and costs.
+# Our book against the three models, all through the same optimizer and costs.
 def models(m: dict) -> str:
     ml = load("exhibits/ml_metrics.json")
-    base = load("exhibits/ship.json").get("candidates_2021_2026", {}).get("composite")
+    if not ml:
+        return "The model comparison has not run yet; it runs with --ml."
     perf, cost = m["performance"], m["costs"]
-    base = base or dict(
-        gross_annual=perf["return_gross_annual"],
-        cost_annual=cost["cost_annual"],
-        net_annual=perf["return_net_annual"],
-        turnover=cost["turnover_monthly_one_way"],
-        information_ratio=perf["information_ratio"],
-    )
     rows = [
         [
-            "**12-signal composite**",
+            "**Our portfolio**",
             f"{ml['composite']['ic_t']:.2f}",
-            f"{base['gross_annual']:.1%}",
-            f"{base['cost_annual']:.1%}",
-            f"**{base['net_annual']:+.1%}**",
-            f"{base['turnover']:.0%}",
-            f"**{base['information_ratio']:+.2f}**",
+            f"{perf['return_gross_annual']:.1%}",
+            f"{cost['cost_annual']:.1%}",
+            f"**{perf['return_net_annual']:+.1%}**",
+            f"{cost['turnover_monthly_one_way']:.0%}",
+            f"**{perf['information_ratio']:+.2f}**",
         ]
     ]
-    for key, name in (("lgbm", "LightGBM"), ("nn3", "NN3, seed 42"), ("enet", "ElasticNet")):
+    for key, name in (("lgbm", "LightGBM"), ("nn3", "Neural network"), ("enet", "Elastic net")):
         x = ml[key]
         rows.append(
             [
@@ -618,32 +403,28 @@ def models(m: dict) -> str:
                 f"{x['information_ratio']:+.2f}",
             ]
         )
-    return table(["", "IC t", "gross", "cost", "net", "turnover", "**net IR**"], rows)
+    return table(["", "IC t-stat", "gross", "costs", "net", "turnover", "**IR**"], rows)
 
 
 # Out-of-sample R-squared for every method, both forms.
 def r2(m: dict) -> str:
     o = load("exhibits/oos_r2.json")
     names = dict(
-        template_ols="Template OLS",
-        template_ridge="Template ridge",
-        template_enet="Template ElasticNet",
-        enet="ElasticNet, rank target",
+        template_ols="Linear regression (template)",
+        template_ridge="Ridge (template)",
+        template_enet="Elastic net (template)",
+        enet="Elastic net, on ranks",
         lgbm="LightGBM",
-        nn3="NN3, seed 42",
-        scorer="LambdaRank scorer",
-        composite="12-signal composite",
+        nn3="Neural network, 3 layers",
+        scorer="Stock-picking model",
+        composite="Our 12-signal score",
     )
     rows = [
-        [
-            name,
-            f"{o['methods'][k]['r2_zero_benchmark']:+.2%}",
-            f"{o['methods'][k]['r2_cross_sectional']:+.2%}",
-        ]
+        [name, f"{o['methods'][k]['r2_zero_benchmark']:+.2%}"]
         for k, name in names.items()
         if k in o["methods"]
     ]
-    return table(["method", "R², zero benchmark", "R², cross-sectional"], rows)
+    return table(["model", "out-of-sample R², 2021-2026"], rows)
 
 
 # The record in pieces, with block-bootstrap intervals.
@@ -654,7 +435,7 @@ def halves(m: dict) -> str:
         first_half_2021_2022="2021-2022",
         second_half_2023_2026="**2023-2026**",
         excluding_2021="2022-2026",
-        crsp_era_2021_2025="CRSP years, 2021-2025",
+        crsp_era_2021_2025="2021-2025, the years with daily prices",
     )
     rows = [
         [
@@ -668,7 +449,7 @@ def halves(m: dict) -> str:
         ]
         for k, name in names.items()
     ]
-    return table(["period", "months", "gross", "cost", "net", "IR", "95% interval"], rows)
+    return table(["period", "months", "gross", "costs", "net", "IR", "IR, 95% range"], rows)
 
 
 # Six-factor loadings, and alpha as factors are added.
@@ -676,7 +457,7 @@ def factors(m: dict) -> str:
     risk = load("exhibits/pack.json")["risk"]
     six, three = risk["five_factor_momentum"], risk["attribution"]
     names = dict(
-        mkt_rf="Market (CRSP)",
+        mkt_rf="Market",
         smb="Size",
         hml="Value",
         rmw="Profitability",
@@ -694,9 +475,10 @@ def factors(m: dict) -> str:
         ],
     ]
     note = (
-        f"\n\nThe six explain {six['r_squared']:.0%} of the variance, over {six['months']} months."
+        f"\n\nThese six factors explain {six['r_squared']:.0%} of the monthly ups and downs, "
+        f"over {six['months']} months."
     )
-    return table(["", "loading", "t"], rows) + note
+    return table(["", "exposure", "t-stat"], rows) + note
 
 
 # Each year split into what the market and five styles paid and what stock selection added.
@@ -714,11 +496,12 @@ def styles(m: dict) -> str:
         for y, v in years.items()
     ]
     note = (
-        "\n\nReturn over cash, monthly sums, at the full-period loadings on the market, size, "
-        "value, profitability, investment and momentum (Ken French's factors, which end a month "
-        "before our last). Stock selection is everything the six do not explain."
+        "\n\nNet return by year (monthly sums), split into what the six factors explain and "
+        "stock selection. French's data end in July 2026."
     )
-    return table(["year", "total", "from the six styles", "from stock selection"], rows) + note
+    return (
+        table(["year", "net return", "from the six factors", "from stock selection"], rows) + note
+    )
 
 
 # Each signal's share of gross return, exposure times its pure return.
@@ -733,28 +516,10 @@ def attribution(m: dict) -> str:
         for k in signals
     ]
     rows.append(
-        ["explained by the twelve", f"{full['explained_total']['contribution_annual']:+.1%}", ""]
+        ["from the twelve signals", f"{full['explained_total']['contribution_annual']:+.1%}", ""]
     )
-    rows.append(["residual", f"{full['residual']['contribution_annual']:+.1%}", ""])
-    return table(["signal", "% a year of gross", "t"], rows)
-
-
-# Tail risk and consistency, which monthly volatility hides.
-def tails(m: dict) -> str:
-    risk = load("exhibits/pack.json")["risk"]
-    t, c = risk["tails"], risk["consistency"]
-    return pairs(
-        [
-            ("95% VaR, monthly", f"{t['var_95_monthly']:.2%}"),
-            ("95% CVaR, monthly", f"{t['cvar_95_monthly']:.2%}"),
-            ("Skew", f"{t['skew']:+.2f}"),
-            ("Excess kurtosis", f"{t['excess_kurtosis']:+.2f}"),
-            (
-                "Rolling 12-month windows with a negative IR",
-                f"{c['share_negative']:.0%} of {c['windows']}",
-            ),
-        ]
-    )
+    rows.append(["not explained by them", f"{full['residual']['contribution_annual']:+.1%}", ""])
+    return table(["signal", "added to gross return a year", "t-stat"], rows)
 
 
 # Three controls that should make the result disappear, and what each did.
@@ -762,92 +527,27 @@ def placebo(m: dict) -> str:
     p = load("exhibits/placebo_lab.json")
     null, inv, stale = p["permutation_null"], p["inversion"], p["stale_scores"]
     return table(
-        ["control", "what changes", "what happened"],
+        ["test", "what changes", "what happened"],
         [
             [
-                "Permutation null",
-                f"scores shuffled within sector and liquidity, {null['draws']} draws",
-                f"gross {null['gross_annual_mean']:+.2%} a year "
-                f"(sd {null['gross_annual_std']:.2%}) against {p['shipped']['gross_annual']:+.1%}; "
-                f"net IR {null['mean']:+.2f} at {null['turnover_mean']:.0%} turnover",
+                "Random scores",
+                f"scores shuffled within sector and liquidity, {null['draws']} times",
+                f"gross {null['gross_annual_mean']:+.1%} a year on average, against our "
+                f"{p['shipped']['gross_annual']:+.1%}",
             ],
             [
-                "Inversion",
-                "every score times -1",
-                f"gross {inv['gross_annual']:+.1%} against {inv['baseline_gross_annual']:+.1%}",
+                "Reversed scores",
+                "long the worst, short the best",
+                f"gross {inv['gross_annual']:+.1%} against our {inv['baseline_gross_annual']:+.1%}",
             ],
             [
-                "Stale scores",
+                "One-month-old scores",
                 "last month's ranking traded this month",
-                f"net IR {stale['net_ir']:+.2f} against {stale['baseline_net_ir_matched']:+.2f} "
+                f"IR {stale['net_ir']:+.2f} against {stale['baseline_net_ir_matched']:+.2f} "
                 f"over the same {stale['months']} months",
             ],
         ],
     )
-
-
-# What each agent did, from its exhibit.
-def agents(m: dict) -> str:
-    d, c, a = (
-        load("exhibits/discovery.json"),
-        load("exhibits/critic.json"),
-        load("exhibits/auditor.json"),
-    )
-    rows = []
-    if d:
-        runs, ctl = d["runs"], d["random_search_control"]
-        text = "; ".join(
-            f"{'real' if tag == 'named' else tag} names: {r['backtests_used']} backtests, "
-            + (
-                f"best in sample {r['best_design_ir_seen']:.2f}, "
-                if r["best_design_ir_seen"]
-                else ""
-            )
-            + "sealed IR "
-            + (f"**{r['sealed']['information_ratio']:+.2f}**" if r.get("sealed") else "no pick")
-            for tag, r in runs.items()
-        )
-        text += f"; random search, same budget, sealed IR {ctl['sealed']['information_ratio']:+.2f}"
-        rows.append(["**Signal discovery**", "Qwen3.8-27B", text])
-    if c:
-        repeat = c.get("repeatability", {}).get("comparison", {})
-        text = (
-            f"{len(c['critiques'])} critiques, {c['unsupported']} quoting a number no tool showed"
-        )
-        if repeat:
-            same, calls = repeat["identical_prefix"], repeat["calls_first"]
-            text += f"; run twice, {same} of {calls} calls identical"
-        rows.append(["**Devil's advocate**", "Gemma 4 26B-A4B", text])
-    if a:
-        planted, clean = a["runs"]["planted"], a["runs"]["clean"]
-        text = (
-            f"found **{planted['score']['found']} of {planted['score']['planted']}** planted bugs; "
-            f"{clean['score']['false_alarms']} false alarms on the clean copy"
-        )
-        rows.append(["**Reproducibility**", "Qwen3.8-27B", text])
-    r = load("exhibits/director.json")
-    if r:
-        agree, n, own = r["agreed_with_rule"], len(r["years"]), r["director"]
-        text = (
-            f"chose each year's book from earlier months: IR **{own['information_ratio']:+.2f}**, "
-            f"above {own['share_of_random_beaten']:.0%} of random picks; the rule "
-            f"{r['rule']['information_ratio']:+.2f}; agreed with it {agree} of {n} years"
-        )
-        rows.insert(0, ["**Research director**", "Qwen3.8-27B", text])
-    e = load("exhibits/explainer.json")
-    if e:
-        text = f"{len(e['positions'])} positions explained from their facts alone"
-        rows.append(["**Explainer**", "Qwen3.8-27B", text])
-    runners = {
-        a["runner"] for a in (load("exhibits/run_manifest.json").get("agents") or {}).values()
-    }
-    older = sorted(r for r in runners if r != "fiam.agents.harness")
-    note = (
-        f"\n\n_From the earlier harness ({', '.join(older)}); the next `--all` run replaces them._"
-        if older
-        else ""
-    )
-    return table(["agent", "model", "what happened"], rows) + note
 
 
 # The explainer's three largest winners and losers, each with its reason in the agent's words.
@@ -861,172 +561,13 @@ def explained(m: dict) -> str:
             f"{p['ticker']}, {p['company']}",
             p["side"].lower(),
             f"{p['facts']['realized_pnl_pct']:+.2f}%",
-            p["why"].replace("|", "/").replace("\n", " "),
+            # The first sentence carries the reason; the rest is in explainer.json.
+            p["why"].replace("|", "/").replace("\n", " ").split(". ")[0].rstrip(".") + ".",
         ]
         for p in [*names[:3], *names[-3:]]
     ]
     header = ["name", "side", "P&L, % of NAV", "why it was held, in the explainer's words"]
     return table(header, rows)
-
-
-# Each way of choosing a book, window by window, beside random picks over the same years.
-def walk(m: dict) -> str:
-    e = load("exhibits/evaluation.json")
-    if not e:
-        return "The research harness has not run yet."
-    names = ["2016-2020", "2021-2022", "2023-2026", "2021-2026"]
-
-    # IR with its months, and the months it really covers when fewer than the window's name.
-    def cells(windows: dict) -> list[str]:
-        out = []
-        for w in names:
-            x = windows.get(w)
-            # Results written before spans were recorded count as covering the whole window.
-            span = x.get("span", "") if x else ""
-            full = x and (not span or (span[:4] == w[:4] and span[-7:-3] == w[-4:]))
-            if not x:
-                out.append("")
-            elif full:
-                out.append(f"{x['information_ratio']:+.2f} ({x['months']})")
-            else:
-                out.append(f"{x['information_ratio']:+.2f} ({x['months']}, {span})")
-        return out
-
-    tracks = e["tracks"]
-    rows = [
-        ["Shipped book", *cells(e["shipped"])],
-        ["Ship rule, walked forward", *cells(tracks["ship_rule"]["windows"])],
-        ["Composite every year", *cells(tracks["always_composite"]["windows"])],
-    ]
-    ch = tracks["ship_rule"]["against_chance"]
-    note = (
-        f"\n\nIR by window, months in brackets, on the CRSP market. Picks start in "
-        f"{e['first_pick']}, the first year with two years of candidates behind it. Random picks "
-        f"of one candidate a year average IR {ch['random_mean']:+.2f}; the rule beats "
-        f"{ch['share_of_random_beaten']:.0%} of them."
-    )
-    return table(["", *names], rows) + note
-
-
-# Construction v2 against the current book, the four pre-registered rules, and each rule alone.
-def construction(m: dict) -> str:
-    d = load("exhibits/construction.json")
-    if not d:
-        return "The construction v2 test has not run yet."
-    now, v2, verdict = d["current"], d["v2"], d["verdict"]
-
-    columns = [now, v2]
-
-    rows = [
-        across(columns, "IR, 2016-2026", lambda b: f"{b['information_ratio']:+.2f}"),
-        across(columns, "IR, 2016-2020", lambda b: f"{b['by_window']['y2016_2020']:+.2f}"),
-        across(columns, "IR, 2021-2026", lambda b: f"{b['by_window']['y2021_2026']:+.2f}"),
-        across(
-            columns,
-            "Net a year / costs a year",
-            lambda b: f"{b['net_annual']:+.1%} / {b['cost_annual']:.1%}",
-        ),
-        across(
-            columns,
-            "Beta, monthly (se)",
-            lambda b: f"{b['beta_monthly']:+.2f} ({b['beta_monthly_stderr']:.2f})",
-        ),
-        across(
-            columns,
-            "Beta, daily 2016-2025 (se)",
-            lambda b: f"{b['beta_daily']:+.3f} ({b['beta_daily_stderr']:.3f})",
-        ),
-        across(columns, "Worst drawdown", lambda b: f"{b['max_drawdown']:.1%}"),
-        across(columns, "Largest gross on any day", lambda b: f"{b['gross_max_any_day']:.1%}"),
-    ]
-    marks = {True: "passed", False: "**failed**"}
-    names = dict(
-        ir_at_least_current="IR at least the current book's",
-        beta_closer_to_zero="beta closer to zero, monthly and daily",
-        drawdown_no_deeper="worst drawdown no deeper",
-        every_rule_every_month="every rule, every month and day",
-    )
-    rules = "; ".join(f"{label}: {marks[verdict[k]]}" for k, label in names.items())
-    alone = ", ".join(
-        f"{k.replace('_', ' ')} {v['information_ratio']:+.2f}"
-        for k, v in d["each_rule_alone"].items()
-    )
-    outcome = "Shipped." if verdict["ships"] else "Not shipped: the current construction stays."
-    note = f"\n\n{rules}. **{outcome}** Each rule alone, IR on 2016-2026: {alone}."
-    return table(["", "current", "v2"], rows) + note
-
-
-# The factor-neutral book against the current one: what is left once style is taken out.
-def neutral(m: dict) -> str:
-    d = load("exhibits/factor_neutral.json")
-    if not d:
-        return "The factor-neutral test has not run yet."
-    now, flat, verdict = d["current"], d["factor_neutral"], d["verdict"]
-
-    columns = [now, flat]
-
-    loadings = ("smb", "hml", "rmw", "cma", "mom")
-    rows = [
-        across(columns, "IR, 2016-2026", lambda b: f"{b['information_ratio']:+.2f}"),
-        *(
-            across(columns, f"IR, {w[1:5]}-{w[6:]}", lambda b, w=w: f"{b['by_window'][w]:+.2f}")
-            for w in ("y2016_2020", "y2021_2022", "y2023_2026")
-        ),
-        across(
-            columns,
-            "Beta, monthly / daily",
-            lambda b: f"{b['beta_monthly']:+.2f} / {b['beta_daily']:+.3f}",
-        ),
-        across(columns, "Worst drawdown", lambda b: f"{b['max_drawdown']:.1%}"),
-        across(
-            columns,
-            "Loadings: size, value, profitability, investment, momentum",
-            lambda b: ", ".join(f"{b['factors']['betas'][k]:+.2f}" for k in loadings),
-        ),
-        across(
-            columns,
-            "**Six-factor alpha a year (t)**",
-            lambda b: f"{b['factors']['alpha_annual']:+.1%} ({b['factors']['alpha_t']:+.2f})",
-        ),
-    ]
-    outcome = "Shipped." if verdict["ships"] else "Not shipped: the current construction stays."
-    return table(["", "current", "factor-neutral"], rows) + f"\n\n**{outcome}**"
-
-
-# How the learned models did year by year as their training data grew: the learning curve.
-def learning(m: dict) -> str:
-    ic = load("exhibits/scorer.json").get("ic_every_year", {})
-    taught = load("exhibits/teachers.json").get("teachers", {})
-    if not ic:
-        return "The stock picker has not run yet."
-    names = [t for t in ("surprise", "beta", "crowding", "revisions") if t in taught]
-    rows = []
-    for year in sorted(ic):
-        cells = [taught[t]["rank_correlation_by_year"].get(year) for t in names]
-        rows.append(
-            [year, int(year) - 2015, f"{ic[year]:+.3f}"]
-            + ["" if c is None else f"{c:.2f}" for c in cells]
-        )
-    header = ["year", "years of training", "stock picker IC", *(f"{t} teacher" for t in names)]
-    return table(header, rows)
-
-
-# Every holding label, by the source that confirmed it.
-def labels(m: dict) -> str:
-    lab = load("exhibits/labels.json")
-    rows = [
-        [period.replace("_", " "), source, f"{count:,}"]
-        for period, sources in lab["by_period"].items()
-        for source, count in sources.items()
-    ]
-    fixed = ", ".join(
-        f"{c['was']} → {c['now']} from {c['from_decisions_on_or_after']}" for c in lab["corrected"]
-    )
-    note = (
-        f"\n\n{lab['confirmed_share']:.2%} of {lab['holding_rows']:,} holding rows confirmed. "
-        f"Corrected from SEC's dated record: {fixed}."
-    )
-    return table(["period", "confirmed by", "rows"], rows) + note
 
 
 # The deflated-Sharpe probability at both attempt counts, with the Sharpe luck alone produces.
@@ -1095,37 +636,6 @@ def committee(m: dict) -> str:
     )
 
 
-# The rules' statistics for the strategy, the benchmark and the S&P 500 side by side.
-def comparison(m: dict) -> str:
-    c = load("exhibits/pack.json")["completeness"]["comparison"]
-    names = dict(strategy="strategy", benchmark="T-bill + 4%", sp500="S&P 500 (price)")
-
-    # A month's return with its date.
-    def month(x: dict) -> str:
-        return f"{x['value']:+.1%}, {x['month']}"
-
-    columns = [c[k] for k in names]
-    return table(
-        ["", *names.values()],
-        [
-            across(columns, "Return a year, arithmetic", lambda x: f"{x['annual_arithmetic']:.1%}"),
-            across(
-                columns, "Return a year, geometric (CAGR)", lambda x: f"{x['annual_geometric']:.1%}"
-            ),
-            across(columns, "Cumulative", lambda x: f"{x['cumulative']:.1%}"),
-            across(columns, "Volatility", lambda x: f"{x['volatility']:.1%}"),
-            across(
-                columns,
-                "Sharpe ratio",
-                lambda x: "" if x["sharpe_ratio"] is None else f"{x['sharpe_ratio']:.2f}",
-            ),
-            across(columns, "Max drawdown", lambda x: f"{x['max_drawdown']:.1%}"),
-            across(columns, "Best month", lambda x: month(x["best_month"])),
-            across(columns, "Worst month", lambda x: month(x["worst_month"])),
-        ],
-    )
-
-
 # The book marked every trading day, beside what month-end numbers say.
 def daily(m: dict) -> str:
     d = load("exhibits/daily_risk.json")
@@ -1135,35 +645,35 @@ def daily(m: dict) -> str:
     return pairs(
         [
             ("Trading days", f"{d['days']:,}, 2021-01 to 2025-12"),
-            ("Gross at rebalance, largest", f"{g['at_rebalance_max']:.1%}"),
+            ("Gross exposure at rebalancing, highest", f"{g['at_rebalance_max']:.1%}"),
             (
-                "Gross within a month, largest",
+                "Gross exposure on any day, highest",
                 f"{g['intra_month_max']:.1%}, {g['intra_month_max_month']}",
             ),
             (
-                "Months above 200% on some day",
+                "Months with any day above 200% gross",
                 f"{g['months_above_200pct_on_any_day']} of {rec['months']}",
             ),
             (
-                "Net within a month, largest absolute",
+                "Net exposure on any day, furthest from zero",
                 f"{r['net_exposure']['intra_month_max_abs']:.1%}",
             ),
             (
-                "Volatility, daily / monthly",
+                "Volatility, daily / monthly, same 60 months",
                 f"{r['volatility_annual']['daily']:.1%} / {r['volatility_annual']['monthly']:.1%}",
             ),
             (
-                "Max drawdown, daily / monthly",
+                "Max drawdown, daily / monthly, same 60 months",
                 f"{r['max_drawdown']['daily']:.1%} / {r['max_drawdown']['monthly']:.1%}",
             ),
             (
-                "One-day VaR 95% / 99%, CVaR 95%",
-                f"{r['var_one_day']['p95']:.2%} / {r['var_one_day']['p99']:.2%}, "
-                f"{r['var_one_day']['cvar_95']:.2%}",
+                "One-day Value at Risk, 95% / 99%",
+                f"{r['var_one_day']['p95']:.2%} / {r['var_one_day']['p99']:.2%}",
             ),
+            ("Expected shortfall, 95%, one day", f"{r['var_one_day']['cvar_95']:.2%}"),
             ("Worst day", f"{r['worst_day']['value']:+.2%}, {r['worst_day']['date']}"),
             (
-                "Daily path compounded to months, against returns.csv",
+                "Daily returns rebuilt into months, against returns.csv",
                 f"correlation {rec['correlation']:.4f}, largest gap {rec['largest_gap']:.3%}",
             ),
         ]
@@ -1182,7 +692,8 @@ def years(m: dict) -> str:
         ]
         for y, v in load("exhibits/pack.json")["completeness"]["by_year"].items()
     ]
-    return table(["year", "strategy", "T-bill + 4%", "S&P 500 (price)", "active"], rows)
+    header = ["year", "strategy, total return", "T-bill + 4%", "S&P 500 (price)"]
+    return table(header + ["strategy minus hurdle"], rows)
 
 
 # The long and the short leg separately, and what the short book is made of.
@@ -1194,7 +705,9 @@ def legs(m: dict) -> str:
             f"{g[side]['annual_contribution']:+.1%}",
             f"{g[side]['volatility']:.1%}",
             f"{g[side]['names_per_month']:.0f}",
+            f"${g[side]['mean_market_cap_musd'] / 1e3:.1f}bn",
             f"${g[side]['median_market_cap_musd'] / 1e3:.1f}bn",
+            f"${g[side]['mean_dollar_volume'] / 1e6:.0f}m",
             f"${g[side]['median_dollar_volume'] / 1e6:.0f}m",
         ]
         for side in ("long", "short")
@@ -1203,17 +716,19 @@ def legs(m: dict) -> str:
         row.insert(2, f"{g[side]['return_per_dollar_annual']:+.1%}")
     htb, short = m["costs"]["hard_to_borrow_share_of_short_book"], g["short"]
     note = (
-        f"\n\nShort book by weight: {short['share_small_or_micro']:.0%} small-cap or below, "
-        f"{short['share_micro']:.0%} micro-cap, {htb:.0%} in borrow tiers of 3% a year or more."
+        f"\n\nShorts by weight: {short['share_small_or_micro']:.0%} small or micro caps "
+        f"({short['share_micro']:.0%} micro), and {htb:.0%} cost 3% a year or more to borrow."
     )
     crowd = load("exhibits/daily_risk.json").get("short_interest") or {}
     if crowd:
         note += (
-            f" In 2021-2025, {crowd['short_book_weight_crowded']:.0%} of it had more than "
-            f"{crowd['crowded_threshold']:.0%} of its shares already sold short."
+            f" In 2021-2025, the years with short-interest data, "
+            f"{crowd['short_book_weight_crowded']:.0%} were in stocks with over "
+            f"{crowd['crowded_threshold']:.0%} of their shares already sold short."
         )
-    header = ["leg", "contribution a year", "per dollar in the leg", "volatility", "names"]
-    header += ["median size", "median daily $ volume"]
+    header = ["leg", "return added a year", "return per $1 in the leg", "volatility", "stocks"]
+    header += ["market cap, average", "market cap, median"]
+    header += ["daily $ traded, average", "daily $ traded, median"]
     return table(header, rows) + note
 
 
@@ -1233,47 +748,107 @@ def top(m: dict) -> str:
     return table(["", "long", "weight", "short", "weight"], rows)
 
 
+# Every family of ideas we tried, how many attempts each took, and what came of it.
+def tried(m: dict) -> str:
+    from fiam.exhibits import config_log
+
+    rows = [[r[0], f"{r[3]:,}", r[4], r[5]] for r in config_log.rows()]
+    eligible, everything = config_log.attempts()
+    chance = m["robustness"]["deflated_sharpe_probability_eligible"]
+    note = (
+        f"\n\n{everything:,} fits in all, {eligible} of them shippable portfolios. Adjusted for "
+        f"this many tries (deflated Sharpe ratio), the chance our edge is real is {chance:.0%}."
+    )
+    return table(["what we tried", "attempts", "result", "verdict"], rows) + note
+
+
+# What each agent did, from its exhibit, one row each.
+def agents(m: dict) -> str:
+    rows = []
+    t = load("exhibits/triage.json")
+    if t:
+        routine = t["labelled_by_kind"].get("routine", 0) / max(t["labelled"], 1)
+        rows.append(
+            [
+                "**Triage**",
+                "Gemma 4 26B-A4B",
+                f"{t['labelled']:,} 8-Ks from 2015-18 labelled with names hidden. A small "
+                f"FinBERT-based model learns them, {t['cross_validated_accuracy']:.0%} correct "
+                f"against {routine:.0%} for always guessing routine, then labels every filing",
+            ]
+        )
+    a, learned = load("exhibits/analyst.json"), load("exhibits/analyst_learned.json")
+    if a:
+        probe = a["look_ahead_probe"]
+        late = learned.get("recall_test", {}).get("2021-2026", {}).get("analyst", {})
+        text = (
+            f"{a['stock_months']:,} verdicts. Named the company in {probe['company_named']:.0%} "
+            f"of {probe['filings']} test filings"
+        )
+        if late:
+            ic = late["rank_correlation"]
+            text += f". Its 2021-26 verdicts have no predictive power (IC {ic:+.3f})"
+        rows.append(["**Analyst**", "Qwen3.8-27B", text])
+    c, pack = load("exhibits/crowd.json"), load("exhibits/pack.json")
+    if c:
+        likes = sorted(c["what_the_crowd_likes"].items(), key=lambda kv: -kv[1])[:2]
+        text = (
+            f"{c['picks']:,} picks from anonymous stock cards, 2016-20. The two models' picks "
+            f"correlate {c['agreement_between_models']:.2f}, and both favour "
+            f"{' and '.join(k for k, _ in likes)}"
+        )
+        crowded = (pack.get("crowding") or {}).get("long")
+        if crowded:
+            share = crowded["share_in_top_crowd_decile"]
+            text += f". {share:.0%} of our longs are in their top tenth"
+        rows.append(["**AI crowd**", "Gemma 4 and Qwen3.8", text])
+    k = load("exhibits/critic.json")
+    if k:
+        text = f"{len(k['critiques'])} critiques, {k['unsupported']} citing a number no tool showed"
+        repeat = k.get("repeatability", {}).get("comparison", {})
+        if repeat:
+            same, calls = repeat["identical_prefix"], repeat["calls_first"]
+            text += (
+                ". Run twice, identical both times"
+                if same == calls
+                else (f". Run twice, {same} of {calls} calls identical")
+            )
+        rows.append(["**Devil's advocate**", "Gemma 4 26B-A4B", text])
+    e = load("exhibits/explainer.json")
+    if e:
+        text = f"{len(e['positions'])} winners and losers explained from their facts alone"
+        rows.append(["**Explainer**", "Qwen3.8-27B", text])
+    return table(["agent", "model", "what happened"], rows)
+
+
 TABLES = dict(
-    made=made,
     headline=headline,
     committee=committee,
-    comparison=comparison,
-    ship=ship,
-    teachers=teachers,
-    scorer=scorer,
-    trader=trader,
-    crowd=crowd,
-    firewall=firewall,
     years=years,
     legs=legs,
     top=top,
-    clean=clean,
-    wrds=wrds,
+    compliance=compliance,
+    costs=costs,
+    implementation=implementation,
     drift=drift,
     daily=daily,
-    costs=costs,
-    compliance=compliance,
-    models=models,
-    r2=r2,
-    halves=halves,
+    stress=stress,
     factors=factors,
     styles=styles,
     attribution=attribution,
-    tails=tails,
-    placebo=placebo,
-    walk=walk,
-    implementation=implementation,
-    stress=stress,
-    signal_years=signal_years,
-    worst=worst,
-    factor_windows=factor_windows,
-    construction=construction,
-    neutral=neutral,
-    learning=learning,
+    tried=tried,
+    teachers=teachers,
+    scorer=scorer,
+    models=models,
+    r2=r2,
     agents=agents,
+    firewall=firewall,
     explained=explained,
-    labels=labels,
+    halves=halves,
+    clean=clean,
+    placebo=placebo,
     deflation=deflation,
+    brief=brief,
 )
 
 
@@ -1312,7 +887,11 @@ def main() -> None:
     m = load("metrics.json")
     assert m["notes"]["market_series"] == MARKET_NAME, "metrics.json is from an older run"
     fill(RESULTS, TABLES, m)
-    fill(BRIEF, {**TABLES, "brief": brief, "shipped": shipped}, m)
+    fill(BRIEF, TABLES, m)
+    # The README's few numbers too, where a README sits beside RESULTS.md.
+    readme = RESULTS.parent / "README.md"
+    if readme.exists():
+        fill(readme, {}, m)
     perf = m["performance"]
     print(f"filled: IR {perf['information_ratio']:.2f}, net {perf['return_net_annual']:.1%}")
 

@@ -204,8 +204,7 @@ def release_day_sensitivity(reports: pd.DataFrame) -> dict:
 
 # The same code on the organizer's data alone, which is what a judge without WRDS rebuilds.
 def without_wrds() -> dict:
-    universe, trades = P.shipped(P.build_signal(P.screen(P.load_panel(), wrds=False)))
-    book = P.backtest(universe, trades=trades)
+    book = P.backtest(P.shipped(P.build_signal(P.screen(P.load_panel(), wrds=False))))
     stats = P.performance(book)["performance"]
     keep = ("information_ratio", "return_net_annual", "beta_realized", "beta_stderr")
     return {k: float(stats[k]) for k in keep}

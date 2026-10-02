@@ -16,6 +16,22 @@ SYSTEM = (
 )
 SCHEMA = dict(type="object", properties=dict(why=dict(type="string")), required=["why"])
 
+# What each measure is, in words, so a reader or a model never has to guess a code.
+NAMES = {
+    "ivol_capm_21d": "idiosyncratic volatility over the last month",
+    "be_me": "book value to market value",
+    "qmj": "quality-minus-junk score",
+    "at_gr1": "one-year growth in total assets",
+    "niq_su": "standardized surprise in quarterly earnings",
+    "ope_be": "operating profit to book equity",
+    "chcsho_12m": "12-month change in shares outstanding",
+    "o_score": "Ohlson bankruptcy-risk score",
+    "ret_12_1": "return over the past 12 months, skipping the last",
+    "gp_at": "gross profit to total assets",
+    "noa_gr1a": "one-year growth in net operating assets",
+    "eqnetis_at": "net equity issued, relative to total assets",
+}
+
 
 # Each of the twelve signals as a percentile within its month, at the name's last decision.
 def signal_ranks(names: list[dict]) -> dict[int, dict]:
@@ -39,9 +55,10 @@ def main() -> None:
         for name in names[: 2 if paths.SMOKE else None]:
             facts = dict(
                 name,
-                signal_percentiles=ranks.get(name["permno"], {}),
+                # Each measure by its name, so the model never has to guess what a code means.
+                signal_percentiles={NAMES[c]: v for c, v in ranks.get(name["permno"], {}).items()},
                 signal_directions={
-                    c: "higher is better" if s > 0 else "lower is better"
+                    NAMES[c]: "higher is better" if s > 0 else "lower is better"
                     for c, s in P.SIGNALS.items()
                 },
             )

@@ -1,4 +1,4 @@
-# Every trading and holding cost, IBKR-style, each with its source, as PREREGISTRATION.md fixes.
+# Every trading and holding cost, IBKR-style, each with its source.
 
 import json
 from dataclasses import dataclass
@@ -16,9 +16,9 @@ SPREADS, BORROW = MODELS / "spreads.json", MODELS / "borrow.parquet"
 COMMISSION_PER_SHARE, COMMISSION_MIN, COMMISSION_MAX = 0.005, 1.00, 0.01
 # SEC Section 31 on sales at its highest rate in 2021-2026, $27.80 a million from May 2024.
 SEC_RATE = 27.80e-6
-# FINRA Trading Activity Fee on shares sold at its 2026 high, capped per trade (amendment 1).
+# FINRA Trading Activity Fee on shares sold at its 2026 high, capped per trade.
 TAF_PER_SHARE, TAF_MAX = 0.000195, 9.79
-# FINRA Consolidated Audit Trail fee on every share bought or sold (amendment 1).
+# FINRA Consolidated Audit Trail fee on every share bought or sold.
 CAT_PER_SHARE = 0.000003
 # Square-root impact coefficient (Toth et al. 2011); 0.5 is reported as the sensitivity.
 IMPACT_Y = 1.0
@@ -134,14 +134,6 @@ def borrow_rate(frame: pd.DataFrame) -> pd.Series:
         ratio[missing] = frame.loc[missing, "permno"].map(latest)
     rate = tier(ratio)
     return rate.where(~frame["size_grp"].eq("micro"), np.maximum(rate, MICRO_FLOOR))
-
-
-# Per stock, a trade of x costs x * linear + x ** 1.5 * impact: the trader's view of these lines.
-def unit_costs(quotes: pd.DataFrame, model: Model = DEFAULT) -> tuple[pd.Series, pd.Series]:
-    price = quotes["prc"].abs()
-    fees = COMMISSION_PER_SHARE / price + CAT_PER_SHARE / price + SEC_RATE / 2
-    impact = model.impact_y * quotes["rvol_21d"] * np.sqrt(model.nav / quotes["dolvol_126d"])
-    return (fees + half_spread(quotes)) * model.multiple, impact * model.multiple
 
 
 # One month's cost lines as fractions of NAV, from each name's trade and the book after it.

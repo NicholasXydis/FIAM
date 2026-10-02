@@ -16,7 +16,7 @@ FIRST, LAST = pd.Timestamp("2021-01-01"), pd.Timestamp("2025-12-31")
 # Shares short above this share of shares outstanding: crowded, and plausibly costly to borrow.
 CROWDED = 0.10
 
-# The stress windows fixed in PREREGISTRATION.md, by calendar day.
+# The stress windows, by calendar day.
 STRESS = {
     "2020 crash, Feb 19 to Mar 23": ("2020-02-19", "2020-03-23"),
     "2020 rebound, Mar 24 to Jun 8": ("2020-03-24", "2020-06-08"),
@@ -197,10 +197,12 @@ def stress(path: pd.DataFrame) -> dict:
         if part.empty:
             continue
         level = (1 + part).cumprod()
-        index = market.loc[first:last]
+        # From the close before the window, so the S&P 500 counts its first day as the book does.
+        index = market.loc[:last]
+        start = index.loc[: pd.Timestamp(first) - pd.Timedelta(days=1)]
         out[name] = dict(
             strategy=float(level.iloc[-1] - 1),
-            sp500=float(index.iloc[-1] / index.iloc[0] - 1) if len(index) else None,
+            sp500=float(index.iloc[-1] / start.iloc[-1] - 1) if len(start) else None,
             worst_drawdown=drawdown(level),
             days=int(len(part)),
         )

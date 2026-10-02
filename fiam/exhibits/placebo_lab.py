@@ -49,7 +49,7 @@ def permute(universe: pd.DataFrame, rng: np.random.Generator) -> pd.Series:
 # Loads the shared universe into a worker process before it takes any shuffle.
 def start_worker() -> None:
     global WORKER_UNIVERSE
-    WORKER_UNIVERSE = P.universe()
+    WORKER_UNIVERSE = P.shipped(P.universe())
 
 
 # One shuffled book: net IR, gross a year, turnover. Gross is the fair test, costs still churn.
@@ -60,7 +60,7 @@ def null_book(signal: np.ndarray) -> tuple[float, float, float]:
 
 # The permutation null, the inversion and stale scores, written to placebo_lab.json.
 def main() -> None:
-    universe = P.universe()
+    universe = P.shipped(P.universe())
     rng = np.random.default_rng(RNG_SEED)
 
     shipped_book = P.backtest(universe)

@@ -12,8 +12,6 @@ statsmodels==0.15.0    # alpha and beta with HAC standard errors
 matplotlib==3.11.0     # every chart
 scikit-learn==1.9.1    # ElasticNet and the template models
 lightgbm==4.7.0        # the teachers, the scorer and the comparison trees
-gymnasium==1.3.0       # the trader's simulator, as an environment PPO can train on
-stable-baselines3==2.9.0  # PPO, the reinforcement-learning comparison for the trader
 transformers==5.17.0   # FinBERT, which reads the 8-K filings
 
 # CPU-only on purpose; macOS needs Apple silicon and macOS 14, older Macs lose only --ml.

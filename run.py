@@ -34,8 +34,7 @@ STEPS = [
     ("fiam.exhibits.implementation", "cost sensitivities, capacity and liquidity"),
     ("fiam.checks.wrds_checks", "checking exits, returns, market and report dates on WRDS"),
     ("fiam.exhibits.confirmation", "running the same book on 2016-2020"),
-    ("fiam.evaluate", "scoring every candidate and the ship rule window by window, walked forward"),
-    ("fiam.exhibits.config_log", "writing the configuration ledger"),
+    ("fiam.exhibits.config_log", "writing the ledger of everything we tried"),
     ("fiam.exhibits.labels", "checking every label against CRSP, 8-K filings and EDGAR"),
 ]
 
@@ -57,7 +56,7 @@ CROWD_STEPS = [
     ("fiam.agents.triage", "triage agent: labels 6,000 masked 8-Ks from 2015-2018"),
 ]
 
-# The models, the ship decision, then the comparison and research controls. Each reads the last.
+# The models, then the comparison and research controls. Each reads the last.
 ML_STEPS = [
     ("fiam.ml.dataset", "building the training folds"),
     ("fiam.ml.text", "FinBERT reads every masked 8-K, once; a stopped run resumes"),
@@ -67,36 +66,25 @@ ML_STEPS = [
     ("fiam.agents.analyst", "analyst agent: material filings in the composite's tails"),
     ("fiam.ml.analyst", "the analyst's pre-2021 verdicts learned from the text, every month"),
     ("fiam.ml.scorer", "scorer: learning to rank what a neutral book earns, five seeds"),
-    ("fiam.ml.ship", "the 28-book candidate grid, the monthly trader, each year's choice"),
 ]
 
 # The model comparison and research controls; a smoke rehearsal leaves them as they are.
 RESEARCH_STEPS = [
     ("fiam.ml.train", "fitting ElasticNet, LightGBM and NN3, then scoring each into a book"),
-    ("fiam.ml.selection", "subset sweep, budgeted search and the 147-signal atlas"),
     ("fiam.ml.summary", "decile tables and the model numbers"),
     ("fiam.ml.oos_r2", "measuring out-of-sample R-squared for every method"),
     ("fiam.exhibits.placebo_lab", "running the permutation and falsification controls"),
-    (
-        "fiam.exhibits.construction",
-        "construction v2 against the current book, the pre-registered test",
-    ),
-    ("fiam.exhibits.factor_neutral", "the factor-neutral book against the current one"),
 ]
 
 # The local-model agents that read the finished book.
 AGENT_STEPS = [
-    ("fiam.agents.director", "research director: each year's book from the months before it"),
-    ("fiam.agents.discovery", "signal-discovery agent, named and coded runs"),
-    ("fiam.agents.auditor", "reproducibility agent on planted and clean copies"),
     ("fiam.agents.critic", "devil's-advocate agent on the second vendor's model"),
     ("fiam.agents.critic --repeat", "the devil's advocate again, to prove the run repeats"),
-    ("fiam.agents.explainer", "explainer: why the book held each of its largest positions"),
+    ("fiam.agents.explainer", "explainer: why the book held its biggest winners and losers"),
 ]
 
 ROOT = Path(__file__).resolve().parent
-PACKAGE, STAMPS, OUT, LOG = (
-    Path("fiam"),
+STAMPS, OUT, LOG = (
     Path("cache/steps.json"),
     Path("out"),
     Path("cache/run.log"),
@@ -125,23 +113,16 @@ DATA = [*(BUNDLE / name for name in CORE), EXITS, Path("data/benchmarks/sources.
 
 # What an agent reads beyond its code: its prompt, its model, and the exhibits it argues about.
 AGENT_READS = {
-    "fiam.agents.discovery": ["prompts/agents/discovery.md", "submission/metrics.json"],
     "fiam.agents.critic": [
         "prompts/agents/critic.md",
         "submission/holdings.csv",
         "submission/metrics.json",
         "submission/exhibits/pack.json",
         "submission/exhibits/confirmation.json",
-        "submission/exhibits/discovery.json",
+        "submission/exhibits/analyst_learned.json",
     ],
-    "fiam.agents.auditor": ["prompts/agents/auditor.md"],
     "fiam.agents.triage": ["prompts/agents/triage.md"],
     "fiam.agents.analyst": ["prompts/agents/analyst.md"],
-    "fiam.agents.director": [
-        "prompts/agents/director.md",
-        "submission/exhibits/ship.json",
-        "submission/exhibits/ship_candidates.csv",
-    ],
 }
 
 
@@ -170,8 +151,6 @@ def stamp(command: str) -> str:
     module = command.split()[0]
     digest = hashlib.sha256(command.encode())
     reads = [*closure(module), *DATA, *map(Path, AGENT_READS.get(module, []))]
-    if module == "fiam.agents.auditor":
-        reads += sorted(p for p in PACKAGE.rglob("*.py") if "agents" not in p.parts)
     for path in reads:
         if not path.exists():
             digest.update(f"{path} missing".encode())

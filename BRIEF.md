@@ -1,74 +1,50 @@
-# The project in plain terms
+# The project in one page
 
-**What it is.** A market-neutral book of US stocks. Each month we rank every stock on twelve
-well-known measures (cheap, profitable, careful with money, rising), buy the best and short the
-worst: about <!--N:metrics.json:compliance.positions_average:.0f-->285<!--/N--> names, as much long
-as short, neutral to the market and to every sector, with every trading cost charged.
-
-**What the AI adds.** FinBERT reads every 8-K filing. Local AI agents triage filings, act as analysts
-and play the "AI crowd". A stock picker learns from all of it. A rule we wrote before seeing any
-result decides each year whether the learned books replace the simple one.
-<!--AUTO:shipped-->
-
-It shipped Composite + hedge in 2023; Composite + hedge in 2025; Screen-then-rank in 2026, and the composite in the other years.
-
-<!--/AUTO:shipped-->
-
-## Results
+**The idea.** Every month we score each US stock on twelve well-known measures: is it cheap, is it
+profitable, is it careful with its money, is it rising. We buy the best and short the worst, about
+<!--N:metrics.json:compliance.positions_average:.0f-->296<!--/N--> stocks, with as much money long as
+short. The book is neutral to the market and to every sector, and every trade pays the costs a real
+broker would charge.
 
 <!--AUTO:brief-->
 
 |  |  |
 |---|---|
-| Net return | **12.0% a year** after every modelled fee |
-| Information ratio | **0.67** |
-| Alpha | 12.4% a year, t = 2.18 |
-| Beta to the S&P 500, monthly | -0.04, standard error 0.09 |
-| Beta, daily returns 2021-25 | -0.09, t = -3.5: a short market tilt |
-| Worst drawdown | -11.0% |
-| Split in half | 2021-22 IR 1.74, 2023-26 IR -0.20 |
-| CRSP years only | 2021-25 IR 0.68 |
+| Net return | **12.8% a year** after every modelled fee |
+| Information ratio | **0.74** |
+| Information ratio before costs | 1.16 |
+| Alpha | 13.1% a year, t = 2.35 |
+| Beta, daily returns 2021-25 | -0.10, t = -3.7: a short market tilt |
+| Beta to the S&P 500, monthly | -0.03, standard error 0.09 |
+| Worst drawdown | -7.4% |
+| Split in half | 2021-22 IR 1.63, 2023-26 IR -0.01 |
+| CRSP years only | 2021-25 IR 0.69 |
 | 2016-2020, a historical check | IR -1.00, beta -0.25 (se 0.07) |
 
 <!--/AUTO:brief-->
 
-**The honest reading.** Two things shape this record. First, style: about half of 2021-22 came
-from quality and value, and the same tilt lost heavily in 2020, almost all of 2016-2020's loss.
-Second, our own rule: twice, after the composite's worst stretches, it moved to the book that had
-lost less (the stock picker for 2021, screen-then-rank for 2026), just before the composite
-rebounded. The composite kept every year scores IR 0.70; the rule's book, which we ship because we
-wrote the rule first, scores 0.34. The 2024 loss was stock-specific, mostly squeezes on our shorts, not style.
+## Where the AI comes in
 
-## What is new here
+- **It keeps the book neutral.** A small model learns how much each stock moves with the market,
+  from daily prices, and the book is balanced on that. This is the one learned part of the book.
+- **It cannot cheat by remembering.** Language models are trained on recent news, so one reading a
+  2021 filing might already know what happened next. No such reading reaches our book: the AI agents
+  judged older filings, and small models learned from those judgments. A test confirms it: the
+  model recognised the company in only
+  <!--N:exhibits/analyst.json:look_ahead_probe.company_named:.0%-->4%<!--/N--> of hidden filings.
+- **It measures crowding.** We had two AI models play retail stock pickers. They mostly buy
+  high-quality stocks, and
+  <!--N:exhibits/pack.json:crowding.long.share_in_top_crowd_decile:.0%-->42%<!--/N--> of our longs are
+  among their favourites, the crowding risk the brief warns about.
+- **It predicts, but not enough to pay.** A machine-learning stock picker forecasts returns well,
+  yet it trades so much that costs eat the gain. Trading it only in cheap-to-trade stocks is our
+  next step.
 
-1. **Costs like a real fund.** Interactive Brokers' prices, spreads from real quotes, market impact
-   that grows with trade size, borrow fees by how shorted a stock is.
-2. **Rules written before the test.** Every upgrade was written down first and judged once. Two of
-   ours failed and were dropped, and we ship our rule's choice even though it cost us.
-3. **Old data helps new decisions.** Small models learn what data that ends in 2025 would say, so it
-   still informs 2026.
-4. **AI that cannot remember the answer.** No language model's reading of a 2021-2026 filing
-   reaches the book: the agents judge older filings, and small models learn those judgments and
-   do the scoring. Names and dates are hidden; the analyst named the company in 4% of 500 masked
-   filings, and its own 2021-2026 verdicts predict nothing (IC -0.003), so it was not remembering.
-5. **The same numbers on any machine**, checked by an audit on every run.
+## The honest reading
 
-## The agents
+Much of the return comes from one investing style, quality and value. It paid well in 2021-22 and
+lost money in 2020. We tried many variations before picking this book, and RESULTS.md lists every
+one and what it did.
 
-<!--AUTO:agents-->
-
-| agent | model | what happened |
-|---|---|---|
-| **Signal discovery** | Qwen3.8-27B | real names: 8 backtests, best in sample 1.14, sealed IR **-2.08**; coded names: 0 backtests, sealed IR **-1.82**; random search, same budget, sealed IR -0.44 |
-| **Devil's advocate** | Gemma 4 26B-A4B | 5 critiques, 1 quoting a number no tool showed; run twice, 5 of 5 calls identical |
-| **Reproducibility** | Qwen3.8-27B | found **0 of 7** planted bugs; 10 false alarms on the clean copy |
-
-_From the earlier harness (Hermes Agent); the next `--all` run replaces them._
-
-<!--/AUTO:agents-->
-
-## Limits
-
-A backtest anyone can rerun, not a live record. Costs are modelled, not observed. 2026 returns come
-from Compustat, not CRSP. We saw both 2016-2020 and 2021-2026 while building, so neither is a
-perfectly clean test.
+**Limits.** This is a backtest anyone can rerun, not a live record. Costs are modelled, not
+observed.

@@ -1,30 +1,31 @@
 {
   "what": "Every holding's ticker and name checked against CRSP's dated record through 2025, then the latest prior 8-K, EDGAR's dated issuer name and Compustat. Nothing is guessed: a label no source confirms is listed in labels.csv and left as the panel had it.",
-  "holding_rows": 19349,
-  "confirmed_share": 0.999483,
+  "holding_rows": 20143,
+  "confirmed_share": 0.999851,
   "by_period": {
     "2021_2025_crsp": {
-      "CRSP, dated": 17538,
+      "CRSP, dated": 18005,
       "EDGAR, dated correction": 1
     },
     "2026_public_filings": {
-      "8-K on or before": 1739,
-      "EDGAR, dated name and current ticker": 49,
-      "unconfirmed: no public source agrees on both": 10,
-      "Compustat header, current": 7,
-      "EDGAR, dated correction": 5
+      "8-K on or before": 2059,
+      "EDGAR, dated name and current ticker": 57,
+      "Compustat header, current": 9,
+      "EDGAR, dated correction": 9,
+      "unconfirmed: no public source agrees on both": 3
     }
   },
   "borrowed": {
-    "8-K on or before": 642,
-    "EDGAR, dated name and current ticker": 49,
-    "unconfirmed: no public source agrees on both": 10,
-    "Compustat header, current": 7,
-    "EDGAR, dated correction": 5
+    "8-K on or before": 776,
+    "EDGAR, dated name and current ticker": 57,
+    "Compustat header, current": 9,
+    "EDGAR, dated correction": 9,
+    "unconfirmed: no public source agrees on both": 3
   },
   "shown": {
-    "8-K on or before": 19,
-    "CRSP, dated": 17
+    "8-K on or before": 27,
+    "CRSP, dated": 9,
+    "EDGAR, dated name and current ticker": 1
   },
   "corrected": [
     {

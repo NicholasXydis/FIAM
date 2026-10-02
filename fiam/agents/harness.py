@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -119,7 +119,6 @@ class Run:
     task: str
     budget: int
     tag: str = ""
-    options: dict = field(default_factory=dict)
 
     @property
     def name(self) -> str:
@@ -457,30 +456,11 @@ def prepare() -> None:
     print(f"ready: llama.cpp build {machine()}, models in {MODELS_DIR}")
 
 
-# Builds its object on first use, so tools can be listed without loading the panel.
-class Lazy:
-    # Holds the builder until the first attribute is asked for.
-    def __init__(self, build):
-        self._build, self._value = build, None
-
-    # Builds once, then hands every attribute to the real object.
-    def __getattr__(self, name: str):
-        if self._value is None:
-            self._value = self._build()
-        return getattr(self._value, name)
-
-
 # Every agent's tools exactly as the model sees them, for the appendix the rules ask for.
 def export() -> None:
-    from fiam.agents import auditor, critic, director, discovery
+    from fiam.agents import critic
 
-    sandbox = Lazy(lambda: discovery.Sandbox(discovery.load(), anonymous=False))
-    agents = dict(
-        director=director.tools(Lazy(lambda: director.Room(director.load(), 2021))),
-        discovery=discovery.tools(sandbox),
-        critic=critic.tools(critic.Evidence()),
-        auditor=auditor.tools(auditor.Repo(ROOT / "fiam")),
-    )
+    agents = dict(critic=critic.tools(critic.Evidence()))
     out = {
         name: [dict(name=t.name, description=t.description, parameters=t.parameters) for t in tools]
         for name, tools in agents.items()

@@ -102,68 +102,6 @@ def decile_curves() -> None:
     save(fig, "decile_curves")
 
 
-# The case against choosing signals. Panel A: every subset. Panel B: early looks predict nothing.
-def signal_selection() -> None:
-    table = pd.read_csv(EXHIBITS / "subset_sweep.csv").dropna(subset=["ir_early", "ir_late"])
-    picked = table.loc[table["ir_early"].idxmax()]
-    correlation = table["ir_early"].corr(table["ir_late"])
-    rank = int((table["ir_late"] > picked["ir_late"]).sum() + 1)
-
-    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.2))
-
-    left.hist(table["ir_full"], bins=40, color=BENCH, alpha=0.75, edgecolor="white", linewidth=0.4)
-    left.axvline(
-        picked["ir_full"],
-        color=NEG,
-        linewidth=1.6,
-        label=f"best on the early window: {picked['ir_full']:.2f}",
-    )
-    left.axvline(
-        table["ir_full"].median(),
-        color=OURS,
-        linewidth=1.6,
-        linestyle="--",
-        label=f"median subset: {table['ir_full'].median():.2f}",
-    )
-    left.legend(fontsize=8, frameon=False)
-    style(left, f"A. All {len(table)} five-signal subsets", "Number of subsets")
-    xlabel(left, "Spread IR over the full window")
-
-    # Every candidate, not just the winner. A cloud with no slope is the argument.
-    right.scatter(
-        table["ir_early"],
-        table["ir_late"],
-        s=14,
-        color=BENCH,
-        alpha=0.45,
-        edgecolors="none",
-        label=f"all {len(table)} candidates",
-    )
-    right.scatter(
-        [picked["ir_early"]],
-        [picked["ir_late"]],
-        s=140,
-        color=NEG,
-        zorder=3,
-        label="the one a search would pick",
-    )
-    right.axhline(0, color="black", linewidth=0.8)
-    right.legend(fontsize=8, frameon=False, loc="upper left")
-    style(right, "B. Doing well where you looked predicts nothing", "IR in the later window")
-    xlabel(right, "IR in the early window")
-
-    figure_caption(
-        fig,
-        f"Jan 2021 to Aug 2026, neutralized spreads before costs. IR ranges "
-        f"{table['ir_full'].min():.2f} to {table['ir_full'].max():.2f} purely on which five you "
-        f"pick. Early window is 2021-22, later is 2023-26; their correlation is "
-        f"{correlation:+.2f}, "
-        f"and the early favourite earned {picked['ir_late']:+.2f} afterwards, ranking {rank} of "
-        f"{len(table)}. So we use all twelve.",
-    )
-    save(fig, "signal_selection")
-
-
 # Where the money goes. Panel A: gross to net by cost line. Panel B: the same costs by year.
 def costs() -> None:
     pack = paths.read_json(EXHIBITS / "pack.json")
@@ -398,90 +336,15 @@ def signal_attribution() -> None:
     save(fig, "signal_attribution")
 
 
-# Every candidate's growth from 2021, the rule's choices marked, so no winner hides.
-def candidates() -> None:
-    table = pd.read_csv(EXHIBITS / "ship_candidates.csv", parse_dates=["holding_month"])
-    chosen = set(paths.read_json(EXHIBITS / "ship.json")["chosen"].values())
-    nets = table.pivot(index="holding_month", columns="candidate", values="net").loc["2021":]
-    growth = (1 + nets).cumprod()
-    fig, ax = plt.subplots(figsize=(8, 5.0))
-    for name in growth:
-        mark = name in chosen or name == "composite"
-        ax.plot(
-            growth.index,
-            growth[name],
-            color=OURS if name == "composite" else (ALT if mark else BENCH),
-            linewidth=2.0 if mark else 0.8,
-            alpha=1.0 if mark else 0.6,
-            label=name if mark else None,
-        )
-    ax.legend(frameon=False, fontsize=8)
-    style(ax, "The candidate grid, one rule", "Growth of $1, after costs", dates=True)
-    caption(
-        ax,
-        "Each line is a candidate book: the composite blended with 0, 25 or 50% scorer and "
-        "amendment 13's three kinds, with and without the learned hedge and the trader. Thick "
-        "lines are the composite "
-        "and every book the ship rule chose; it chose on the two years before each, never on these "
-        "months.",
-    )
-    save(fig, "candidates")
-
-
-# All 147 characteristics before 2021 against after. No slope is why nothing is chosen from data.
-def factor_atlas() -> None:
-    table = pd.read_csv(EXHIBITS / "factor_atlas.csv").dropna(subset=["t_before", "t_after"])
-    summary = paths.read_json(EXHIBITS / "selection.json")["atlas"]
-    ours = table[table["in_book"]]
-    rest = table[~table["in_book"]]
-
-    fig, ax = plt.subplots(figsize=(7.5, 5.0))
-    ax.scatter(
-        rest["t_before"],
-        rest["t_after"],
-        s=16,
-        color=BENCH,
-        alpha=0.55,
-        edgecolors="none",
-        label="the other 135",
-    )
-    ax.scatter(ours["t_before"], ours["t_after"], s=46, color=OURS, zorder=3, label="our twelve")
-    for _, row in ours.iterrows():
-        ax.annotate(
-            row["characteristic"],
-            (row["t_before"], row["t_after"]),
-            xytext=(4, 3),
-            textcoords="offset points",
-            fontsize=6.5,
-            color=OURS,
-        )
-    ax.axhline(0, color="black", linewidth=0.7)
-    ax.axvline(0, color="black", linewidth=0.7)
-    ax.legend(fontsize=8, frameon=False, loc="upper right")
-    style(ax, "147 characteristics, before 2021 and after", "t-statistic, 2021-2026")
-    xlabel(ax, "t-statistic, 2015-2020")
-    caption(
-        ax,
-        f"Neutralized spreads, same treatment as the book. Correlation between the two windows "
-        f"is {summary['before_after_t_correlation']:+.2f}; {summary['cleared_hlz_before']} "
-        f"cleared t = 3 before 2021 and {summary['share_keeping_direction']:.0%} kept their "
-        "direction afterwards. Choosing from the earlier window would have picked mostly wrong.",
-    )
-    save(fig, "factor_atlas")
-
-
 # Draws every research chart, skipping any whose exhibit has not been built yet.
 def main() -> None:
     print("research charts:")
     for draw in (
         decile_curves,
-        signal_selection,
         costs,
         factor_attribution,
         placebo_lab,
         signal_attribution,
-        factor_atlas,
-        candidates,
     ):
         try:
             draw()

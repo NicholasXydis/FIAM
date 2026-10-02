@@ -14,8 +14,7 @@ What to look for, in this order:
 - Implementation: shorts that are small, illiquid or hard to borrow.
 - Concentration: a few names or one signal carrying the result.
 - Crowding: whether our longs are what AI stock pickers would buy anyway.
-- The ship rule: whether the book it chose each year deserved its place.
-- The discovery agent's pick: why it might not survive.
+- The choice: whether the book we ship deserved it over the variants we tried.
 
 Rules:
 

@@ -68,9 +68,6 @@ def main() -> None:
         out[name] = json.loads((PREDS / f"{name}_ic.json").read_text(encoding="utf-8"))
         out[name] |= json.loads((PREDS / f"{name}_portfolio.json").read_text(encoding="utf-8"))
     out["deciles"] = {i: {c: float(v) for c, v in row.items()} for i, row in table.iterrows()}
-    # Summarised once by the selection controls, so it is never recomputed differently here.
-    selection = paths.read_json(EXHIBITS / "selection.json")
-    out["subset_sweep"] = selection["subset_sweep"]
     paths.write_json(EXHIBITS / "ml_metrics.json", out, rounded=False)
 
 
