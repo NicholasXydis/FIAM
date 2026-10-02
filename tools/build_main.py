@@ -96,6 +96,8 @@ def description() -> str:
         "#\n# Run:  pip install uv, then  uv run MAIN.py   (uv brings Python and the packages)\n"
         "#   With nothing beside it: checks our holdings and returns against the brief.\n"
         "#   With the organizer's three data files beside it: rebuilds the book, a few minutes.\n"
+        "#   Run it from the folder that holds MAIN.py. On Windows, if uv is not found:\n"
+        "#   py -m uv run MAIN.py\n"
         "#   It writes the project's code beside itself to run. It holds no organizer data\n"
         "#   and no raw WRDS data. It does carry our own outputs (holdings, returns, exhibits,\n"
         "#   the learned betas and borrow tiers the book reads) and public FRED and Kenneth\n"

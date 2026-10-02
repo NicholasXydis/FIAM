@@ -22,6 +22,8 @@ uv installs the right Python and packages by itself (or use `winget install astr
 Windows, `brew install uv` on a Mac). With nothing beside `MAIN.py`, it checks our holdings against
 every rule in the brief in seconds. Put the organizer's three data files beside it and it rebuilds
 the whole book in a few minutes and compares it with ours. `uv run run.py --help` lists the rest.
+Run it from the folder that holds `MAIN.py`. On Windows, if `uv` is not found, use
+`py -m uv run MAIN.py`.
 
 ## What is where
 
