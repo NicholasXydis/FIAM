@@ -1,0 +1,8 @@
+{
+  "name": "rules_2026",
+  "gross": 2.0,
+  "net_band": 0.5,
+  "names_min": 100,
+  "names_max": 500,
+  "strategy_text": "Build a market-neutral US equity portfolio from 147 stock characteristics: predict each stock's return next month, buy the stocks with the highest expected returns and short those with the lowest, with the long and short sides balanced so the book has little exposure to the market. Success is the information ratio against cash plus 4% a year."
+}

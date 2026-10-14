@@ -1,0 +1,14 @@
+{
+  "name": "case_2025",
+  "gross": 2.0,
+  "net": 1.0,
+  "name_cap": 0.10,
+  "sector": null,
+  "beta": null,
+  "risk": null,
+  "names_min": 100,
+  "names_max": 300,
+  "countries": ["USA", "CAN"],
+  "country_cap": 0.75,
+  "strategy_text": "Run a 150/50 long-short fund: find the company fundamentals that drive stock performance, predict them with machine learning, then buy up to 150% of capital in the stocks with the best predicted fundamentals and short 50% in the worst."
+}

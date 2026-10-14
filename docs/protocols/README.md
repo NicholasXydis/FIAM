@@ -14,6 +14,11 @@ before any run it covers; a change after that is a new protocol with its own dat
 | `stress.md` | Crises, named scenarios, reverse stress, liquidity, unwind | S8 |
 | `nautilus.md` | Accounting replay tolerances | S9 |
 | `carbon_arc.md` | Carbon Arc spending data | S10 |
+| `honesty_amendment_1.md` | Honesty sample and the "results reversed" condition | S5 |
+| `v2_amendment_1.md` | The `grinold` switch, v2a and v2-pass | S2 |
+| `capacity.md` | Optimal fund size, break-even size, cost stress | S3 |
+| `crowd_amendment_1.md` | Copycat test, capacity tax, what the crowd buys, herding and fear | S6, S7 |
+| `finals.md` | Turnover cap and net band, rules rehearsals, the pack for any book, which book | S7 |
 
 ## Shared conventions
 
