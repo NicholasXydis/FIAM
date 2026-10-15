@@ -20,6 +20,7 @@ before any run it covers; a change after that is a new protocol with its own dat
 | `crowd_amendment_1.md` | Copycat test, capacity tax, what the crowd buys, herding and fear | S6, S7 |
 | `finals.md` | Turnover cap and net band, rules rehearsals, the pack for any book, which book | S7 |
 | `v2_amendment_2.md` | v3, the final book: size, low-volatility, risk target, drawdown brake | S2 |
+| `v2_amendment_3.md` | Final v3: beta at zero, 10% risk, daily gross ceiling, risk-sized names, adaptive signals | S2 |
 
 ## Shared conventions
 
