@@ -17,6 +17,15 @@ BENCH = Path("data/benchmarks")
 SOURCES = BENCH / "sources.json"
 FRENCH = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
 
+# Federal Reserve H.10 daily rates for the global switch's currencies (finals_global.md), in
+# files of 12, the most FRED returns at once.
+FX = (
+    "DEXCAUS", "DEXJPUS", "DEXUSEU", "DEXUSUK", "DEXUSAL", "DEXUSNZ", "DEXSZUS", "DEXCHUS",
+    "DEXHKUS", "DEXINUS", "DEXKOUS", "DEXMXUS", "DEXBZUS", "DEXDNUS", "DEXNOUS", "DEXSDUS",
+    "DEXSIUS", "DEXSFUS", "DEXTAUS", "DEXTHUS", "DEXMAUS", "DEXSLUS",
+)  # fmt: skip
+FRED = "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
+
 # Every external input, keyless. A refresh is deliberate, never a side effect of a rerun.
 URLS = {
     "TB3MS.csv": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=TB3MS&cosd=2015-01-01",
@@ -25,6 +34,11 @@ URLS = {
     "ff5_factors.zip": FRENCH + "F-F_Research_Data_5_Factors_2x3_CSV.zip",
     "ff_momentum.zip": FRENCH + "F-F_Momentum_Factor_CSV.zip",
 }
+for i in range(0, len(FX), 12):
+    part = FX[i : i + 12]
+    URLS[f"fx_daily_{i // 12 + 1}.csv"] = (
+        FRED + ",".join(part) + "&cosd=" + ",".join(["2014-01-01"] * len(part))
+    )
 
 
 # A pinned file, or a clear instruction if it is missing. Nothing downloads on its own.
