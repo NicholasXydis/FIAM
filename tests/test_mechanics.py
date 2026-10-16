@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -186,6 +187,9 @@ def test_missing_returns_are_booked_at_zero_and_recorded():
 # Importing any module must not run it or write anything, so a bundler can pull in just the code.
 def test_every_module_imports_without_side_effects(tmp_path):
     files = sorted((ROOT / "fiam").rglob("*.py"))
+    # Modules built on the optional backtest extra are only checked where it is installed.
+    if importlib.util.find_spec("nautilus_trader") is None:
+        files = [p for p in files if "nautilus_trader" not in p.read_text(encoding="utf-8")]
     names = [".".join(p.relative_to(ROOT).with_suffix("").parts) for p in files]
     script = f"import sys; sys.path[:0] = [{str(ROOT)!r}]\nfor n in {names!r}: __import__(n)"
     subprocess.run([sys.executable, "-c", script], cwd=tmp_path, check=True, timeout=300)

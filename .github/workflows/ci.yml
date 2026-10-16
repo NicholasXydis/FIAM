@@ -5,7 +5,20 @@ on:
   push:
   pull_request:
 
+# The lock file is the truth: a pyproject change without uv lock fails here, not on a judge's PC.
+env:
+  UV_LOCKED: "1"
+
 jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # The optional Nautilus extra, so the modules built on it are imported and tested somewhere.
+      - run: uv sync --extra backtest
+      - run: uv run --extra backtest pytest
+
   check:
     strategy:
       fail-fast: false

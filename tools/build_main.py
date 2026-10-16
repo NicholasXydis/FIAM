@@ -10,8 +10,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Everything git ships except tests, this tool and data too large for one file.
 LEAVE_OUT = ("tests/", "tools/", ".github/", ".gitattributes", ".gitignore", ".env.example")
+# The finals decks' builders, so run.py --finals-pack works from MAIN.py alone.
+CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
+# Packages published after this are ignored, so a later release never changes a judge's run.
+EXCLUDE_NEWER = "2026-10-14T00:00:00Z"
 
 LAUNCHER = """
 import base64
@@ -37,8 +41,28 @@ def unpack() -> int:
     return written
 
 
-# Unpacks what is missing, then runs run.py with the same arguments.
+# Every carried file already on disk that differs from what MAIN.py holds.
+def changed() -> list:
+    out = []
+    for name, (kind, body) in FILES.items():
+        path = HERE / name
+        data = base64.b64decode(body) if kind == "b64" else body.encode("utf-8")
+        if path.exists() and path.read_bytes() != data:
+            out.append(name)
+    return out
+
+
+# Unpacks what is missing, then runs run.py with the same arguments; --check only compares.
 def main() -> int:
+    if sys.version_info < (3, 14):
+        print("MAIN.py needs Python 3.14. Run it with uv, which brings it:  uv run MAIN.py")
+        return 1
+    if "--check" in sys.argv:
+        differ = changed()
+        print(f"{len(FILES) - len(differ)} of {len(FILES)} carried files match MAIN.py.")
+        for name in differ[:20]:
+            print(f"  differs: {name}")
+        return 1 if differ else 0
     written = unpack()
     if written:
         print(f"Unpacked {written} files next to MAIN.py.", flush=True)
@@ -63,6 +87,8 @@ def script_header() -> str:
         "dependencies = [",
         *[f"    {d}," for d in deps],
         "]",
+        "[tool.uv]",
+        f'exclude-newer = "{EXCLUDE_NEWER}"',
         "[tool.uv.sources]",
         source,
         "[[tool.uv.index]]",
@@ -106,10 +132,16 @@ def description() -> str:
     )
 
 
-# Every file git ships, as text or base64.
-def carried(with_edgar: bool) -> dict[str, tuple[str, str]]:
+# Every file git tracks, as text or base64: never a local or scratch file nobody committed.
+# --with-new adds files not yet committed and not ignored: the next commit, MAIN.py beside it.
+def carried(with_edgar: bool, with_new: bool = False) -> dict[str, tuple[str, str]]:
     names = subprocess.run(
-        ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+        [
+            "git",
+            "ls-files",
+            "-z",
+            *(["--cached", "--others", "--exclude-standard"] if with_new else []),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -118,7 +150,8 @@ def carried(with_edgar: bool) -> dict[str, tuple[str, str]]:
     files = {}
     for name in sorted(names):
         path = ROOT / name
-        if not name or name in BUILT or name.startswith(LEAVE_OUT) or not path.is_file():
+        left_out = name.startswith(LEAVE_OUT) and name not in CARRIED_TOOLS
+        if not name or name in BUILT or left_out or not path.is_file():
             continue
         if name in LARGE and not with_edgar:
             continue
@@ -137,7 +170,7 @@ def carried(with_edgar: bool) -> dict[str, tuple[str, str]]:
 def main() -> None:
     args = sys.argv[1:]
     out = Path(args[args.index("--out") + 1]) if "--out" in args else ROOT / "MAIN.py"
-    files = carried("--with-edgar" in args)
+    files = carried("--with-edgar" in args, "--with-new" in args)
     body = [script_header(), "", description(), LAUNCHER.strip(), "", ""]
     body.append("# Every file of the repo MAIN.py was built from, written out by unpack().")
     body.append("FILES = {")

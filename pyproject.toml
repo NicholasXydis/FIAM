@@ -17,13 +17,18 @@ dependencies = [
     # torch 2.14 on macOS needs Apple silicon and macOS 14; older Macs skip it and lose only --ml.
     "torch==2.14.0; sys_platform != 'darwin' or (platform_machine == 'arm64' and platform_release >= '23')",
     "transformers==5.17.0",
+    "python-pptx==1.0.2",
+    "pypdf==6.19.0",
 ]
+
+[project.optional-dependencies]
+# The accounting replay only (uv sync --extra backtest); the book and MAIN.py never need it.
+backtest = ["nautilus_trader[visualization]==1.230.0"]
 
 [dependency-groups]
 dev = [
     "ruff==0.15.17",
     "pytest==9.1.1",
-    "python-pptx==1.0.2",
 ]
 
 [tool.uv]

@@ -39,6 +39,7 @@ htmlcov/
 
 # Working data; the public benchmarks and SEC records are pinned in git so a clone runs
 /fiam_v1.zip
+/fiam_results.zip
 /data/*
 !/data/benchmarks/
 !/data/edgar_cache.zip
@@ -110,3 +111,5 @@ Desktop.ini
 /out/
 # The generated deck; the PDF made from it is submitted, not committed.
 /deck/
+# Drafts the rules reader writes on every drill; only the hand-made references are committed.
+/mandates/*_draft*.json

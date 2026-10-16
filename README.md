@@ -21,13 +21,14 @@ uv run MAIN.py
 uv installs the right Python and packages by itself (or use `winget install astral-sh.uv` on
 Windows, `brew install uv` on a Mac). With nothing beside `MAIN.py`, it checks our holdings against
 every rule in the brief in seconds. Put the organizer's three data files beside it and it rebuilds
-the whole book in a few minutes and compares it with ours. `uv run run.py --help` lists the rest.
-Run it from the folder that holds `MAIN.py`. On Windows, if `uv` is not found, use
-`py -m uv run MAIN.py`.
+the whole book in a few minutes and compares it with ours. `docs/finals_day.md` has the finals and
+`uv run run.py --help` the rest. Run it from the folder that holds `MAIN.py`. On Windows, if `uv`
+is not found, use `py -m uv run MAIN.py`.
 
 ## What is where
 
 `fiam/book.py` builds the book · `fiam/costs.py` charges the costs · `fiam/ml/` the models ·
-`fiam/agents/` the AI agents · `fiam/checks/` the audit · `submission/` our official results.
+`fiam/v2.py` the finals book · `fiam/agents/` the AI agents · `fiam/checks/` the audit ·
+`submission/` our official results.
 
-Nicholas Xydis · Yohannah Ilieva · Jérémie Caussignac · Agamjot Singh Bawa · Nokto Lapointe
+QUARCC Purple · Nicholas Xydis · Yohannah Ilieva · Andrew Koumoudjian · Nicolas Romero · Nokto Lapointe
