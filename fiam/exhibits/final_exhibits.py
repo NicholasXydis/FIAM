@@ -47,6 +47,16 @@ def months(held: pd.DataFrame, df: pd.DataFrame):
             yield eom, pool, weights, terms
 
 
+# The panel's 2026 months carry no ticker or name, so each name takes the last it had by then.
+def labelled(table: pd.DataFrame) -> pd.DataFrame:
+    known = data.features(["permno", "eom", "ticker", "company_name"]).dropna(subset=["ticker"])
+    known = known.rename(columns={"ticker": "last_ticker", "company_name": "last_name"})
+    out = pd.merge_asof(table.sort_values("eom"), known.sort_values("eom"), on="eom", by="permno")
+    out["ticker"] = out["ticker"].fillna(out.pop("last_ticker"))
+    out["company_name"] = out["company_name"].fillna(out.pop("last_name"))
+    return out.sort_values(["eom", "permno"], ignore_index=True)
+
+
 # Per holding: MCTR = (Sigma w)_i / sigma, CTR = w_i MCTR_i, PCTR = CTR_i / sigma, and mismatch =
 # PCTR_i minus its share of gross; per month: predicted volatility raw and corrected, normal VaR and
 # CVaR, and how much of the risk is factor rather than stock-specific.
@@ -96,7 +106,7 @@ def risk_table(name: str) -> dict:
                 mismatch_abs_mean=float(np.abs(pctr - share).mean()),
             )
         )
-    table, months_ = pd.concat(rows, ignore_index=True), pd.DataFrame(summary)
+    table, months_ = labelled(pd.concat(rows, ignore_index=True)), pd.DataFrame(summary)
     OUT.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUT / "risk_table.csv", index=False, lineterminator="\n")
     months_.to_csv(OUT / "risk_months.csv", index=False, lineterminator="\n")
@@ -324,7 +334,7 @@ def dendrogram() -> dict:
     panel = data.features(["permno", "eom", *chars])
     month = panel[panel["eom"] == S.DECISION].set_index("permno")
     ranks = month[chars].rank(pct=True).reindex(top["permno"])
-    distance = (1 - ranks.T.corr(method="spearman")).clip(lower=0.0).fillna(1.0).to_numpy()
+    distance = (1 - ranks.T.corr(method="spearman")).clip(lower=0.0).fillna(1.0).to_numpy(copy=True)
     np.fill_diagonal(distance, 0.0)
     merges = linkage(squareform(distance, checks=False), "average")
     labels = data.features(["permno", "eom", "ticker"]).dropna(subset=["ticker"])
