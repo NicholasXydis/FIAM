@@ -94,9 +94,13 @@ MODELS = {
 # Repeatability, not correctness: the same prompt gives the same answer, right or wrong.
 SEED, TEMPERATURE = 42, 0.0
 CONTEXT, PORT = 65536, 8081
+# A server elsewhere (a cloud GPU on finals day) serves instead of a local one; nothing downloads.
+REMOTE = os.environ.get("FIAM_LLM_URL", "").rstrip("/")
 # Qwen at 64K fits 16 GB only with a compressed cache; thinking off, so its plan is readable.
 COMPRESSED = {"qwen": ("-fa", "on", "-ctk", "q8_0", "-ctv", "q4_0")}
 NO_THINKING = ("--chat-template-kwargs", '{"enable_thinking": false}')
+# Reading long cards in 2048-token steps cut Gemma's call from 9.0 s to 7.8 s on this GPU.
+LONG_PROMPTS = ("-ub", "2048", "-b", "2048")
 
 # Calls left when only final_answer is accepted, the cap on one tool result, and nudges allowed.
 WARN_AT, RESULT_CHARS, NUDGES = 5, 6000, 2
@@ -218,14 +222,16 @@ def model_file(model: str) -> Path:
 # One llama-server at the pinned settings, started and stopped around a block of runs.
 class Server:
     # The model this server will load, resolved for a rehearsal.
-    def __init__(self, model: str):
+    def __init__(self, model: str, extra: tuple = ()):
         self.name = resolve(model)
-        self.path, self.process = model_file(self.name), None
+        self.path = None if REMOTE else model_file(self.name)
+        self.url = REMOTE or f"http://127.0.0.1:{PORT}"
+        self.process, self.extra = None, extra
 
     # What a running server reports about itself, or None if nothing answers.
     def props(self) -> dict | None:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/props", timeout=5) as r:
+            with urllib.request.urlopen(f"{self.url}/props", timeout=5) as r:
                 p = json.loads(r.read())
         except OSError:
             return None
@@ -237,21 +243,24 @@ class Server:
     # Starts llama-server, or reuses one already serving this model.
     def __enter__(self) -> Server:
         running = self.props()
+        if REMOTE and not running:
+            raise RuntimeError(f"nothing answers at FIAM_LLM_URL={REMOTE}")
         if running:
-            if Path(running["model_path"]).name != self.path.name:
-                raise RuntimeError(f"port {PORT} serves another model; stop it first")
+            # The pinned file by name; a remote file's hash cannot be checked from here.
+            if Path(running["model_path"]).name != MODELS[self.name][1]:
+                raise RuntimeError(f"{self.url} serves another model; stop it first")
             return self
         binary = server_binary()
         args = [str(binary), "-m", str(self.path), "--alias", self.name, "-c", str(CONTEXT)]
         args += ["-np", "1", "--seed", str(SEED), "--temp", str(TEMPERATURE), "--jinja"]
         # Context checkpoints crash this build on Qwen's hybrid attention, so they stay off.
         args += ["-ctxcp", "0", "-cram", "0", "--host", "127.0.0.1", "--port", str(PORT)]
-        args += [*COMPRESSED.get(self.name, ()), *NO_THINKING]
+        args += [*COMPRESSED.get(self.name, ()), *NO_THINKING, *self.extra]
         if os.environ.get("LLAMA_DEVICE"):
             args += ["--device", os.environ["LLAMA_DEVICE"]]
         env = os.environ | {"LD_LIBRARY_PATH": str(binary.parent)}
         RUNS.mkdir(parents=True, exist_ok=True)
-        log = (RUNS / f"server_{self.name}.log").open("w", encoding="utf-8")
+        log = (RUNS / f"server_{self.name}.log").open("a", encoding="utf-8")
         self.process = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, env=env)
         # Loading 14 GB into memory takes a minute or two. Poll until the server answers.
         for _ in range(900):
@@ -269,8 +278,15 @@ class Server:
             self.process.wait(timeout=60)
 
     # One completion from the served model, with tools offered or a JSON shape required.
-    def chat(self, messages: list, tools: list | None = None, schema: dict | None = None) -> dict:
-        body = dict(model=self.name, messages=messages, temperature=TEMPERATURE, seed=SEED)
+    def chat(
+        self,
+        messages: list,
+        tools: list | None = None,
+        schema: dict | None = None,
+        temperature: float = TEMPERATURE,
+        seed: int = SEED,
+    ) -> dict:
+        body = dict(model=self.name, messages=messages, temperature=temperature, seed=seed)
         body["max_tokens"] = 2048
         if tools:
             body["tools"] = tools
@@ -279,12 +295,33 @@ class Server:
                 type="json_schema", json_schema=dict(name="answer", schema=schema)
             )
         request = urllib.request.Request(
-            f"http://127.0.0.1:{PORT}/v1/chat/completions",
+            f"{self.url}/v1/chat/completions",
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(request, timeout=900) as r:
             return json.loads(r.read())["choices"][0]["message"]
+
+
+# What a logged run ran on, written beside its log: model file and pinned hash, server build and
+# settings, and each prompt file's hash, so any saved answer can be traced and replayed.
+def stamp(server: Server, log: str, prompts: tuple = ()) -> None:
+    props = server.props() or {}
+    manifest = dict(
+        model=server.name,
+        model_file=MODELS[server.name][1],
+        model_sha256=MODELS[server.name][2],
+        build=props.get("build"),
+        context=props.get("context"),
+        temperature=TEMPERATURE,
+        seed=SEED,
+        server_args=list(server.extra),
+        server="remote" if REMOTE else "local",
+        prompts={Path(p).name: paths.sha256(Path(p)) for p in prompts},
+        written=time.strftime("%Y-%m-%dT%H:%M:%S"),
+    )
+    target = RUNS / f"{log}.manifest.json"
+    target.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
 
 # A plan is any numbered list the agent writes. Each new one is a revision, kept in order.
@@ -371,8 +408,8 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
         agent=run.agent,
         tag=run.tag,
         model=server.name,
-        model_file=server.path.name,
-        model_sha256=file_hash(server.path),
+        model_file=MODELS[server.name][1],
+        model_sha256=file_hash(server.path) if server.path else "remote, not checked",
         build=machine(),
         server=server.props(),
         seed=SEED,
@@ -480,6 +517,6 @@ if __name__ == "__main__":
         sys.exit()
     name = next((a for a in sys.argv[1:] if a in MODELS), "qwen")
     with Server(name) as running:
-        print(f"{running.name} at http://127.0.0.1:{PORT}/v1, {CONTEXT:,} tokens. Ctrl+C stops it.")
+        print(f"{running.name} at {running.url}/v1, {CONTEXT:,} tokens. Ctrl+C stops it.")
         if running.process:
             running.process.wait()
