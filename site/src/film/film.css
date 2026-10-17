@@ -1,0 +1,294 @@
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
+/* Layout: one picture edge to edge, words centred in the lower third or over the gold line, sized
+   to the short side so a wide screen and a phone held upright read the same. */
+:root {
+  color-scheme: dark;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --lift: 0.035;
+  --big: 7.6vmin;
+  --eyebrow: 2.1vmin;
+  --sub: 2.4vmin;
+  --note: 1.5vmin;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas#gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.titles,
+.marks,
+.end {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6vmin;
+  padding-inline: 7vw;
+  text-align: center;
+  color: var(--ink);
+}
+.card.low {
+  bottom: 9vh;
+}
+.card.line {
+  bottom: calc(50vh + var(--lift) * 100vh + 3.4vmin);
+}
+.card.light,
+.end {
+  --ink: #f4f1fa;
+  --ink-2: rgb(244 241 250 / 0.72);
+  --ink-3: rgb(244 241 250 / 0.5);
+  --em: #f2c14e;
+}
+.card.dark {
+  --ink: #16111f;
+  --ink-2: rgb(22 17 31 / 0.62);
+  --em: #a5781d;
+}
+.card.storm {
+  --ink: #f4f1fa;
+  --em: #ff6a4d;
+}
+
+.big {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: var(--big);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+.w {
+  display: inline-block;
+  will-change: transform, filter, opacity;
+}
+.gold {
+  font-style: italic;
+  color: var(--em);
+}
+.eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--eyebrow);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.sub {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--sub);
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+}
+
+.mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--mono);
+  font-size: calc(var(--eyebrow) * 0.9);
+  letter-spacing: 0.14em;
+  color: rgb(255 128 102 / 0.92);
+  text-shadow: 0 0 1.2vmin rgb(255 74 38 / 0.6);
+}
+.mark.up {
+  color: rgb(120 220 240 / 0.92);
+  text-shadow: 0 0 1.2vmin rgb(79 208 234 / 0.6);
+}
+
+.tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: calc(var(--eyebrow) * 0.82);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(244 241 250 / 0.88);
+  text-shadow: 0 0 1.4vmin rgb(169 139 255 / 0.7);
+}
+
+.end {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+.end-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.8vmin;
+  padding-inline: 7vw;
+  text-align: center;
+  transform: translateY(-4vh);
+}
+.end-name {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: calc(var(--sub) * 1.25);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+.end-name em {
+  font-style: normal;
+  color: var(--em);
+}
+.end-tag {
+  margin: 0;
+  font-family: var(--display);
+  font-size: calc(var(--big) * 1.18);
+  line-height: 1.02;
+}
+.end-tag .w {
+  will-change: auto;
+}
+.end-rule {
+  width: 24vmin;
+  height: max(1px, 0.16vmin);
+  margin-block: 0.8vmin;
+  background: linear-gradient(90deg, transparent, #f2c14e 20%, #f2c14e 80%, transparent);
+}
+.end-event {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: calc(var(--sub) * 0.82);
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.end-team {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: calc(var(--sub) * 0.76);
+  color: var(--ink-3);
+}
+.end-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4.5vh;
+  margin: 0 auto;
+  max-width: 84vw;
+  font-family: var(--sans);
+  font-size: var(--note);
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  :root {
+    --big: 9.6vmin;
+    --eyebrow: 2.7vmin;
+    --sub: 3.5vmin;
+    --note: 2.3vmin;
+  }
+  .card.low {
+    bottom: 15vh;
+  }
+  .end-stack {
+    gap: 2.6vmin;
+    transform: translateY(-9vh);
+  }
+  .end-name {
+    letter-spacing: 0.22em;
+  }
+  .end-note {
+    bottom: 7vh;
+  }
+}
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  cursor: pointer;
+}
+.bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgb(242 193 78 / 0.7);
+  transform-origin: left;
+}
+.hint {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 241 250 / 0.6);
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.hint.off {
+  opacity: 0;
+}

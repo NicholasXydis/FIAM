@@ -1,0 +1,31 @@
+{
+  "name": "fiam-showcase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "data": "cd .. && uv run tools/build_site.py",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit && prettier --check src",
+    "format": "prettier --write src",
+    "film": "tsc --noEmit && vite build --mode film"
+  },
+  "dependencies": {
+    "gsap": "3.15.0",
+    "three": "0.186.1",
+    "uqr": "0.1.3"
+  },
+  "devDependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/three": "0.186.0",
+    "prettier": "3.9.9",
+    "puppeteer": "24.43.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.1",
+    "vite-plugin-singlefile": "2.3.3"
+  }
+}
