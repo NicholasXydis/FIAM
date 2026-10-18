@@ -16,8 +16,9 @@ from scipy.signal import butter, fftconvolve, resample_poly, sosfilt
 
 # The mix's sample rate, 48 kHz as the films carry it.
 SR = 48000
-# VSCO 2 CE from GitHub, kept once in cache/vsco2; credits in README.md.
+# VSCO 2 CE, CC0, Versilian Studios; piano by Simon Dalzell, Ivy Audio.
 ROOT = Path(__file__).resolve().parents[2]
+# Fetched once from GitHub and kept in cache/vsco2.
 CACHE = ROOT / "cache" / "vsco2"
 REPO = "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/master/"
 # make.py's arguments: cues.json, the voice folder and the out folder.
