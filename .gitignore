@@ -114,5 +114,6 @@ Desktop.ini
 # Drafts the rules reader writes on every drill; only the hand-made references are committed.
 /mandates/*_draft*.json
 
-# The showcase site's packages; the built page lands in out/site/.
+# The site's packages and web build; its other builds go to out/.
 /site/node_modules/
+/site/dist/
