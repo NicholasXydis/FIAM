@@ -1,39 +1,34 @@
 import * as THREE from "three";
-import { out, ramp, span } from "./ease";
+import { h } from "../shared/dom";
+import { out, ramp, span } from "../shared/math";
 
-export function h(tag: string, props: Record<string, string> = {}, ...children: (Node | string)[]) {
-  const el = document.createElement(tag);
-  for (const [key, value] of Object.entries(props)) {
-    if (key === "html") el.innerHTML = value;
-    else el.setAttribute(key, value);
-  }
-  el.append(...children);
-  return el;
-}
-
-// One line of words on screen. Words in *stars* are set in italic gold. Each word arrives at its own
-// time (spread evenly unless given) and the line leaves together, softly or on a hard cut.
+// One title, *starred* words in italic gold, each word on its own cue.
 export interface Title {
   at: number;
   out: number;
   text: string;
+  // Each word's own time, by default 0.09 s apart.
   words?: number[];
+  // The small line above and the line below, each with its time.
   eyebrow?: [number, string];
   sub?: [number, string];
   tone: "light" | "dark" | "storm";
   place: "line" | "low";
+  // A cut ends it at once, otherwise it leaves softly.
   cut?: boolean;
 }
 
+// A title and the elements built for it.
 interface Built {
   title: Title;
   el: HTMLElement;
   words: HTMLElement[];
-  eyebrow?: HTMLElement;
-  sub?: HTMLElement;
+  eyebrow?: HTMLElement | undefined;
+  sub?: HTMLElement | undefined;
 }
 
-export function words(text: string) {
+// The words of a line as spans, gold between stars, | a line break.
+function words(text: string) {
   let gold = false;
   return text.split(" ").map((w) => {
     if (w === "|") return h("br");
@@ -45,12 +40,15 @@ export function words(text: string) {
   });
 }
 
+// A CSS blur of k times px, or none once it is all but gone.
 const blur = (k: number, px: number) => (k > 0.001 ? `blur(${(k * px).toFixed(2)}px)` : "none");
 
+// Every title of the film, shown and hidden by time.
 export class Titles {
   el = h("div", { class: "titles" });
   private built: Built[];
 
+  // Builds each title's card, eyebrow above, big line, sub below.
   constructor(list: Title[]) {
     this.built = list.map((title) => {
       const ws = words(title.text);
@@ -67,15 +65,19 @@ export class Titles {
     });
   }
 
+  // Fades each title's words in and out at time t.
   update(t: number) {
     for (const b of this.built) {
       const T = b.title;
+      // Shown from just before its first word or eyebrow until it goes.
       const on = t >= T.at - 0.05 && t < T.out + (T.cut ? 0 : 0.01);
       const lead = T.eyebrow ? Math.min(T.at, T.eyebrow[0]) : T.at;
       const live = t >= lead - 0.05 && t < T.out;
       b.el.style.display = on || live ? "" : "none";
       if (!(on || live)) continue;
+      // A soft exit over the last 0.55 s, or none on a cut.
       const leave = T.cut ? 0 : out(ramp(t, T.out - 0.55, T.out));
+      // Each word rises in and sharpens over 0.95 s on its own cue.
       b.words.forEach((w, i) => {
         const at = T.words?.[i] ?? T.at + i * 0.09;
         const k = out(ramp(t, at, at + 0.95));
@@ -84,6 +86,7 @@ export class Titles {
         w.style.filter = blur(Math.min(1, hide), 16);
         w.style.transform = `translateY(${((1 - k) * 0.28 - leave * 0.12).toFixed(3)}em)`;
       });
+      // The eyebrow and sub rise in over 0.8 s on their own cues.
       for (const [part, at] of [
         [b.eyebrow, T.eyebrow?.[0]],
         [b.sub, T.sub?.[0]],
@@ -98,12 +101,32 @@ export class Titles {
   }
 }
 
+// Scratch point for projecting onto the screen.
+const pinned = new THREE.Vector3();
+
+// Pins a name over its point on screen, faded by k, or hides it.
+function pin(
+  el: HTMLElement,
+  k: number,
+  at: THREE.Vector3 | undefined,
+  camera: THREE.Camera,
+  w: number,
+  h: number,
+  lift: string,
+) {
+  el.style.display = k > 0 ? "" : "none";
+  if (!k || !at) return;
+  pinned.copy(at).project(camera);
+  el.style.opacity = k.toFixed(3);
+  el.style.transform = `translate(${((pinned.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((0.5 - pinned.y * 0.5) * h).toFixed(1)}px) translate(-50%, ${lift})`;
+}
+
 // Small year marks that sit on the water where each shock began.
 export class Marks {
   el = h("div", { class: "marks" });
   private items: { el: HTMLElement; at: THREE.Vector3; t: number }[];
-  private v = new THREE.Vector3();
 
+  // One span per year, cyan when the market rose.
   constructor(list: { text: string; at: THREE.Vector3; t: number; up: boolean }[]) {
     this.items = list.map((m) => {
       const el = h("span", { class: m.up ? "mark up" : "mark" }, m.text);
@@ -112,15 +135,9 @@ export class Marks {
     });
   }
 
+  // Pins each year mark to its ripple for 1.5 s, fading in and out.
   update(t: number, camera: THREE.Camera, w: number, h: number) {
-    for (const m of this.items) {
-      const k = span(t, m.t, m.t + 1.5, 0.2, 0.7);
-      m.el.style.display = k > 0 ? "" : "none";
-      if (!k) continue;
-      this.v.copy(m.at).project(camera);
-      m.el.style.opacity = k.toFixed(3);
-      m.el.style.transform = `translate(${((this.v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((0.5 - this.v.y * 0.5) * h).toFixed(1)}px) translate(-50%, -160%)`;
-    }
+    for (const m of this.items) pin(m.el, span(t, m.t, m.t + 1.5, 0.2, 0.7), m.at, camera, w, h, "-160%");
   }
 }
 
@@ -128,8 +145,8 @@ export class Marks {
 export class Tags {
   el = h("div", { class: "marks" });
   private items: HTMLElement[];
-  private v = new THREE.Vector3();
 
+  // One tag per role, each shown between the two cues.
   constructor(
     names: string[],
     private from: number,
@@ -142,24 +159,20 @@ export class Tags {
     });
   }
 
+  // Pins each role's name beside its agent, arriving 0.2 s apart.
   update(t: number, at: THREE.Vector3[], camera: THREE.Camera, w: number, h: number) {
-    this.items.forEach((el, i) => {
-      const k = span(t, this.from + i * 0.2, this.to, 0.35, 0.5);
-      el.style.display = k > 0 ? "" : "none";
-      if (!k || !at[i]) return;
-      this.v.copy(at[i]).project(camera);
-      el.style.opacity = k.toFixed(3);
-      el.style.transform = `translate(${((this.v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((0.5 - this.v.y * 0.5) * h).toFixed(1)}px) translate(-50%, -190%)`;
-    });
+    this.items.forEach((el, i) =>
+      pin(el, span(t, this.from + i * 0.2, this.to, 0.35, 0.5), at[i], camera, w, h, "-190%"),
+    );
   }
 }
 
-// The last card: the name as it is said, then the line under it, who made it and the honest small
-// print.
+// The last card, name as it is said, then line, team and small print.
 export class End {
   el: HTMLElement;
   private parts: [HTMLElement, number][];
 
+  // Builds the card, each part with the time it arrives.
   constructor(
     lines: { at: number; name: number; title: string; tag: string; event: string; team: string; note: string },
     private fade: number,
@@ -172,6 +185,7 @@ export class End {
     const team = h("p", { class: "end-team" }, lines.team);
     const note = h("p", { class: "end-note" }, lines.note);
     this.el = h("div", { class: "end" }, h("div", { class: "end-stack" }, name, tag, rule, event, team), note);
+    // The name on its word, the rest in turn over the next 1.3 s.
     this.parts = [
       [name, lines.name],
       [tag, at],
@@ -182,6 +196,7 @@ export class End {
     ];
   }
 
+  // Fades the card's parts in, then the whole card out.
   update(t: number) {
     const leave = ramp(t, this.fade, this.fade + 0.9);
     this.el.style.display = t >= this.parts[0][1] - 0.05 ? "" : "none";
@@ -189,6 +204,7 @@ export class End {
       const k = out(ramp(t, at, at + 1.1));
       el.style.opacity = (k * (1 - leave)).toFixed(3);
       el.style.filter = blur(1 - k, 12);
+      // The rule draws out sideways, the rest rise into place.
       el.style.transform = el.classList.contains("end-rule")
         ? `scaleX(${k.toFixed(3)})`
         : `translateY(${((1 - k) * 0.35).toFixed(3)}em)`;

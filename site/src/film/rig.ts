@@ -1,39 +1,42 @@
 import * as THREE from "three";
 
-// A shot is a subject to keep in frame: its centre, the radius that must fit, and the angle (in
-// degrees) the camera sees it from. Focus is the focal distance as a share of the distance to the
-// subject, blur the lens aperture as a share of that distance, so a shot can rack focus.
+// A shot, the centre and radius to keep in frame and how to film it.
 export interface Shot {
   at: [number, number, number];
   r: number;
+  // Angles and the field of view, in degrees.
   yaw: number;
   pitch: number;
   fov?: number;
   roll?: number;
+  // Extra lift, as a share of screen height.
   shift?: number;
+  // Focus and aperture, as shares of the camera's distance.
   focus?: number;
   blur?: number;
 }
 
+// A key: a time and the shot to be at then.
 export type Key = [number, Shot];
 
+// Degrees to radians, and each gliding field with its default.
 const D2R = Math.PI / 180;
 const FIELDS = ["r", "yaw", "pitch", "fov", "roll", "shift", "focus", "blur"] as const;
 const DEFAULTS = { fov: 30, roll: 0, shift: 0, focus: 1, blur: 0 };
 
-// One value along a smooth curve through the keys: a Catmull-Rom spline, so the speed carries
-// through every key without stopping, eased to rest at the ends unless told to keep moving. A value
-// held across two keys stays exactly still, rather than winding up for the next move.
+// One value along a Catmull-Rom curve through the keys at time t.
 function curve(ts: number[], ys: number[], t: number, start: boolean, end: boolean) {
   const n = ts.length;
   if (n === 1 || t <= ts[0]) return ys[0];
   if (t >= ts[n - 1]) return ys[n - 1];
+  // Slopes, flat at eased ends and beside held values, which stay still.
   const m = ys.map((_, i) => {
     if (i === 0) return start ? (ys[1] - ys[0]) / (ts[1] - ts[0]) : 0;
     if (i === n - 1) return end ? (ys[i] - ys[i - 1]) / (ts[i] - ts[i - 1]) : 0;
     if (ys[i] === ys[i - 1] || ys[i] === ys[i + 1]) return 0;
     return (ys[i + 1] - ys[i - 1]) / (ts[i + 1] - ts[i - 1]);
   });
+  // Finds the segment holding t and blends it with Hermite weights.
   let k = 0;
   while (t > ts[k + 1]) k++;
   const h = ts[k + 1] - ts[k];
@@ -48,9 +51,10 @@ function curve(ts: number[], ys: number[], t: number, start: boolean, end: boole
   );
 }
 
-// The shot at time t: every value glides through the keys without stopping at any of them.
+// The shot at time t, every value gliding through the keys nonstop.
 export function track(keys: Key[], t: number, moving: { start?: boolean; end?: boolean } = {}): Shot {
   const ts = keys.map((k) => k[0]);
+  // One field of the shot at t, read from every key by get.
   const value = (get: (s: Shot) => number) =>
     curve(
       ts,
@@ -61,22 +65,23 @@ export function track(keys: Key[], t: number, moving: { start?: boolean; end?: b
     );
   const shot = { at: [0, 1, 2].map((i) => value((s) => s.at[i])) } as Shot;
   for (const f of FIELDS) shot[f] = value((s) => s[f] ?? DEFAULTS[f as keyof typeof DEFAULTS] ?? 0);
+  // The radius glides in log space, so a zoom moves by even ratios.
   shot.r = Math.exp(value((s) => Math.log(s.r)));
   return shot;
 }
 
+// Scratch camera axes for the lens shift, reused every frame.
 const right = new THREE.Vector3();
 const up = new THREE.Vector3();
 
-// Frames a shot for any screen. Wide screens fit the subject to the height, tall ones to the width
-// with a little more room, and both sit it slightly above centre to leave space for the words. A
-// lens sample moves the camera across its aperture and shears the view so the focal plane stays put,
-// which is how averaged subframes make real depth of field.
+// Frames a shot on any screen, a little above centre.
 export function place(camera: THREE.PerspectiveCamera, s: Shot, w: number, h: number, jitter = [0, 0], lens = [0, 0]) {
   const aspect = w / h;
   const tall = aspect < 1;
   const fov = (s.fov ?? 30) * D2R;
+  // On an upright screen the fov, widened 1.18 times, spans the width.
   const v = tall ? 2 * Math.atan(Math.tan((fov * 1.18) / 2) / aspect) : fov;
+  // Backs off until the sphere fits the narrower side of the screen.
   const fit = Math.min(v, 2 * Math.atan(Math.tan(v / 2) * aspect));
   const d = s.r / Math.sin(fit / 2);
   const yaw = s.yaw * D2R;
@@ -90,6 +95,7 @@ export function place(camera: THREE.PerspectiveCamera, s: Shot, w: number, h: nu
   camera.lookAt(...s.at);
   if (s.roll) camera.rotateZ(s.roll * D2R);
   camera.updateMatrix();
+  // A lens sample shears the view for real depth of field.
   const aperture = d * (s.blur ?? 0);
   const scale = h / 2 / (d * (s.focus ?? 1) * Math.tan(v / 2));
   right.setFromMatrixColumn(camera.matrix, 0);
@@ -99,6 +105,7 @@ export function place(camera: THREE.PerspectiveCamera, s: Shot, w: number, h: nu
   camera.aspect = aspect;
   camera.near = Math.max(0.05, d * 0.02);
   camera.far = 1500;
+  // Offsets the view by the lift, the pixel jitter and the lens shear.
   camera.setViewOffset(
     w,
     h,
@@ -110,5 +117,5 @@ export function place(camera: THREE.PerspectiveCamera, s: Shot, w: number, h: nu
   camera.updateProjectionMatrix();
 }
 
-// How far above centre the subject sits, as a share of the screen height.
+// How far above centre the subject sits, a share of screen height.
 export const lift = (w: number, h: number) => (w / h < 1 ? 0.09 : 0.06);

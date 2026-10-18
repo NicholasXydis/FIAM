@@ -1,10 +1,10 @@
-// The market under the gimbal as a heavy body on a curved base: it rocks at its own slow pace,
-// takes each knock as a sudden push, and settles under gravity and friction. Stepped once at a fine
-// fixed step and kept as a table, so any moment of the film reads the same tilt.
+// The market under the gimbal, a heavy body on a curved base.
 export class Rocker {
+  // Tilts about x and z, one every 1/600 s from the start.
   private table: [number, number][] = [];
   private step = 1 / 600;
 
+  // Steps the knocked, settling sway at 600 Hz into the table of tilts.
   constructor(
     private from: number,
     to: number,
@@ -13,14 +13,18 @@ export class Rocker {
     damping = 0.14,
   ) {
     const w = 2 * Math.PI * hz;
+    // Starts a little tilted and already swaying.
     let [a, b, va, vb] = [0.035, -0.02, 0, 0.05];
     for (let t = from; t <= to + this.step; t += this.step) {
+      // A knock that falls inside this step kicks both angular speeds.
       for (const k of knocks)
         if (t <= k.at && t + this.step > k.at) {
           va += k.a;
           vb += k.b;
         }
+      // The rest tilt wanders slowly, so the body never stands dead still.
       const drift = 0.012 * Math.sin(t * 0.9) + 0.008 * Math.sin(t * 1.7 + 1);
+      // A damped spring pulls each tilt toward the wandering rest.
       va += (-w * w * (a - drift) - 2 * damping * w * va) * this.step;
       vb += (-w * w * (b + drift * 0.7) - 2 * damping * w * vb) * this.step;
       a += va * this.step;

@@ -5,14 +5,16 @@ import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { TexturePass } from "three/addons/postprocessing/TexturePass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { hash } from "../gl/glsl";
+import { hash } from "../shared/glsl";
+import { C } from "../shared/palette";
 
+// The vertex shader for every full-screen pass.
 const quad = /* glsl */ `
   varying vec2 vUv;
   void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
 
-// Before the bloom: the gold level line, drawn out from the centre, and the slit it opens into.
+// Before bloom, the gold level line grows from centre and opens a slit.
 const line = {
   uniforms: {
     tDiffuse: { value: null },
@@ -21,7 +23,7 @@ const line = {
     uDraw: { value: 0 },
     uSlit: { value: 0 },
     uGlow: { value: 1 },
-    uGold: { value: new THREE.Color(0xf2c14e).multiplyScalar(1.5) },
+    uGold: { value: new THREE.Color(C.gold).multiplyScalar(1.5) },
   },
   vertexShader: quad,
   fragmentShader: /* glsl */ `
@@ -48,7 +50,7 @@ const line = {
   `,
 };
 
-// After the bloom: a soft vignette, a fade to black, faint lens fringing and optional grain.
+// After bloom, vignette, black fade, faint lens fringe, optional grain.
 const grade = {
   uniforms: {
     tDiffuse: { value: null },
@@ -79,8 +81,7 @@ const grade = {
   `,
 };
 
-// The renderer and its passes. Each frame can be drawn as several subframes, averaged before the
-// bloom, which gives true motion blur, smooth edges and soft shadows when recording.
+// Subframes averaged before bloom, for motion blur and soft shadows.
 export class Look {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
@@ -91,19 +92,23 @@ export class Look {
   grade: ShaderPass;
   studio: THREE.Texture;
   night: THREE.Texture;
+  // Each subframe's target, the running sum, and the passes on them.
   private target: THREE.WebGLRenderTarget;
   private accum: THREE.WebGLRenderTarget;
   private copy: TexturePass;
   private add: FullScreenQuad;
 
+  // The renderer, then copy, level line, bloom, grade and output passes.
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.VSMShadowMap;
+    // Half float targets, the subframe 4x multisampled, the sum no depth.
     this.target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
     this.accum = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+    // Adds a subframe into the sum, weighted 1/n.
     this.add = new FullScreenQuad(
       new THREE.ShaderMaterial({
         uniforms: { tDiffuse: { value: null }, uWeight: { value: 1 } },
@@ -120,6 +125,7 @@ export class Look {
         transparent: true,
       }),
     );
+    // Copy, level line, bloom, grade, then output.
     this.composer = new EffectComposer(this.renderer);
     this.copy = new TexturePass(this.target.texture);
     this.composer.addPass(this.copy);
@@ -131,16 +137,19 @@ export class Look {
     this.composer.addPass(this.grade);
     this.composer.addPass(new OutputPass());
 
+    // Reflections for the bright room and for the night.
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.studio = pmrem.fromScene(studio(), 0.03).texture;
     this.night = pmrem.fromScene(night(), 0.04).texture;
     pmrem.dispose();
   }
 
+  // The drawing size in pixels.
   get size() {
     return this.renderer.getDrawingBufferSize(new THREE.Vector2());
   }
 
+  // Fits the canvas and every pass to the window.
   resize(w: number, h: number, ratio: number) {
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
@@ -153,13 +162,14 @@ export class Look {
     this.line.uniforms.uRes.value.set(W, H);
   }
 
-  // Draws n subframes, each set up by sub(k) first, and shows their average.
+  // Draws n subframes, each set up by sub(k), and shows their average.
   render(n: number, sub: (k: number) => void) {
     const r = this.renderer;
     for (let k = 0; k < n; k++) {
       sub(k);
       r.setRenderTarget(this.target);
       r.render(this.scene, this.camera);
+      // A single subframe goes straight on, more add up in the sum.
       if (n === 1) break;
       r.setRenderTarget(this.accum);
       if (k === 0) {
@@ -173,17 +183,20 @@ export class Look {
       this.add.render(r);
       r.autoClear = true;
     }
+    // Bloom and grade then run once, on that frame or the average.
     this.copy.map = n === 1 ? this.target.texture : this.accum.texture;
     r.setRenderTarget(null);
     this.composer.render();
   }
 }
 
+// A room of glowing panels for metal to reflect.
 function room(color: number, panels: [number, number, [number, number, number], [number, number]][]) {
   const scene = new THREE.Scene();
   scene.add(
     new THREE.Mesh(new THREE.SphereGeometry(20, 32, 16), new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })),
   );
+  // Each panel glows at its power, turned to face the centre.
   for (const [tint, power, at, size] of panels) {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(...size),
@@ -196,8 +209,7 @@ function room(color: number, panels: [number, number, [number, number, number], 
   return scene;
 }
 
-// What chrome reflects in the bright room: soft boxes above and to the side, a white floor, and
-// black cards that give polished metal its dark edges, as a product photographer would set it.
+// Day reflections, soft boxes, white floor, black cards for dark edges.
 const studio = () =>
   room(0x4f4c58, [
     [0xffffff, 5, [0, 12, 3], [14, 8]],
@@ -209,10 +221,10 @@ const studio = () =>
     [0x060509, 1, [0, 1, -15], [6, 3]],
   ]);
 
-// What chrome reflects at night: a dark violet room with a long low gold glow, like a horizon.
+// Night reflections, dark violet, a long low gold glow like a horizon.
 const night = () =>
   room(0x07050f, [
-    [0xf2c14e, 3, [0, 0.5, -16], [40, 1.2]],
+    [C.gold, 3, [0, 0.5, -16], [40, 1.2]],
     [0xa98bff, 1.4, [0, 14, 0], [16, 16]],
     [0xffffff, 1.2, [-12, 4, 8], [3, 8]],
     [0x5cc8e0, 0.8, [12, 2, 6], [3, 6]],

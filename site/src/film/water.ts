@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
 
-export const SPEED = 5.5;
+// How fast a shock's ripple spreads, in units a second.
+const SPEED = 5.5;
 
+// One market shock, where and when it hits, how hard and which way.
 export interface Shock {
   x: number;
   z: number;
@@ -11,6 +13,7 @@ export interface Shock {
   up: boolean;
 }
 
+// A night sky warming toward dawn, a thin gold line along the horizon.
 const sky = /* glsl */ `
   uniform float uDawn, uDip;
   varying vec3 vDir;
@@ -28,6 +31,7 @@ const sky = /* glsl */ `
   }
 `;
 
+// Hands the mirror's projected coordinates and world position on.
 const vertex = /* glsl */ `
   uniform mat4 textureMatrix;
   varying vec4 vUv;
@@ -39,6 +43,7 @@ const vertex = /* glsl */ `
   }
 `;
 
+// The sea for n shocks, their rings and a swell bending the reflection.
 const fragment = (n: number) => /* glsl */ `
   uniform vec3 color;
   uniform sampler2D tDiffuse;
@@ -77,14 +82,14 @@ const fragment = (n: number) => /* glsl */ `
   }
 `;
 
-// A night sea under a sky that slowly turns to dawn. Every shock sends a glowing ripple across it,
-// red when the market fell, cyan when it jumped, and the water reflects everything above it.
+// A night sea turning to dawn, each shock a glowing ripple.
 export class Water {
   group = new THREE.Group();
   moon: THREE.DirectionalLight;
   private sky: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
   private sea: Reflector;
 
+  // A sky dome of radius 300 and a 600 square mirror sea at screen size.
   constructor(
     public shocks: Shock[],
     size: THREE.Vector2,
@@ -117,6 +122,7 @@ export class Water {
           uSwell: { value: 0.02 },
           uVisible: { value: 1 },
           uShocks: { value: shocks.map((s) => new THREE.Vector4(s.x, s.z, s.at, s.amp)) },
+          // Red for a fall, cyan for a jump.
           uTints: { value: shocks.map((s) => new THREE.Color(s.up ? 0x4fd0ea : 0xff4a26)) },
         },
         vertexShader: vertex,
@@ -125,11 +131,13 @@ export class Water {
     });
     this.sea.rotation.x = -Math.PI / 2;
     (this.sea.material as THREE.ShaderMaterial).transparent = true;
+    // A pale violet moon, warmed while the stats show.
     this.moon = new THREE.DirectionalLight(0xc9c0ff, 0.6);
     this.moon.position.set(4, 10, 8);
     this.group.add(this.sky, this.sea, this.moon);
   }
 
+  // Fits the reflection to the screen.
   resize(size: THREE.Vector2) {
     this.sea.getRenderTarget().setSize(size.x, size.y);
   }
@@ -148,7 +156,7 @@ export class Water {
     return h;
   }
 
-  // Visible fades the sea itself away, leaving the sky, for what lies beneath it.
+  // Visible fades the sea out, leaving the sky, to show what lies below.
   update(t: number, dawn: number, swell: number, visible = 1) {
     const m = this.sea.material as THREE.ShaderMaterial;
     const u = m.uniforms;
@@ -160,7 +168,7 @@ export class Water {
     this.sky.material.uniforms.uDawn.value = dawn;
   }
 
-  // The sky follows the camera, its gold line lowered to meet the far edge of the sea.
+  // Sky follows the camera, its gold line dipped to the sea's far edge.
   follow(camera: THREE.Camera) {
     this.sky.position.copy(camera.position);
     this.sky.material.uniforms.uDip.value = Math.min(camera.position.y / 290, 0.03);

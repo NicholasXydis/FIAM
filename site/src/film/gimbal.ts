@@ -1,14 +1,17 @@
 import * as THREE from "three";
+import { C } from "../shared/palette";
 
+// The rocker's radius, and the dial's height above the rocker's centre.
 const ROCKER = 0.9;
 const CENTRE = 2.38;
 
-export const chrome = () => new THREE.MeshPhysicalMaterial({ color: 0xf3f3f7, metalness: 1, roughness: 0.07 });
+// The three materials: polished chrome, brushed gold and white ceramic.
+const chrome = () => new THREE.MeshPhysicalMaterial({ color: 0xf3f3f7, metalness: 1, roughness: 0.07 });
 export const gold = () => new THREE.MeshPhysicalMaterial({ color: 0xe8bd62, metalness: 1, roughness: 0.2 });
-export const ceramic = (color = 0xf6f4f9) =>
+const ceramic = (color = 0xf6f4f9) =>
   new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.12 });
 
-// The face of the book: a white dial with fine gold ticks, like an instrument.
+// The book's face, a white instrument dial with fine gold ticks.
 function dial() {
   const c = document.createElement("canvas");
   c.width = c.height = 1024;
@@ -17,6 +20,7 @@ function dial() {
   g.fillRect(0, 0, 1024, 1024);
   g.translate(512, 512);
   g.strokeStyle = "#c79d45";
+  // 120 ticks, every tenth longer and bolder.
   for (let i = 0; i < 120; i++) {
     const a = (i / 120) * Math.PI * 2;
     const long = i % 10 === 0;
@@ -26,6 +30,7 @@ function dial() {
     g.lineTo(Math.cos(a) * 470, Math.sin(a) * 470);
     g.stroke();
   }
+  // An inner ring and a gold centre dot.
   g.lineWidth = 5;
   g.beginPath();
   g.arc(0, 0, 345, 0, Math.PI * 2);
@@ -41,6 +46,7 @@ function dial() {
   return t;
 }
 
+// A cylinder of the given radius running between two points.
 function rod(from: THREE.Vector3, to: THREE.Vector3, radius: number, material: THREE.Material) {
   const d = to.clone().sub(from);
   const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, d.length(), 24), material);
@@ -49,26 +55,30 @@ function rod(from: THREE.Vector3, to: THREE.Vector3, radius: number, material: T
   return m;
 }
 
-// A ship's compass gimbal: the base rocks with the market, two rings turn on their pins to take up
-// the tilt, and the dial in the middle stays level.
+// A ship's compass gimbal whose dial stays level as the market rocks.
 export class Gimbal {
+  // The base carries the stand and outer ring, the outer ring the inner.
   group = new THREE.Group();
   base = new THREE.Group();
   stand = new THREE.Group();
   outer = new THREE.Group();
   inner = new THREE.Group();
   disc: THREE.Mesh;
+  // The dial texture, and the gauge's hand and figure.
   private face: THREE.Texture;
   private hand = new THREE.Group();
   private figure: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private ink: CanvasRenderingContext2D;
+  // The text last drawn, so the figure redraws only on a change.
   private shown = "";
 
+  // Builds stand, rings and dial, every mesh casting and taking shadows.
   constructor() {
     const steel = chrome();
     const brass = gold();
     const white = ceramic();
     this.face = dial();
+    // A chrome half sphere to rock on, under a ceramic slab.
     const rocker = new THREE.Mesh(
       new THREE.SphereGeometry(ROCKER, 64, 32, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
       steel,
@@ -76,6 +86,7 @@ export class Gimbal {
     const slab = new THREE.Mesh(new THREE.CylinderGeometry(3.25, 3.25, 0.28, 128), ceramic(0xf1eef6));
     slab.position.y = 0.14;
     this.stand.add(rocker, slab);
+    // Two chrome posts with ball caps hold the outer ring's pivots.
     for (const x of [-2.8, 2.8]) {
       this.stand.add(rod(new THREE.Vector3(x, 0.28, 0), new THREE.Vector3(x, CENTRE + 0.12, 0), 0.06, steel));
       const cap = new THREE.Mesh(new THREE.SphereGeometry(0.09, 32, 16), steel);
@@ -83,11 +94,13 @@ export class Gimbal {
       this.stand.add(cap);
     }
     this.outer.position.y = CENTRE;
+    // A torus laid flat, for both rings.
     const ring = (r: number, tube: number, m: THREE.Material) => {
       const t = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 32, 220), m);
       t.rotation.x = Math.PI / 2;
       return t;
     };
+    // Chrome outer ring on x pivots, gold inner on z, spokes to the dial.
     this.outer.add(ring(2.56, 0.085, steel));
     for (const x of [-1, 1])
       this.outer.add(rod(new THREE.Vector3(x * 2.56, 0, 0), new THREE.Vector3(x * 2.8, 0, 0), 0.04, steel));
@@ -96,12 +109,14 @@ export class Gimbal {
       this.inner.add(rod(new THREE.Vector3(0, 0, z * 2.14), new THREE.Vector3(0, 0, z * 2.56), 0.035, brass));
     for (const x of [-1, 1])
       this.inner.add(rod(new THREE.Vector3(x * 1.78, 0, 0), new THREE.Vector3(x * 2.14, 0, 0), 0.03, brass));
+    // The dial, gold at the rim, the face on top, white beneath.
     const top = ceramic();
     top.map = this.face;
     this.disc = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.16, 160), [brass, top, white]);
     this.inner.add(this.disc);
+    // A glowing gold hand, hidden until the dial becomes a gauge.
     const glow = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0xf2c14e).multiplyScalar(2.2),
+      color: new THREE.Color(C.gold).multiplyScalar(2.2),
       transparent: true,
     });
     const needle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 1.4), glow);
@@ -109,6 +124,7 @@ export class Gimbal {
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 32), glow);
     this.hand.add(needle, hub);
     this.hand.position.y = 0.092;
+    // The figure, text on a 2048 by 1024 canvas lying on the dial.
     const canvas = document.createElement("canvas");
     canvas.width = 2048;
     canvas.height = 1024;
@@ -137,14 +153,15 @@ export class Gimbal {
     });
   }
 
-  // The dial as a gauge: the hand sweeps three quarters of a turn as the figure counts up to its
-  // value, with a small label under it. Show fades both in.
+  // The dial as a gauge, its hand and figure counting up to value.
   read(value: number, top: number, show: number, label = "") {
     this.hand.visible = this.figure.visible = show > 0;
     if (!show) return;
+    // Show fades both in, and the hand turns 270 degrees at the top value.
     this.hand.rotation.y = (-value / top) * Math.PI * 1.5;
     for (const m of [this.figure.material, (this.hand.children[0] as THREE.Mesh).material as THREE.Material])
       m.opacity = show;
+    // Redraws the figure and its label only when the text changes.
     const text = value.toFixed(2);
     if (text + label === this.shown) return;
     this.shown = text + label;
@@ -164,9 +181,9 @@ export class Gimbal {
   // The dial's height above the floor when the base is level.
   static centre = ROCKER + CENTRE;
 
-  // Tilts the base by a (about x) and b (about z), rolling the rocker on the floor, and turns the
-  // rings back so the dial stays exactly level. Spin turns the dial's ticks.
+  // Rolls the base by a and b on the rocker, the rings undoing the tilt.
   tilt(a: number, b: number, spin: number) {
+    // Rolling, not sliding, shifts the base by the radius times the tilt.
     this.base.position.set(-ROCKER * b, ROCKER, ROCKER * a);
     this.base.rotation.set(a, 0, b, "ZXY");
     this.outer.rotation.set(-a, 0, 0);

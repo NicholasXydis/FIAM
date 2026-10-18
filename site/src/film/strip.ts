@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+// Pushes each point sideways on screen, width in pixels at 1080 high.
 const vertex = /* glsl */ `
   attribute vec3 prev;
   attribute vec3 next;
@@ -23,6 +24,7 @@ const vertex = /* glsl */ `
   }
 `;
 
+// Brightest down the middle and fading to the edges, added as light.
 const fragment = /* glsl */ `
   uniform vec3 uColor;
   uniform float uOpacity;
@@ -34,15 +36,16 @@ const fragment = /* glsl */ `
   }
 `;
 
-// A ribbon of light through a list of points, always facing the camera, its width in pixels at
-// 1080p. Each point carries its own brightness and width, so trails can fade and taper.
+// A ribbon of light facing the camera, brightness and width per point.
 export class Strip {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  // Each point twice, one per side, beside its neighbours for direction.
   private pos: Float32Array;
   private prev: Float32Array;
   private next: Float32Array;
   private info: Float32Array;
 
+  // Room for max points, glowing additively and never culled.
   constructor(
     private max: number,
     color: THREE.ColorRepresentation,
@@ -54,8 +57,10 @@ export class Strip {
     this.prev = new Float32Array(max * 6);
     this.next = new Float32Array(max * 6);
     this.info = new Float32Array(max * 4);
+    // Each point is a pair of vertices, one either side of the line.
     const side = new Float32Array(max * 2);
     for (let i = 0; i < max; i++) side.set([-1, 1], i * 2);
+    // Two triangles join each point to the next.
     const index: number[] = [];
     for (let i = 0; i < max - 1; i++) {
       const a = i * 2;
@@ -87,9 +92,10 @@ export class Strip {
     this.mesh.frustumCulled = false;
   }
 
-  // Lays the ribbon through the points; alpha and width are given per point, from 0 to 1.
+  // Lays the ribbon on points, each with a 0 to 1 alpha and width.
   set(points: THREE.Vector3[], alpha: (i: number) => number = () => 1, width: (i: number) => number = () => 1) {
     const n = Math.min(points.length, this.max);
+    // Each point keeps its neighbours, clamped at the ends, for direction.
     for (let i = 0; i < n; i++) {
       const p = points[i];
       const a = points[Math.max(0, i - 1)];
@@ -102,11 +108,13 @@ export class Strip {
         this.info.set([alpha(i), width(i)], (i * 2 + s) * 2);
       }
     }
+    // Uploads the new buffers and draws only the segments laid.
     const g = this.mesh.geometry;
     for (const k of ["position", "prev", "next", "info"]) g.attributes[k].needsUpdate = true;
     g.setDrawRange(0, Math.max(0, n - 1) * 6);
   }
 
+  // Tells the ribbon the screen size, so its width stays in pixels.
   viewport(size: THREE.Vector2) {
     this.mesh.material.uniforms.uViewport.value.copy(size);
   }

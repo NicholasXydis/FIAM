@@ -1,27 +1,26 @@
 import * as THREE from "three";
 import crashes from "../data/crashes.json";
 import { agents, crowd, headline, journey, months } from "../data/fiam.json";
-import { TEAM } from "../config";
+import { monthName } from "../shared/data";
+import { TEAM } from "../content/credits";
 import words from "../../ad/voice/words.json";
 import { Gimbal } from "./gimbal";
 import type { Key } from "./rig";
 import type { Title } from "./titles";
 import type { Shock } from "./water";
 
+// The film runs 62 s and fades to black from 61.1 s.
 export const LENGTH = 62;
 export const FADE = 61.1;
 
-const month = (m: string) =>
-  `${new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" })} ${m.slice(0, 4)}`;
-
+// Figures the film reads from the data, stocks rounded down to 100s.
 export const ROLES = agents.map((a) => a.name);
 export const SHARPE = headline.sharpe;
-export const BETA = headline.beta;
+const BETA = headline.beta;
 const INVESTORS = crowd.agents + crowd.copycats;
 const STOCKS = Math.floor(journey.stocks / 100) * 100;
 
-// When each part of the film begins. The music runs at 120 BPM from the reveal, so every part after
-// it starts on a two-second bar.
+// Part starts, on 2 s bars at 120 BPM from the music, except dusk.
 export const AT = {
   panic: 9.3,
   cut: 10.4,
@@ -36,8 +35,7 @@ export const AT = {
   outro: 49.6,
 };
 
-// Where each spoken line plays, and which part of its file. A line can be split at a pause and its
-// halves placed apart, the second half over the next shot.
+// When each line plays, from and to splitting one file over two shots.
 export const VOICE = [
   { key: "rise", at: 1.2 },
   { key: "panic", at: 7.6 },
@@ -51,20 +49,22 @@ export const VOICE = [
   { key: "brand", at: 55.4 },
 ];
 
+// The voice's lines by name.
 type Line = keyof typeof words;
 
-// The moment a word is spoken in the film: the n-th word of a line, or the first one that matches.
+// The film time a word is said, by index or first match in any case.
 export function said(key: Line, which: number | string) {
   const list = words[key] as [string, number, number][];
   const i = typeof which === "number" ? which : list.findIndex(([w]) => w.toLowerCase() === which.toLowerCase());
   const start = list[i][1];
+  // The voice cue whose part of the file holds the word.
   const v = VOICE.find((p) => p.key === key && start >= (p.from ?? -Infinity) && start < (p.to ?? Infinity))!;
   return v.at + start - (v.from ?? 0);
 }
 
-// Every market shock since 2000 in order, spread over the dark water, each a ripple as strong as
-// the market's move.
+// Every shock since 2000 on the water, its ripple as big as the move.
 export const SHOCKS: (Shock & { year: string })[] = crashes.map((c, i) => {
+  // Spread by the golden angle, then hit one every 0.22 s from 41.8 s.
   const a = i * 2.39996 + 0.5;
   const r = 4 + 8 * ((i * 0.618 + 0.3) % 1);
   return {
@@ -77,7 +77,9 @@ export const SHOCKS: (Shock & { year: string })[] = crashes.map((c, i) => {
   };
 });
 
+// When a word of the panic line is said.
 const P = (n: number | string) => said("panic", n);
+// Every title, timed to the words it shows.
 export const TITLES: Title[] = [
   { at: P("panic"), out: AT.cut, cut: true, text: "Markets *panic.*", tone: "storm", place: "line" },
   { at: said("dont", 0), out: 12.9, text: "We *don't.*", tone: "light", place: "line" },
@@ -95,6 +97,7 @@ export const TITLES: Title[] = [
     at: said("neutral", "Long"),
     out: 23.3,
     text: "Long the *strongest.* | Short the *weakest.*",
+    // A 0 holds the place of each line break.
     words: ["Long", "the", "strongest", 0, "short", 10, "weakest"].map((w) =>
       w === 0 ? 0 : said("neutral", w as string | number),
     ),
@@ -160,6 +163,7 @@ export const TITLES: Title[] = [
   },
 ];
 
+// The end card, its tag on the spoken Calm and its name on Quark.
 export const END = {
   at: said("brand", "Calm"),
   name: said("brand", "Quark"),
@@ -167,7 +171,7 @@ export const END = {
   tag: "Calm, *by design.*",
   event: "McGill-FIAM Asset Management Hackathon 2026 · Finals",
   team: TEAM.map((name) => name.replaceAll(" ", " ")).join(" · "),
-  note: `Backtested results, ${month(months[0])} to ${month(months[months.length - 1])}. Crisis replays are hypothetical. Not a live record. Not an offer to invest.`,
+  note: `Backtested results, ${monthName(months[0])} to ${monthName(months[months.length - 1])}. Crisis replays are hypothetical. Not a live record. Not an offer to invest.`,
 };
 
 // The agents' cues, from the words that name them.
@@ -209,9 +213,10 @@ export const SOUNDS = [
   { at: END.name, kind: "sting" },
 ];
 
+// The dial's height, the centre of the studio shots.
 const C = Gimbal.centre;
 
-// The camera, part by part. Each list is one continuous move through its keys.
+// Each part is one glide. The opening backs away from the first light.
 export const opening = (s: THREE.Vector3): Key[] => [
   [0.0, { at: [s.x, s.y, s.z], r: 0.12, yaw: 20, pitch: 26, fov: 30 }],
   [2.6, { at: [s.x, s.y, s.z], r: 1.8, yaw: 28, pitch: 32, fov: 30, blur: 0.004 }],
@@ -219,6 +224,7 @@ export const opening = (s: THREE.Vector3): Key[] => [
   [10.4, { at: [s.x * 0.35, -10, s.z * 0.35], r: 125, yaw: 50, pitch: 31, fov: 34 }],
 ];
 
+// The studio, a dolly zoom on the dial, then up to look down on it.
 export const STUDIO: Key[] = [
   [12.2, { at: [0, C, 0], r: 3.05, yaw: 0, pitch: 0, fov: 46 }],
   [13.7, { at: [0, C, 0], r: 3.05, yaw: 0, pitch: 0, fov: 26 }],
@@ -227,6 +233,7 @@ export const STUDIO: Key[] = [
   [17.6, { at: [0, C, 0], r: 2.1, yaw: -50, pitch: 56, fov: 28, blur: 0.003 }],
 ];
 
+// The shelf, dipping under the glass, circling, then out to the world.
 export const SHELF: Key[] = [
   [17.6, { at: [0, 2.8, 0], r: 4.6, yaw: -10, pitch: 72, fov: 32 }],
   [19.6, { at: [0, 2.9, 0], r: 4.4, yaw: 4, pitch: 40, fov: 34, blur: 0.0045 }],
@@ -243,6 +250,7 @@ export const SHELF: Key[] = [
   [41.6, { at: [0, -10, 0], r: 130, yaw: 152, pitch: 22, fov: 36 }],
 ];
 
+// The sea, skimming the water, then over the dial, then far away.
 export const SEA: Key[] = [
   [41.6, { at: [0, 0.7, 0], r: 6.4, yaw: -14, pitch: 3, fov: 36, blur: 0.0045 }],
   [44.0, { at: [0, 0.75, 0], r: 4.8, yaw: 2, pitch: 5, fov: 34, blur: 0.005 }],
@@ -253,6 +261,7 @@ export const SEA: Key[] = [
   [62.0, { at: [0, -10, 0], r: 140, yaw: 30, pitch: 28, fov: 36 }],
 ];
 
+// A year mark just above the water where each shock starts.
 export const MARKS = SHOCKS.map((s) => ({
   text: s.year,
   at: new THREE.Vector3(s.x, 0.25, s.z),

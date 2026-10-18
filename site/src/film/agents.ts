@@ -1,15 +1,20 @@
 import * as THREE from "three";
-import { clamp, inOut, mix, out, ramp, seeded, smooth, span } from "./ease";
+import { clamp, inOut, mix, out, ramp, seeded, smooth, span } from "../shared/math";
 import { Strip } from "./strip";
+import { C } from "../shared/palette";
 
+// Seven agents, trails of 40 points 0.024 s apart, and 160 filings.
 const COUNT = 7;
 const TAIL = 40;
 const STEP = 0.024;
 const CARDS = 160;
-const TINTS = [0xf2c14e, 0x9fe3f0, 0xb9a2ff, 0xffffff, 0xf2c14e, 0x9fe3f0, 0xb9a2ff];
+// Each agent's tint, gold, cyan, lilac or white.
+const TINTS = [C.gold, 0x9fe3f0, 0xb9a2ff, 0xffffff, C.gold, 0x9fe3f0, 0xb9a2ff];
+// A full turn, and the axis each card spins about.
 const TAU = Math.PI * 2;
 const FORWARD = new THREE.Vector3(0, 0, 1);
 
+// When the agents enter, read, argue, form their ring, check and rest.
 export interface Times {
   enter: number;
   read: number;
@@ -19,8 +24,7 @@ export interface Times {
   rest: number;
 }
 
-// A page of a filing as the agents see it: a pale page of text, with the company's name and every
-// identifying detail blacked out so no model can lean on what it remembers.
+// A pale filing as the agents see it, name and identifiers blacked out.
 function page() {
   const c = document.createElement("canvas");
   c.width = 192;
@@ -30,9 +34,11 @@ function page() {
   g.beginPath();
   g.roundRect(4, 4, 184, 232, 10);
   g.fill();
+  // The company's name, blacked out.
   g.fillStyle = "#0b0912";
   g.fillRect(22, 24, 96, 16);
   g.fillStyle = "rgba(40,34,60,0.55)";
+  // Grey lines of text, every third with a word blacked out.
   for (let y = 58, n = 0; y < 214; y += 14, n++) {
     g.fillRect(22, y, n % 4 === 3 ? 100 : 148, 5);
     if (n % 3 === 1) {
@@ -46,24 +52,28 @@ function page() {
   return t;
 }
 
-// Seven agents as points of light. They come out of the book, circle it, pull in thousands of
-// filings to read, throw threads of light between each other as they challenge the thinking, then
-// settle into one even ring as every number checks out.
+// Seven agents as lights that read filings, argue, then form one ring.
 export class Agents {
   group = new THREE.Group();
+  // Where each agent is now, read by the book and the name tags.
   now: THREE.Vector3[] = [];
+  // The point they circle, set to the shelf and later the sea.
   centre = new THREE.Vector3(0, 3.2, 0);
   private orbs: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>[] = [];
   private lights: THREE.PointLight[] = [];
   private trails: Strip[] = [];
   private beams: Strip[] = [];
-  private ring = new Strip(COUNT + 1, 0xf2c14e, 1.6, 2.2);
-  private pulse = new Strip(97, 0xf2c14e, 2.4, 1.6);
+  // The ring through all seven, and the pulse it sends out.
+  private ring = new Strip(COUNT + 1, C.gold, 1.6, 2.2);
+  private pulse = new Strip(97, C.gold, 2.4, 1.6);
+  // Scratch points for one trail.
   private tail = [...Array(TAIL)].map(() => new THREE.Vector3());
   private cards: THREE.InstancedMesh;
+  // Each card's start point, launch time and spin.
   private spawn: THREE.Vector3[] = [];
   private start: number[] = [];
   private spin: number[] = [];
+  // Scratch vectors, axes and matrices, reused every frame.
   private v = new THREE.Vector3();
   private y = new THREE.Vector3(0, 1, 0);
   private x = new THREE.Vector3(1, 0, 0);
@@ -72,6 +82,7 @@ export class Agents {
   private z = new THREE.Quaternion();
   private s = new THREE.Vector3();
 
+  // An orb, light, trail and argument beam per agent, and the cards.
   constructor(public times: Times) {
     const T = times;
     for (let i = 0; i < COUNT; i++) {
@@ -90,6 +101,7 @@ export class Agents {
       this.now.push(new THREE.Vector3());
       this.group.add(orb, light, trail.mesh, beam.mesh);
     }
+    // Cards wait 9 to 17 out, launched over 2.6 s from just before reading.
     const r = seeded(41);
     for (let i = 0; i < CARDS; i++) {
       const a = r() * TAU;
@@ -99,6 +111,7 @@ export class Agents {
       this.start.push(T.read - 0.5 + (i / CARDS) * 2.6 + r() * 0.3);
       this.spin.push((r() - 0.5) * 3);
     }
+    // Every card is one instance of the filing texture.
     this.cards = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(0.3, 0.375),
       new THREE.MeshBasicMaterial({
@@ -115,19 +128,22 @@ export class Agents {
     this.group.add(this.ring.mesh, this.pulse.mesh, this.cards);
   }
 
-  // Where agent i is at time t, a pure function so its trail is just its own past.
+  // Agent i's place at time t, pure, so its trail is just its own past.
   at(i: number, t: number, into: THREE.Vector3) {
     const c = this.centre;
+    // Grows out of the book, drawing in from 4.9 to 3 while it reads.
     const grow = out(ramp(t, this.times.enter, this.times.enter + 1.3));
     const read =
       smooth(ramp(t, this.times.read, this.times.read + 0.8)) *
       (1 - smooth(ramp(t, this.times.argue + 0.2, this.times.argue + 1.0)));
     const r = mix(4.9, 3.0, read) * grow * (1 + 0.07 * Math.sin(t * 0.8 + i * 1.7));
+    // Each orbit has its own tilt, speed and direction of turn.
     const tilt = (0.3 + 0.55 * ((i * 0.618) % 1)) * (1 - read * 0.7);
     const angle = i * 2.4 + t * (0.95 + 0.11 * i) * (i % 2 ? 1 : -1);
     this.v.set(Math.cos(angle) * r, 0, Math.sin(angle) * r).applyAxisAngle(this.x, tilt);
     this.v.applyAxisAngle(this.y, (i * TAU) / COUNT);
     this.v.y += mix(0.9, 0.35, read);
+    // Then all glide onto one level ring of radius 4.2, evenly spaced.
     const a = (i * TAU) / COUNT + t * 0.22;
     const k = inOut(ramp(t, this.times.ring, this.times.ring + 1.1));
     into.set(
@@ -138,11 +154,14 @@ export class Agents {
     return into;
   }
 
+  // Moves agents, trails, arguments, ring, pulse and filings to time t.
   update(t: number, size: THREE.Vector2, camera: THREE.Camera, dim = 1) {
     const shown = ramp(t, this.times.enter, this.times.enter + 0.7) * dim;
     this.group.visible = shown > 0;
     if (!shown) return;
+    // Trails fade out as the agents come to rest.
     const trail = shown * (1 - ramp(t, this.times.rest, this.times.rest + 0.8));
+    // Each agent's orb and light, and a trail of its last 40 places.
     for (let i = 0; i < COUNT; i++) {
       this.at(i, t, this.now[i]);
       this.orbs[i].position.copy(this.now[i]);
@@ -158,6 +177,7 @@ export class Agents {
       this.trails[i].viewport(size);
       this.trails[i].mesh.visible = trail > 0.01;
     }
+    // Threads of light between agents three apart, bowed toward the centre.
     const argue = span(t, this.times.argue - 0.1, this.times.ring + 0.3, 0.25, 0.45);
     for (let i = 0; i < COUNT; i++) {
       const a = this.now[i];
@@ -174,10 +194,12 @@ export class Agents {
       this.beams[i].viewport(size);
       this.beams[i].mesh.visible = argue > 0.01;
     }
+    // At verify the seven join in a gold ring.
     const joined = smooth(ramp(t, this.times.verify + 0.3, this.times.verify + 1.0)) * dim;
     this.ring.set([...this.now, this.now[0]], () => joined * 0.9);
     this.ring.viewport(size);
     this.ring.mesh.visible = joined > 0.01;
+    // And a pulse spreads from it to 10 in 1.8 s, fading fast.
     const age = t - this.times.verify;
     const reach = out(ramp(age, 0, 1.8)) * 10;
     const circle = [...Array(97)].map((_, k) =>
@@ -190,10 +212,11 @@ export class Agents {
     this.file(t, camera);
   }
 
-  // The filings: each card flies in from the dark, speeding up, and is taken in by one agent.
+  // Each filing card flies in from the dark, speeding up, to one agent.
   private file(t: number, camera: THREE.Camera) {
     let any = false;
     for (let i = 0; i < CARDS; i++) {
+      // Each card flies for 1.3 s, hidden by a zero scale outside it.
       const age = (t - this.start[i]) / 1.3;
       if (age <= 0 || age >= 1) {
         this.m.makeScale(0, 0, 0);
@@ -201,6 +224,7 @@ export class Agents {
         continue;
       }
       any = true;
+      // Speeding up along a gentle arc, and unspinning as it arrives.
       const k = age * age;
       this.v
         .copy(this.spawn[i])
@@ -208,6 +232,7 @@ export class Agents {
         .lerp(this.now[i % COUNT], k);
       this.v.y += Math.sin(k * Math.PI) * 0.6;
       this.z.setFromAxisAngle(FORWARD, this.spin[i] * (1 - k));
+      // Faces the camera, popping in, shrinking near the lens and on arrival.
       this.q.copy(camera.quaternion).multiply(this.z);
       const near = clamp((this.v.distanceTo(camera.position) - 2) / 5);
       this.s.setScalar((1 - k ** 4) * out(clamp(age / 0.12)) * (0.4 + 0.6 * near));

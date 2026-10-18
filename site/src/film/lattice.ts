@@ -1,12 +1,14 @@
 import * as THREE from "three";
-import { seeded } from "./ease";
+import { seeded } from "../shared/math";
+import { C } from "../shared/palette";
 
+// Lights to radius 330, 5.4 apart, on a planet of radius 1100, 7 herds.
 const RADIUS = 330;
 const GAP = 5.4;
 const PLANET = 1100;
 const CLUSTERS = 7;
 
-// Where a light sits once the herd has gathered it: drawn toward its cluster and turned around it.
+// Shared GLSL, a light's herding, reveal, bright front and panic wave.
 const herd = /* glsl */ `
   attribute vec3 pull;
   attribute vec2 birth;
@@ -34,6 +36,7 @@ const herd = /* glsl */ `
   }
 `;
 
+// Each light a twinkling point, swelling at the front and red in panic.
 const nodeVertex = /* glsl */ `
   attribute vec3 tint;
   attribute float seed;
@@ -55,6 +58,7 @@ const nodeVertex = /* glsl */ `
   }
 `;
 
+// A round point that fades softly to its rim.
 const nodeFragment = /* glsl */ `
   varying vec3 vCol;
   void main() {
@@ -65,6 +69,7 @@ const nodeFragment = /* glsl */ `
   }
 `;
 
+// Each thread follows its two lights as they herd and are revealed.
 const edgeVertex = /* glsl */ `
   attribute float along;
   attribute float seed;
@@ -86,6 +91,7 @@ const edgeVertex = /* glsl */ `
   }
 `;
 
+// Dim violet threads, over half carrying gold pulses, red in panic.
 const edgeFragment = /* glsl */ `
   uniform float uTime, uFade, uHerd;
   uniform vec3 uBase, uGold;
@@ -103,17 +109,20 @@ const edgeFragment = /* glsl */ `
   }
 `;
 
-// Thousands of AI agents across a curved world, joined by threads that carry pulses of gold. They
-// light up as they arrive, then crowd into a few clusters, the herd, and can panic together.
+// Thousands of AI agents on a planet that light up, herd and can panic.
 export class Lattice {
   group = new THREE.Group();
+  // The seven herd centres the lights are drawn to and turned around.
   attractors: THREE.Vector3[] = [];
   private nodes: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private edges: THREE.LineSegments<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  // Every light's position, to find the one nearest a point.
   private positions: number[] = [];
 
+  // Places herd centres, lays a jittered hex grid of lights, threads it.
   constructor() {
     const r = seeded(29);
+    // Seven herd centres all round, 55 to 225 from the middle.
     for (let i = 0; i < CLUSTERS; i++) {
       const a = (i / CLUSTERS) * Math.PI * 2 + r() * 0.6;
       const d = 55 + r() * 170;
@@ -127,8 +136,10 @@ export class Lattice {
     const birth: number[] = [];
     const tint: number[] = [];
     const seed: number[] = [];
-    const palette = [new THREE.Color(0xf2c14e), new THREE.Color(0xb9a2ff), new THREE.Color(0x9fe3f0)];
+    const palette = [new THREE.Color(C.gold), new THREE.Color(0xb9a2ff), new THREE.Color(0x9fe3f0)];
+    // How far the planet's surface drops at a point, for radius 1100.
     const curve = (x: number, z: number) => -(x * x + z * z) / (2 * PLANET);
+    // A jittered hex grid, with a clear patch of radius 7 at the centre.
     for (let j = -rows; j <= rows; j++) {
       for (let i = -cols; i <= cols; i++) {
         const x = (i + (j % 2) * 0.5) * GAP + (r() - 0.5) * GAP * 0.55;
@@ -137,10 +148,12 @@ export class Lattice {
         if (d > RADIUS || d < 7) continue;
         index.set(`${i},${j}`, pos.length / 3);
         pos.push(x, curve(x, z), z);
+        // Each light belongs to the herd centre nearest it.
         const near = this.attractors.reduce((a, b) =>
           b.distanceToSquared(new THREE.Vector3(x, 0, z)) < a.distanceToSquared(new THREE.Vector3(x, 0, z)) ? b : a,
         );
         pull.push(near.x, curve(near.x, near.z), near.z);
+        // A random birth, a panic delay and a tint, 30 percent of them gold.
         birth.push(r(), r());
         const c = palette[r() < 0.3 ? 0 : r() < 0.7 ? 1 : 2];
         const power = 0.6 + r() * 0.9;
@@ -155,6 +168,7 @@ export class Lattice {
     g.setAttribute("birth", new THREE.Float32BufferAttribute(birth, 2));
     g.setAttribute("tint", new THREE.Float32BufferAttribute(tint, 3));
     g.setAttribute("seed", new THREE.Float32BufferAttribute(seed, 1));
+    // Uniforms both materials share, so one update drives both.
     const shared = {
       uTime: { value: 0 },
       uReach: { value: 0 },
@@ -175,13 +189,16 @@ export class Lattice {
         blending: THREE.AdditiveBlending,
       }),
     );
+    // Each thread's two ends, carrying their lights' attributes.
     const ep: number[] = [];
     const ePull: number[] = [];
     const eBirth: number[] = [];
     const eSeed: number[] = [];
     const along: number[] = [];
     const phase: number[] = [];
+    // Copies item i's n values from one array onto another.
     const copy = (from: number[], to: number[], i: number, n: number) => to.push(...from.slice(i * n, i * n + n));
+    // Threads to three hex neighbours, about 18 percent left out.
     for (const [key, a] of index) {
       const [i, j] = key.split(",").map(Number);
       for (const [di, dj] of [
@@ -197,6 +214,7 @@ export class Lattice {
           copy(birth, eBirth, v, 2);
           copy(seed, eSeed, v, 1);
         }
+        // A pulse runs each thread at its own phase and speed.
         along.push(0, 1);
         const s = [r(), r()];
         phase.push(...s, ...s);
@@ -217,7 +235,7 @@ export class Lattice {
         uniforms: {
           ...shared,
           uBase: { value: new THREE.Color(0x8f7ae6) },
-          uGold: { value: new THREE.Color(0xf2c14e).multiplyScalar(1.6) },
+          uGold: { value: new THREE.Color(C.gold).multiplyScalar(1.6) },
         },
         transparent: true,
         depthWrite: false,
@@ -228,7 +246,7 @@ export class Lattice {
     this.group.add(this.edges, this.nodes);
   }
 
-  // The light nearest a point on the ground, where the opening shot begins.
+  // The light nearest a ground point, where the opening shot begins.
   near(x: number, z: number) {
     let best = 0;
     let dist = Infinity;
@@ -239,11 +257,11 @@ export class Lattice {
     return new THREE.Vector3(...this.positions.slice(best, best + 3));
   }
 
-  // Reach is how far the light has spread from the origin, grow the share of agents that exist yet,
-  // herd how far they have crowded together, panic the seconds since the herd broke.
+  // Reach is the spread, grow the share born, herd how crowded they are.
   update(
     t: number,
     size: THREE.Vector2,
+    // Panic is the time since the herd broke, fade dims the whole world.
     { reach = 1e4, origin = [0, 0], grow = 1, herd = 0, panic = 0, fade = 1 } = {} as {
       reach?: number;
       origin?: number[];
@@ -261,6 +279,7 @@ export class Lattice {
     u.uHerd.value = herd;
     u.uPanic.value = panic;
     u.uFade.value = fade;
+    // Point size scales with screen height.
     u.uPx.value = size.y * 2.2;
   }
 }

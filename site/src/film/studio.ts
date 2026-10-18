@@ -1,19 +1,22 @@
 import * as THREE from "three";
-import { mix } from "./ease";
+import { mix } from "../shared/math";
 
+// The bright room's pearl, the agents' dusk and the black of night.
 const PEARL = new THREE.Color(0xeceaf1);
 const DUSK = new THREE.Color(0x0d0a1a);
 export const NIGHT = new THREE.Color(0x03040b);
 
-// A seamless photographer's sweep: a floor that curves up into a wall, so there is no horizon.
+// A photographer's sweep, a floor curving into a wall, so no horizon.
 function sweep() {
   const profile: [number, number][] = [];
+  // Floor from z 60 back to -10, a curve of radius 16, then a wall to 90.
   for (let i = 0; i <= 24; i++) profile.push([60 - i * 2.9, 0]);
   for (let i = 1; i <= 32; i++) {
     const a = (i / 32) * (Math.PI / 2);
     profile.push([-10 - 16 * Math.sin(a), 16 - 16 * Math.cos(a)]);
   }
   profile.push([-26, 90]);
+  // Extrudes the profile 240 units wide, two triangles per step.
   const pos: number[] = [];
   const index: number[] = [];
   profile.forEach(([z, y], i) => {
@@ -38,6 +41,7 @@ export function contact(radius: number, strength = 0.5) {
   grad.addColorStop(1, "rgba(20,16,30,0)");
   g.fillStyle = grad;
   g.fillRect(0, 0, 256, 256);
+  // Laid flat a hair above the floor and drawn before everything else.
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(radius * 2, radius * 2),
     new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }),
@@ -48,8 +52,7 @@ export function contact(radius: number, strength = 0.5) {
   return m;
 }
 
-// The bright room the product shots live in: the sweep, a soft key light with real shadows, a sky
-// fill, and fog in the same colour so the far floor melts into the wall.
+// The bright room, a seamless sweep whose fog melts the floor away.
 export class Studio {
   group = new THREE.Group();
   key: THREE.DirectionalLight;
@@ -57,8 +60,10 @@ export class Studio {
   rim: THREE.DirectionalLight;
   private floor: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   private color = new THREE.Color();
+  // Pearl fog from 30 to 110, pushed out to 400 and 1500 at night.
   private fog = new THREE.Fog(PEARL, 30, 110);
 
+  // Builds the sweep, a high front-left key, a sky fill and a back rim.
   constructor(env: THREE.Texture) {
     this.floor = new THREE.Mesh(
       sweep(),
@@ -68,10 +73,12 @@ export class Studio {
     this.key = new THREE.DirectionalLight(0xfffaf2, 2.4);
     this.key.position.set(-7, 16, 9);
     this.key.castShadow = true;
+    // A soft wide shadow, 2048 square and blurred over 24 samples.
     this.key.shadow.mapSize.set(2048, 2048);
     this.key.shadow.radius = 14;
     this.key.shadow.blurSamples = 24;
     this.key.shadow.bias = -0.0004;
+    // The shadow camera covers 18 units square around the set.
     const cam = this.key.shadow.camera;
     cam.left = cam.bottom = -9;
     cam.right = cam.top = 9;
@@ -83,10 +90,10 @@ export class Studio {
     this.group.add(this.floor, this.key, this.key.target, this.fill, this.rim);
   }
 
-  // Day is 1 for the bright room and 0 for the violet dusk the agents work in; night then sinks the
-  // whole room into the dark the future is shown against.
+  // Day 1 is the bright room, 0 the agents' dusk. Night sinks it to dark.
   light(scene: THREE.Scene, day: number, jitter = [0, 0], night = 0) {
     this.color.copy(DUSK).lerp(PEARL, day).lerp(NIGHT, night);
+    // At night the fog recedes and the floor stops writing depth.
     this.fog.near = mix(30, 400, night);
     this.fog.far = mix(110, 1500, night);
     this.floor.material.depthWrite = night === 0;
@@ -94,6 +101,7 @@ export class Studio {
     this.fog.color.copy(this.color);
     scene.fog = this.fog;
     scene.background = this.color;
+    // Lights dim toward dusk, the jitter moving the key for softer shadows.
     this.key.intensity = mix(0.25, 2.4, day);
     this.key.position.set(-7 + jitter[0], 16, 9 + jitter[1]);
     this.fill.intensity = mix(0.08, 0.5, day);
