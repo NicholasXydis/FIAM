@@ -1,0 +1,186 @@
+@import "tailwindcss" source(none);
+@import "../shared/fonts.css";
+@source "./";
+@source "../../index.html";
+@source "../../team/index.html";
+@source "../../404.html";
+
+/* The film's palette, type, spacing and motion, the only tokens. */
+@theme {
+  --color-*: initial;
+  --color-film: #000000;
+  --color-moon: #f4f1fa;
+  --color-dim: #b0aeb4;
+  --color-gold: #f2c14e;
+  --color-violet: #a98bff;
+  --color-hairline: rgb(244 241 250 / 0.2);
+  --color-glass: rgb(244 241 250 / 0.1);
+  --color-panel: #0e0d13;
+
+  --font-*: initial;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* One scale set by the screen's short side, floored for phones. */
+  --text-*: initial;
+  --text-eyebrow: clamp(0.72rem, 0.9vmin + 0.4rem, 1.6rem);
+  --text-eyebrow--letter-spacing: 0.28em;
+  --text-small: clamp(0.8rem, 0.55vmin + 0.55rem, 1.35rem);
+  --text-small--line-height: 1.5;
+  --text-body: clamp(0.95rem, 0.95vmin + 0.6rem, 2rem);
+  --text-lead: clamp(1rem, 1.3vmin + 0.65rem, 2.6rem);
+  --text-lead--line-height: 1.5;
+  --text-title: clamp(2.75rem, 7.6vmin + 0.5rem, 16rem);
+  --text-title--line-height: 1.02;
+  --text-title--letter-spacing: -0.012em;
+
+  /* The fluid gap between parts, and the smallest touch target. */
+  --spacing-flow: clamp(0.9rem, 2vmin, 3.5rem);
+  --spacing-touch: 44px;
+
+  /* No device breakpoints; parts use fluid sizes and containers. */
+  --breakpoint-*: initial;
+
+  /* The film's ease, and a spring with a small overshoot for presses. */
+  --ease-film: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: linear(
+    0,
+    0.009,
+    0.035 2.1%,
+    0.141,
+    0.281 6.7%,
+    0.723 12.9%,
+    0.938 16.7%,
+    1.017,
+    1.077,
+    1.121,
+    1.149 24.3%,
+    1.159,
+    1.163,
+    1.161,
+    1.154 29.9%,
+    1.129 32.8%,
+    1.051 39.6%,
+    1.017 43.1%,
+    0.991,
+    0.977 51%,
+    0.974 53.8%,
+    0.975 57.1%,
+    0.997 69.8%,
+    1.003 76.9%,
+    1.004 83.8%,
+    1
+  );
+  --animate-arrive: arrive 1s var(--ease-film) both;
+  --animate-breathe: breathe 14s ease-in-out infinite alternate;
+
+  @keyframes arrive {
+    from {
+      transform: translateY(0.22em);
+      filter: blur(8px);
+    }
+  }
+  @keyframes breathe {
+    to {
+      transform: scale(1.06) translateY(-2%);
+    }
+  }
+}
+
+/* Side padding clear of notches, never under 16 px. */
+@utility safe-x {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+/* The header clears a phone's status bar, the footer its home bar. */
+@utility safe-top {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+}
+@utility safe-bottom {
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+}
+/* A face on the team page: photo or initials in a violet disc. */
+@utility face {
+  --size: clamp(4.5rem, 9vmin, 9rem);
+  width: var(--size);
+  height: var(--size);
+  flex: none;
+  border-radius: 50%;
+  font-size: calc(var(--size) * 0.4);
+  background: radial-gradient(circle at 30% 28%, rgb(169 139 255 / 0.55), rgb(169 139 255 / 0.06) 72%), #0b0a10;
+  box-shadow: inset 0 0 0 1px var(--color-hairline);
+}
+
+/* The ground, the ink and the focus ring, on every page. */
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-film);
+    color: var(--color-moon);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-violet);
+    outline-offset: 2px;
+  }
+}
+
+/* A figure's meaning in the browser's popover, springing open. */
+@layer components {
+  .definition {
+    width: min(21rem, calc(100vw - 32px));
+    margin: auto;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--color-hairline);
+    border-radius: 1rem;
+    background: var(--color-panel);
+    color: var(--color-moon);
+    font-size: var(--text-small);
+    line-height: 1.55;
+    text-align: left;
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.65);
+    transition:
+      opacity 0.25s,
+      translate 0.5s var(--ease-spring),
+      scale 0.5s var(--ease-spring),
+      overlay 0.25s allow-discrete,
+      display 0.25s allow-discrete;
+  }
+  .definition:not(:popover-open) {
+    opacity: 0;
+    translate: 0 6px;
+    scale: 0.97;
+  }
+  @starting-style {
+    .definition:popover-open {
+      opacity: 0;
+      translate: 0 6px;
+      scale: 0.97;
+    }
+  }
+  .definition::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  /* Where anchoring works, it opens under its figure, else above. */
+  @supports (anchor-name: --figure) {
+    .definition {
+      inset: auto;
+      margin: 12px 0 0;
+      position-area: bottom;
+      position-try-fallbacks: flip-block;
+    }
+    .definition::backdrop {
+      background: transparent;
+    }
+  }
+}
+
+/* Page changes cross-fade, the header holding still between them. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
