@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { Content } from "@/content/site";
-import { Root } from "./motion/root";
 import { Landing } from "./pages/landing";
 import { Missing } from "./pages/missing";
 import { Team } from "./pages/team";
@@ -11,9 +10,5 @@ const PAGES = { landing: Landing, team: Team, missing: Missing };
 // One page with its words, the same tree on the server and the client.
 export function App<K extends keyof Content>({ page, content }: { page: K; content: Content[K] }) {
   const Page = PAGES[page] as (props: Content[K]) => ReactNode;
-  return (
-    <Root>
-      <Page {...content} />
-    </Root>
-  );
+  return <Page {...content} />;
 }

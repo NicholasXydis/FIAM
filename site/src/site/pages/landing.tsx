@@ -1,28 +1,22 @@
 import type { Content } from "@/content/site";
-import { Button } from "../ui/button";
-import { Eyebrow } from "../ui/eyebrow";
-import { Figures } from "../ui/figures";
-import { Lead } from "../ui/lead";
-import { Page } from "../ui/page";
-import { Title } from "../ui/title";
+import { Footer, Frame } from "../ui/frame";
+import { Pill } from "../ui/pill";
 
-// The film's title card under its light, two ways in, three figures.
-export function Landing({ name, disclaimer, eyebrow, title, gold, lead, figures }: Content["landing"]) {
+// The name in light, two ways in, and the event at the foot.
+export function Landing({ name, event, project, team }: Content["landing"]) {
+  const [first, ...rest] = name.split(" ");
   return (
-    <Page name={name} disclaimer={disclaimer} here="landing" light={[0.5, 0.28]} place="low">
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <Title text={title} gold={gold} />
-      <Lead>{lead}</Lead>
-      <nav
-        aria-label="Ways in"
-        className="mt-[calc(var(--spacing-flow)*0.4)] flex flex-wrap justify-center gap-3 @max-[22rem]:w-full @max-[22rem]:flex-col"
-      >
-        <Button href="/tour/">Tour the project</Button>
-        <Button href="/team/" variant="outline" className="[view-transition-name:team]">
-          Meet the team
-        </Button>
+    <Frame opening="name" rows="grid-rows-[1fr_auto_auto]">
+      <main data-stage className="grid min-h-0 place-items-center">
+        <h1 className="wordmark">
+          <span>{first}</span> <em>{rest.join(" ")}</em>
+        </h1>
+      </main>
+      <nav aria-label="Ways in" className="ways">
+        <Pill size="big" icon="play" label={project} href="/tour/" />
+        <Pill size="big" icon="users" label={team} href="/team/" />
       </nav>
-      <Figures items={figures} />
-    </Page>
+      <Footer event={event} />
+    </Frame>
   );
 }

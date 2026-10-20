@@ -1,18 +1,18 @@
 import type { Content } from "@/content/site";
-import { Button } from "../ui/button";
-import { Lead } from "../ui/lead";
-import { Page } from "../ui/page";
-import { Title } from "../ui/title";
+import { Footer, Frame, Header } from "../ui/frame";
+import { Pill } from "../ui/pill";
 
-// Not found: one light in the dark, one sentence, one way home.
-export function Missing({ name, disclaimer, title, lead }: Content["missing"]) {
+// Not found: one sentence and one way home; the name is not a link.
+export function Missing({ name, event, title, lead, home }: Content["missing"]) {
   return (
-    <Page name={name} disclaimer={disclaimer} here="missing" light={[0.5, 0.24]} place="centred">
-      <Title text={title} />
-      <Lead>{lead}</Lead>
-      <nav aria-label="Way back" className="mt-[calc(var(--spacing-flow)*0.4)] flex justify-center">
-        <Button href="/">Back to home</Button>
-      </nav>
-    </Page>
+    <Frame opening="dust" rows="grid-rows-[auto_1fr_auto]">
+      <Header name={name} />
+      <main className="flex flex-col items-center justify-center gap-flow text-center">
+        <h1 className="animate-rise font-display text-title text-balance">{title}</h1>
+        <p className="max-w-[34em] animate-rise text-lead text-pretty text-dim">{lead}</p>
+        <Pill size="big" icon="home" label={home} href="/" className="animate-rise" />
+      </main>
+      <Footer event={event} />
+    </Frame>
   );
 }

@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { join, resolve as within } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { createServer, defineConfig, type Plugin, type UserConfig, type ViteDevServer } from "vite";
@@ -21,12 +22,13 @@ const pages = (): Plugin => {
     configureServer: (server) => void (dev = server),
     transformIndexHtml: {
       order: "pre",
-      // Fills <!-- @head --> and <!-- @app -->, throwing on any left over.
+      // Fills the head, the app and the Back slot; any left over throws.
       async handler(html, ctx) {
         html = html.replace("<!-- @head -->", readFileSync("partials/head.html", "utf8").trim());
         const page = /data-page="(\w+)"><!-- @app -->/.exec(html)?.[1];
+        const back = html.includes("<!-- @back -->");
         // Renders via Vite's SSR: the dev server, or one started for the build.
-        if (page) {
+        if (page || back) {
           const server =
             dev ??
             (await (renderer ??= createServer({
@@ -35,13 +37,15 @@ const pages = (): Plugin => {
               logLevel: "error",
               server: { middlewareMode: true, hmr: false, watch: null },
             })));
-          const { render, words } = await server.ssrLoadModule("/src/site/render.tsx");
-          html = html.replace("<!-- @app -->", render(page));
-          // The words the page hydrates with, beside its tree, not in it.
-          html = html.replace(
-            "</body>",
-            `  <script type="application/json" id="words">${words(page)}</script>\n  </body>`,
-          );
+          const site = await server.ssrLoadModule("/src/site/render.tsx");
+          // The tour's page gets only the site's Back pill, rendered here.
+          if (back) html = html.replace("<!-- @back -->", site["back"]());
+          if (page) {
+            html = html.replace("<!-- @app -->", site["render"](page));
+            // The words the page hydrates with, beside its tree, not in it.
+            const json = `<script type="application/json" id="words">${site["words"](page)}</script>`;
+            html = html.replace("</body>", `  ${json}\n  </body>`);
+          }
         }
         if (html.includes("<!-- @")) throw new Error(`${ctx.path}: a placeholder has nothing to fill it`);
         return html;
@@ -54,6 +58,28 @@ const pages = (): Plugin => {
     },
   };
 };
+
+// The preview answers a missing page with 404.html, as the host does.
+const missing = (): Plugin => ({
+  name: "missing",
+  configurePreviewServer(server) {
+    const root = within(server.config.root, server.config.build.outDir);
+    server.middlewares.use((req, res, next) => {
+      let path = "/";
+      try {
+        path = decodeURIComponent(new URL(req.url ?? "/", "http://site").pathname);
+      } catch {
+        // A malformed address is missing like any other.
+      }
+      const file = join(root, path);
+      const page = existsSync(file) && (!statSync(file).isDirectory() || existsSync(join(file, "index.html")));
+      if (file.startsWith(root) && page) return next();
+      res.statusCode = 404;
+      res.setHeader("content-type", "text/html; charset=utf-8");
+      res.end(readFileSync(join(root, "404.html")));
+    });
+  },
+});
 
 // Icon tags for every page: files on the website, inlined SVG offline.
 const icons = (inline: boolean): Plugin => ({
@@ -81,11 +107,16 @@ const qr = (): Plugin => ({
   load(id) {
     if (id !== "\0virtual:qr") return;
     const code = encode(QR_TEXT, { ecc: "H", border: 0 });
+    // The favicon's mark for the centre; a changed favicon fails here.
+    const mark = /<g class="t">(.*?)<\/g><g class="m">/s.exec(readFileSync("public/favicon.svg", "utf8"))?.[1];
+    if (!mark?.includes("#2a0839")) throw new Error("public/favicon.svg no longer has the mark the QR needs");
     // One string per row: 1 for a dark module, plus 2 inside an eye.
     const rows = code.data.map((row, y) =>
       row.map((dark, x) => Number(dark) + (code.types[y]![x] === QrCodeDataType.Position ? 2 : 0)).join(""),
     );
-    return `export default ${JSON.stringify(rows)};`;
+    // Its dark hole takes the code's centre disc colour, not the favicon's.
+    const centre = mark.replaceAll("#2a0839", "#1b1240");
+    return `export default ${JSON.stringify(rows)};\nexport const MARK = ${JSON.stringify(centre)};`;
   },
 });
 
@@ -112,7 +143,7 @@ export default defineConfig(({ mode }) => {
   if (mode === "film") return single("film.html", "../out/film", false);
   // The website: four pages, three.js and gsap in chunks of their own.
   return {
-    plugins: [pages(), icons(false), qr(), tailwindcss()],
+    plugins: [pages(), icons(false), qr(), tailwindcss(), missing()],
     resolve,
     build: {
       outDir: "dist",
@@ -122,8 +153,6 @@ export default defineConfig(({ mode }) => {
       modulePreload: { polyfill: false },
       rolldownOptions: {
         input: { index: "index.html", tour: "tour/index.html", team: "team/index.html", missing: "404.html" },
-        // Motion marks files "use client", read only by server components.
-        onwarn: (warning, warn) => void (warning.code === "MODULE_LEVEL_DIRECTIVE" || warn(warning)),
         output: {
           codeSplitting: {
             groups: [
