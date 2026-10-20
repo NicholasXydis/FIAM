@@ -4,6 +4,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
+import zlib from "node:zlib";
 
 // The site's folder and the repo around it.
 export const SITE = path.resolve(import.meta.dirname, "..");
@@ -11,6 +12,13 @@ export const REPO = path.resolve(SITE, "..");
 
 // A tool from the site's own packages.
 export const bin = (name: string) => path.join(SITE, "node_modules", ".bin", name);
+
+// The site's pages, each with the status it must answer with.
+export const PAGES = [
+  ["Landing", "/", 200],
+  ["Team", "/team/", 200],
+  ["Not found", "/no-such-page/", 404],
+] as const;
 
 // Waits in real time, even where a page's own clock is faked.
 export const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
@@ -75,10 +83,27 @@ export async function serve(root: string) {
     }
     // A file that fails mid-read ends the reply instead of the server.
     const stream = fs.createReadStream(file).on("error", () => res.destroy());
-    res.writeHead(status, { "content-type": TYPES[path.extname(file)] ?? "application/octet-stream" });
-    stream.pipe(res);
+    const type = TYPES[path.extname(file)] ?? "application/octet-stream";
+    // Text goes gzipped when the browser asks, as the real host sends it.
+    const zip = /text|javascript|json|svg|manifest/.test(type) && /\bgzip\b/.test(req.headers["accept-encoding"] ?? "");
+    res.writeHead(status, {
+      "content-type": type,
+      ...(zip && { "content-encoding": "gzip", vary: "accept-encoding" }),
+    });
+    if (zip) stream.pipe(zlib.createGzip()).pipe(res);
+    else stream.pipe(res);
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   const { port } = server.address() as AddressInfo;
   return { url: `http://127.0.0.1:${port}`, close: () => server.close() };
+}
+
+// Serves a build while some work runs, and stops even if it fails.
+export async function served<T>(root: string, work: (url: string) => Promise<T>) {
+  const server = await serve(root);
+  try {
+    return await work(server.url);
+  } finally {
+    server.close();
+  }
 }

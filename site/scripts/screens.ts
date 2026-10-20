@@ -11,15 +11,10 @@ import {
   type Page,
   webkit,
 } from "playwright-core";
-import { REPO, serve, SITE, sleep } from "./lib.ts";
+import { PAGES, REPO, served, SITE, sleep } from "./lib.ts";
 
-// Where the shots and the contact sheet go, and the pages checked.
+// Where the shots and the contact sheet go.
 const OUT = path.join(REPO, "out", "screens");
-const PAGES = [
-  ["Landing", "/"],
-  ["Team", "/team/"],
-  ["Not found", "/no-such-page/"],
-] as const;
 // Playwright's three engines: Safari's, Chrome's and Firefox's.
 const ENGINES = { chromium, firefox, webkit };
 type Engine = keyof typeof ENGINES;
@@ -128,7 +123,11 @@ function inspect() {
   const texty = (n: Node) => n.nodeType === 3 && !!n.textContent?.trim();
   const scroll = document.documentElement.scrollWidth - vw;
   if (scroll > 1) problems.push(`scrolls sideways by ${scroll}px`);
-  const texts = [...document.body.querySelectorAll("*")].filter((el) => [...el.childNodes].some(texty) && shown(el));
+  // Text a reader meets; decorative copies, like a pill's ink, are not.
+  const read = (el: Element) => !el.closest(".pill-ink");
+  const texts = [...document.body.querySelectorAll("*")].filter(
+    (el) => [...el.childNodes].some(texty) && shown(el) && read(el),
+  );
   for (const el of texts) {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
@@ -173,15 +172,16 @@ function inspect() {
   return [...new Set(problems)];
 }
 
-// Loads a page and waits for its fonts and pictures.
+// Loads a page, waits for its fonts and pictures, and gives its status.
 async function load(tab: Page, url: string) {
-  await tab.goto(url, { waitUntil: "load" });
+  const reply = await tab.goto(url, { waitUntil: "load" });
   await tab.evaluate(async () => {
     await document.fonts.ready;
     const waiting = [...document.images].filter((i) => !i.complete);
     await Promise.all(waiting.map((i) => new Promise((r) => (i.onload = i.onerror = r))));
   });
   await sleep(250);
+  return reply?.status() ?? 0;
 }
 
 // A file name for a shot from its parts.
@@ -198,11 +198,22 @@ async function onDevices(list: Device[], base: string) {
   for (const device of list) {
     const browser = (browsers[device.engine] ??= await launch(device.engine));
     const context = await browser.newContext({ ...device.options, reducedMotion: "reduce" });
-    for (const [page, at] of PAGES) {
+    for (const [page, at, status] of PAGES) {
       const tab = await context.newPage();
       const errors: string[] = [];
       tab.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
-      await load(tab, base + at);
+      // Console errors and files that fail; the 404 page's own is expected.
+      tab.on("console", (m) => {
+        if (m.type() === "error" && !m.text().startsWith("Failed to load resource"))
+          errors.push(`console error: ${m.text()}`);
+      });
+      tab.on("requestfailed", (r) => errors.push(`could not load ${new URL(r.url()).pathname}`));
+      tab.on("response", (r) => {
+        if (r.status() >= 400 && !r.request().isNavigationRequest())
+          errors.push(`${new URL(r.url()).pathname} answered ${r.status()}`);
+      });
+      const got = await load(tab, base + at);
+      if (got !== status) errors.push(`answered ${got}, not ${status}`);
       const shot = `${named(device.name, page)}.jpg`;
       await tab.screenshot({ path: path.join(OUT, shot), type: "jpeg", quality: 72, fullPage: true });
       results.push({ device, page, shot, problems: [...errors, ...(await tab.evaluate(inspect))] });
@@ -351,17 +362,14 @@ ${backs.map((b) => `<p class="bad">${esc(b)}</p>`).join("")}${sweepList.length ?
 export async function screens({ full = false, sim = false } = {}) {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
-  const server = await serve(path.join(SITE, "dist"));
-  try {
-    const results = await onDevices(full ? FULL : QUICK, server.url);
-    const backs = await back(server.url);
-    const swept = full ? await sweep(server.url) : [];
-    const safari = full || sim ? await onSimulators(server.url) : { results: [], note: "" };
+  return served(path.join(SITE, "dist"), async (url) => {
+    const results = await onDevices(full ? FULL : QUICK, url);
+    const backs = await back(url);
+    const swept = full ? await sweep(url) : [];
+    const safari = full || sim ? await onSimulators(url) : { results: [], note: "" };
     const count = sheet([...results, ...safari.results], swept, backs, safari.note);
     const shown = new Set(results.map((r) => r.device.name)).size;
     console.log(`${count ? `${count} problems` : "no problems"} on ${shown} devices, out/screens/index.html`);
     return count;
-  } finally {
-    server.close();
-  }
+  });
 }

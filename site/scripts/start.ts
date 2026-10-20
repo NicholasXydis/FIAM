@@ -23,7 +23,12 @@ const lock = path.join(SITE, "pnpm-lock.yaml");
 const stamp = path.join(SITE, "node_modules", ".modules.yaml");
 if (!fs.existsSync(stamp) || fs.statSync(stamp).mtimeMs < fs.statSync(lock).mtimeMs) {
   console.log("installing the locked packages");
-  execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: SITE, stdio: "inherit" });
+  // Viewing needs no checker's Chrome, so its large download waits.
+  execFileSync("pnpm", ["install", "--frozen-lockfile"], {
+    cwd: SITE,
+    stdio: "inherit",
+    env: { ...process.env, PUPPETEER_SKIP_DOWNLOAD: "1" },
+  });
 }
 
 // Builds, then serves the build and opens it until stopped.

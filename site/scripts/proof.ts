@@ -150,8 +150,10 @@ async function session(url: string, dir: string, steps: (tab: Page, step: Step) 
     await tab.evaluateOnNewDocument(clock);
     await tab.goto(url);
     await until(tab, () => document.fonts.status === "loaded" && !!document.querySelector(".topbar"), "the tour");
-    // Labels drawn in the page, as Chrome offsets moving layers at random.
-    await tab.addStyleTag({ content: ".label3d { will-change: auto !important; }" });
+    // Labels in the page, not moving layers; the site's Back set aside.
+    const aside =
+      ".tour-back { display: none !important; } html:has(.tour-back) .brand { translate: none !important; }";
+    await tab.addStyleTag({ content: `.label3d { will-change: auto !important; } ${aside}` });
     // CSS transitions run on the browser's clock, so each step ends them.
     const step: Step = async (ms, name) => {
       await tab.evaluate((ms) => {

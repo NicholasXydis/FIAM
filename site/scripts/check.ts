@@ -1,26 +1,27 @@
 // pnpm check [all | fix | proof | screens | lighthouse] and options.
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import zlib from "node:zlib";
 import puppeteer from "puppeteer";
 import { build, bundle, types } from "./build.ts";
-import { bin, run, serve, SITE } from "./lib.ts";
+import { fast } from "./fast.ts";
+import { bin, PAGES, run, served, SITE } from "./lib.ts";
 import { screens } from "./screens.ts";
 
 // The website's build, read by the budget, link and device checks.
 const DIST = path.join(SITE, "dist");
-// What Prettier formats; it skips the data and pictures by its ignore.
-const FILES = ["src", "scripts", "vite.config.ts", "knip.ts"];
-// Where the one-line comment rule is checked, data and pictures aside.
+// What Prettier formats; it skips the generated data by its ignore.
+const FILES = ["src", "scripts", "vite.config.ts", "knip.ts", "tsconfig.json", "tsconfig.site.json"];
+// Where the one-line comment rule is checked, the data aside.
 const COMMENTED = ["src", "scripts", "ad", "vite.config.ts", "knip.ts", ".puppeteerrc.cjs", "pnpm-workspace.yaml"];
-// Generated data, film pictures and Python caches, never linted.
-const SKIPPED = ["src/data", "src/assets", "__pycache__"];
-// The built pages and their budget; the tour's script is phase 3.
-const PAGES = ["index.html", "team/index.html", "404.html", "tour/index.html"];
-const BUDGET = { script: 110 * 1024, style: 25 * 1024 };
-// The pages Lighthouse scores.
-const LIGHTHOUSE = ["/", "/team/", "/no-such-page/"];
+// Generated data and Python caches, never linted.
+const SKIPPED = ["src/data", "__pycache__"];
+// The built pages and their budget; the tour's script has none yet.
+const BUILT = ["index.html", "team/index.html", "404.html", "tour/index.html"];
+// The tour adds phone and tablet layouts, so its styles get 28 KB.
+const BUDGET = { script: 110 * 1024, style: 25 * 1024, tourStyle: 28 * 1024 };
 // The part asked for, then its options such as --full or --sim.
 const [what = "", ...rest] = process.argv.slice(2);
 // Every failure so far; the run exits non-zero if there is any.
@@ -100,7 +101,7 @@ async function code(fix: boolean) {
 // Each built page against its budget, and each link shown once.
 function pages() {
   console.log("pages: what each loads, and each link once");
-  for (const page of PAGES) {
+  for (const page of BUILT) {
     const html = fs.readFileSync(path.join(DIST, page), "utf8");
     const files = [...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]!))];
     // Bytes the page loads of one kind, as the measure counts them.
@@ -112,7 +113,8 @@ function pages() {
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     console.log(`  ${page.padEnd(16)} script ${kb(script)} gzipped, styles ${kb(style)}`);
     if (page !== "tour/index.html" && script > BUDGET.script) fail(`${page} loads ${kb(script)} of script`);
-    if (style > BUDGET.style) fail(`${page} loads ${kb(style)} of styles`);
+    const most = page === "tour/index.html" ? BUDGET.tourStyle : BUDGET.style;
+    if (style > most) fail(`${page} loads ${kb(style)} of styles`);
     // The brand links home on every page, so only other links count.
     const links = new Map<string, number>();
     for (const [tag] of html.matchAll(/<a\b[^>]*>/g)) {
@@ -129,6 +131,9 @@ function chrome() {
     throw new Error("puppeteer's Chrome is missing, run pnpm exec puppeteer browsers install chrome");
 }
 
+// Runs a command without blocking, so this process can serve meanwhile.
+const exec = promisify(execFile);
+
 // One Lighthouse category's title and score.
 interface Category {
   title: string;
@@ -138,26 +143,22 @@ interface Category {
 // Lighthouse as a phone on each page; performance under 90 fails.
 async function lighthouse() {
   console.log("Lighthouse, mobile");
-  const server = await serve(DIST);
   const env = { ...process.env, CHROME_PATH: puppeteer.executablePath() };
-  try {
-    for (const at of LIGHTHOUSE) {
-      const args = [`${server.url}${at}`, "--form-factor=mobile", "--quiet", "--output=json"];
-      // One page's report as JSON, on puppeteer's Chrome, headless.
-      const score = () =>
-        execFileSync(bin("lighthouse"), [...args, "--chrome-flags=--headless=new"], {
-          env,
-          maxBuffer: 1 << 28,
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        });
+  await served(DIST, async (base) => {
+    for (const [, page, status] of PAGES) {
+      // Lighthouse scores no page that answers 404, so it reads the file.
+      const at = status === 404 ? "/404.html" : page;
+      const args = [`${base}${at}`, "--form-factor=mobile", "--quiet", "--output=json"];
+      // One page's report as JSON; never blocking, so the server can answer.
+      const score = async () =>
+        (await exec(bin("lighthouse"), [...args, "--chrome-flags=--headless=new"], { env, maxBuffer: 1 << 28 })).stdout;
       // Its browser sometimes closes on a busy machine, so a second try.
       let json: string;
       try {
-        json = score();
+        json = await score();
       } catch {
         try {
-          json = score();
+          json = await score();
         } catch {
           fail(`Lighthouse could not load ${at}`);
           continue;
@@ -169,9 +170,7 @@ async function lighthouse() {
       const performance = scores.find(([t]) => t === "Performance")?.[1] ?? 0;
       if (performance < 90) fail(`${at} scores ${performance} for performance`);
     }
-  } finally {
-    server.close();
-  }
+  });
 }
 
 // The proof of the tour and the ad, with its own parts and flags.
@@ -187,13 +186,19 @@ async function devices(full: boolean, sim: boolean) {
   if (found) fail(`${found} problems on devices, see out/screens/index.html`);
 }
 
+// The quick checks by browser: addresses, marks, keys and the tour.
+async function quick() {
+  const found = await fast();
+  if (found.length) fail(`${found.length} problems in the quick checks`);
+}
+
 // A full build first for the parts run on their own.
 const built = () => attempt("the build", build);
 if (what === "fix") await code(true);
 else if (what === "proof") {
-  if (await attempt("browsers", chrome)) await proof(rest);
+  if (await attempt("browsers", chrome)) await attempt("the proof", () => proof(rest));
 } else if (what === "lighthouse") {
-  if ((await attempt("browsers", chrome)) && (await built())) await lighthouse();
+  if ((await attempt("browsers", chrome)) && (await built())) await attempt("Lighthouse", lighthouse);
 } else if (what === "screens") {
   if (await built()) await attempt("devices", () => devices(rest.includes("--full"), rest.includes("--sim")));
 } else {
@@ -201,10 +206,12 @@ else if (what === "proof") {
   const all = what === "all";
   await code(false);
   if (await attempt("the build", bundle)) {
-    pages();
-    if (all && (await attempt("browsers", chrome))) await proof([]);
-    await attempt("devices", () => devices(all, all));
-    if (all) await lighthouse();
+    await attempt("pages", pages);
+    const browsers = all && (await attempt("browsers", chrome));
+    if (browsers) await attempt("the proof", () => proof([]));
+    // The devices and the quick checks share the wait, side by side.
+    await Promise.all([attempt("devices", () => devices(all, all)), attempt("quick checks", quick)]);
+    if (browsers) await attempt("Lighthouse", lighthouse);
   }
 }
 console.log(failures.length ? `\n${failures.length} check(s) failed` : "\nall checks pass");

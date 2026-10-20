@@ -4,16 +4,7 @@
     "noUncheckedIndexedAccess": true,
     "noPropertyAccessFromIndexSignature": true,
     "erasableSyntaxOnly": true,
-    "types": [
-      "node",
-      "vite/client"
-    ]
+    "types": ["node", "vite/client"]
   },
-  "include": [
-    "src/site",
-    "src/content",
-    "scripts",
-    "vite.config.ts",
-    "knip.ts"
-  ]
+  "include": ["src/site", "src/content", "scripts", "vite.config.ts", "knip.ts"]
 }
