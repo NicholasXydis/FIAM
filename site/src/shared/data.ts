@@ -25,14 +25,12 @@ interface Family {
   family: string;
   eligible: boolean;
   attempts: number;
-  result: string;
   verdict: string;
 }
 
-// The headline's single-number measures; best and worst month differ.
+// The headline's single-number measures the tour shows.
 type Measure =
   | "ir"
-  | "ir_gross"
   | "net"
   | "gross"
   | "cagr"
@@ -40,16 +38,12 @@ type Measure =
   | "sharpe"
   | "drawdown"
   | "alpha"
-  | "alpha_t"
   | "beta"
-  | "beta_se"
   | "correlation"
   | "hit"
   | "positions"
   | "longs"
-  | "shorts"
-  | "turnover"
-  | "cumulative";
+  | "shorts";
 
 // Everything the site draws, as tools/build_site.py writes it.
 export interface Fiam {
@@ -57,13 +51,10 @@ export interface Fiam {
   code: string;
   window: string;
   months: string[];
-  headline: Record<Measure, number> & {
-    best_month: { month: string; value: number };
-    worst_month: { month: string; value: number };
-  };
+  headline: Record<Measure, number>;
   years: Record<string, { strategy: number; benchmark: number; market: number; active: number; months: number }>;
   race: { book: number[]; hurdle: number[]; market: number[]; market_monthly: number[]; book_monthly: number[] };
-  beta: { exante: number[]; rolling: Record<string, [number, number]>; outside_noise: number };
+  beta: { exante: number[]; rolling: Record<string, [number, number]> };
   stocks: { ticker: string[]; name: string[]; book: number[][] };
   signals: { code: string; sign: number; family: string; label: string }[];
   families: Record<string, string>;
@@ -74,7 +65,6 @@ export interface Fiam {
     parts: Record<string, number>;
     total: number;
     break_even_multiple: number;
-    break_even_cost: number;
     ladder: { multiple: number; cost: number; active: number; ir: number }[];
   };
   edge: {
@@ -83,47 +73,28 @@ export interface Fiam {
     final: number;
     best: number;
     mean: number;
-    p5: number;
-    p95: number;
     beaten: number;
-    live_low: number;
-    live_high: number;
     ladder: { label: string; ir: number; kind: string }[];
   };
-  capacity: { books: { key: string; label: string; break_even: number | string; peak: number; rows: Row[] }[] };
+  capacity: { books: { key: string; label: string; break_even: number | string; rows: Row[] }[] };
   crowd: {
     personas: { key: string; client: string }[];
     agents: number;
     copycats: number;
     effective_voters: number;
     correlation: number;
-    same_information: number;
-    same_persona: number;
-    rerun_agreement: number;
     longs_in_favourites: number;
-    shorts_in_favourites: number;
-    copycat_longs: number;
     copycat_test: Record<string, { longs: number; shorts: number }>;
-    crowd_beta: number;
-    crowd_t: number;
     picks: number;
-    models: string[];
-    model_agreement: number;
-    likes: Record<string, number>;
   };
   agents: Agent[];
   explained: { ticker: string; side: string; why: string }[];
   september: { decision: string; book: [string, string, number][] };
-  factor_story: string;
   crises: Record<string, number>;
   honesty: {
     attempts: number;
     eligible: number;
-    dsr_all: number;
     dsr_eligible: number;
-    first_half_ir: number;
-    second_half_ir: number;
-    check_2016_2020_ir: number;
     families: Family[];
   };
 }

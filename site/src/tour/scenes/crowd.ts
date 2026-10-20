@@ -1,11 +1,12 @@
 import gsap from "gsap";
 import * as THREE from "three";
-import { D, int, num, pct, plus, prose } from "../../shared/data";
+import { D, int, num, prose } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { rim } from "../gl/shapes";
 import { Flock } from "../physics/flock";
 import { h } from "../../shared/dom";
-import { chip, Label, nearest, stat, swatch } from "../ui";
+import { corners } from "../layout";
+import { box, chip, fold, legendOf, nearest, stat, swatch } from "../ui";
 import { ball, C, dust, header, Scene, stats, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
@@ -14,29 +15,33 @@ const K = D.crowd;
 const PERSONA = [0x5cc8e0, 0x7fd1ae, C.gold, 0xe07a3f, 0xc792ea, 0x8ab4f8];
 // What the copycat funds are handed, three recipes, and their colours.
 const RECIPES = [
-  { key: "v1", label: "our recipe", color: C.gold },
-  { key: "brief_2026", label: "the 2026 brief", color: 0x8ab4f8 },
-  { key: "case_2025", label: "the 2025 case", color: 0xc792ea },
+  { label: "our recipe", color: C.gold },
+  { label: "the 2026 brief", color: 0x8ab4f8 },
+  { label: "the 2025 case", color: 0xc792ea },
 ];
+// A colour as CSS hex, for the legend's dots.
+const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+// A persona's line for its agents' hover, as one sentence.
+const title = (s: string) => s[0].toUpperCase() + s.slice(1);
+const persona = (i: number) => title(prose(K.personas[i].client.replace(/:\s/, ", ")));
 // Spacing of the 10 by 10 longs, and seconds each lure lasts.
 const SPACING = 0.86;
 const LURE = 3.2;
-// Label helpers: colour as hex, a capital letter, a persona's line.
-const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
-const title = (s: string) => s[0].toUpperCase() + s.slice(1);
-const persona = (i: number) => `${title(K.personas[i].key)}. Their client ${prose(K.personas[i].client)}`;
 
 // The AI crowd: sixty agents flock to favourites, some of them ours.
 export class Crowd extends Scene {
   name = "The AI crowd";
-  summary = "Sixty AI investors flock to their favourite stocks. Some of them are ours.";
+  summary = "Sixty AI traders flock to their favourite stocks. Some of them are ours.";
   private flock: Flock;
   private nodes: THREE.Vector3[] = [];
   private liked: number[] = [];
   private chance = new Set<number>();
   private chips: HTMLButtonElement[] = [];
-  private about = h("p", { class: "text-[13px] text-ink-2 min-h-[3.2em]" });
+  private groups: { label: string; herds: number[]; lines: number[] }[] = [];
+  private legend: ReturnType<typeof legendOf>;
   private next = 0;
+  // The tour's clock as tick last saw it, so a lure times itself by it.
+  private now = 0;
 
   // Lays out 100 longs, marks 10 chance picks, and forms the herds.
   constructor(w: World) {
@@ -68,62 +73,57 @@ export class Crowd extends Scene {
       [...PERSONA, ...RECIPES.map((x) => x.color)].map((c) => new THREE.Color(c)),
     );
     this.group.add(this.flock.mesh, this.flock.lines);
-    const top = 5.5 * SPACING;
-    this.addLabel(
-      new Label(`${swatch("var(--gold)")}Crowd favourite · ${share} of 100`, [4.6 * SPACING, top + 0.25, 0], "right"),
-    );
-    this.addLabel(
-      new Label(`${swatch("var(--ink)", true)}Chance would give 10`, [4.6 * SPACING, top - 0.25, 0], "right"),
-    );
-    this.addLabel(new Label("100 of our longs", [-4.8 * SPACING, top + 0.25, 0], "left"));
     const test = K.copycat_test.brief_2026;
     this.panel.append(
       ...header(
-        `The AI crowd · ${int(K.picks)} picks · ${K.models.join(" and ")}`,
-        "Who trades <em>against us?</em>",
-        `The brief warns that AI agents will crowd into the same names, so we built the crowd. ${K.agents} retail AI investors with six personas and ${K.copycats} copycat funds, each handed one paragraph of a strategy, pick from anonymous stock cards with no names or dates. Of every 100 of our longs, ${share} are among their favourites, against 10 by chance. Click a gold stock to lure the whole crowd to it.`,
+        "Who crowds <em>our trades?</em>",
+        `The brief warns AI traders will pile into the same stocks, so we built them. ${K.agents} AI investors and ${K.copycats} copycat funds pick from cards with no names or dates.`,
       ),
       stats(
-        stat(pct(K.longs_in_favourites, 0), "of our longs are crowd favourites, against 10% by chance").el,
-        stat(`${num(test.longs)}×`, "how often copycats given only the brief buy our longs, against chance").el,
-        stat(num(K.effective_voters, 1), `independent votes, all that ${K.agents} AI investors add up to`).el,
-        stat(plus(K.crowd_beta), `our returns' loading on the crowd's favourites, t = ${num(K.crowd_t, 1)}`).el,
+        stat(int(K.picks), "AI stock picks").el,
+        stat(`${K.agents} AIs`, `Think like ${Math.round(K.effective_voters)}`).el,
+        stat(`${num(test.longs, 1)}× chance`, "AIs buy what we buy").el,
       ),
     );
-    // Chips for everyone, each persona and each copycat recipe.
-    this.chips.push(chip("Everyone", () => this.pickHerd(-1), true));
-    K.personas.forEach((p, i) =>
-      this.chips.push(chip(`${swatch(hex(PERSONA[i]))}${title(p.key)}`, () => this.pickHerd(i), false)),
-    );
-    RECIPES.forEach((x, j) => {
-      this.chips.push(
-        chip(`${swatch(hex(x.color))}Copycats with ${x.label}`, () => this.pickHerd(PERSONA.length + j), false),
-      );
-    });
+    // The legend, one line each, its dots in the agents' own colours.
+    const mix = (colors: number[]) => `conic-gradient(${colors.map(hex).join(", ")})`;
+    this.legend = legendOf([
+      `${swatch(mix(PERSONA))}AI investors · ${K.agents}, in ${K.personas.length} styles`,
+      `${swatch(mix(RECIPES.map((x) => x.color)))}AI copycats · ${K.copycats}, handed ${RECIPES.length} recipes`,
+      `${swatch("var(--gold)")}Gold balls · the ${share} of our 100 longs they favour`,
+      `${swatch("var(--ink)", true)}Rings · the 10 chance would pick`,
+    ]);
+    // Three buttons: everyone, the AI investors and the AI copycats.
+    this.groups = [
+      { label: "Everyone", herds: [], lines: [0, 1, 2, 3] },
+      { label: "AI investors", herds: PERSONA.map((_, i) => i), lines: [0] },
+      { label: "AI copycats", herds: RECIPES.map((_, j) => PERSONA.length + j), lines: [1] },
+    ];
+    this.chips = this.groups.map((g, i) => chip(g.label, () => this.pick(i), i === 0));
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(460px,calc(100vw-32px))] flex flex-col gap-2" },
+      box(
+        "w-[min(460px,calc(100vw-32px))] gap-2",
         h("div", { class: "flex flex-wrap gap-1.5" }, ...this.chips),
-        this.about,
+        this.legend.el,
       ),
     );
-    this.pickHerd(-1);
+    this.pick(0);
+    // Small screens: the group chips scroll, the legend folds behind Key.
+    const glass = this.controls.firstElementChild as HTMLElement;
+    const row = glass.firstElementChild as HTMLElement;
+    row.classList.add("row");
+    fold(glass, row, [glass.lastElementChild!], "Key");
+    this.frame = corners(-4.4, -4.4, 0, 4.4, 4.4, 0.9);
+    this.zoomCap = 1.35;
   }
 
-  // Focuses one herd, or everyone at -1, and says what drives it.
-  pickHerd(herd: number) {
-    this.flock.focus = herd;
-    this.chips.forEach((b, i) => b.setAttribute("aria-pressed", String(i === herd + 1)));
-    if (herd < 0) {
-      this.about.textContent = `Retail agents differ more by what they see than by who they are told to be. Agents shown the same data agree at ${num(K.same_information)}, agents given the same persona at ${num(K.same_persona)}. Asked the same card twice, they answer the same way ${pct(K.rerun_agreement, 0)} of the time.`;
-    } else if (herd < PERSONA.length) {
-      this.about.textContent = persona(herd);
-    } else {
-      const x = RECIPES[herd - PERSONA.length];
-      const t = K.copycat_test[x.key];
-      this.about.textContent = `Copycats handed ${x.label} buy our longs ${num(t.longs)}× and short our shorts ${num(t.shorts)}× as often as chance.`;
-    }
+  // Lights one group of agents and its legend line; the rest dim.
+  pick(group: number) {
+    const g = this.groups[group];
+    if (!g) return;
+    this.flock.focus = g.herds;
+    this.chips.forEach((b, i) => b.setAttribute("aria-pressed", String(i === group)));
+    this.legend.light(g.lines);
   }
 
   // The 10 by 10 longs as balls, favourites bigger, brighter and gold.
@@ -156,6 +156,7 @@ export class Crowd extends Scene {
 
   // Moves the lure every few seconds and the flock every frame.
   override tick(dt: number, t: number) {
+    this.now = t;
     if (t > this.next) {
       this.next = t + LURE;
       this.wander(t);
@@ -193,7 +194,7 @@ export class Crowd extends Scene {
     if (node < 0 || !this.liked.includes(node)) return;
     const at = this.nodes[node];
     for (const g of this.flock.goals) gsap.to(g, { x: at.x, y: at.y, z: 0.9, duration: 0.6 });
-    this.next = this.time + 5;
+    this.next = this.now + 5;
     this.w.sim.wave({ at: at.clone(), amp: 1.2, speed: 8 });
     this.w.sound.tick(0.9, 0.9);
   }

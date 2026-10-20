@@ -1,7 +1,8 @@
 import gsap from "gsap";
-import { D, monthName } from "../shared/data";
 import type { Scene } from "./scenes/scene";
+import { TEAM } from "../content/credits";
 import { h } from "../shared/dom";
+import { coarse } from "./layout";
 import { chip } from "./ui";
 
 // A 16 px line icon in the text colour, and the five the controls use.
@@ -30,8 +31,13 @@ const KEYS = [
   ["O", "See every scene"],
   ["P", "Guided tour, hands free"],
   ["M", "Sound on or off"],
-  ["E", "Explore freely, drag and scroll"],
   ["F", "Full screen"],
+];
+// The same help for a finger, gestures in place of keys.
+const TOUCH = [
+  ["Swipe", "Next or previous scene"],
+  ["Grid", "See every scene"],
+  ["Play", "Guided tour, hands free"],
 ];
 
 // The chrome round the scenes: header, dots, overview, help, tour bar.
@@ -43,6 +49,10 @@ export class Chrome {
   private bar = h("div", { class: "absolute left-0 top-0 h-[2px] bg-purple shadow-[0_0_12px_var(--purple)]" });
   private tourBar = h("div", { class: "absolute left-0 top-[2px] h-[2px] bg-gold opacity-0" });
   private dots = h("nav", { class: "dots", "aria-label": "Scenes" });
+  // On small screens: a thumb bar of back, the scene's name, and next.
+  private dock = h("nav", { class: "dock", "aria-label": "Scene steps" });
+  private where = h("button", { class: "chip where", type: "button" }) as HTMLButtonElement;
+  private steps: HTMLButtonElement[] = [];
   private help: HTMLElement;
   private overview: HTMLElement;
   private tiles: HTMLButtonElement[] = [];
@@ -73,12 +83,11 @@ export class Chrome {
     const overview = button(`${GRID}`, "Every scene (O)", () => this.toggleOverview());
     overview.append(this.counter);
     const help = button("?", "Keys (?)", () => this.toggleHelp());
-    // The brand top left; its tagline shows only on wider screens.
+    // The team's names top left, on screens wide enough for one line.
     const brand = h(
       "header",
       { class: "brand" },
-      h("span", { class: "headline text-[22px] text-ink" }, "QUARCC Purple"),
-      h("span", { class: "eyebrow hidden md:inline" }, "FIAM · Finals 2026"),
+      h("span", { class: "eyebrow text-ink-2 whitespace-nowrap hidden xl:inline" }, TEAM.join("  ·  ")),
     );
     const top = h("div", { class: "topbar" }, this.tourButton, this.soundButton, overview, help);
     scenes.forEach((s, i) => {
@@ -87,14 +96,6 @@ export class Chrome {
       b.addEventListener("click", () => actions.go(i));
       this.dots.append(b);
     });
-    // The footnote: the backtest's months, after costs, not a live record.
-    const first = monthName(D.months[0], true);
-    const last = monthName(D.months[D.months.length - 1], true);
-    const foot = h(
-      "p",
-      { class: "eyebrow hint foot" },
-      `Backtest ${first} to ${last} after every modelled cost · not a live record`,
-    );
     // The help sheet lists the keys; a click anywhere on it closes it.
     this.help = h(
       "div",
@@ -103,11 +104,15 @@ export class Chrome {
         "div",
         { class: "glass rounded-2xl p-6 flex flex-col gap-3 text-[14px] text-ink-2 min-w-[300px]" },
         h("p", { class: "headline text-[30px] text-ink" }, "Getting around"),
-        ...KEYS.map(([k, v]) => h("div", { class: "flex justify-between gap-8" }, h("kbd", {}, k), h("span", {}, v))),
+        ...(coarse() ? TOUCH : KEYS).map(([k, v]) =>
+          h("div", { class: "flex justify-between gap-8" }, h("kbd", {}, k), h("span", {}, v)),
+        ),
         h(
           "p",
           { class: "text-[12px] text-ink-3 pt-1" },
-          "Click anything that glows. Click empty space to send a ripple.",
+          coarse()
+            ? "Tap anything that glows. Tap empty space to send a ripple."
+            : "Click anything that glows. Click empty space to send a ripple.",
         ),
       ),
     );
@@ -132,14 +137,28 @@ export class Chrome {
     this.overview = h(
       "div",
       { class: "sheet overview", role: "dialog", "aria-modal": "true", "aria-label": "Every scene", tabindex: "-1" },
-      h("p", { class: "eyebrow" }, "Every scene · press a number or click a card"),
+      h(
+        "p",
+        { class: "eyebrow" },
+        coarse() ? "Every scene · tap a card" : "Every scene · press a number or click a card",
+      ),
       grid,
     );
     // Only a click on the backdrop, not on a card, closes the overview.
     this.overview.addEventListener("click", (e) => {
       if (e.target === this.overview) this.toggleOverview(false);
     });
-    layer.append(brand, top, this.bar, this.tourBar, this.dots, foot, this.help, this.overview);
+    // The thumb bar's arrows step scenes, its middle opens every scene.
+    const step = (text: string, label: string, by: number) => {
+      const b = chip(text, () => actions.go(this.index + by));
+      b.setAttribute("aria-label", label);
+      b.classList.add("step");
+      this.steps.push(b);
+      return b;
+    };
+    this.where.addEventListener("click", () => this.toggleOverview());
+    this.dock.append(step("‹", "Previous scene", -1), this.where, step("›", "Next scene", 1));
+    layer.append(brand, top, this.bar, this.tourBar, this.dots, this.dock, this.help, this.overview);
     // Tab and Shift+Tab cycle the open panel's buttons, never leaving it.
     for (const sheet of [this.help, this.overview]) {
       sheet.addEventListener("keydown", (e) => {
@@ -175,6 +194,8 @@ export class Chrome {
     gsap.to(this.bar, { width: `${(index / last) * 100}%`, duration: 0.8, ease: "power3.out" });
     this.dots.querySelectorAll("button").forEach((b, k) => b.setAttribute("aria-current", String(k === index)));
     this.tiles.forEach((t, k) => t.classList.toggle("current", k === index));
+    this.where.innerHTML = `<b>${String(index).padStart(2, "0")}</b> ${this.scenes[index]?.name ?? ""}`;
+    this.steps.forEach((b, k) => (b.disabled = k === 0 ? index === 0 : index === last));
   }
 
   // Opens or closes the key help; opening it closes the overview.

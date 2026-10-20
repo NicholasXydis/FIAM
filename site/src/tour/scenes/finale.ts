@@ -1,12 +1,11 @@
 import gsap from "gsap";
 import * as THREE from "three";
-import CODE from "virtual:qr";
-import { TEAM } from "../../content/credits";
-import { D, num, pct } from "../../shared/data";
+import CODE, { MARK } from "virtual:qr";
 import { blank, N } from "../gl/sim";
 import { h } from "../../shared/dom";
+import { corners } from "../layout";
 import { chip, screen } from "../ui";
-import { C, dust, Scene, type World } from "./scene";
+import { C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
 // Code size in world units, modules a side, and an odd logo, 20% wide.
@@ -18,7 +17,7 @@ const dark = (x: number, y: number) => +CODE[y][x] % 2 === 1;
 const inLogo = (x: number, y: number) => Math.abs(x - (M - 1) / 2) <= LOGO / 2 && Math.abs(y - (M - 1) / 2) <= LOGO / 2;
 const isEye = (x: number, y: number) => +CODE[y][x] >= 2;
 
-// Printable SVG: rounded purple dots and eyes, light card, QP centred.
+// Printable SVG: purple dots and eyes on light card, our mark centred.
 function svg() {
   const q = 4;
   const total = M + q * 2;
@@ -46,7 +45,7 @@ function svg() {
   ${eye(0, 0)}${eye(M - 7, 0)}${eye(0, M - 7)}
   <circle cx="${c}" cy="${c}" r="${r}" fill="#1b1240"/>
   <circle cx="${c}" cy="${c}" r="${r - 0.35}" fill="none" stroke="#f2c14e" stroke-width="0.18"/>
-  <text x="${c}" y="${c + r * 0.36}" text-anchor="middle" font-family="'Instrument Serif', Georgia, serif" font-style="italic" font-size="${r * 1.05}" fill="#f5f2fc">QP</text>
+  <svg x="${c - r * 0.8}" y="${c - r * 0.8}" width="${r * 1.6}" height="${r * 1.6}" viewBox="0 0 512 512">${MARK}</svg>
 </svg>`;
 }
 
@@ -87,16 +86,11 @@ export class Finale extends Scene {
     (this.card.firstElementChild as SVGElement).setAttribute("width", "100%");
     (this.card.firstElementChild as SVGElement).setAttribute("height", "100%");
     this.w.layer.prepend(this.card);
-    const head = D.headline;
     this.panel.append(
-      h("p", { class: "eyebrow", "data-rise": true }, "QUARCC Purple · Concordia University · McGill University"),
-      h("h2", { class: "headline text-[52px] md:text-[68px]", "data-rise": true, html: "Thank <em>you</em>" }),
-      h(
-        "p",
-        { class: "body", "data-rise": true },
-        `The right book for the money. An IR of ${num(head.ir)} and ${pct(head.net)} a year after every cost, with beta at ${num(head.beta)}. We watch the AI crowd like any other risk, and every test was written down before it ran.`,
+      ...header(
+        "Thank <em>you</em>",
+        "Theory picks the stocks, machine learning sets the hedge, and an AI crowd of our own making stress tests the book.",
       ),
-      h("p", { class: "eyebrow", "data-rise": true }, TEAM.join("  ·  ")),
     );
     this.toggle = chip("Show the particles", () => this.print(!this.printed));
     this.controls.append(
@@ -104,11 +98,13 @@ export class Finale extends Scene {
         "div",
         { class: "flex flex-wrap justify-end gap-2" },
         this.toggle,
-        chip("Save QR as SVG", () => save("quarcc-purple-fiam-qr.svg", new Blob([svg()], { type: "image/svg+xml" }))),
-        chip("Save QR as PNG", () => this.png()),
+        chip("Save QR", () => this.png()),
         chip("Start again", () => this.w.go(0)),
       ),
     );
+    // Small screens fit the code, the frame its corners and the title.
+    this.frame = corners(-4.6, -4, 0, 4.6, 5.2, 0);
+    this.zoomCap = 1.35;
   }
 
   // Fades the printed code in over the particles, or out to show them.

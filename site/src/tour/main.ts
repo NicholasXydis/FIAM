@@ -1,6 +1,5 @@
 import "./style.css";
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Chrome } from "./chrome";
 import { Sim } from "./gl/sim";
 import { Stage } from "./gl/stage";
@@ -8,6 +7,7 @@ import { scenes } from "./scenes";
 import type { Scene, World } from "./scenes/scene";
 import { Sound } from "./sound";
 import { h } from "../shared/dom";
+import { frame as fitView, setMode, stale, tick as layoutTick, titles } from "./layout";
 import { hideTip, rayAt, showTip, tip } from "./ui";
 
 // ?present hides hints and help, ?tour plays, ?q fixes the quality.
@@ -36,7 +36,7 @@ function fail(reason: string): never {
         h(
           "p",
           { class: "body" },
-          `This screen cannot run the 3D tour (${reason}). Open the file in a recent Chrome, Edge, Safari or Firefox with hardware acceleration on.`,
+          `This screen cannot run the 3D tour (${reason}). Open this page in a recent Chrome, Edge, Safari or Firefox with hardware acceleration on.`,
         ),
       ),
     ),
@@ -67,9 +67,8 @@ await document.fonts.ready;
 
 // Shared sound, silent until the viewer turns it on.
 const sound = new Sound();
-// The scene shown (-1 before the first), explore, tour, seconds dwelt.
+// The scene shown (-1 before the first), tour, seconds dwelt.
 let index = -1;
-let explore = false;
 let touring = false;
 let dwelt = 0;
 // What scenes may use; their go and next end the tour like a key press.
@@ -83,6 +82,15 @@ const chrome = new Chrome(layer, list, {
   sound: () => setSound(!sound.on),
 });
 layer.append(tip);
+// The layout follows the window, titles shrink to one line if small.
+setMode();
+titles(list);
+addEventListener("resize", () => {
+  // A new layout reshapes the scene, as some pack tall screens apart.
+  if (setMode() && index >= 0) sim.show(list[index]!.formation(), 0.6, 0.9);
+  titles(list);
+});
+visualViewport?.addEventListener("resize", stale);
 
 // Compiles all shaders now, for the frames' target, so no scene stalls.
 stage.renderer.setRenderTarget(stage.composer.readBuffer);
@@ -138,24 +146,8 @@ function setSound(on: boolean) {
   chrome.setSound(on);
 }
 
-// Explore mode's free camera, off until E, held 4 to 80 units out.
-const orbit = new OrbitControls(stage.camera, canvas);
-orbit.enabled = false;
-orbit.enableDamping = true;
-orbit.minDistance = 4;
-orbit.maxDistance = 80;
-
-// Frees the camera to orbit and zoom, or eases it back from there.
-function setExplore(on: boolean) {
-  explore = on;
-  orbit.enabled = on;
-  if (on) orbit.target.copy(stage.look.value);
-  else {
-    stage.eye.value.copy(stage.camera.position);
-    stage.eye.speed.set(0, 0, 0);
-  }
-  document.body.classList.toggle("exploring", on);
-}
+// The last digit pressed and when, for two-digit scene numbers.
+let digit: { n: number; at: number } | null = null;
 
 // Keys go to the scene first, then to scene moves, modes and panels.
 addEventListener("keydown", (e) => {
@@ -164,6 +156,11 @@ addEventListener("keydown", (e) => {
   if (target instanceof HTMLInputElement && (target.type !== "range" || e.key.startsWith("Arrow"))) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  // Space and Enter press a focused control; tiles act as buttons too.
+  if ((key === " " || key === "Enter") && target.closest?.("button, a, [role=button]")) {
+    if (target.getAttribute("role") === "button") (e.preventDefault(), target.click());
+    return;
+  }
   // An open panel lets only Escape, O, ?, H and the digits through.
   if (chrome.open && !["Escape", "o", "?", "h"].includes(key) && !/^[0-9]$/.test(key)) return;
   if (list[index]?.key(e)) return e.preventDefault();
@@ -173,19 +170,20 @@ addEventListener("keydown", (e) => {
   else if (key === "End") go(list.length - 1, true);
   else if (/^[0-9]$/.test(key)) {
     chrome.close();
-    go(+key, true);
-  } else if (key === "e") setExplore(!explore);
-  else if (key === "p") setTour(!touring);
+    // A second digit within half a second makes a two-digit scene.
+    const now = performance.now();
+    const two = digit !== null && now - digit.at < 500 ? digit.n * 10 + +key : -1;
+    digit = two >= 0 ? null : { n: +key, at: now };
+    go(two >= 0 && two < list.length ? two : +key, true);
+  } else if (key === "p") setTour(!touring);
   else if (key === "m") setSound(!sound.on);
   else if (key === "o") chrome.toggleOverview();
   else if (key === "?" || key === "h") chrome.toggleHelp();
   else if (key === "f") {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     else void document.documentElement.requestFullscreen().catch(() => {});
-  } else if (key === "Escape") {
-    chrome.close();
-    if (explore) setExplore(false);
-  } else return;
+  } else if (key === "Escape") chrome.close();
+  else return;
   e.preventDefault();
 });
 
@@ -193,10 +191,10 @@ addEventListener("keydown", (e) => {
 let wheelLock = 0;
 let wheelSum = 0;
 addEventListener(
-  // The wheel turns scenes, but not in explore, a sheet or over UI.
+  // The wheel turns scenes, but not while a sheet is open or over UI.
   "wheel",
   (e) => {
-    if (explore || chrome.open || (e.target as HTMLElement).closest?.(".card, .controls, .panel")) return;
+    if (chrome.open || (e.target as HTMLElement).closest?.(".card, .controls, .panel")) return;
     e.preventDefault();
     const now = performance.now();
     if (now < wheelLock) return;
@@ -210,6 +208,8 @@ addEventListener(
   { passive: false },
 );
 
+// The timer that clears a tap's tooltip after a few seconds.
+let tapTip = 0;
 // Where and when the last press on the canvas began.
 let press: { x: number; y: number; t: number } | null = null;
 canvas.addEventListener("pointerdown", (e) => {
@@ -217,20 +217,28 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 // A 60 px touch flick in 0.7 s turns scenes; a tap under 6 px clicks.
 canvas.addEventListener("pointerup", (e) => {
-  if (!press || explore) return (press = null);
+  if (!press) return;
   const dx = e.clientX - press.x;
   const dy = e.clientY - press.y;
-  const swipe = e.pointerType !== "mouse" && Math.hypot(dx, dy) > 60 && performance.now() - press.t < 700;
+  // Only a mostly sideways flick turns, so a drag up or down never does.
+  const flick = Math.abs(dx) > 60 && Math.abs(dx) > 1.2 * Math.abs(dy);
+  const swipe = e.pointerType !== "mouse" && flick && performance.now() - press.t < 700;
   press = null;
-  if (swipe) return go(index + (Math.abs(dx) > Math.abs(dy) ? -Math.sign(dx) : -Math.sign(dy)), true);
+  if (swipe) return go(index - Math.sign(dx), true);
   if (Math.hypot(dx, dy) > 6) return;
   // The tap ripples on its ray at the look point's depth, at least 4 out.
   const ray = rayAt(e.clientX, e.clientY, stage.camera).ray;
   const depth = Math.max(4, stage.look.value.clone().sub(ray.origin).dot(ray.direction));
   sim.wave({ at: ray.origin.clone().addScaledVector(ray.direction, depth), amp: 0.8, speed: 8 });
   sound.tick(0.75, 0.6);
-  list[index].hover(e.clientX, e.clientY);
+  const html = list[index].hover(e.clientX, e.clientY);
   list[index].click(e.clientX, e.clientY);
+  // A finger has no hover, so a tap shows the tip unless a card opened.
+  if (e.pointerType !== "mouse" && html && !layer.querySelector("aside.card:not([hidden])")) {
+    showTip(html.replaceAll("Click", "Tap").replaceAll("click", "tap"), e.clientX, e.clientY, true);
+    clearTimeout(tapTip);
+    tapTip = window.setTimeout(hideTip, 4500);
+  }
 });
 
 // Pointer: last move, moved this frame, over the canvas, and its place.
@@ -252,7 +260,11 @@ document.documentElement.addEventListener("mouseleave", () => (pointerAt = 0));
 
 // A dragged slider frees the arrows on release; a keyed one keeps them.
 let dragged: EventTarget | null = null;
-addEventListener("pointerdown", (e) => (dragged = e.target));
+addEventListener("pointerdown", (e) => {
+  dragged = e.target;
+  // A new tap clears the last tap's tooltip.
+  if (e.pointerType !== "mouse") hideTip();
+});
 addEventListener("change", (e) => {
   if (e.target instanceof HTMLInputElement && e.target.type === "range" && e.target === dragged) e.target.blur();
 });
@@ -264,12 +276,17 @@ stage.setQuality(fixedQuality !== null ? +fixedQuality : matchMedia("(max-width:
 // Loop state: clock, 2.5 s fps windows, a quality trial, hover recheck.
 let last = performance.now();
 let time = 0;
+// The particles' and camera's clock, slowed to a tenth during a hover.
+let calm = 0;
+let holding = false;
 let frames = 0;
 let slow = 0;
 let trial: { from: number; fps: number } | null = null;
 let settled = false;
 let windowStart = last;
 let hoverAge = 0;
+// The scene the camera last fitted on small screens.
+let fitted = -1;
 
 // A frame of at most 1/30 s: sim, camera, scene, hover, tour, quality.
 function loop() {
@@ -277,23 +294,26 @@ function loop() {
   const dt = Math.min((stamp - last) / 1000, 1 / 30);
   last = stamp;
   time += dt;
+  calm += holding ? dt * 0.1 : dt;
   const scene = list[index];
-  // The pointer counts for 2.5 s after it moves, and aims the push ray.
-  const live = pointerAt > 0 && stamp - pointerAt < 2500;
-  if (live && !explore && pointerMoved) {
+  // The pointer counts for 2.5 s after it moves, or while it holds a tip.
+  const live = pointerAt > 0 && (holding || stamp - pointerAt < 2500);
+  if (live && pointerMoved) {
     const ray = rayAt(mouse.x, mouse.y, stage.camera).ray;
     sim.u.uRayO.value.copy(ray.origin);
     sim.u.uRayD.value.copy(ray.direction);
   }
-  // The push eases to the scene's strength with a 0.25 s time constant.
-  const strength = live && !explore ? scene.physics.mouse : 0;
+  // The push eases to the scene's strength, or away while hovering.
+  const strength = live && !holding ? scene.physics.mouse : 0;
   sim.u.uMouse.value += (strength - sim.u.uMouse.value) * (1 - Math.exp(-dt * 4));
   // Point scale and focus, then the particles, camera and scene step.
   sim.m.uScale.value = stage.pixel;
   sim.m.uFocus.value = stage.camera.position.distanceTo(stage.look.value);
-  sim.step(time, dt);
-  if (explore) orbit.update();
-  stage.update(time, dt, explore);
+  sim.step(time, dt, calm);
+  layoutTick();
+  fitView(stage, scene, index !== fitted);
+  fitted = index;
+  stage.update(calm, dt, holding);
   scene.tick(dt, time);
   scene.place(stage.camera);
   // Rechecks hover as the pointer moves, or every 0.15 s while it rests.
@@ -303,7 +323,13 @@ function loop() {
     const html = overCanvas ? scene.hover(mouse.x, mouse.y) : null;
     if (html) showTip(html, mouse.x, mouse.y);
     else hideTip();
-    canvas.style.cursor = html ? "pointer" : explore ? "grab" : "default";
+    canvas.style.cursor = html ? "pointer" : "default";
+    holding = html !== null;
+  }
+  // Nothing is held once the pointer leaves or a sheet opens; tip goes.
+  if (holding && (!live || chrome.open || !overCanvas)) {
+    holding = false;
+    hideTip();
   }
   pointerMoved = false;
   // The tour moves on after each dwell, waiting while a panel is open.

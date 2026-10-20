@@ -6,6 +6,8 @@
 @source "../shared";
 @source "../../fiam.html";
 @source "../../tour/index.html";
+/* Plain words in the code, such as blur(), that are not class names. */
+@source not inline("blur block filter fixed italic outline resize ring rounded table transform visible");
 
 /* Chrome in the corners, the story lower left, controls lower right. */
 html,
@@ -260,6 +262,18 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12.5px;
   color: var(--ink-2);
 }
+/* A ranked row is a button, tinted under the pointer and once kept. */
+.bar-row[role="button"] {
+  pointer-events: auto;
+  cursor: pointer;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.bar-row[role="button"]:hover,
+.bar-row[aria-pressed="true"] {
+  background: rgb(169 139 255 / 0.12);
+}
 .bar-row .track {
   grid-column: 1 / -1;
   height: 6px;
@@ -272,14 +286,14 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 4px;
 }
 
-/* The brand at the top left. */
+/* The team's names at the top left, level with the Back pill. */
 .brand {
   position: absolute;
   left: max(16px, env(safe-area-inset-left, 0px));
-  top: max(18px, env(safe-area-inset-top, 0px));
+  top: max(10px, env(safe-area-inset-top, 0px));
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  min-height: 44px;
 }
 
 /* Header chips at the top right, stacked over story and controls. */
@@ -297,16 +311,6 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
   gap: 8px;
   min-height: 32px;
-}
-
-/* The footnote, centred along the lower edge. */
-.foot {
-  position: absolute;
-  left: 50%;
-  bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 10px;
 }
 
 /* Help and the overview, a dim sheet over all that fades in and out. */
@@ -377,7 +381,7 @@ input[type="range"]::-moz-range-thumb {
 .search {
   width: 100%;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--ink);
   background: rgb(237 233 246 / 0.06);
   border: 1px solid var(--line);
@@ -408,54 +412,296 @@ kbd {
 .present .help-button {
   display: none;
 }
-/* Exploring dims the story and controls to a quarter. */
-body.exploring .panel,
-body.exploring .controls {
-  opacity: 0.25 !important;
-  transition: opacity 0.4s;
+/* Shown only in small layouts: dock, fold chips, keys and hints. */
+.dock,
+.more-toggle,
+.small-only,
+.touch-hint {
+  display: none;
 }
 
-/* At 760 px or less: story on top, no dots, footnote or body text. */
-@media (max-width: 760px) {
-  .panel {
-    bottom: auto;
-    top: max(64px, env(safe-area-inset-top, 0px));
-    gap: 10px;
+/* Every small layout: one-line titles, one row of tiles, no dots. */
+[data-small] .panel .headline {
+  white-space: nowrap;
+  text-wrap: nowrap;
+}
+[data-small] .stats {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+[data-small] .label3d {
+  font-size: 11px;
+}
+[data-small] .label3d.big {
+  font-size: 20px;
+}
+[data-small] .label3d .text-\[10px\],
+[data-small] .controls svg text {
+  font-size: 11px;
+}
+[data-small] .label3d[role="button"] {
+  pointer-events: auto;
+}
+[data-small] .dots,
+[data-small] .brand,
+[data-small] .topbar .icon-chip svg + span {
+  display: none;
+}
+/* Landscape tablets keep the corners, sized so they never meet. */
+[data-tour="corners"] .panel {
+  width: min(560px, calc(100vw - 500px));
+}
+
+/* Phones: compact type and tiles, a dock, detail behind fold chips. */
+[data-phone] .panel .body {
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  pointer-events: auto;
+}
+[data-phone] .panel .body.open {
+  -webkit-line-clamp: none;
+}
+[data-phone] .stats > div {
+  padding: 8px 9px 7px;
+  gap: 2px;
+}
+[data-phone] .stats b {
+  font-size: 15px;
+  white-space: nowrap;
+}
+[data-phone] .stats span {
+  font-size: 11px;
+  line-height: 1.25;
+}
+[data-phone] .controls {
+  left: max(16px, env(safe-area-inset-left, 0px));
+  align-items: stretch;
+  gap: 8px;
+  max-height: 50%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+[data-phone] .controls > .glass {
+  width: auto;
+  padding: 10px 12px;
+  gap: 6px;
+}
+[data-phone] .row {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+[data-phone] .row::-webkit-scrollbar {
+  display: none;
+}
+[data-phone] .row > * {
+  flex-shrink: 0;
+}
+[data-phone] .fold > :first-child:not(.row) {
+  flex-wrap: wrap;
+}
+[data-phone] .whole {
+  flex-basis: 100%;
+}
+[data-phone] .fold:not(.open) [data-more],
+[data-phone] .ends {
+  display: none;
+}
+[data-phone] .more-toggle {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+[data-phone] .small-only {
+  display: flex;
+  flex-wrap: wrap;
+}
+[data-phone] .card {
+  overflow: auto;
+  pointer-events: auto;
+  padding: 12px 14px;
+  z-index: 3;
+}
+[data-phone] .ui:has(.card:not([hidden])) .controls {
+  visibility: hidden;
+}
+[data-phone] .dock {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+[data-phone] .dock .chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  gap: 8px;
+}
+[data-phone] .dock .step {
+  font-size: 18px;
+  padding: 0;
+}
+[data-phone] .dock .step:disabled {
+  opacity: 0.3;
+}
+[data-phone] .dock .where {
+  flex: 1;
+  display: block;
+  min-width: 44px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+[data-phone] .dock .where b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Portrait: story on top, scene in the band, controls by the dock. */
+[data-tour="stack"] .panel {
+  top: calc(max(10px, env(safe-area-inset-top, 0px)) + 54px);
+  bottom: auto;
+  gap: 8px;
+}
+[data-tour="stack"] .panel .headline {
+  font-size: 30px;
+}
+[data-tour="stack"] .controls,
+[data-tour="stack"] .card {
+  bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 56px);
+}
+[data-tour="stack"] .card {
+  top: auto !important;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px)) !important;
+  width: auto;
+  max-height: 46vh;
+}
+[data-tour="stack"] .dock {
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (max-height: 760px) {
+  [data-tour="stack"] .panel .body {
+    -webkit-line-clamp: 3;
   }
-  .panel .body {
+}
+@media (max-height: 640px) {
+  [data-tour="stack"] .panel .body {
+    -webkit-line-clamp: 2;
+  }
+}
+@media (max-height: 600px) {
+  [data-tour="stack"] .panel .body {
+    -webkit-line-clamp: 1;
+  }
+}
+/* The narrowest phones let tile values wrap and set tables smaller. */
+@media (max-width: 359px) {
+  [data-phone] .stats b {
+    white-space: normal;
+  }
+  [data-phone] .controls .text-\[13px\] {
+    font-size: 12px;
+  }
+}
+/* Portrait tablets keep big type, the controls in their corner. */
+@media (min-width: 761px) {
+  [data-tour="stack"] .panel {
+    width: min(640px, calc(100vw - 32px));
+  }
+  [data-tour="stack"] .panel .headline {
+    font-size: 44px;
+  }
+  [data-tour="stack"] .panel .body {
+    font-size: 15px;
+  }
+  [data-tour="stack"] .controls,
+  [data-tour="stack"] .card {
+    left: auto;
+    width: 440px;
+  }
+  [data-tour="stack"] .dock {
+    left: auto;
+    width: 440px;
+  }
+}
+
+/* Landscape phones: story and controls left, the scene right. */
+[data-tour="side"] .panel {
+  top: calc(max(8px, env(safe-area-inset-top, 0px)) + 52px);
+  bottom: auto;
+  width: min(340px, 46vw);
+  gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+[data-tour="side"] .panel .headline {
+  font-size: 24px;
+}
+[data-tour="side"] .panel .body {
+  -webkit-line-clamp: 2;
+}
+[data-tour="side"] .panel .body.tight:not(.open) {
+  -webkit-line-clamp: 1;
+}
+[data-tour="side"] .controls {
+  max-height: 50%;
+  right: auto;
+  width: min(340px, 46vw);
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+[data-tour="side"] .card {
+  top: 60px !important;
+  right: max(16px, env(safe-area-inset-right, 0px)) !important;
+  width: min(330px, calc(54vw - 48px));
+  max-height: calc(100% - 130px);
+}
+/* A set width, as Safari keeps a stale fitted one after turning. */
+[data-tour="side"] .dock {
+  width: min(300px, calc(100vw - min(340px, 46vw) - 48px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+@media (max-height: 360px) {
+  [data-tour="side"] .panel .body {
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* Touch: 44 px targets, touch hints for keys, chips on one line. */
+@media (pointer: coarse) {
+  .chip,
+  .search,
+  .bar-row[role="button"],
+  input[type="range"] {
+    min-height: 44px;
+  }
+  .chip:not(.more-toggle) {
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .hint,
+  .dots {
     display: none;
   }
-  .panel .headline {
-    font-size: 34px;
-  }
-  .stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .stats > div:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-  .stats span {
-    font-size: 11px;
-  }
-  .label3d {
-    font-size: 10px;
-  }
-  .label3d.big {
-    font-size: 20px;
-  }
-  .controls {
-    left: max(16px, env(safe-area-inset-left, 0px));
-    align-items: stretch;
-  }
-  .dots,
-  .foot {
-    display: none;
-  }
-  .topbar .icon-chip svg + span {
-    display: none;
-  }
-  .stats b {
-    font-size: 18px;
+  .touch-hint {
+    display: block;
   }
 }
 

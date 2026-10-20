@@ -4,7 +4,8 @@ import { D, int } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { streams } from "../gl/shapes";
 import { h } from "../../shared/dom";
-import { chip, count, Label, nearest, stat } from "../ui";
+import { corners } from "../layout";
+import { box, chip, count, Label, nearest, stat } from "../ui";
 import { ball, C, dust, header, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
@@ -32,8 +33,8 @@ export class Idea extends Scene {
   private seed: Float32Array;
   private flow: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private stats = {
-    stocks: stat("", "US stocks that month"),
-    tradeable: stat("", "Big and liquid enough to trade"),
+    stocks: stat("", `US stocks in ${J.month}`),
+    tradeable: stat("", "Big enough to trade"),
     longs: stat("", "Held long"),
     shorts: stat("", "Held short"),
   };
@@ -97,17 +98,15 @@ export class Idea extends Scene {
     this.group.add(this.beam);
     this.panel.append(
       ...header(
-        `How a stock earns its place · ${J.month}`,
         "Twelve questions, <em>one score</em>",
-        "Each month every US stock gets twelve published scores, with signs fixed by theory before any test. We rank the stocks, then the optimizer buys the best and shorts the worst with no net bet on the market or on any sector. The counts are from a real month, and each dot stands for one stock.",
+        "Each month twelve signals score the stocks we can trade, signs set by theory first. We buy the best, short the worst, and take no net market or sector bet.",
       ),
       stats(...Object.values(this.stats).map((s) => s.el)),
     );
     this.chips = STEPS.map((s, i) => chip(`${i + 1} ${s.chip}`, () => this.jump(i), false));
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(440px,calc(100vw-32px))] flex flex-col gap-3" },
+      box(
+        "w-[min(440px,calc(100vw-32px))] gap-3",
         h(
           "div",
           { class: "flex items-center justify-between gap-4" },
@@ -117,6 +116,10 @@ export class Idea extends Scene {
         h("div", { class: "flex flex-wrap gap-1.5" }, ...this.chips),
       ),
     );
+    // Small screens fit the arc, the step chips scroll in one row.
+    this.chips[0].parentElement!.classList.add("row");
+    this.frame = corners(-10, -3.4, 0, 10, 6.4, 0);
+    this.zoomCap = 1.2;
   }
 
   // The particles at the current funnel step.

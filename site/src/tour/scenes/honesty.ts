@@ -1,8 +1,9 @@
 import * as THREE from "three";
-import { caption, D, int, num, pct, prose } from "../../shared/data";
+import { D, int, pct, prose } from "../../shared/data";
 import { blank, N } from "../gl/sim";
 import { h } from "../../shared/dom";
-import { chip, Label, screen, stat } from "../ui";
+import { corners, portrait } from "../layout";
+import { box, chip, fold, Label, legendOf, screen, stat, swatch } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 import { GOLDEN } from "../../shared/math";
 
@@ -10,12 +11,26 @@ import { GOLDEN } from "../../shared/math";
 const HN = D.honesty;
 const DOT = 0.15;
 const SHIPPED = HN.families.findIndex((f) => f.verdict.startsWith("Shipped"));
+// The families biggest first, each with its cluster's radius.
+const PLACED = HN.families
+  .map((_, i) => i)
+  .sort((a, b) => HN.families[b].attempts - HN.families[a].attempts)
+  .map((i) => ({ i, r: DOT * 0.55 * Math.sqrt(HN.families[i].attempts) + 0.25 }));
+const BIG = PLACED[0]!.i;
 // The chips' filters: every attempt, the shippable, or the rest.
 const FILTERS = [
-  { name: `All ${int(HN.attempts)}`, keep: () => true },
-  { name: `Shippable ${int(HN.eligible)}`, keep: (f: (typeof HN.families)[number]) => f.eligible },
-  { name: "Research and controls", keep: (f: (typeof HN.families)[number]) => !f.eligible },
+  { name: "All", keep: () => true, lines: [0, 1, 2] },
+  { name: "Shippable", keep: (f: (typeof HN.families)[number]) => f.eligible, lines: [0, 1] },
+  { name: "Research", keep: (f: (typeof HN.families)[number]) => !f.eligible, lines: [2] },
 ];
+// The legend, one line each, its dots in the clusters' own colours.
+const LEGEND = [
+  `${swatch("var(--gold)")}Gold · the design we chose`,
+  `${swatch("var(--purple)")}Bright · designs good enough to ship`,
+  `${swatch("var(--ink-3)")}Faint · research runs and checks`,
+];
+// A family's name alone: no leading tally, no list after its colon.
+const short = (what: string) => prose(what.split(":")[0]!.replace(/^\d+ (.)/, (_, c: string) => c.toUpperCase()));
 // Reused points for measuring each cluster's size on screen.
 const centre = { x: 0, y: 0, front: true };
 const rim = { x: 0, y: 0, front: true };
@@ -24,11 +39,16 @@ const edge = new THREE.Vector3();
 // Every attempt counted: a cluster per family, odds the edge is real.
 export class Honesty extends Scene {
   name = "Every attempt, counted";
-  summary = `All ${int(HN.attempts)} fits we ran before choosing, and the odds that the edge is real.`;
+  summary = `All ${int(HN.attempts)} ideas we tested before choosing, and the odds that the edge is real.`;
   private centres: THREE.Vector3[] = [];
   private radii: number[] = [];
   private filter = 0;
   private chips: HTMLButtonElement[];
+  // Labels over the chosen family and the largest, and the packing used.
+  private chosen = new Label(`Chosen <b class="text-gold">●</b>`, [0, 0, 0], "center");
+  private crown = new Label(short(HN.families[BIG].what), [0, 0, 0], "center");
+  private tall = false;
+  private legend = legendOf(LEGEND);
 
   // Packs the families biggest first, the largest alone at the right.
   constructor(w: World) {
@@ -36,66 +56,75 @@ export class Honesty extends Scene {
     this.shot = { eye: [0, 1.2, 22], look: [0.4, 0.6, 0], drift: 0.7, shift: 0.1 };
     this.physics = { stiff: 9, damp: 1.2, flow: 0.22, spin: 0.03, mouse: 1.1 };
     this.dwell = 13;
-    const order = HN.families.map((_, i) => i).sort((a, b) => HN.families[b].attempts - HN.families[a].attempts);
-    const placed = order.map((i) => ({ i, r: DOT * 0.55 * Math.sqrt(HN.families[i].attempts) + 0.25 }));
-    const big = placed[0];
-    this.centres[big.i] = new THREE.Vector3(6.2, 0.4, 0);
-    const left = -6.6;
-    const right = 6.2 - big.r - 0.8;
-    let x = left;
-    let y = 4.3;
-    let row = 0;
-    // The rest fill rows from the left, wrapping before the big one.
-    for (const p of placed.slice(1)) {
-      if (x + p.r * 2 > right) {
-        x = left;
-        y -= row + 0.5;
-        row = 0;
-      }
-      this.centres[p.i] = new THREE.Vector3(x + p.r, y - p.r, 0);
-      x += p.r * 2 + 0.5;
-      row = Math.max(row, p.r * 2);
-    }
-    placed.forEach((p) => (this.radii[p.i] = p.r));
-    // Labels sit 0.45 above the chosen cluster and the largest one.
-    const above = (i: number) => this.centres[i].clone().add(new THREE.Vector3(0, this.radii[i] + 0.45, 0));
-    this.addLabel(new Label(`Chosen · the twelve-signal score <b class="text-gold">●</b>`, above(SHIPPED), "center"));
-    const crown = this.centres[big.i].clone().add(new THREE.Vector3(0, big.r + 0.45, 0));
-    this.addLabel(new Label(caption(HN.families[big.i].what), crown, "center"));
+    this.addLabel(this.chosen);
+    this.addLabel(this.crown);
+    this.pack(false);
     this.panel.append(
       ...header(
-        "The honest reading",
-        `${int(HN.attempts)} attempts. <em>Every one counted.</em>`,
-        `Each dot is one fit we ran before choosing, from signal sets and hedges to models and controls. Bright dots are the ${int(HN.eligible)} designs we could have shipped. Adjusted for this many tries, the chance the edge is real is ${pct(HN.dsr_all, 0)}, or ${pct(HN.dsr_eligible, 0)} counting only the shippable ones. Most of the return came in 2021 and 2022, and since 2023 the edge has been flat. Hover a cluster to see what it tried.`,
+        "Every attempt, <em>counted</em>",
+        "Each dot is one idea we tested before choosing. The bright ones could have shipped, and our odds count every one of them.",
       ),
+      // Tried, good enough to ship, and the chance the edge holds there.
       stats(
-        stat(pct(HN.dsr_all, 0), `chance the edge is real after all ${int(HN.attempts)} tries`).el,
-        stat(num(HN.first_half_ir), "IR in 2021 and 2022").el,
-        stat(num(HN.second_half_ir), "IR from 2023 to 2026").el,
-        stat(num(HN.check_2016_2020_ir), "IR of the same book from 2016 to 2020").el,
+        stat(int(HN.attempts), "Research runs").el,
+        stat(int(HN.eligible), "Could have shipped").el,
+        stat(pct(HN.dsr_eligible, 0), "Edge is real").el,
       ),
     );
     this.chips = FILTERS.map((f, i) => chip(f.name, () => this.only(i), i === 0));
     this.controls.append(
-      h(
-        "div",
-        {
-          class:
-            "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2 text-[13px] text-ink-2",
-        },
+      box(
+        "w-[min(420px,calc(100vw-32px))] gap-2 text-[13px] text-ink-2",
         h("div", { class: "flex flex-wrap gap-1.5" }, ...this.chips),
-        h("p", { class: "eyebrow pt-1" }, "Limits"),
-        h(
-          "p",
-          {},
-          "A backtest anyone can rerun, not a live record. Costs are modelled, not observed. Much of the return comes from one style, profitability, and a junk rally, when unprofitable stocks fly, is the risk this book fears most.",
-        ),
+        this.legend.el,
       ),
     );
+    // Small screens: the filter chips scroll, the legend folds behind Key.
+    const glass = this.controls.firstElementChild as HTMLElement;
+    const filters = glass.firstElementChild as HTMLElement;
+    filters.classList.add("row");
+    fold(glass, filters, [glass.lastElementChild!], "Key");
+  }
+
+  // Packs families in rows, the largest at the right or, if tall, below.
+  private pack(tall: boolean) {
+    this.tall = tall;
+    const big = PLACED[0]!;
+    const left = tall ? -4.4 : -6.6;
+    const right = tall ? 4.4 : 6.2 - big.r - 0.8;
+    const rows: { i: number; r: number; x: number }[][] = [[]];
+    let x = left;
+    let y = 4.3;
+    let row = 0;
+    // The rest fill rows from the left, wrapping before the big one.
+    for (const p of PLACED.slice(1)) {
+      if (x + p.r * 2 > right) {
+        x = left;
+        y -= row + 0.5;
+        row = 0;
+        rows.push([]);
+      }
+      this.centres[p.i] = new THREE.Vector3(x + p.r, y - p.r, 0);
+      rows[rows.length - 1]!.push({ ...p, x: x + p.r * 2 });
+      x += p.r * 2 + 0.5;
+      row = Math.max(row, p.r * 2);
+    }
+    this.centres[big.i] = tall ? new THREE.Vector3(0, y - row - 0.9 - big.r, 0) : new THREE.Vector3(6.2, 0.4, 0);
+    // Tall rows shift so each is centred on the big one.
+    for (const r of tall ? rows : []) for (const p of r) this.centres[p.i]!.x -= (r.at(-1)!.x - left) / 2 + left;
+    for (const p of PLACED) this.radii[p.i] = p.r;
+    // Labels sit 0.45 above the chosen cluster and the largest one.
+    this.chosen.at.copy(this.centres[SHIPPED]!).y += this.radii[SHIPPED]! + 0.45;
+    this.crown.at.copy(this.centres[big.i]!).y += big.r + 0.45;
+    // Small screens fit every cluster, with room for the labels on top.
+    const xs = PLACED.flatMap((p) => [this.centres[p.i]!.x - p.r, this.centres[p.i]!.x + p.r]);
+    const ys = PLACED.flatMap((p) => [this.centres[p.i]!.y - p.r, this.centres[p.i]!.y + p.r]);
+    this.frame = corners(Math.min(...xs), Math.min(...ys), 0, Math.max(...xs), Math.max(...ys) + 0.8, 0);
   }
 
   // Each family a golden-angle spiral; the shipped one has a gold heart.
   formation() {
+    if (this.tall !== portrait()) this.pack(portrait());
     const f = blank();
     const keep = FILTERS[this.filter].keep;
     const tint = new THREE.Color();
@@ -131,8 +160,14 @@ export class Honesty extends Scene {
     if (filter === this.filter) return;
     this.filter = filter;
     this.chips.forEach((c, i) => c.setAttribute("aria-pressed", String(i === filter)));
+    this.lightLegend();
     this.w.sim.show(this.formation(), 0.5, 0.8);
     this.w.sound.tick(1, 0.6);
+  }
+
+  // Brightens the legend lines the filter shows; the rest fade.
+  private lightLegend() {
+    this.legend.light(FILTERS[this.filter]?.lines ?? []);
   }
 
   // Shows the labels over the chosen family and the largest.
@@ -144,6 +179,7 @@ export class Honesty extends Scene {
   override leave() {
     this.filter = 0;
     this.chips.forEach((c, i) => c.setAttribute("aria-pressed", String(i === 0)));
+    this.lightLegend();
   }
 
   // The cluster whose screen circle, plus 6 px, holds the pointer, or -1.
@@ -164,8 +200,7 @@ export class Honesty extends Scene {
     const i = this.cluster(x, y);
     if (i < 0) return null;
     const f = HN.families[i];
-    const kind = f.eligible ? "shippable" : "research or control";
-    return `<strong>${caption(f.what)}</strong><br>${int(f.attempts)} attempt${f.attempts > 1 ? "s" : ""} · ${kind}<br><span class="muted">${prose(f.result)}</span><br>Verdict · ${prose(f.verdict)}`;
+    return `<strong>${short(f.what)}</strong><br>${int(f.attempts)} ${f.attempts > 1 ? "tries" : "try"} · ${prose(f.verdict)}`;
   }
 
   // Ripples the clicked cluster.

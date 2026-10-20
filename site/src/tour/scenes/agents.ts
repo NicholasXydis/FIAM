@@ -3,17 +3,26 @@ import { caption, D, prose } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { streams } from "../gl/shapes";
 import { h } from "../../shared/dom";
-import { chip, Label, nearest } from "../ui";
+import { coarse, corners } from "../layout";
+import { asButton, box, chip, fold, Label, nearest } from "../ui";
 import { ball, C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
+
+// Facts reworded where the data overstates; 80% is from RESULTS.md.
+const FACTS: Record<string, [string, string][]> = {
+  triage: [
+    ["Filings labelled", "6,000"],
+    ["Small model match", "87%"],
+    ["Guessing routine", "80%"],
+  ],
+};
 
 // The agents' data, and the core where the book sits and threads meet.
 const A = D.agents;
 const CORE = new THREE.Vector3(0, 0.3, 0);
-// Each agent's colour, and the local models they run on.
+// Each agent's colour: the advocate orange, crowd cyan, explainer gold.
 const tone = (key: string) =>
   key === "advocate" ? C.orange : key === "crowd" ? C.cyan : key === "explainer" ? C.gold : C.purple;
-const models = [...new Set(A.map((a) => a.model))].filter((m) => !m.includes(" and "));
 
 // The AI desk: seven agents around the book, joined by flowing work.
 export class Agents extends Scene {
@@ -21,9 +30,7 @@ export class Agents extends Scene {
   summary = "Seven local AI agents read, check and argue. None of them sets a position.";
   private nodes: THREE.Vector3[];
   private flow: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
-  private card = h("div", {
-    class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2",
-  });
+  private card = box("w-[min(420px,calc(100vw-32px))] gap-2");
   private selected = -1;
 
   // Seats agents on a tilted ellipse, top first, threaded to the core.
@@ -69,18 +76,27 @@ export class Agents extends Scene {
     A.forEach((a, i) => {
       const at = this.nodes[i].clone().add(new THREE.Vector3(0, -1.05, 0));
       const html = `<b class="text-ink font-medium">${a.name}</b><br><span class="text-ink-3 text-[10px]">${a.model}</span>`;
-      this.addLabel(new Label(html, at, "center")).el.style.textAlign = "center";
+      const label = this.addLabel(new Label(html, at, "center")).el;
+      label.style.textAlign = "center";
+      // Each name is a button too, so the keyboard can open its card.
+      asButton(label, () => this.select(i === this.selected ? -1 : i)).setAttribute(
+        "aria-label",
+        `${a.name}, ${a.model}`,
+      );
     });
     this.addLabel(new Label("The book", [0, -1.4, 0], "center", "big"));
     this.panel.append(
       ...header(
-        "The desk · every model runs on our own machine",
-        `${A.length} AI colleagues. <em>None sets a position.</em>`,
-        "Around the book sit the agents. They read filings, check the rules, argue against the book and explain it, with company names, tickers and dates hidden wherever memory could cheat. Code checks every number they quote. Click an agent to see what it did.",
+        `${A.length} AI colleagues, <em>none trade</em>`,
+        "They read filings, check rules, argue and explain, all on our own machine. Names are hidden where memory could cheat, and code checks every number.",
       ),
     );
     this.controls.append(this.card);
     this.select(-1);
+    // Small screens: names only, the model and facts wait in the card.
+    for (const [i, l] of this.labels.slice(0, A.length).entries())
+      l.small = { html: `<b class="text-ink font-medium">${A[i].name}</b>` };
+    this.frame = corners(-7.9, -4.6, -1.2, 7.9, 4.4, 1.2);
   }
 
   // Gold core of 8 soft balls; agent shells dim when another is picked.
@@ -107,28 +123,25 @@ export class Agents extends Scene {
     this.flow.material.uniforms.uFocus.value = i < 0 ? -1 : i * 2;
     if (this.active) this.w.sim.update(this.formation());
     this.card.innerHTML = "";
-    // With none picked, the card lists every agent and their models.
+    // With none picked, the card asks for a click.
     if (i < 0) {
       this.card.append(
-        h("p", { class: "eyebrow" }, "Click an agent"),
-        h(
-          "p",
-          { class: "text-[13px] text-ink-2" },
-          `${A.map((a) => a.name).join(" · ")}. They run on ${models.join(" and ")}, all on our own machine.`,
-        ),
+        h("p", { class: "eyebrow" }, coarse() ? "Tap an agent" : "Click an agent"),
+        h("p", { class: "text-[13px] text-ink-2" }, "See what it did, and how its work was checked."),
       );
       return;
     }
     const a = A[i];
+    const head = h(
+      "div",
+      { class: "flex items-start justify-between gap-3" },
+      h("div", {}, h("p", { class: "eyebrow" }, a.model), h("p", { class: "headline text-[28px]" }, a.name)),
+      chip("All agents", () => this.select(-1)),
+    );
     this.card.append(
-      h(
-        "div",
-        { class: "flex items-start justify-between gap-3" },
-        h("div", {}, h("p", { class: "eyebrow" }, a.model), h("p", { class: "headline text-[28px]" }, a.name)),
-        chip("All agents", () => this.select(-1)),
-      ),
+      head,
       h("p", { class: "text-[14px] text-ink-2" }, prose(a.does)),
-      ...a.facts.map(([k, v]) =>
+      ...(FACTS[a.key] ?? a.facts).map(([k, v]) =>
         h(
           "div",
           { class: "flex justify-between gap-4 text-[13px] border-t border-line pt-1.5" },
@@ -137,6 +150,9 @@ export class Agents extends Scene {
         ),
       ),
     );
+    // Small screens fold the facts behind a Details chip.
+    this.card.classList.remove("open");
+    fold(this.card, head, [...this.card.children].slice(2), "Details");
     // The explainer's card links on to the September book scene.
     if (a.key === "explainer") {
       this.card.append(
@@ -167,7 +183,7 @@ export class Agents extends Scene {
     if (i >= 0)
       return `<strong>${A[i].name}</strong><br>${prose(A[i].does)}<br><span class="muted">Click for details</span>`;
     if (nearest([CORE], x, y, this.w.stage.camera, 60) < 0) return null;
-    return "<strong>The final book</strong><br>The agents inform it. The optimizer alone sets every weight.";
+    return "<strong>The final book</strong><br>The agents question and explain it. The optimizer alone sets every weight.";
   }
 
   // Focuses the clicked agent and ripples it; a second click clears it.

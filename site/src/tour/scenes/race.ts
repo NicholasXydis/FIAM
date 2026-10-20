@@ -1,15 +1,19 @@
 import gsap from "gsap";
 import * as THREE from "three";
-import { D, monthName, num, pct, signed, yearIndex } from "../../shared/data";
+import { D, monthName, pct, signed, yearIndex } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { glow, tube } from "../gl/shapes";
 import { h } from "../../shared/dom";
+import { corners } from "../layout";
 import { chip, Label, rayAt, stat, swatch } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
 // The race data, its points, the chart's x span, floor and back wall.
 const R = D.race;
+// Card captions: the whole run's edge and risk, or one year's returns.
+const WHOLE = ["Alpha a year", "Months over hurdle", "Volatility a year", "Worst drawdown"];
+const YEAR = ["Final book", "S&P 500", "Hurdle", "Above the hurdle"];
 const STEPS = R.book.length;
 const X0 = -9.5;
 const X1 = 8.2;
@@ -48,13 +52,7 @@ export class Race extends Scene {
   private chips: HTMLButtonElement[] = [];
   private year = "";
   private fired = false;
-  private readout = {
-    book: stat("", "Final book"),
-    market: stat("", "S&P 500"),
-    hurdle: stat("", "Hurdle"),
-    active: stat("", "Above the hurdle"),
-  };
-  private scope = h("p", { class: "eyebrow" });
+  private cards = YEAR.map((caption) => stat("", caption));
   private callout: Label;
 
   // Builds the three lines, axis labels, crosshair, glow and 2022 note.
@@ -72,8 +70,10 @@ export class Race extends Scene {
       const text = `${swatch(s.mark)}${s.label} <b class="text-ink">$${end.toFixed(2)}</b>`;
       this.ends.push(this.addLabel(new Label(text, [X1 + 0.35, yAt(end), s.z], "left")));
     }
-    for (const g of [1, 1.5, 2, 2.5]) this.addLabel(new Label(`$${g.toFixed(2)}`, [X0 - 0.3, yAt(g), BACK], "right"));
-    for (const y of YEARS) this.addLabel(new Label(y, [xAt(yearIndex(y)) + 0.15, FLOOR + 0.35, BACK], "left"));
+    for (const g of [1, 1.5, 2, 2.5])
+      this.addLabel(new Label(`$${g.toFixed(2)}`, [X0 - 0.3, yAt(g), BACK], "right")).moves = false;
+    for (const y of YEARS)
+      this.addLabel(new Label(y, [xAt(yearIndex(y)) + 0.15, FLOOR + 0.35, BACK], "left")).moves = false;
     this.cross = new THREE.Mesh(
       new THREE.BoxGeometry(0.02, 10.5, 0.02),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
@@ -90,15 +90,12 @@ export class Race extends Scene {
         "center",
       ),
     );
-    const head = D.headline;
     this.panel.append(
       ...header(
-        `Growth of $1 · ${D.window} · after every cost`,
         `$1 became <em>$${R.book[STEPS - 1].toFixed(2)}</em>`,
-        `A dollar in the final book from January 2021, after every modelled cost, next to the S&P 500 and the hurdle the brief sets. The information ratio is ${num(head.ir)} and alpha is ${pct(head.alpha)} a year with a t of ${num(head.alpha_t)}. Hover the chart to read any month.`,
+        "Our book after every modelled cost, against the S&P 500 and the brief's hurdle. Pick a year to see its returns.",
       ),
-      this.scope,
-      stats(...Object.values(this.readout).map((s) => s.el)),
+      stats(...this.cards.map((s) => s.el)),
     );
     this.chips.push(chip("All years", () => this.focus(""), true));
     for (const y of YEARS) this.chips.push(chip(y, () => this.focus(y), false));
@@ -111,6 +108,21 @@ export class Race extends Scene {
       ),
     );
     this.focus("", false);
+    // Small screens: values at the line ends, a key line names them.
+    this.ends.forEach((l, i) => {
+      const s = SERIES[i];
+      l.small = { html: `${swatch(s.mark)}<b class="text-ink">$${R[s.key][STEPS - 1].toFixed(2)}</b>` };
+      l.prio = 1;
+    });
+    this.callout.prio = 2;
+    this.callout.small = {
+      html: `<span class="text-orange">2022</span> · S&amp;P 500 <b class="text-ink">${signed(crash.market)}</b><br>Final book <b class="text-ink">${signed(crash.strategy)}</b>`,
+      cls: "text-center",
+    };
+    (this.controls.firstElementChild as HTMLElement).classList.add("row");
+    const key = SERIES.map((s) => `<span>${swatch(s.mark)}${s.label.split(",")[0]}</span>`).join("");
+    this.controls.append(h("p", { class: "small-only eyebrow gap-3", html: key }));
+    this.frame = corners(-9.8, -3.9, -2.6, 8.4, 5.4, 0);
   }
 
   // Dust along each line, a dotted floor, year posts and dollar rules.
@@ -154,27 +166,30 @@ export class Race extends Scene {
     this.year = year;
     this.chips.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === (year || "All years"))));
     if (!year) {
-      this.scope.textContent = `Whole period, ${D.months.length} months`;
-      this.readout.book.value.textContent = `$${R.book[STEPS - 1].toFixed(2)}`;
-      this.readout.market.value.textContent = `$${R.market[STEPS - 1].toFixed(2)}`;
-      this.readout.hurdle.value.textContent = `$${R.hurdle[STEPS - 1].toFixed(2)}`;
-      this.readout.active.value.textContent = `${signed(D.costs.ladder[0].active)} a year`;
+      const head = D.headline;
+      this.write([pct(head.alpha), pct(head.hit, 0), pct(head.vol), pct(head.drawdown)], WHOLE);
       if (move) this.w.stage.frame(this.shot);
       return;
     }
     // One year: its returns, and a close shot centred on its stretch.
     const y = D.years[year];
-    this.scope.textContent = `${year}${y.months < 12 ? `, first ${y.months} months` : ""}, total return`;
-    this.readout.book.value.textContent = signed(y.strategy);
-    this.readout.market.value.textContent = signed(y.market);
-    this.readout.hurdle.value.textContent = signed(y.benchmark);
-    this.readout.active.value.textContent = signed(y.active);
+    // A part year says so on its first card, as 2026 has only some months.
+    const captions = y.months < 12 ? [`Final book, ${y.months} months`, ...YEAR.slice(1)] : YEAR;
+    this.write([signed(y.strategy), signed(y.market), signed(y.benchmark), signed(y.active)], captions);
     const a = yearIndex(year);
     const b = Math.min(STEPS - 1, a + y.months);
     const cx = (xAt(a) + xAt(b)) / 2;
     const cy = (yAt(R.book[a]) + yAt(R.book[b]) + yAt(R.market[a]) + yAt(R.market[b])) / 4;
     if (move) this.w.stage.frame({ eye: [cx + 1.5, cy + 1.2, 9.5], look: [cx, cy, -1], drift: 0.3, shift: 0.1 });
     this.w.sound.tick(1.1, 0.6);
+  }
+
+  // Writes each card's value over its caption.
+  private write(values: string[], captions: string[]) {
+    this.cards.forEach((card, i) => {
+      card.value.textContent = values[i] ?? "";
+      card.caption.textContent = captions[i] ?? "";
+    });
   }
 
   // Draws the lines from January 2021, a shockwave at the 2022 crash.

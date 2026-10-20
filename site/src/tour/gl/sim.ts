@@ -62,7 +62,7 @@ export function blank() {
 
 // Velocity pass: spring to target, curl flow, pointer push and ripple.
 const velocity = /* glsl */ `
-uniform float uTime, uDt, uSwitch, uStagger, uStiff, uDamp, uFlow, uFlowScale, uSpin;
+uniform float uTime, uCalm, uDt, uSwitch, uStagger, uStiff, uDamp, uFlow, uFlowScale, uSpin;
 uniform vec3 uRayO, uRayD, uWaveC;
 uniform float uMouse, uMouseR, uWaveT, uWaveAmp, uWaveSpeed;
 uniform sampler2D tPrev, tNext;
@@ -71,7 +71,7 @@ ${simplex}
 vec3 orbit(vec4 t) {
   if (t.w >= 0.0) return t.xyz;
   float r = length(t.xz);
-  float a = uTime * uSpin * 1.8 / (1.0 + 0.14 * r);
+  float a = uCalm * uSpin * 1.8 / (1.0 + 0.14 * r);
   float c = cos(a), s = sin(a);
   return vec3(c * t.x - s * t.z, t.y, s * t.x + c * t.z);
 }
@@ -84,7 +84,7 @@ void main() {
   vec3 target = orbit(t);
   float k = uStiff * (0.65 + 0.7 * h);
   vec3 a = (target - p) * k - v * uDamp * sqrt(k);
-  a += curl(p * uFlowScale + vec3(0.0, uTime * 0.07, h)) * uFlow * (0.6 + h);
+  a += curl(p * uFlowScale + vec3(0.0, uCalm * 0.07, h)) * uFlow * (0.6 + h);
   vec3 off = p - uRayO;
   vec3 side = off - uRayD * dot(off, uRayD);
   float d2 = dot(side, side);
@@ -119,7 +119,7 @@ const vertex = /* glsl */ `
 attribute vec2 ref;
 attribute float index;
 uniform sampler2D tPos, tPrev, tNext, tPrevC, tNextC;
-uniform float uTime, uSwitch, uStagger, uDur, uScale, uFocus, uAperture, uHover, uSelect, uDim;
+uniform float uTime, uCalm, uSwitch, uStagger, uDur, uScale, uFocus, uAperture, uHover, uSelect, uDim;
 varying vec4 vColor;
 ${hash}
 void main() {
@@ -132,7 +132,7 @@ void main() {
   float depth = max(-mv.z, 0.1);
   float blur = clamp(abs(depth - uFocus) * uAperture, 0.0, 3.0);
   float lit = (index == uHover || index == uSelect) ? 1.0 : 0.0;
-  float twinkle = 0.85 + 0.15 * sin(uTime * (1.5 + 3.0 * h) + h * 40.0);
+  float twinkle = 0.85 + 0.15 * sin(uCalm * (1.5 + 3.0 * h) + h * 40.0);
   gl_PointSize = size * (1.0 + 1.6 * lit) * uScale * (1.0 + blur) / depth;
   vColor = vec4(c.rgb * (1.0 + 1.5 * lit), c.a * twinkle * uDim / (1.0 + blur * blur * 0.8));
   if (size <= 0.0 || c.a <= 0.0) gl_PointSize = 0.0;
@@ -202,9 +202,10 @@ export class Sim {
     };
     this.targets = [texture(blank.pos), texture(blank.pos)];
     this.colors = [texture(blank.col), texture(blank.col)];
-    // Shared by reference, so the points see the same time and slots.
+    // Shared by reference; uTime times switches, uCalm the slowable drift.
     this.uniforms = {
       uTime: { value: 0 },
+      uCalm: { value: 0 },
       uDt: { value: 1 / 60 },
       uSwitch: { value: -100 },
       uStagger: { value: 1.2 },
@@ -256,6 +257,7 @@ export class Sim {
         tPrevC: { value: this.colors[0] },
         tNextC: { value: this.colors[1] },
         uTime: this.uniforms.uTime,
+        uCalm: this.uniforms.uCalm,
         uSwitch: this.uniforms.uSwitch,
         uStagger: this.uniforms.uStagger,
         uDur: { value: 1.4 },
@@ -321,8 +323,9 @@ export class Sim {
   }
 
   // Runs both passes one frame and hands the new positions to the points.
-  step(time: number, dt: number) {
+  step(time: number, dt: number, calm = time) {
     this.uniforms.uTime.value = time;
+    this.uniforms.uCalm.value = calm;
     this.uniforms.uDt.value = dt;
     this.gpu.compute();
     this.m.tPos.value = this.gpu.getCurrentRenderTarget(this.pos).texture;

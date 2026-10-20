@@ -1,11 +1,12 @@
 import gsap from "gsap";
 import * as THREE from "three";
-import { D, monthName, num, plus, signed } from "../../shared/data";
+import { D, monthName, num, pct, plus, signed } from "../../shared/data";
 import { clamp } from "../../shared/math";
 import { Formation } from "../gl/sim";
 import { rim } from "../gl/shapes";
 import { h } from "../../shared/dom";
-import { fill, months, nearest, type Player, stat } from "../ui";
+import { corners } from "../layout";
+import { box, fill, fold, months, nearest, type Player, stat } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 
 // Floor of 64 by 40 dots 0.42 apart, its height, and tilt per return.
@@ -88,32 +89,38 @@ export class Neutral extends Scene {
     this.group.add(this.gyro);
 
     const head = D.headline;
-    const outside = Math.round(D.beta.outside_noise * Object.keys(D.beta.rolling).length);
+    // The months the S&P 500 fell, and in how many the book still rose.
+    const down = D.race.market_monthly.flatMap((m, i) => (m < 0 ? [D.race.book_monthly[i] ?? 0] : []));
+    const gained = down.filter((b) => b > 0).length;
     this.panel.append(
       ...header(
-        "Neutral to the market",
-        "The market tilts. <em>The book stays level.</em>",
-        "A small model learns how much each stock moves with the market, and the optimizer keeps the book's predicted beta at zero. The floor tilts with each month's S&P 500 return, and the gyroscope leans only as far as the book's measured beta.",
+        "The market tilts, <em>we stay level</em>",
+        "LightGBM predicts each stock's beta, and the optimizer holds ours at zero. The floor tilts with the S&P 500, the gyroscope only with our measured beta.",
       ),
       stats(
-        stat(plus(head.beta), `Realized beta, standard error ${num(head.beta_se)}`).el,
-        stat(num(head.correlation), "Correlation with the S&P 500").el,
-        stat(`${outside} of ${Object.keys(D.beta.rolling).length}`, "Rolling 12-month betas outside the noise band").el,
+        stat(plus(head.beta), "Monthly beta").el,
+        stat(`${gained} of ${down.length}`, "Down months gained").el,
+        // The share of the book's monthly moves the S&P 500 explains.
+        stat(pct(head.correlation ** 2), "Explained by S&P").el,
       ),
     );
     const picker = months("beta-month", 0.7, this);
     this.player = picker.player;
     this.input = picker.input;
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2" },
+      box(
+        "w-[min(420px,calc(100vw-32px))] gap-2",
         h("div", { class: "flex items-center justify-between gap-3" }, this.when, this.player.button),
         this.moves,
         this.input,
         h("div", { class: "flex items-center gap-4" }, this.gauge, this.note),
       ),
     );
+    // Small screens: the gauge and its note fold behind a Gauge chip.
+    const glass = this.controls.firstElementChild as HTMLElement;
+    fold(glass, glass.firstElementChild as HTMLElement, [glass.lastElementChild!], "Gauge");
+    this.frame = corners(-4.6, -3.4, -3, 4.6, 3.4, 3);
+    this.zoomCap = 1.4;
   }
 
   // Floor tilted by the month's return, cyan if up and orange if down.

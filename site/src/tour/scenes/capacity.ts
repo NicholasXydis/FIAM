@@ -4,7 +4,8 @@ import { at, D, money, num, pct } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { glow, rim, tube } from "../gl/shapes";
 import { h } from "../../shared/dom";
-import { chip, Label, nearest, slider, swatch } from "../ui";
+import { corners } from "../layout";
+import { box, chip, Label, nearest, slider, swatch } from "../ui";
 import { C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
@@ -76,18 +77,23 @@ export class Capacity extends Scene {
         this.group.add(dot);
       }
       const end = book.rows[book.rows.length - 1];
+      // On small screens the table names the books, so ends show the IR.
       this.addLabel(
         new Label(
           `${swatch(s.mark)}${book.label} <b class="text-ink">${num(end.ir)}</b>`,
           [X(end.capital) + 0.4, Y(end.ir) + (key === "v2" ? 0.45 : key === "final v3" ? -0.15 : 0), s.z],
           "left",
         ),
-      );
+      ).small = { html: `${swatch(s.mark)}<b class="text-ink">${num(end.ir)}</b>` };
     }
     // Fund-size labels along the top, over an IR of 1.25.
     for (const c of [1e6, 1e7, 1e8, 1e9, 5e9])
-      this.addLabel(new Label(money(c), [X(c), Y(1.25) + 0.5, -0.8], "center"));
-    this.addLabel(new Label("IR 0 · the hurdle", [-8.7, 0.1, 2.4], "right"));
+      this.addLabel(new Label(money(c), [X(c), Y(1.25) + 0.5, -0.8], "center")).moves = false;
+    // On small screens the hurdle's label sits under its line, inside.
+    this.addLabel(new Label("IR 0 · the hurdle", [-8.7, 0.1, 2.4], "right")).small = {
+      at: new THREE.Vector3(-8.4, -0.55, 2.4),
+      align: "left",
+    };
     // A post at the slider's size and a glow where it meets each curve.
     this.plane = new THREE.Mesh(
       new THREE.BoxGeometry(0.025, 7.4, 0.025),
@@ -109,9 +115,8 @@ export class Capacity extends Scene {
     const last = final.rows[final.rows.length - 1];
     this.panel.append(
       ...header(
-        "How much money can it run?",
         `Still paying <em>at ${money(last.capital)}</em>`,
-        `Bigger funds pay more to trade. Our first book earns the most dollars near ${money(v1.peak)} and stops beating the hurdle near ${money(+v1.break_even)}. The final book slows its trading as the fund grows, and at ${money(last.capital)} it still makes an IR of ${num(last.ir)}, about ${money(last.dollars)} a year above cash. Dots mark the sizes we ran, and the lines join them on a log scale.`,
+        `Bigger funds pay more to trade. Our first book stops beating the hurdle near ${money(+v1.break_even)}, but the final book trades slower as it grows. Drag to try any size.`,
       ),
     );
     // The slider runs in log10 dollars and snaps to $5B within 0.004.
@@ -121,9 +126,8 @@ export class Capacity extends Scene {
       this.set(10 ** (HI - +this.input.value < 0.004 ? HI : +this.input.value));
     });
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2" },
+      box(
+        "w-[min(420px,calc(100vw-32px))] gap-2",
         h(
           "div",
           { class: "flex items-center justify-between gap-3" },
@@ -149,6 +153,8 @@ export class Capacity extends Scene {
       );
     }
     this.set(1e7);
+    // Small screens fit the curves and their floor into the band.
+    this.frame = corners(-8.6, -5, -3.2, 8.6, 2.6, 1.6);
   }
 
   // A curtain under each curve, densest at the line, over a lattice at 0.

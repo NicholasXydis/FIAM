@@ -188,6 +188,10 @@ export class Stage {
   private shift = 0;
   private lens = 0;
   private size = "";
+  // On small screens, the zoom and offset that fit the scene to its band.
+  view: { zoom: number; ox: number; oy: number } | null = null;
+  private shown = { zoom: 1, ox: 0, oy: 0 };
+  private rest = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
 
   // Builds the renderer, sky, stars and passes, then fits the window.
   constructor(canvas: HTMLCanvasElement) {
@@ -258,7 +262,21 @@ export class Stage {
 
   // The particles' size scale in pixels for a world size of 1 at depth 1.
   get pixel() {
-    return innerHeight * this.ratio * 0.2;
+    return innerHeight * this.ratio * 0.2 * this.camera.zoom;
+  }
+
+  // The camera where its springs are headed, to fit a shot to a band.
+  restCamera() {
+    const aspect = innerWidth / innerHeight;
+    const back = aspect < 1 ? Math.min(2.8, Math.max(1, 1.25 / aspect)) : 1;
+    const c = this.rest;
+    c.position.copy(this.eye.target).sub(this.look.target).multiplyScalar(back).add(this.look.target);
+    c.lookAt(this.look.target);
+    Object.assign(c, { fov: this.fov, aspect, zoom: 1 });
+    c.clearViewOffset();
+    c.updateProjectionMatrix();
+    c.updateMatrixWorld(true);
+    return c;
   }
 
   // Fits the canvas and passes to the window, skipping an unchanged size.
@@ -317,43 +335,62 @@ export class Stage {
   }
 
   // Moves the camera along its springs with drift and parallax.
-  update(time: number, dt: number, free: boolean) {
+  update(time: number, dt: number, hold = false) {
     // Drift is quartered for reduced motion; parallax eases to the pointer.
     const d = this.drift * (this.reduced ? 0.25 : 1);
-    this.parallax.lerp(this.pointer, 1 - Math.exp(-dt * 2));
-    if (!free) {
-      this.eye.step(dt);
-      this.look.step(dt);
-      this.wobble.set(
-        Math.sin(time * 0.11) * 0.9 * d + this.parallax.x * 1.1 * d,
-        Math.sin(time * 0.083) * 0.45 * d + this.parallax.y * 0.7 * d,
-        Math.cos(time * 0.07) * 0.6 * d,
-      );
-      // Portrait screens pull the camera back, up to 2.8 times, to fit.
-      const aspect = innerWidth / innerHeight;
-      const back = aspect < 1 ? Math.min(2.8, Math.max(1, 1.25 / aspect)) : 1;
-      this.camera.position
-        .copy(this.eye.value)
-        .sub(this.look.value)
-        .multiplyScalar(back)
-        .add(this.look.value)
-        .add(this.wobble);
-      this.camera.lookAt(this.look.value);
-      // The lens shift (none at 760 px or less) and fov ease to the shot.
-      const lens = innerWidth > 760 ? this.shift : 0;
-      if (Math.abs(this.camera.fov - this.fov) > 0.01 || Math.abs(this.lens - lens) > 1e-4) {
-        this.camera.fov += (this.fov - this.camera.fov) * (1 - Math.exp(-dt * 3));
-        this.lens += (lens - this.lens) * (1 - Math.exp(-dt * 2.5));
-        this.camera.setViewOffset(innerWidth, innerHeight, -innerWidth * this.lens, 0, innerWidth, innerHeight);
-        this.camera.updateProjectionMatrix();
-      }
+    // Held for a hover, the camera stops following the pointer.
+    if (!hold) this.parallax.lerp(this.pointer, 1 - Math.exp(-dt * 2));
+    this.eye.step(dt);
+    this.look.step(dt);
+    this.wobble.set(
+      Math.sin(time * 0.11) * 0.9 * d + this.parallax.x * 1.1 * d,
+      Math.sin(time * 0.083) * 0.45 * d + this.parallax.y * 0.7 * d,
+      Math.cos(time * 0.07) * 0.6 * d,
+    );
+    // Portrait screens pull the camera back, up to 2.8 times, to fit.
+    const aspect = innerWidth / innerHeight;
+    const back = aspect < 1 ? Math.min(2.8, Math.max(1, 1.25 / aspect)) : 1;
+    this.camera.position
+      .copy(this.eye.value)
+      .sub(this.look.value)
+      .multiplyScalar(back)
+      .add(this.look.value)
+      .add(this.wobble);
+    this.camera.lookAt(this.look.value);
+    // The lens shift, off at 760 px or less or in a band, eases in.
+    const lens = innerWidth > 760 && !this.view ? this.shift : 0;
+    if (Math.abs(this.camera.fov - this.fov) > 0.01 || Math.abs(this.lens - lens) > 1e-4) {
+      this.camera.fov += (this.fov - this.camera.fov) * (1 - Math.exp(-dt * 3));
+      this.lens += (lens - this.lens) * (1 - Math.exp(-dt * 2.5));
+      this.camera.setViewOffset(innerWidth, innerHeight, -innerWidth * this.lens, 0, innerWidth, innerHeight);
+      this.camera.updateProjectionMatrix();
     }
+    this.fitView(dt);
     // Sky and stars travel with the camera, the stars at 0.92 of its move.
     this.sky.position.copy(this.camera.position);
     this.stars.position.copy(this.camera.position).multiplyScalar(0.92);
     this.sky.material.uniforms.uTime.value = time;
     this.starUniforms.uTime.value = time;
     this.grade.uniforms.uTime.value = time;
+  }
+
+  // Eases the camera to the band's zoom and offset, or back to none.
+  private fitView(dt: number) {
+    const to = this.view ?? { zoom: 1, ox: 0, oy: 0 };
+    const s = this.shown;
+    if (!this.view && this.camera.zoom === 1 && s.ox === 0 && s.oy === 0) return;
+    const k = 1 - Math.exp(-dt * 3);
+    const near = Math.abs(to.zoom - s.zoom) < 1e-3 && Math.abs(to.ox - s.ox) < 0.5 && Math.abs(to.oy - s.oy) < 0.5;
+    if (near) Object.assign(s, to);
+    else
+      Object.assign(s, {
+        zoom: s.zoom + (to.zoom - s.zoom) * k,
+        ox: s.ox + (to.ox - s.ox) * k,
+        oy: s.oy + (to.oy - s.oy) * k,
+      });
+    this.camera.zoom = s.zoom;
+    this.camera.setViewOffset(innerWidth, innerHeight, s.ox - innerWidth * this.lens, s.oy, innerWidth, innerHeight);
+    this.camera.updateProjectionMatrix();
   }
 
   // Draws the frame through every pass.

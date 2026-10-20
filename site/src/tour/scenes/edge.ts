@@ -5,7 +5,8 @@ import { blank } from "../gl/sim";
 import { glow } from "../gl/shapes";
 import { Pile } from "../physics/pile";
 import { h } from "../../shared/dom";
-import { chip, count, Label, rayAt } from "../ui";
+import { corners } from "../layout";
+import { asButton, box, count, fold, Label, rayAt } from "../ui";
 import { C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
@@ -22,35 +23,65 @@ const OURS = E.irs.length;
 const COLOR: Record<string, string> = {
   null: "var(--ink-3)",
   alt: "var(--m-brand)",
-  live: "var(--m-long)",
   ours: "var(--m-ours)",
 };
 
-// Benchmark bars on one IR axis, -2.4 to 1.2, zero marked, all from 0.
-function ladder() {
-  const lo = -2.4;
-  const hi = 1.2;
-  const at = (v: number) => ((v - lo) / (hi - lo)) * 100;
-  return h(
-    "div",
-    { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2" },
-    h("p", { class: "eyebrow" }, "Every benchmark · same money · IR"),
-    ...E.ladder.map((row) => {
-      const a = at(Math.min(0, row.ir));
-      const b = at(Math.max(0, row.ir));
-      return h(
+// Each benchmark in plain words; the data's own label if not listed.
+const WORDS: Record<string, string> = {
+  "Final book": "Our final book",
+  "Equal weights on our own names": "Our stocks, equal sizes",
+  "Our rule on the 500 largest stocks": "Our rule, 500 biggest only",
+  "Equal weights on our score": "Our score, equal sizes",
+  "Our favourite names held still": "Hindsight picks, held still",
+  "Random large-cap books, average": "Random books, average",
+};
+// The benchmarks best first, without the projected live figure.
+const RANKED = E.ladder.filter((row) => row.kind !== "live").sort((a, b) => b.ir - a.ir);
+// The bars' IR span, and where zero, the hurdle, sits across it.
+const BAR_LO = -2.4;
+const BAR_HI = 1.2;
+const at = (v: number) => ((v - BAR_LO) / (BAR_HI - BAR_LO)) * 100;
+
+// The ranking: one bar per row, all from a zero line marked the hurdle.
+function ladder(point: (row: number, keep: boolean) => void) {
+  const zero = `position:absolute;top:0;bottom:0;left:${at(0)}%;width:1px;background:rgb(237 233 246 / .28)`;
+  const rows = RANKED.map((row, i) => {
+    const a = at(Math.min(0, row.ir));
+    const b = at(Math.max(0, row.ir));
+    const el = h(
+      "div",
+      {
+        class: "bar-row",
+        "aria-label": `${WORDS[row.label] ?? row.label}, IR ${num(row.ir)}`,
+      },
+      h("span", { class: row.kind === "ours" ? "text-ink" : "" }, WORDS[row.label] ?? row.label),
+      h("b", { class: "figure text-right text-ink font-medium" }, num(row.ir)),
+      h(
         "div",
-        { class: "bar-row" },
-        h("span", { class: row.kind === "ours" ? "text-ink" : "" }, row.label),
-        h("b", { class: "figure text-right text-ink font-medium" }, num(row.ir)),
-        h(
-          "div",
-          { class: "track" },
-          h("i", { style: `left:${at(0) - 0.25}%;width:0.5%;background:rgb(237 233 246 / .35)` }),
-          h("i", { "data-bar": true, style: `left:${a}%;width:${b - a}%;background:${COLOR[row.kind]}` }),
-        ),
-      );
-    }),
+        { class: "track" },
+        h("i", {
+          "data-bar": true,
+          "data-side": row.ir < 0 ? "left" : "right",
+          style: `left:${a}%;width:${b - a}%;background:${COLOR[row.kind]}`,
+        }),
+      ),
+    );
+    // Hover or focus shows a row on the axis; a click keeps it there.
+    el.addEventListener("pointerenter", () => point(i, false));
+    el.addEventListener("pointerleave", () => point(-1, false));
+    el.addEventListener("focus", () => point(i, false));
+    el.addEventListener("blur", () => point(-1, false));
+    return asButton(el, () => point(i, true));
+  });
+  return box(
+    "w-[min(420px,calc(100vw-32px))] gap-2",
+    h(
+      "div",
+      { class: "flex justify-between eyebrow", style: `position:relative` },
+      h("span", {}, "How we rank · IR"),
+      h("span", { style: `position:absolute;left:${at(0)}%;transform:translateX(-50%)` }, "hurdle"),
+    ),
+    h("div", { class: "flex flex-col gap-2", style: "position:relative" }, h("i", { style: zero }), ...rows),
   );
 }
 
@@ -64,7 +95,12 @@ export class Edge extends Scene {
   private best: Label;
   private flash: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
   private beaten = h("b", { class: "figure" }, "0");
-  private bars = ladder();
+  // The row shown on the axis, the one a click keeps, and its pin.
+  private kept = -1;
+  private pin: Label;
+  private post: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+  private tops = new Map<number, number>();
+  private bars = ladder((row, keep) => this.point(row, keep));
 
   // Rests each ball by its IR bin, random ones from 0.6 s, ours at 5.4 s.
   constructor(w: World) {
@@ -97,6 +133,11 @@ export class Edge extends Scene {
         .lerp(lilac, r() * 0.7)
         .multiplyScalar(0.9),
     );
+    // Each column's pile height, so a pin can stand clear of the balls.
+    rests.forEach((p, i) => {
+      const column = Math.floor(E.irs[i]! / BIN);
+      this.tops.set(column, Math.max(this.tops.get(column) ?? 0, p.y + DIAM / 2));
+    });
     // The final book, last and gold, is a bigger ball of radius 0.42.
     rests.push(new THREE.Vector3(X(E.final), 0.42, 0));
     starts.push(5.4);
@@ -108,11 +149,19 @@ export class Edge extends Scene {
       else this.w.sound.tick(1.4 + Math.random() * 0.8, 0.12);
     };
     this.flash = glow(C.gold, 7, 0);
+    // A thin post and label that mark a ranked row on the IR axis.
+    this.post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.03, 1, 0.03),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
+    );
+    this.post.userData.keep = true;
+    this.group.add(this.post);
+    this.pin = this.addLabel(new Label("", [0, 0, 0], "center"));
     this.flash.userData.keep = true;
     this.flash.position.copy(rests[OURS]);
     this.group.add(this.pile.mesh, this.flash);
     for (const v of [-3, -2, -1, 0, 1]) {
-      this.addLabel(new Label(v === 0 ? "0 · the hurdle" : num(v, 0), [X(v), -0.55, 1.2], "center"));
+      this.addLabel(new Label(v === 0 ? "0 · the hurdle" : num(v, 0), [X(v), -0.55, 1.2], "center")).moves = false;
     }
     this.ours = this.addLabel(
       new Label(`Final book <b class="text-gold">${num(E.final)}</b>`, [X(E.final), 1.9, 0], "center", "big"),
@@ -120,9 +169,8 @@ export class Edge extends Scene {
     this.best = this.addLabel(new Label(`Best random book ${num(E.best)}`, [X(E.best), 2.4, 0], "center"));
     this.panel.append(
       ...header(
-        `Is it luck? · ${int(E.draws)} random books`,
-        `${int(E.draws)} random books. <em>None comes close.</em>`,
-        `Random long-short books from the 500 largest stocks, each with our number of positions, our gross, our holding time and our costs. They average an IR of ${num(E.mean)} and the best reaches ${num(E.best)}. The final book makes ${num(E.final)}. Hover a ball for its book, or click one to make it jump.`,
+        "Is it <em>luck?</em>",
+        "Each ball is a random long-short book of the 500 largest stocks, with our position counts, gross, holding time and costs. All land below the hurdle.",
       ),
       h(
         "p",
@@ -131,10 +179,23 @@ export class Edge extends Scene {
         h("span", { class: "text-ink-3" }, ` of ${int(E.draws)} beaten`),
       ),
     );
-    this.controls.append(
+    this.controls.append(this.bars);
+    // Small screens: the ranking shows ours and the random average.
+    const more = h("div", { class: "small-only justify-end" });
+    this.bars.append(more);
+    const rows = [...this.bars.querySelectorAll(".bar-row")];
+    fold(
       this.bars,
-      chip("Drop them again", () => this.drop()),
+      more,
+      rows.filter((r) => !/Our final book|Random books/.test(r.textContent ?? "")),
+      "Show all",
     );
+    this.ours.small = { at: new THREE.Vector3(X(E.final), 2.75, 0) };
+    this.best.small = { align: "left", at: new THREE.Vector3(X(E.best) - 0.15, 2.4, 0) };
+    this.pin.fits = false;
+    this.pin.prio = 4;
+    this.frame = corners(-9.6, -0.8, -1.2, 9.6, 4.2, 1.2);
+    this.zoomCap = 1.4;
   }
 
   // The IR axis with ticks, a cyan post at zero and a dusty floor.
@@ -179,13 +240,50 @@ export class Edge extends Scene {
   // Drops the pile and fills the benchmark bars.
   override enter() {
     this.drop();
-    for (const l of this.labels) l.shown = l !== this.ours && l !== this.best;
+    for (const l of this.labels) l.shown = l !== this.ours && l !== this.best && l !== this.pin;
     const bars = this.bars.querySelectorAll<HTMLElement>("[data-bar]");
+    // Each bar grows out of the hurdle line, left or right.
     gsap.fromTo(
       bars,
       { scaleX: 0 },
-      { scaleX: 1, transformOrigin: "left center", duration: 1, stagger: 0.12, delay: 0.8, ease: "expo.out" },
+      {
+        scaleX: 1,
+        transformOrigin: (_: number, el: HTMLElement) =>
+          el.dataset["side"] === "left" ? "right center" : "left center",
+        duration: 1,
+        stagger: 0.12,
+        delay: 0.8,
+        ease: "expo.out",
+      },
     );
+  }
+
+  // Marks a ranked row on the axis above its pile, or clears the mark.
+  point(row: number, keep: boolean) {
+    if (keep) this.kept = this.kept === row ? -1 : row;
+    const show = keep || row < 0 ? this.kept : row;
+    const r = RANKED[show];
+    this.bars.querySelectorAll(".bar-row").forEach((el, i) => el.setAttribute("aria-pressed", String(i === this.kept)));
+    if (!r || r.kind === "ours") {
+      this.pin.shown = false;
+      this.post.material.opacity = 0;
+      if (r) gsap.fromTo(this.flash.scale, { x: 0.6, y: 0.6 }, { x: 1.4, y: 1.4, duration: 0.8, ease: "expo.out" });
+      return;
+    }
+    const top = (this.tops.get(Math.floor(r.ir / BIN)) ?? 0) + 0.9;
+    this.post.scale.y = top;
+    this.post.position.set(X(r.ir), top / 2, 0);
+    this.post.material.opacity = 0.6;
+    this.pin.at.set(X(r.ir), top + 0.35, 0);
+    this.pin.set(`${WORDS[r.label] ?? r.label} <b class="text-ink">${num(r.ir)}</b>`);
+    this.pin.shown = true;
+    this.w.sound.tick(1.2, 0.4);
+  }
+
+  // Clears the mark on the way out, so the next visit starts clean.
+  override leave() {
+    this.kept = -1;
+    this.point(-1, false);
   }
 
   // Steps the falling balls on the scene's own clock, reset at each drop.

@@ -1,17 +1,48 @@
-import { D, int, pct, prose, signed } from "../../shared/data";
+import { book, D, MONTH_COUNT, monthName, prose, signed, weights } from "../../shared/data";
 import { Formation } from "../gl/sim";
 import { h } from "../../shared/dom";
-import { chip, SideCard, stat } from "../ui";
+import { corners, round } from "../layout";
+import { asButton, box, chip, finder, SideCard, spark, stat } from "../ui";
 import { C, dust, header, pick, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
 // The positions (weights stored in 100000ths of the fund) and reasons.
 const S = D.september.book.map(([ticker, name, w]) => ({ ticker, name: name || "Name not on file", weight: w / 1e5 }));
 const WHY = new Map(D.explained.map((e) => [e.ticker, e]));
-// Long count, gross and net exposure, and the sphere's radius.
-const LONGS = S.filter((s) => s.weight > 0).length;
-const GROSS = S.reduce((t, s) => t + Math.abs(s.weight), 0);
-const NET = S.reduce((t, s) => t + s.weight, 0);
+// August's tickers by side, so September can mark what is new.
+const AUGUST = new Map(book(MONTH_COUNT - 1).map((x) => [D.stocks.ticker[x.stock], Math.sign(x.weight)]));
+// Each pill's stocks: longs, shorts, or new since August by ticker.
+const GROUPS = {
+  long: (i: number) => S[i].weight > 0,
+  short: (i: number) => S[i].weight < 0,
+  fresh: (i: number) => !!S[i].ticker && AUGUST.get(S[i].ticker) !== Math.sign(S[i].weight),
+};
+type Group = keyof typeof GROUPS;
+// Each past stock by ticker; of two sharing one, the latest held wins.
+const PAST = new Map<string, number>();
+for (let m = 0; m < MONTH_COUNT; m++) for (const x of book(m)) PAST.set(D.stocks.ticker[x.stock] ?? "", x.stock);
+
+// A position's past: months in the book, and since when on this side.
+function past(ticker: string, weight: number) {
+  if (!ticker) return "No ticker on file, so its history cannot be traced.";
+  const stock = PAST.get(ticker);
+  if (stock === undefined) return "New to the book this month.";
+  const w = weights(stock);
+  const held = w.filter((v) => v !== 0).length;
+  const side = Math.sign(weight);
+  // Walk back from August while it held the same side.
+  let start = MONTH_COUNT;
+  while (start > 0 && Math.sign(w[start - 1] ?? 0) === side) start--;
+  const months = `In the book ${held} of ${MONTH_COUNT} months`;
+  if (start < MONTH_COUNT) return `${months}, ${side > 0 ? "long" : "short"} since ${monthName(D.months[start]!)}.`;
+  let last = MONTH_COUNT - 1;
+  while (last >= 0 && !w[last]) last--;
+  return `New this month. ${months}, last in ${monthName(D.months[last]!)}.`;
+}
+
+// The first sentence of a written reason, short enough for a tooltip.
+const gist = (why: string) => prose(why).split(/(?<=\.)\s/)[0];
+// How far out the positions sit on their sphere, in scene units.
 const RADIUS = 5.2;
 
 // September's book: every position, the explainer's reasons for ten.
@@ -20,11 +51,20 @@ export class September extends Scene {
   summary = "What the final book holds now, with the explainer's reasons for ten positions.";
   private f = new Formation();
   private card: SideCard;
-  private told = S.map((s, i) => (WHY.has(s.ticker) ? i : -1)).filter((i) => i >= 0);
   private hovered = -1;
-  private chips: HTMLButtonElement[] = [];
+  // The pill pressed, whose stocks stay lit while the rest dim.
+  private only: Group | null = null;
+  private pills: HTMLElement[] = [];
+  // Search over September's positions; a pick opens its card.
+  private search = finder(
+    "NRDS",
+    "Not in the September book",
+    S.map((s) => s.ticker),
+    D.september.book.map((b) => b[1]),
+    (i) => this.open(i),
+  );
 
-  // Lays out the sphere once, and the chips for the ten written up.
+  // Lays out the sphere once, then the panel and the reason card.
   constructor(w: World) {
     super(w);
     this.shot = { eye: [0, 3.2, 17.5], look: [0, 0, 0], drift: 0.7, shift: 0.14 };
@@ -33,26 +73,37 @@ export class September extends Scene {
     this.build();
     this.panel.append(
       ...header(
-        "September 2026 · decided on 31 August 2026",
         "The book for <em>September</em>",
-        "The same code, run one month past the record on data the backtest never saw. This is what the final book holds now, longs above and shorts below. Gold marks the ten positions our explainer agent wrote up. Click one to read why we hold it.",
+        "The same code, run one month past the record on data the backtest never saw. Longs sit above, shorts below, and gold ones come with a written reason.",
       ),
-      stats(
-        stat(int(S.length), `Positions, ${LONGS} long and ${S.length - LONGS} short`).el,
-        stat(pct(GROSS), "Gross exposure").el,
-        stat(pct(Math.abs(NET) < 0.0005 ? 0 : NET), "Net exposure").el,
-      ),
+      stats(...this.pillsFor()),
     );
-    this.chips = this.told.map((i) => chip(S[i].ticker, () => this.open(i), false));
-    this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2" },
-        h("p", { class: "eyebrow" }, "Written up by the explainer"),
-        h("div", { class: "flex flex-wrap gap-1.5" }, ...this.chips),
-      ),
-    );
+    this.controls.append(box("w-[min(320px,calc(100vw-32px))] gap-2", this.search.input, this.search.matches));
     this.card = new SideCard(this.w.layer, () => this.close());
+    // Small screens fit the two discs and their ring into the band.
+    this.frame = [...round(8.4, 0), ...corners(-5.4, -5.6, -5.4, 5.4, 5.6, 5.4)];
+    this.zoomCap = 1.4;
+  }
+
+  // The three pills, each a toggle that lights its own stocks.
+  private pillsFor() {
+    const count = (g: Group) => String(S.filter((_, i) => GROUPS[g](i)).length);
+    const make = (g: Group, label: string) => {
+      const el = asButton(stat(count(g), label).el, () => this.light(this.only === g ? null : g));
+      el.setAttribute("aria-pressed", "false");
+      return el;
+    };
+    this.pills = [make("long", "Longs"), make("short", "Shorts"), make("fresh", "New this month")];
+    return this.pills;
+  }
+
+  // Lights one group's stocks and dims the rest, or lights them all.
+  light(group: Group | null) {
+    this.only = group;
+    const keys: Group[] = ["long", "short", "fresh"];
+    this.pills.forEach((p, i) => p.setAttribute("aria-pressed", String(keys[i] === group)));
+    this.build();
+    if (this.active) this.w.sim.update(this.f);
   }
 
   // Longs on the upper half-sphere, shorts below, biggest at the poles.
@@ -68,7 +119,9 @@ export class September extends Scene {
         const ring = Math.sqrt(1 - y * y);
         const a = k * GOLDEN;
         const told = WHY.has(S[i].ticker);
-        const size = (told ? 1.1 : 0.6) + Math.sqrt(Math.abs(S[i].weight) * 100) * 0.9;
+        // Out of the pressed pill's group, a stock shrinks and dims.
+        const lit = !this.only || GROUPS[this.only](i) ? 1 : 0;
+        const size = ((told ? 1.1 : 0.6) + Math.sqrt(Math.abs(S[i].weight) * 100) * 0.9) * (lit ? 1 : 0.6);
         const color = told ? C.gold : up > 0 ? C.cyan : C.orange;
         f.put(
           i,
@@ -77,7 +130,7 @@ export class September extends Scene {
           Math.sin(a) * ring * RADIUS,
           -size,
           color,
-          told ? 1.8 : 1.05,
+          (told ? 1.8 : 1.05) * (lit ? 1 : 0.18),
         );
       });
     place(longs, 1);
@@ -103,19 +156,13 @@ export class September extends Scene {
     const s = S[i];
     const why = WHY.get(s.ticker);
     this.w.sim.m.uSelect.value = i;
-    this.chips.forEach((c) => c.setAttribute("aria-pressed", String(c.textContent === s.ticker)));
     const side = s.weight > 0 ? "Long" : "Short";
-    this.card.show(
-      `${s.ticker || "No ticker"} · ${side} ${signed(s.weight, 2)}`,
-      s.name,
-      why
-        ? h("p", { class: "text-[13.5px] text-ink-2 leading-relaxed" }, prose(why.why))
-        : h(
-            "p",
-            { class: "text-[13px] text-ink-3" },
-            "The explainer wrote up ten positions, and this is not one of them.",
-          ),
-    );
+    // Every card shows the history, as slide 2 does; ten add the reason.
+    const stock = s.ticker ? PAST.get(s.ticker) : undefined;
+    const chart = stock === undefined ? [] : [h("div", { html: spark(stock, MONTH_COUNT - 1) })];
+    const story = h("p", { class: "text-[13px] text-ink-2" }, past(s.ticker, s.weight));
+    const reason = why ? [this.reason(why.why)] : [];
+    this.card.show(`${s.ticker || "No ticker"} · ${side} ${signed(s.weight, 2)}`, s.name, ...chart, story, ...reason);
     if (why) {
       this.card.el.append(
         h(
@@ -128,16 +175,28 @@ export class September extends Scene {
     this.w.sound.tick(1.3, 0.7);
   }
 
-  // Closes the card and clears the selection glow and chips.
+  // The AI's reason as its first sentence, until Read all shows the rest.
+  private reason(text: string) {
+    const full = prose(text);
+    const p = h("p", { class: "text-[13.5px] text-ink leading-relaxed" }, gist(text));
+    if (p.textContent === full) return p;
+    const more = chip("Read all", () => {
+      p.textContent = full;
+      more.remove();
+    });
+    return h("div", { class: "flex flex-col items-start gap-2" }, p, more);
+  }
+
+  // Closes the card and clears the selection glow.
   close() {
     this.card.hide();
     this.w.sim.m.uSelect.value = -1;
-    this.chips.forEach((c) => c.setAttribute("aria-pressed", "false"));
   }
 
-  // Closes the card on the way out.
+  // Closes the card and lights every stock again on the way out.
   override leave() {
     this.close();
+    if (this.only) this.light(null);
   }
 
   // Highlights the position under the pointer.
@@ -147,7 +206,8 @@ export class September extends Scene {
     this.w.sim.m.uHover.value = i;
     if (i < 0) return null;
     const s = S[i];
-    const told = WHY.has(s.ticker) ? `<br><span class="text-gold">Click to read why we hold it</span>` : "";
+    const why = WHY.get(s.ticker);
+    const told = why ? `<br>${gist(why.why)}<br><span class="text-gold">Click for the full reason</span>` : "";
     return `<strong>${s.ticker || "No ticker"}</strong> <span class="muted">${s.name}</span><br>${s.weight > 0 ? "Long" : "Short"} ${signed(s.weight, 2)} of the fund${told}`;
   }
 

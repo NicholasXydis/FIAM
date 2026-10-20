@@ -6,6 +6,7 @@ import { type Formation, N, type Sim } from "../gl/sim";
 import type { Shot, Stage } from "../gl/stage";
 import type { Sound } from "../sound";
 import { h } from "../../shared/dom";
+import { type Box, boxes, coarse, declutter, every, phone, small, stale } from "../layout";
 import { type Label } from "../ui";
 
 export { C } from "../../shared/palette";
@@ -33,7 +34,11 @@ export abstract class Scene {
   duration = 1.4;
   dwell = 14;
   physics = { stiff: 9, damp: 1.25, flow: 0.5, spin: 0.04, mouse: 1 };
+  // What small screens fit into their band: a world box, and a zoom cap.
+  frame: THREE.Vector3[] = [];
+  zoomCap = 1.3;
   active = false;
+  private covers: Box[] = [];
   protected timeline: gsap.core.Timeline | null = null;
 
   // Mounts panel and controls on the page, and the group unseen in 3D.
@@ -47,11 +52,6 @@ export abstract class Scene {
 
   // Where every particle rests here, handed to sim.show on arrival.
   abstract formation(): Formation;
-
-  // Seconds on the simulation's clock, read from its uTime uniform.
-  get time() {
-    return this.w.sim.u.uTime.value as number;
-  }
 
   // Puts a label on the page and in the list hide and place walk.
   addLabel(label: Label) {
@@ -129,15 +129,24 @@ export abstract class Scene {
   // Pins each label to its 3D point on screen, called every frame.
   place(camera: THREE.Camera) {
     for (const l of this.labels) l.place(camera);
+    if (!small() || !every(4)) return;
+    // On small screens, labels step clear of boxes and of each other.
+    if (every(12) || !this.covers.length) this.covers = boxes(this);
+    declutter(this.labels, this.covers);
   }
 }
 
-// Panel opening: eyebrow, headline with its emphasis, body, rising in.
-export const header = (eyebrow: string, title: string, body: string) => [
-  h("p", { class: "eyebrow", "data-rise": true }, eyebrow),
-  h("h2", { class: "headline text-[44px] md:text-[56px]", "data-rise": true, html: title }),
-  h("p", { class: "body", "data-rise": true }, body),
-];
+// Panel opening: the headline with its emphasis, then the body.
+export function header(title: string, body: string) {
+  const text = h("p", { class: "body", "data-rise": true }, coarse() ? body.replace(/\bClick\b/g, "Tap") : body);
+  // On phones a clamped body opens and closes with a tap.
+  text.addEventListener("click", () => {
+    if (!phone()) return;
+    text.classList.toggle("open");
+    stale();
+  });
+  return [h("h2", { class: "headline text-[44px] md:text-[56px]", "data-rise": true, html: title }), text];
+}
 
 // A panel's row of figures, rising in with the rest.
 export const stats = (...items: HTMLElement[]) => h("div", { class: "stats", "data-rise": true }, ...items);
@@ -169,7 +178,7 @@ function where(f: Formation, i: number, sim: Sim, out = v) {
   out.set(f.x(i), f.y(i), f.z(i));
   if (f.pos[i * 4 + 3] >= 0) return out;
   const a =
-    ((sim.u.uTime.value as number) * (sim.u.uSpin.value as number) * 1.8) / (1 + 0.14 * Math.hypot(out.x, out.z));
+    ((sim.u.uCalm.value as number) * (sim.u.uSpin.value as number) * 1.8) / (1 + 0.14 * Math.hypot(out.x, out.z));
   const c = Math.cos(a);
   const s = Math.sin(a);
   return out.set(c * out.x - s * out.z, out.y, s * out.x + c * out.z);

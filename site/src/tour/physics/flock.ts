@@ -29,8 +29,8 @@ export class Flock {
   goals: THREE.Vector3[] = [];
   mesh: THREE.InstancedMesh;
   lines: THREE.LineSegments;
-  // The herd the scene lights up, -1 for all; the others dim to 12%.
-  focus = -1;
+  // The herds the scene lights up, all when empty; the rest dim to 12%.
+  focus: number[] = [];
   private colors: THREE.Color[];
 
   // Agents start in a 12 unit cube, with instanced balls and trail lines.
@@ -129,7 +129,7 @@ export class Flock {
       b.trail[1] = b.p.y;
       b.trail[2] = b.p.z;
       // Out of focus an agent shrinks to 0.6 and its trail dims to 12%.
-      const lit = this.focus < 0 || this.focus === b.herd ? 1 : 0.12;
+      const lit = !this.focus.length || this.focus.includes(b.herd) ? 1 : 0.12;
       s.setScalar(lit > 0.5 ? 1 : 0.6);
       m.compose(b.p, q, s);
       this.mesh.setMatrixAt(i, m);

@@ -2,7 +2,8 @@ import gsap from "gsap";
 import { book, D, int, MONTH_COUNT, monthName, pct, signed, STOCKS, weights } from "../../shared/data";
 import { Formation } from "../gl/sim";
 import { h } from "../../shared/dom";
-import { chip, fill, Label, months, type Player, SideCard, stat, swatch } from "../ui";
+import { corners, round } from "../layout";
+import { box, fill, finder, fold, Label, months, type Player, SideCard, spark, stat, swatch } from "../ui";
 import { C, dust, header, pick, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
@@ -12,44 +13,17 @@ const STEP = 0.62;
 // A stock's ticker, or a stand-in when it has none.
 const ticker = (i: number) => D.stocks.ticker[i] || "No ticker";
 
-// A stock's weight by month as bars, longs up, shorts down, now dashed.
-function spark(stock: number, month: number) {
-  const w = weights(stock);
-  const W = 292;
-  const H = 76;
-  const top = Math.max(0.2, ...Array.from(w, Math.abs));
-  const x = (i: number) => (i / (MONTH_COUNT - 1)) * W;
-  const y = (v: number) => H / 2 - (v / top) * (H / 2 - 6);
-  const bars = Array.from(w, (v, i) => {
-    if (!v) return "";
-    const color = v > 0 ? "var(--m-long)" : "var(--m-short)";
-    const height = Math.max(1, Math.abs(y(v) - H / 2));
-    return `<rect x="${x(i) - 1.6}" y="${Math.min(y(v), H / 2)}" width="3.2" height="${height}" rx="1.2" fill="${color}"/>`;
-  }).join("");
-  const now = x(month);
-  return `<svg viewBox="-4 0 ${W + 8} ${H}" width="100%" height="${H}" role="img" aria-label="Weight by month">
-    <line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="rgb(237 233 246 / .25)" stroke-width="1"/>
-    ${bars}
-    <line x1="${now}" x2="${now}" y1="2" y2="${H - 2}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3"/>
-  </svg>`;
-}
-
 // Every stock we held, between the long and short discs, searchable.
 export class Universe extends Scene {
   name = "The book, month by month";
-  summary = "Every stock we held, flying between the long and short discs. Search any ticker.";
+  summary = "Every stock we held, flying between the long and short groups. Search any ticker.";
   month = 0;
   private f = new Formation();
   private input: HTMLInputElement;
-  private search = h("input", {
-    class: "search",
-    type: "search",
-    placeholder: "Find a stock, like NVDA",
-    "aria-label": "Find a stock",
-    autocomplete: "off",
-    spellcheck: "false",
-  }) as HTMLInputElement;
-  private matches = h("div", { class: "flex flex-wrap gap-1.5 empty:hidden" });
+  // Search over every stock held; a pick opens it at a month it was held.
+  private search = finder("NVDA", "No stock by that name was held", D.stocks.ticker, D.stocks.name, (i) =>
+    this.find(i),
+  );
   private when = h("b", { class: "figure text-[28px] text-ink font-medium" });
   private player: Player;
   private counts = {
@@ -80,35 +54,32 @@ export class Universe extends Scene {
     }
     this.panel.append(
       ...header(
-        `${int(STOCKS)} stocks · ${D.months.length} months`,
-        "Every stock we held, <em>month by month</em>",
-        "The best scores rise into the long disc and the worst sink into the short disc, sized by weight. Everything else waits in the outer ring. Hover a stock to see its name, click it for its history, or search for one.",
+        "Every stock, <em>month by month</em>",
+        "Stocks with the best signals rise to the long group, the worst sink to the short group, and the rest wait in the outer ring. Click any stock for its history.",
       ),
       stats(...Object.values(this.counts).map((s) => s.el)),
     );
     const picker = months("month", STEP, this);
     this.player = picker.player;
     this.input = picker.input;
-    // Typing suggests stocks, Enter takes the first, Escape leaves.
-    this.search.addEventListener("input", () => this.suggest());
-    this.search.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") (this.matches.firstElementChild as HTMLButtonElement | null)?.click();
-      if (e.key === "Escape") this.search.blur();
-    });
     const first = monthName(D.months[0], true);
     const last = monthName(D.months[MONTH_COUNT - 1], true);
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-2" },
+      box(
+        "w-[min(420px,calc(100vw-32px))] gap-2",
         h("div", { class: "flex items-center justify-between gap-3" }, this.when, this.player.button),
         this.input,
         h("div", { class: "flex justify-between eyebrow" }, h("span", {}, first), h("span", {}, last)),
-        this.search,
-        this.matches,
+        this.search.input,
+        this.search.matches,
       ),
     );
     this.card = new SideCard(this.w.layer, () => this.close());
+    // Small screens: the search folds behind Find, the slider's ends drop.
+    const glass = this.controls.firstElementChild as HTMLElement;
+    fold(glass, glass.firstElementChild as HTMLElement, [this.search.input, this.search.matches], "Find");
+    glass.children[2]?.classList.add("ends");
+    this.frame = [...round(10.5, 0), ...corners(-3.6, -5.2, -3.6, 3.6, 5.2, 3.6)];
   }
 
   // Longs fill the top disc, shorts the bottom, the rest orbit the halo.
@@ -155,21 +126,6 @@ export class Universe extends Scene {
     fill(this.input);
     this.w.sim.update(this.formation());
     if (this.selected >= 0) this.open(this.selected);
-  }
-
-  // Up to six stocks by ticker prefix first, then by name, as chips.
-  suggest() {
-    const q = this.search.value.trim().toUpperCase();
-    this.matches.innerHTML = "";
-    if (!q) return;
-    const hits: number[] = [];
-    for (let i = 0; i < STOCKS && hits.length < 6; i++) if (D.stocks.ticker[i].startsWith(q)) hits.push(i);
-    for (let i = 0; i < STOCKS && hits.length < 6; i++) {
-      if (!hits.includes(i) && D.stocks.name[i].toUpperCase().includes(q)) hits.push(i);
-    }
-    if (!hits.length)
-      this.matches.append(h("span", { class: "text-[12px] text-ink-3" }, "No stock by that name was held"));
-    for (const i of hits) this.matches.append(chip(ticker(i), () => this.find(i)));
   }
 
   // Opens a stock at its last held month up to now, else its first.

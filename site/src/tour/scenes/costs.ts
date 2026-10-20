@@ -6,7 +6,8 @@ import { blank } from "../gl/sim";
 import { rim } from "../gl/shapes";
 import { Body } from "../physics/bodies";
 import { h } from "../../shared/dom";
-import { chip, count, Label, rayAt, slider, stat, swatch } from "../ui";
+import { corners } from "../layout";
+import { box, chip, count, fold, Label, rayAt, slider, stat, swatch } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 
 // World height per percent of the fund a year, and the blocks' width.
@@ -26,7 +27,7 @@ const ORDER = ["financing", "borrow", "impact", "spread", "commission"];
 const LADDER = D.costs.ladder;
 
 // Ladder at multiple k: cost, edge or IR, linear in k between rungs.
-const ladder = (k: number, key: "cost" | "active" | "ir") => {
+const ladder = (k: number, key: "cost" | "active") => {
   for (let i = 1; i < LADDER.length; i++) {
     if (k <= LADDER[i].multiple || i === LADDER.length - 1) {
       const a = LADDER[i - 1];
@@ -53,9 +54,8 @@ export class Costs extends Scene {
   private input: HTMLInputElement;
   private readout = {
     cost: stat("", "Costs a year"),
-    net: stat("", "Net return a year"),
     edge: stat("", "Above the hurdle"),
-    ir: stat("", "Information ratio"),
+    even: stat(`${num(D.costs.break_even_multiple, 1)}×`, "Break-even costs"),
   };
   private multiple = h("b", { class: "figure text-[24px] text-ink font-medium" });
   private k = 1;
@@ -99,12 +99,15 @@ export class Costs extends Scene {
     );
     this.hurdle.position.set(-2.4, 4 * K, W / 2 + 0.2);
     this.group.add(this.hurdle);
-    this.addLabel(new Label("Hurdle · 4% a year above cash", [-7.8, 4 * K + 0.4, W / 2 + 0.2], "left"));
+    // On small screens the hurdle's label breaks clear of the stack.
+    this.addLabel(new Label("Hurdle · 4% a year above cash", [-7.8, 4 * K + 0.4, W / 2 + 0.2], "left")).small = {
+      html: "Hurdle<br>4% a year above cash",
+      at: new THREE.Vector3(-7.8, 4 * K + 0.75, W / 2 + 0.2),
+    };
     this.panel.append(
       ...header(
-        "Every modelled cost, as a share of the fund a year",
         `${pct(c.gross)} gross, <em>${pct(c.net)} net</em>`,
-        `Commissions at Interactive Brokers rates, half the real bid-ask spread, market impact that grows with trade size, borrow fees by how heavily a stock is shorted, and financing on cash. Together they take ${pct(c.total, 2)} a year. Drag the slider to see how far costs could rise before the edge over the hurdle is gone, or click a fallen block to kick it.`,
+        "Commissions, half the real spread, market impact, borrow fees and financing. Drag the slider to see how far costs can rise before the edge is gone.",
       ),
       stats(...Object.values(this.readout).map((s) => s.el)),
     );
@@ -125,7 +128,7 @@ export class Costs extends Scene {
       this.scale(+this.input.value);
     });
     // Eases the multiple to break-even, where the edge is gone.
-    const even = chip(`Break-even ${num(c.break_even_multiple, 1)}×`, () =>
+    const even = chip("Show break-even", () =>
       gsap.to(this, {
         k: c.break_even_multiple,
         duration: 1.2,
@@ -134,9 +137,8 @@ export class Costs extends Scene {
       }),
     );
     this.controls.append(
-      h(
-        "div",
-        { class: "glass rounded-2xl px-4 py-3 w-[min(420px,calc(100vw-32px))] flex flex-col gap-1" },
+      box(
+        "w-[min(420px,calc(100vw-32px))] gap-1",
         h(
           "div",
           { class: "flex items-center justify-between gap-3" },
@@ -153,6 +155,14 @@ export class Costs extends Scene {
         this.parts,
       ),
     );
+    // Small screens: each cost folds away, the 1× to 5× ends drop.
+    const glass = this.controls.firstElementChild as HTMLElement;
+    const head = glass.firstElementChild as HTMLElement;
+    head.firstElementChild?.classList.add("whole");
+    fold(glass, head, [this.parts], "Each cost");
+    this.parts.previousElementSibling?.classList.add("ends");
+    this.frame = corners(-7.9, 0, -1.3, 6.6, 8.8, 1.3);
+    this.zoomCap = 1.4;
   }
 
   // A dusty floor round the stack and gold dots tracing its square base.
@@ -194,10 +204,8 @@ export class Costs extends Scene {
     this.multiple.textContent = `${num(k, 2)}×`;
     this.readout.cost.value.textContent = pct(ladder(k, "cost"), 2);
     for (const row of this.rows) row.value.textContent = pct(c.parts[row.key] * k, 2);
-    this.readout.net.value.textContent = pct(net);
     const edge = ladder(k, "active");
     this.readout.edge.value.textContent = signed(Math.abs(edge) < 0.0005 ? 0 : edge);
-    this.readout.ir.value.textContent = num(Math.abs(ladder(k, "ir")) < 0.005 ? 0 : ladder(k, "ir"));
     (this.net.material as THREE.ShaderMaterial).uniforms.uColor.value.setHex(edge >= 0 ? C.gold : C.orange);
   }
 
@@ -241,7 +249,8 @@ export class Costs extends Scene {
       },
       0,
     );
-    this.counting = count(this.readout.cost.value, c.total, (x) => pct(x, 2), 1.4, 1.6);
+    // Counts to the same figure the slider shows at today's costs.
+    this.counting = count(this.readout.cost.value, ladder(1, "cost"), (x) => pct(x, 2), 1.4, 1.6);
   }
 
   // Stops any break-even ease of the multiple on the way out.

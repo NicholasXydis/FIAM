@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TEAM } from "../../content/credits";
+import { corners } from "../layout";
 import { D, num, pct } from "../../shared/data";
 import { blank, N } from "../gl/sim";
 import { h } from "../../shared/dom";
@@ -62,20 +62,24 @@ export class Intro extends Scene {
     this.dwell = 9;
     const head = D.headline;
     this.panel.append(
-      h("p", { class: "eyebrow", "data-rise": true }, "McGill-FIAM Asset Management Hackathon 2026 · Finals"),
       h(
         "p",
         { class: "body", "data-rise": true },
-        "A market-neutral book of US stocks. Twelve published measures pick the stocks, machine learning keeps the book neutral, and an AI crowd we built shows who trades against us.",
+        "Twelve published signals pick US stocks, machine learning keeps the book market neutral, and an AI crowd shows who crowds our trades.",
       ),
       stats(
         stat(num(head.ir), "Information ratio after costs").el,
-        stat(pct(head.net), "Net return a year").el,
-        stat(pct(head.drawdown), "Worst drawdown").el,
+        stat(num(head.sharpe), "Sharpe ratio after costs").el,
+        stat(pct(head.cagr), "Return a year").el,
       ),
-      h("p", { class: "eyebrow", "data-rise": true }, TEAM.join("  ·  ")),
     );
-    this.controls.append(h("p", { class: "eyebrow hint" }, "Press → to begin, or P for the guided tour"));
+    this.controls.append(
+      h("p", { class: "eyebrow hint" }, "Press → to begin, or P for the guided tour"),
+      h("p", { class: "eyebrow touch-hint" }, "Swipe or tap › to begin"),
+    );
+    // Small screens fit the title and its dust into their band.
+    this.frame = corners(-11, -2.7, 0, 11, 5, 0);
+    this.zoomCap = 1.2;
   }
 
   // Up to 12500 title points in purple and gold, then dust and far stars.
