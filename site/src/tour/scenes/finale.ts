@@ -67,7 +67,7 @@ const bottomRight = { x: 0, y: 0, front: true };
 // Thank you: every particle flies into the QR code, which can be saved.
 export class Finale extends Scene {
   name = "Thank you";
-  summary = "Every particle flies into a QR code. Save it for a slide or a poster.";
+  summary = "Every particle flies into a QR code that opens our source code on GitHub.";
   private card = h("div", { class: "absolute pointer-events-none", style: "opacity:0", "aria-hidden": "true" });
   private corners = [new THREE.Vector3(-SIZE / 2, SIZE / 2 + 0.6, 0), new THREE.Vector3(SIZE / 2, -SIZE / 2 + 0.6, 0)];
   private box = "";
@@ -89,7 +89,7 @@ export class Finale extends Scene {
     this.panel.append(
       ...header(
         "Thank <em>you</em>",
-        "Theory picks the stocks, machine learning sets the hedge, and an AI crowd of our own making stress tests the book.",
+        "Theory picks the stocks, machine learning sets the hedge, and an AI crowd of our own making stress tests the book. Scan for our source code on GitHub.",
       ),
     );
     this.toggle = chip("Show the particles", () => this.print(!this.printed));
