@@ -1,64 +1,63 @@
+import type { CSSProperties } from "react";
 import type { Person } from "@/content/team";
-import { Reveal } from "../motion/reveal";
+import { morph, openPerson, slug } from "../person";
+import { afterPress, wire } from "./press";
 
-// A person's initials, standing in until a photo is confirmed.
+// A person's initials, standing in until their photo is confirmed.
 const initials = (name: string) =>
   name
     .split(" ")
     .map((w) => w[0])
     .join("");
 
-// One person: photo or initials, the name, and confirmed details only.
-function Member({ name, role, photo, linkedin }: Person) {
-  return (
-    <>
-      {photo ? (
-        <img
-          src={photo}
-          width={112}
-          height={112}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="face object-cover"
-        />
-      ) : (
-        <span aria-hidden="true" className="grid face place-items-center font-display text-moon">
-          {initials(name)}
-        </span>
-      )}
-      <div className="flex flex-col items-center gap-0.5 @max-[30rem]:items-start">
-        <p className="font-display text-[calc(var(--text-lead)*1.25)] leading-[1.1]">{name}</p>
-        {role && <p className="text-small text-dim">{role}</p>}
-        {linkedin && (
-          <a
-            href={linkedin}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`${name} on LinkedIn`}
-            className="inline-flex min-h-touch items-center text-small underline-offset-[0.25em]"
-          >
-            LinkedIn
-          </a>
-        )}
-      </div>
-    </>
+// What sits in a face's circle: their photo, or their initials.
+function Mark({ person }: { person: Person }) {
+  return person.photo ? (
+    <img src={person.photo} alt="" width={240} height={240} decoding="async" />
+  ) : (
+    <span className="face-mark">{initials(person.name)}</span>
   );
 }
 
-// The team: five across, else three and two, else one to a row.
+// A face: the circle with its mark, a ring that lights in, and ink.
+export function Face({ person, big = false, inked = false }: { person: Person; big?: boolean; inked?: boolean }) {
+  return (
+    <span className={big ? "face face-big" : "face"} style={morph("face", person)}>
+      <span className="face-disc" aria-hidden="true">
+        <Mark person={person} />
+      </span>
+      {inked && (
+        <span className="pill-ink" aria-hidden="true">
+          {!person.photo && <Mark person={person} />}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// A rise delay, shared with the ring so it lights as its person rises.
+const enter = (s: number) => ({ animationDelay: `${s}s`, "--enter": `${s}s` }) as CSSProperties;
+
+// The team: a circle and a name each, opening that person's section.
 export function Roster({ people }: { people: Person[] }) {
   return (
-    <ul className="@container mt-flow flex w-full flex-wrap justify-center gap-x-flow gap-y-[calc(var(--spacing-flow)*1.4)]">
+    <ul className="roster">
       {people.map((p, i) => (
-        <Reveal
-          as="li"
-          key={p.name}
-          order={i}
-          className="flex shrink-0 grow-0 basis-[calc((100%_-_2*var(--spacing-flow))/3)] flex-col items-center gap-3 @max-[30rem]:basis-full @max-[30rem]:flex-row @max-[30rem]:gap-4 @max-[30rem]:text-left @min-[62rem]:basis-[calc((100%_-_4*var(--spacing-flow))/5)]"
-        >
-          <Member {...p} />
-        </Reveal>
+        <li key={p.name} className="animate-rise" style={enter(0.12 + i * 0.07)}>
+          <button
+            ref={wire}
+            type="button"
+            className="person"
+            data-slug={slug(p.name)}
+            onClick={() => afterPress(() => openPerson(slug(p.name)))}
+          >
+            <Face person={p} inked />
+            <span className="person-name" style={morph("name", p)}>
+              {p.name}
+            </span>
+            {p.role && <span className="person-role">{p.role}</span>}
+          </button>
+        </li>
       ))}
     </ul>
   );
