@@ -1,0 +1,217 @@
+/* The pill: every button on the site, and the tour's Back. */
+@property --pill-edge {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --pill-near {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* The pill's colours and eases, shared by every pill and face. */
+:root {
+  --pill-moon: var(--color-moon, #f4f1fa);
+  --pill-night: var(--color-night, #040309);
+  --pill-quick: cubic-bezier(0.2, 0.85, 0.25, 1);
+  --pill-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --pill-spring: linear(0, 0.18 4%, 0.6 10%, 0.95 17%, 1.1 24%, 1.12 28%, 1.06 38%, 0.99 50%, 0.985 60%, 1);
+}
+
+.pill {
+  --tx: 0px;
+  --ty: 0px;
+  --rx: 0deg;
+  --ry: 0deg;
+  --ex: 50%;
+  --ey: 50%;
+  --s: 1;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65em;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font:
+    500 1em "Geist",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  background: rgb(14 11 26 / 0.6);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-tap-highlight-color: transparent;
+  transform: perspective(700px) translate(var(--tx), var(--ty)) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--s));
+  transition:
+    transform 0.7s var(--pill-spring),
+    --pill-near 0.3s var(--pill-quick);
+}
+/* Under the pointer it follows quickly; let go, it springs back. */
+.pill.is-lit {
+  transition:
+    transform 0.22s var(--pill-quick),
+    --pill-near 0.3s var(--pill-quick);
+}
+.pill-small {
+  min-height: 44px;
+  padding: 0 1.35em;
+  font-size: 0.92rem;
+}
+.pill-big {
+  min-height: 3.6em;
+  padding: 0 1.9em;
+}
+.pill:focus-visible {
+  outline: 2px solid var(--color-violet, #a98bff);
+  outline-offset: 5px;
+}
+.pill.is-pressing {
+  --s: 0.95;
+  transition: transform 0.1s var(--pill-quick);
+}
+
+/* The hairline edge lights in whole, and lights under the pointer. */
+.pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      8em circle at var(--ex) var(--ey),
+      rgb(255 255 255 / calc(var(--pill-near) * 0.9)),
+      transparent 70%
+    ),
+    linear-gradient(rgb(244 241 250 / calc(var(--pill-edge) * 0.45)) 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: pill-light 1.1s var(--pill-quick) var(--enter, 0s) both;
+}
+
+/* The ink: a moon-white copy that floods in from where you enter. */
+.pill-ink {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  border-radius: inherit;
+  background: var(--pill-moon);
+  color: var(--pill-night);
+  clip-path: circle(0px at 50% 50%);
+  transition: clip-path 0.34s var(--pill-quick);
+  pointer-events: none;
+}
+
+/* The words, and an optional small caption above them. */
+.pill-label,
+.pill-stack,
+.pill-icon {
+  position: relative;
+  z-index: 1;
+}
+.pill-label {
+  transition: letter-spacing 0.35s var(--pill-quick);
+}
+.pill.is-lit .pill-label {
+  letter-spacing: 0.04em;
+}
+.pill-stack {
+  display: grid;
+  justify-items: center;
+  gap: 0.1em;
+}
+.pill-cap {
+  font:
+    400 max(11px, 0.62em) "Geist Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+/* One icon motion for all: a soft lift, its accent popping in. */
+.pill-icon {
+  flex: none;
+  width: 1.2em;
+  height: 1.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pill-small .pill-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+.pill-icon * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.pill.is-lit .pill-icon {
+  animation: pill-bob 0.6s var(--pill-glide);
+}
+.pill.is-lit .pill-accent {
+  animation: pill-pop 0.5s var(--pill-glide);
+}
+.pill.is-pressing .pill-icon {
+  animation: pill-hop 0.4s var(--pill-glide);
+}
+
+/* The whole edge lights at once as its control rises, then settles. */
+@keyframes pill-light {
+  from {
+    --pill-edge: 0;
+  }
+  35% {
+    --pill-edge: 2;
+  }
+}
+@keyframes pill-bob {
+  40% {
+    transform: translateY(-2px);
+  }
+}
+@keyframes pill-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes pill-hop {
+  45% {
+    transform: translateY(-1.5px) scale(0.93);
+  }
+}
+
+/* Reduced motion: the ink still answers, but nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .pill *,
+  .pill::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
