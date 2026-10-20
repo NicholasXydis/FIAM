@@ -6,6 +6,8 @@ const PRESS_MS = 140;
 export const LEAVE = "site:leave";
 // Sent by a hovered control, so the dust can swirl round it.
 export const ATTRACT = "site:attract";
+// Sent as the film covers the sky and leaves it, so the sky can rest.
+export const FILM = "site:film";
 
 // Runs an action once the press has shown; says where it is going.
 export function afterPress(action: () => void, to?: string) {

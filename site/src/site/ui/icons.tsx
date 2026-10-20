@@ -34,6 +34,24 @@ const ICONS = {
       <path d="M7 17 17 7" />
     </>
   ),
+  captions: (
+    <>
+      <rect width="18" height="14" x="3" y="5" rx="2" ry="2" />
+      <path className="pill-accent" d="M7 15h4M15 15h2M7 11h2M13 11h4" />
+    </>
+  ),
+  expand: (
+    <>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3M16 21h3a2 2 0 0 0 2-2v-3" />
+      <path className="pill-accent" d="M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </>
+  ),
+  shrink: (
+    <>
+      <path d="M8 3v3a2 2 0 0 1-2 2H3M16 21v-3a2 2 0 0 1 2-2h3" />
+      <path className="pill-accent" d="M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3" />
+    </>
+  ),
   home: (
     <>
       <path className="pill-accent" d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />

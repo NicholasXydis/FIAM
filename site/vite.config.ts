@@ -1,8 +1,8 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { join, resolve as within } from "node:path";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, sep, resolve as within } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
-import { createServer, defineConfig, type Plugin, type UserConfig, type ViteDevServer } from "vite";
+import { type Connect, createServer, defineConfig, type Plugin, type UserConfig, type ViteDevServer } from "vite";
 import { encode, QrCodeDataType } from "uqr";
 import { viteSingleFile } from "vite-plugin-singlefile";
 import { QR_TEXT } from "./src/content/credits.ts";
@@ -57,6 +57,39 @@ const pages = (): Plugin => {
       renderer = undefined;
     },
   };
+};
+
+// The film's copies from out/media at /media, in ranges, as R2 serves.
+const media = (): Plugin => {
+  const root = fileURLToPath(new URL("../out/media", import.meta.url));
+  const types: Record<string, string> = { ".mp4": "video/mp4" };
+  const serve = (server: { middlewares: Connect.Server }) => {
+    server.middlewares.use("/media", (req, res, next) => {
+      const file = join(root, decodeURIComponent(new URL(req.url ?? "/", "http://site").pathname));
+      if (!file.startsWith(root + sep) || !existsSync(file) || statSync(file).isDirectory()) return next();
+      const size = statSync(file).size;
+      // A video asks for parts; a range past the end is refused.
+      const asked = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+      const from = asked?.[1] ? Number(asked[1]) : asked?.[2] ? size - Number(asked[2]) : 0;
+      const to = asked?.[1] && asked[2] ? Math.min(Number(asked[2]), size - 1) : size - 1;
+      if (asked && (from > to || from >= size)) {
+        res.writeHead(416, { "content-range": `bytes */${size}` });
+        return void res.end();
+      }
+      res.writeHead(asked ? 206 : 200, {
+        "content-type": types[extname(file)] ?? "application/octet-stream",
+        "content-length": to - from + 1,
+        "accept-ranges": "bytes",
+        // Every name carries its print, so a copy may be kept forever.
+        "cache-control": "public, max-age=31536000, immutable",
+        ...(asked && { "content-range": `bytes ${from}-${to}/${size}` }),
+      });
+      createReadStream(file, { start: from, end: to })
+        .on("error", () => res.destroy())
+        .pipe(res);
+    });
+  };
+  return { name: "media", configureServer: serve, configurePreviewServer: serve };
 };
 
 // The preview answers a missing page with 404.html, as the host does.
@@ -143,7 +176,7 @@ export default defineConfig(({ mode }) => {
   if (mode === "film") return single("film.html", "../out/film", false);
   // The website: four pages, three.js and gsap in chunks of their own.
   return {
-    plugins: [pages(), icons(false), qr(), tailwindcss(), missing()],
+    plugins: [pages(), icons(false), qr(), tailwindcss(), media(), missing()],
     resolve,
     build: {
       outDir: "dist",

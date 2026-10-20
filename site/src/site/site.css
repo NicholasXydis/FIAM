@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @import "../shared/fonts.css";
 @import "./ui/pill.css";
+@import "./ui/film.css";
 @source "./";
 @source "../../index.html";
 @source "../../team/index.html";

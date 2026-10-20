@@ -12,6 +12,7 @@ export const CONTENT = {
     ...FRAME,
     project: "View the Project",
     team: "View the Team",
+    film: { label: "The film", back: "Back", skip: "Skip", play: "Play", captions: "Captions", full: "Full screen" },
   },
   team: {
     ...FRAME,

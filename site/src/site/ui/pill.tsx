@@ -8,6 +8,10 @@ interface Props {
   icon: IconName;
   href?: string;
   onPress?: () => void;
+  // Runs inside the press itself, for what a browser allows only then.
+  onTap?: () => void;
+  // A toggle's state, for a pill that turns something on and off.
+  pressed?: boolean;
   caption?: string;
   trailing?: boolean;
   external?: boolean;
@@ -17,7 +21,8 @@ interface Props {
 
 // The site's one button: glass, an icon, words, and ink beneath.
 export function Pill(props: Props) {
-  const { label, icon, href, onPress, caption, trailing = false, external = false, size = "small", className } = props;
+  const { label, icon, href, onPress, onTap, pressed, caption, trailing = false, external = false } = props;
+  const { size = "small", className } = props;
   const words: ReactNode = caption ? (
     <span className="pill-stack">
       <span className="pill-cap">{caption}</span>
@@ -51,6 +56,7 @@ export function Pill(props: Props) {
   const go = (e: MouseEvent) => {
     if (external || !plain(e)) return;
     e.preventDefault();
+    onTap?.();
     afterPress(onPress ?? (() => location.assign(href!)), onPress ? undefined : href);
   };
   return href ? (
@@ -70,7 +76,8 @@ export function Pill(props: Props) {
       type="button"
       className={classes}
       aria-label={named}
-      onClick={() => onPress && afterPress(onPress)}
+      aria-pressed={pressed}
+      onClick={() => (onTap?.(), onPress && afterPress(onPress))}
     >
       {body}
     </button>

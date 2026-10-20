@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { type Ring, startSky } from "../sky/engine";
 import { cameFrom } from "./back";
-import { ATTRACT, LEAVE } from "./press";
+import { ATTRACT, FILM, LEAVE } from "./press";
 
 // How a page's sky opens: the landing's name, or dust everywhere else.
 export type Opening = "name" | "dust";
@@ -132,14 +132,18 @@ export function Sky({ opening }: { opening: Opening }) {
     };
     // A hovered control draws the dust round itself.
     const pull = (e: Event) => sky.attract((e as CustomEvent<Ring | null>).detail);
+    // Under the film the sky rests, sparing the frames for the picture.
+    const covered = (e: Event) => sky.rest((e as CustomEvent<boolean>).detail);
     addEventListener("pageshow", restored);
     addEventListener(LEAVE, leave);
     addEventListener(ATTRACT, pull);
+    addEventListener(FILM, covered);
     return () => {
       el.removeEventListener("webglcontextlost", lost);
       removeEventListener("pageshow", restored);
       removeEventListener(LEAVE, leave);
       removeEventListener(ATTRACT, pull);
+      removeEventListener(FILM, covered);
       sky.stop();
     };
   }, [opening]);

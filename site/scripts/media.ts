@@ -129,7 +129,8 @@ const [what = "all", ...rest] = process.argv.slice(2);
 if (what === "page" || what === "all") page();
 if (what === "icons" || what === "all") await icons();
 if (what === "video") run("uv", ["run", path.join("site", "ad", "make.py"), ...rest], { cwd: REPO, show: true });
-if (!["all", "page", "icons", "video"].includes(what)) {
-  console.log("pnpm media [page | icons | video [--preview]]");
+if (what === "web") run("uv", ["run", path.join("site", "ad", "web.py")], { cwd: REPO, show: true });
+if (!["all", "page", "icons", "video", "web"].includes(what)) {
+  console.log("pnpm media [page | icons | video [--preview | --smooth] | web]");
   process.exit(1);
 }

@@ -18,7 +18,19 @@ OUT = ROOT / "out" / "ad"
 # ffmpeg from the imageio-ffmpeg wheel, so no system install is needed.
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 # --preview: half size, 30 fps, 1 subframe, into out/ad, not deck/.
-PREVIEW = "--preview" in sys.argv
+PREVIEW = "--preview" in sys.argv or "--smooth" in sys.argv
+# --smooth: a preview at 60 fps with 4 subframes, to judge the motion.
+SMOOTH = "--smooth" in sys.argv
+# Each film's name ending, size and H.264 level; side is 2.17:1.
+SHAPES = {
+    "wide": ("", (1920, 1080), "4.2"),
+    "tall": ("_vertical", (1080, 1920), "4.2"),
+    "side": ("_sideways", (2340, 1080), "5.1"),
+}
+# --shape NAME renders that one alone, leaving the others as they are.
+ONLY = sys.argv[sys.argv.index("--shape") + 1] if "--shape" in sys.argv else None
+if ONLY and ONLY not in SHAPES:
+    sys.exit(f"make.py: --shape is one of {', '.join(SHAPES)}")
 
 
 # Runs a command in site/, stopping the whole build on any failure.
@@ -86,8 +98,11 @@ run("node", "ad/record.mjs", "camera", 60, OUT / "camera.json")
 
 # record.mjs pipes its frames into this same ffmpeg.
 env = {**os.environ, "FFMPEG": FF}
-# Both renders, 16:9 and 9:16: a silent master, then muxed with audio.
-for suffix, size in (("", (1920, 1080)), ("_vertical", (1080, 1920))):
+# Each render: a silent master, then muxed with audio.
+made = []
+for shape, (suffix, size, level) in SHAPES.items():
+    if ONLY and shape != ONLY:
+        continue
     w, h = (v // 2 for v in size) if PREVIEW else size
     master = OUT / f"master{suffix}.mp4"
     run(
@@ -95,8 +110,8 @@ for suffix, size in (("", (1920, 1080)), ("_vertical", (1080, 1920))):
         "ad/record.mjs",
         "video",
         f"{w}x{h}",
-        30 if PREVIEW else 60,
-        1 if PREVIEW else 16,
+        30 if PREVIEW and not SMOOTH else 60,
+        4 if SMOOTH else 1 if PREVIEW else 16,
         master,
         env=env,
     )
@@ -122,7 +137,7 @@ for suffix, size in (("", (1920, 1080)), ("_vertical", (1080, 1920))):
             "1:a",
         ],
         *["-c:v", "libx264", "-preset", "slow", "-crf", "16", "-maxrate", "10M", "-bufsize", "20M"],
-        *["-x264-params", x264, "-profile:v", "high", "-level", "4.2", "-pix_fmt", "yuv420p"],
+        *["-x264-params", x264, "-profile:v", "high", "-level", level, "-pix_fmt", "yuv420p"],
         *[
             "-colorspace",
             "bt709",
@@ -137,7 +152,6 @@ for suffix, size in (("", (1920, 1080)), ("_vertical", (1080, 1920))):
         *["-metadata", "title=QUARCC Purple · Calm, by design", "-shortest", final],
     )
     print(f"wrote {final}, {final.stat().st_size / 1e6:.1f} MB")
-    if not suffix:
-        wide = final
-# Reviews the 16:9 film: voice, beats, motion and camera.
-run("uv", "run", "ad/review.py", wide)
+    made.append(final)
+# Reviews the first film made, 16:9 when it is: voice, beats, motion.
+run("uv", "run", "ad/review.py", made[0])

@@ -128,6 +128,8 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
   let start = 0;
   let then = 0;
   let raf = 0;
+  // Whether something covers the sky, as the film does, so it rests.
+  let resting = false;
   let o = 0;
   let ring: Ring | null = null;
 
@@ -374,7 +376,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
   };
   const shown = () => {
     cancelAnimationFrame(raf);
-    if (document.hidden || !motes.length) return;
+    if (document.hidden || resting || !motes.length) return;
     then = performance.now();
     raf = requestAnimationFrame(loop);
   };
@@ -417,6 +419,11 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     },
     // Changes the shape, now or once the sky has laid itself out.
     shape: (next: Shape, now = false) => (motes.length ? shape(next, now) : ((current = next), (instant = now))),
+    // Rests while covered, and wakes where it left off.
+    rest(covered: boolean) {
+      resting = covered;
+      shown();
+    },
     // Stops the frames and lets go of every listener.
     stop() {
       stopped = true;
