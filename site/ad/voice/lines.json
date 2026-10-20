@@ -1,35 +1,14 @@
 {
-  "rise": [
-    "Every year, more of the market runs on AI.",
-    "And it's starting to think alike."
-  ],
-  "panic": [
-    "When it moves together, markets panic."
-  ],
-  "dont": [
-    "We don't."
-  ],
-  "neutral": [
-    "Quark Purple is market neutral.",
-    "Long the strongest companies, short the weakest."
-  ],
+  "rise": ["Every year, more of the market runs on AI.", "And it's starting to think alike."],
+  "panic": ["When it moves together, markets panic."],
+  "dont": ["We don't."],
+  "neutral": ["Quark Purple is market neutral.", "Long the strongest companies, short the weakest."],
   "agents": [
     "Seven AI agents work alongside us, on our own machines.",
     "They read thousands of filings, challenge every idea, and check every number."
   ],
-  "crowd": [
-    "We even built sixty AI investors to study how machines trade.",
-    "Thirty of them think like four."
-  ],
-  "crises": [
-    "Across seventeen replayed crises, our book barely moved."
-  ],
-  "close": [
-    "AI will move markets.",
-    "We built the fund that stays level when it does."
-  ],
-  "brand": [
-    "Quark Purple.",
-    "Calm, by design."
-  ]
+  "crowd": ["We even built sixty AI investors to study how machines trade.", "Thirty of them think like four."],
+  "crises": ["Across seventeen replayed crises, our book barely moved."],
+  "close": ["AI will move markets.", "We built the fund that stays level when it does."],
+  "brand": ["Quark Purple.", "Calm, by design."]
 }

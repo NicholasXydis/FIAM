@@ -1,17 +1,36 @@
 import * as THREE from "three";
 import crashes from "../data/crashes.json";
-import { agents, crowd, headline, journey, months } from "../data/fiam.json";
-import { monthName } from "../shared/data";
+import { agents, crowd, headline, journey } from "../data/fiam.json";
 import { TEAM } from "../content/credits";
 import words from "../../ad/voice/words.json";
 import { Gimbal } from "./gimbal";
 import type { Key } from "./rig";
-import type { Title } from "./titles";
+import { BRAND, type Title } from "./titles";
 import type { Shock } from "./water";
 
-// The film runs 62 s and fades to black from 61.1 s.
+// The story runs 62 s and fades to black from 61.1 s.
 export const LENGTH = 62;
 export const FADE = 61.1;
+
+// Two held breaths: black after the cut, then "We don't." held.
+const HOLDS = [
+  { at: 10.45, length: 1.0 },
+  { at: 12.15, length: 0.6 },
+];
+// Story time at a film time: each hold stops the story for its length.
+export function story(t: number) {
+  let held = 0;
+  for (const h of HOLDS) {
+    if (t < h.at + held) return t - held;
+    if (t < h.at + held + h.length) return h.at;
+    held += h.length;
+  }
+  return t - held;
+}
+// The film time of a story time, for the sound the score lines up.
+export const real = (s: number) => s + HOLDS.filter((h) => s >= h.at).reduce((n, h) => n + h.length, 0);
+// The film's running time, the holds included.
+export const RUNTIME = LENGTH + HOLDS.reduce((n, h) => n + h.length, 0);
 
 // Figures the film reads from the data, stocks rounded down to 100s.
 export const ROLES = agents.map((a) => a.name);
@@ -81,21 +100,34 @@ export const SHOCKS: (Shock & { year: string })[] = crashes.map((c, i) => {
 const P = (n: number | string) => said("panic", n);
 // Every title, timed to the words it shows.
 export const TITLES: Title[] = [
-  { at: P("panic"), out: AT.cut, cut: true, text: "Markets *panic.*", tone: "storm", place: "line" },
+  // Each word on its spoken word, so "Markets" comes in as it is said.
+  {
+    at: P("markets"),
+    // A quicker dissolve over the storm's last beat, gone as it cuts.
+    out: AT.cut + 0.12,
+    exit: 0.3,
+    film: true,
+    text: "Markets *panic.*",
+    words: [P("markets"), P("panic")],
+    tone: "storm",
+    place: "line",
+  },
+  // "We don't." holds through the breath, leaving as the studio opens.
   { at: said("dont", 0), out: 12.9, text: "We *don't.*", tone: "light", place: "line" },
   {
     at: said("neutral", "market"),
-    out: 17.3,
+    // Each title leaves on a beat of the music, here on the cut itself.
+    out: AT.shelf,
     text: "Market *neutral.*",
     words: [said("neutral", "market"), said("neutral", "neutral")],
-    eyebrow: [said("neutral", "Quark"), "QUARCC Purple"],
+    eyebrow: [said("neutral", "Quark"), BRAND],
     sub: [said("neutral", "neutral") + 0.5, `Beta ${BETA.toFixed(2)} to the market`],
     tone: "dark",
     place: "low",
   },
   {
     at: said("neutral", "Long"),
-    out: 23.3,
+    out: 23.1,
     text: "Long the *strongest.* | Short the *weakest.*",
     // A 0 holds the place of each line break.
     words: ["Long", "the", "strongest", 0, "short", 10, "weakest"].map((w) =>
@@ -106,10 +138,15 @@ export const TITLES: Title[] = [
     place: "low",
   },
   {
-    at: said("agents", "read"),
-    out: 33.3,
-    text: "They *read.* | They *challenge.* | They *verify.*",
+    at: said("agents", "Seven"),
+    // Held into the next shot, gone on its second beat, so all of it reads.
+    out: AT.crowd + 1.0,
+    text: "Seven AI *agents.* | They *read.* | They *challenge.* | They *verify.*",
     words: [
+      said("agents", "Seven"),
+      said("agents", "AI"),
+      said("agents", "agents"),
+      0,
       said("agents", "They"),
       said("agents", "read"),
       0,
@@ -119,45 +156,46 @@ export const TITLES: Title[] = [
       said("agents", "check") - 0.15,
       said("agents", "check"),
     ],
-    eyebrow: [said("agents", "Seven"), "Seven AI agents"],
-    sub: [said("agents", "machines"), "Gemma 4 and Qwen3.8, running on our own machines"],
     tone: "light",
     place: "low",
   },
   {
-    at: said("crowd", "Thirty"),
-    out: 41.2,
-    text: "30 of them think like *4.*",
-    words: ["Thirty", "of", "them", "think", "like", "four"].map((w) => said("crowd", w)),
-    eyebrow: [said("crowd", "sixty"), `${INVESTORS} AI investors`],
+    at: said("crowd", "sixty"),
+    // Held into the sea, gone on its first beat as the crises line starts.
+    out: AT.sea + 0.5,
+    text: `${INVESTORS} AI *investors.* | 30 of them think like *4.*`,
+    // The second line builds under the first, as the agents' lines do.
+    words: [...["sixty", "AI", "investors"], 0, ...["Thirty", "of", "them", "think", "like", "four"]].map((w) =>
+      w === 0 ? 0 : said("crowd", w as string),
+    ),
     tone: "light",
     place: "low",
   },
   {
-    at: said("crises", "barely"),
-    out: 45.3,
-    text: "Barely *moved.*",
-    words: [said("crises", "barely"), said("crises", "moved")],
-    eyebrow: [said("crises", "seventeen"), `${crashes.length} replayed crises since 2000`],
+    at: said("crises", "seventeen"),
+    // Held over the dial's first second, so "Barely moved." can be read.
+    out: 46.6,
+    text: `${crashes.length} replayed *crises.* | Barely *moved.*`,
+    words: [...["seventeen", "replayed", "crises"], 0, ...["barely", "moved"]].map((w) =>
+      w === 0 ? 0 : said("crises", w as string),
+    ),
     tone: "light",
     place: "low",
   },
   {
-    at: 47.0,
-    out: 49.4,
-    text: `Sharpe *${SHARPE.toFixed(2)}.*`,
-    words: [47.0, 47.25],
-    eyebrow: [46.3, `After costs, ${months[0].slice(0, 4)} to ${months[months.length - 1].slice(0, 4)}`],
-    sub: [47.8, `Beta ${BETA.toFixed(2)} · backtested`],
+    at: said("close", "AI"),
+    out: 52.6,
+    text: "AI will move *markets.*",
+    words: ["AI", "will", "move", "markets"].map((w) => said("close", w)),
     tone: "light",
     place: "low",
   },
   {
-    at: said("close", "We"),
-    out: 55.3,
+    at: said("close", "stays") - 0.35,
+    out: 55.1,
     text: "We stay *level.*",
-    words: [said("close", "We"), said("close", "stays"), said("close", "level")],
-    eyebrow: [said("close", 0), "AI will move markets"],
+    // The three words in one beat on "stays level", not a wait after We.
+    words: [said("close", "stays") - 0.35, said("close", "stays"), said("close", "level")],
     tone: "light",
     place: "low",
   },
@@ -167,11 +205,9 @@ export const TITLES: Title[] = [
 export const END = {
   at: said("brand", "Calm"),
   name: said("brand", "Quark"),
-  title: "QUARCC Purple <em>·</em> FIAM",
   tag: "Calm, *by design.*",
   event: "McGill-FIAM Asset Management Hackathon 2026 · Finals",
   team: TEAM.map((name) => name.replaceAll(" ", " ")).join(" · "),
-  note: `Backtested results, ${monthName(months[0])} to ${monthName(months[months.length - 1])}. Crisis replays are hypothetical. Not a live record. Not an offer to invest.`,
 };
 
 // The agents' cues, from the words that name them.

@@ -10,13 +10,16 @@ import {
   LENGTH,
   MARKS,
   opening,
+  real,
   ROLES,
+  RUNTIME,
   said,
   SEA,
   SHARPE,
   SHELF,
   SHOCKS,
   SOUNDS,
+  story,
   STUDIO,
   TITLES,
   VOICE,
@@ -275,15 +278,15 @@ function set(t: number, jitter = [0, 0], lens = [0, 0], soft = [0, 0]) {
     const planet = ramp(t, AT.outro + 1, AT.outro + 3);
     bloom(mix(0.6, 0.75, planet), mix(0.6, 0.35, planet), mix(0.6, 0.7, planet));
   } else bloom(0.6, 0.05, 0.35);
-  // The gold line, drawn at the cut, opens into the studio by 13.6 s.
-  const line = t >= AT.cut && t < 13.8;
+  // The gold line, shown once it draws, opens into the studio by 13.6 s.
+  const line = t >= AT.cut + 0.2 && t < 13.8;
   look.line.enabled = line;
   if (line) {
     const u = look.line.uniforms;
     u.uY.value = 0.5 + lift(size.x, size.y);
     u.uDraw.value = out(ramp(t, AT.cut + 0.2, AT.cut + 1.2));
     u.uSlit.value = inOut(ramp(t, 12.4, 13.6));
-    u.uGlow.value = 1 - ramp(t, 12.7, 13.7);
+    u.uGlow.value = ramp(t, AT.cut + 0.2, AT.cut + 0.35) * (1 - ramp(t, 12.7, 13.7));
   }
   // The grade, with the fade to black and the dim under the end card.
   look.grade.uniforms.uVignette.value = vignette;
@@ -295,7 +298,7 @@ function set(t: number, jitter = [0, 0], lens = [0, 0], soft = [0, 0]) {
 const MOON = new THREE.Color(0xc9c0ff);
 const WARM = new THREE.Color(0xfff1dc);
 
-// One frame at time t, the average of n subframes across the shutter.
+// A frame at film time t, n subframes over the shutter, story clock.
 function draw(t: number, n = 1, fps = 60, shutter = 0.5) {
   look.render(n, (k) => {
     const many = n > 1;
@@ -304,13 +307,14 @@ function draw(t: number, n = 1, fps = 60, shutter = 0.5) {
     const j = many ? [halton(k, 2) - 0.5, halton(k, 3) - 0.5] : [0, 0];
     const lens = many ? disc(halton(k, 5), halton(k, 7)) : [0, 0];
     const s = many ? [(halton(k, 11) - 0.5) * 1.4, (halton(k, 13) - 0.5) * 1.4] : [0, 0];
-    set(t + dt, j, lens, s);
+    set(story(t + dt), j, lens, s);
   });
-  // The overlays follow the frame's own time.
-  titles.update(t);
-  marks.update(t, camera, innerWidth, innerHeight);
-  tags.update(t, agents.now, camera, innerWidth, innerHeight);
-  end.update(t);
+  // The overlays follow the frame's own story time.
+  const now = story(t);
+  titles.update(now, t);
+  marks.update(now, camera, innerWidth, innerHeight);
+  tags.update(now, agents.now, camera, innerWidth, innerHeight);
+  end.update(now);
 }
 
 // Live playback. Click for sound, Space pauses, arrows skip 5 s.
@@ -326,12 +330,12 @@ function player(from: number) {
   let last = performance.now();
   // Jumps to a time, wrapping round the film, and moves the sound too.
   const seek = (to: number) => {
-    clock = (to + LENGTH) % LENGTH;
+    clock = (to + RUNTIME) % RUNTIME;
     audio.currentTime = clock;
   };
   // A click starts the sound, or seeks when it is on the bar.
   addEventListener("pointerdown", (e) => {
-    if (e.clientY > innerHeight - 40) return seek((e.clientX / innerWidth) * LENGTH);
+    if (e.clientY > innerHeight - 40) return seek((e.clientX / innerWidth) * RUNTIME);
     if (audio.paused) {
       audio.currentTime = clock;
       void audio.play().catch(() => {});
@@ -359,9 +363,9 @@ function player(from: number) {
     if (!audio.paused && !audio.ended) clock = audio.currentTime;
     else if (!paused) clock += (now - last) / 1000;
     last = now;
-    if (clock >= LENGTH) seek(0);
+    if (clock >= RUNTIME) seek(0);
     draw(clock);
-    (bar.firstChild as HTMLElement).style.transform = `scaleX(${clamp(clock / LENGTH).toFixed(4)})`;
+    (bar.firstChild as HTMLElement).style.transform = `scaleX(${clamp(clock / RUNTIME).toFixed(4)})`;
     requestAnimationFrame(loop);
   };
   loop();
@@ -372,11 +376,15 @@ if (record) {
   Object.assign(window, {
     __draw: draw,
     __camera: (t: number) => {
-      set(t);
+      set(story(t));
       return camera.position.toArray();
     },
-    __length: LENGTH,
-    __cues: { voice: VOICE, sounds: SOUNDS },
+    // The running time and the cues in film time, the hold included.
+    __length: RUNTIME,
+    __cues: {
+      voice: VOICE.map((v) => ({ ...v, at: real(v.at) })),
+      sounds: SOUNDS.map((s) => ({ ...s, at: real(s.at) })),
+    },
     __ready: true,
   });
 } else if (params.has("t")) {

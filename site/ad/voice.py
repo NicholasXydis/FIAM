@@ -20,6 +20,8 @@ SR = 24000
 GAP = 0.2
 # Opening, closing and brand lines go slower than 0.9, for weight.
 SPEED = {"rise": 0.84, "close": 0.84, "brand": 0.86}
+# First sentences at 0.92, so the AI they end or start on is crisp.
+FIRST = {"rise": 0.92, "close": 0.92}
 # lines.json holds the script; it spells QUARCC Quark to say it right.
 HERE = Path(__file__).parent / "voice"
 lines = json.loads((HERE / "lines.json").read_text())
@@ -54,7 +56,8 @@ for key in sys.argv[1:] or list(lines):
         if i:
             out.append(np.zeros(int(GAP * SR)))
         start = sum(len(a) for a in out) / SR
-        audio, spoken = say(sentence, SPEED.get(key, 0.9))
+        speed = FIRST.get(key, SPEED.get(key, 0.9)) if i == 0 else SPEED.get(key, 0.9)
+        audio, spoken = say(sentence, speed)
         out.append(audio)
         timed += [[w, round(start + s, 3), round(start + e, 3)] for w, s, e in spoken]
     # Saves the line's wav, and its word times in seconds from its start.
