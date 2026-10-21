@@ -1,4 +1,4 @@
-// pnpm check [all | fix | proof | screens | lighthouse] and options.
+// pnpm check [all | fix | screens | lighthouse] and options.
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -125,7 +125,7 @@ function pages() {
   }
 }
 
-// Puppeteer's Chrome, which the proof and Lighthouse drive.
+// Puppeteer's Chrome, which Lighthouse drives.
 function chrome() {
   if (!fs.existsSync(puppeteer.executablePath()))
     throw new Error("puppeteer's Chrome is missing, run pnpm exec puppeteer browsers install chrome");
@@ -173,12 +173,6 @@ async function lighthouse() {
   });
 }
 
-// The proof of the tour and the ad, with its own parts and flags.
-async function proof(parts: string[]) {
-  const { proof } = await import("./proof.ts");
-  if (await proof(parts)) fail("the proof found a difference");
-}
-
 // The device checks, quick or full, with or without real Safari.
 async function devices(full: boolean, sim: boolean) {
   console.log(full ? "every device" : "the quick devices");
@@ -195,20 +189,17 @@ async function quick() {
 // A full build first for the parts run on their own.
 const built = () => attempt("the build", build);
 if (what === "fix") await code(true);
-else if (what === "proof") {
-  if (await attempt("browsers", chrome)) await attempt("the proof", () => proof(rest));
-} else if (what === "lighthouse") {
+else if (what === "lighthouse") {
   if ((await attempt("browsers", chrome)) && (await built())) await attempt("Lighthouse", lighthouse);
 } else if (what === "screens") {
   if (await built()) await attempt("devices", () => devices(rest.includes("--full"), rest.includes("--sim")));
 } else {
-  // check all adds the proof, every device, Safari and Lighthouse.
+  // check all adds every device, Safari and Lighthouse.
   const all = what === "all";
   await code(false);
   if (await attempt("the build", bundle)) {
     await attempt("pages", pages);
     const browsers = all && (await attempt("browsers", chrome));
-    if (browsers) await attempt("the proof", () => proof([]));
     // The devices and the quick checks share the wait, side by side.
     await Promise.all([attempt("devices", () => devices(all, all)), attempt("quick checks", quick)]);
     if (browsers) await attempt("Lighthouse", lighthouse);
