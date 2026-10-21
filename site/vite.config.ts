@@ -1,10 +1,12 @@
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, sep, resolve as within } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { type Connect, createServer, defineConfig, type Plugin, type UserConfig, type ViteDevServer } from "vite";
 import { encode, QrCodeDataType } from "uqr";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { CARD, headersFile, LISTED, localHeadersFor, ORIGIN, readHeaders } from "./scripts/headers.ts";
 import { QR_TEXT } from "./src/content/credits.ts";
 
 // The website; --mode offline makes the one-file USB tour, film the ad.
@@ -92,6 +94,81 @@ const media = (): Plugin => {
   return { name: "media", configureServer: serve, configurePreviewServer: serve };
 };
 
+// Previews, robots, the sitemap and the headers the live site needs.
+const launch = (): Plugin => {
+  let outDir = "";
+  return {
+    name: "launch",
+    configResolved: (config) => void (outDir = within(config.root, config.build.outDir)),
+    // Each listed page gets a share card from its own title and words.
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        const address = ctx.path.replace(/index\.html$/, "");
+        if (!LISTED.includes(address)) {
+          return html.replace("</head>", '  <meta name="robots" content="noindex" />\n  </head>');
+        }
+        const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
+        const words = /<meta\s+name="description"\s+content="([^"]*)"/.exec(html)?.[1] ?? "";
+        const [url, image] = [ORIGIN + address, ORIGIN + CARD.path];
+        const tags = [
+          `<link rel="canonical" href="${url}" />`,
+          '<meta property="og:type" content="website" />',
+          '<meta property="og:site_name" content="QUARCC Purple" />',
+          '<meta property="og:locale" content="en_CA" />',
+          `<meta property="og:title" content="${title}" />`,
+          `<meta property="og:description" content="${words}" />`,
+          `<meta property="og:url" content="${url}" />`,
+          `<meta property="og:image" content="${image}" />`,
+          `<meta property="og:image:width" content="${CARD.width}" />`,
+          `<meta property="og:image:height" content="${CARD.height}" />`,
+          `<meta property="og:image:alt" content="${CARD.alt}" />`,
+          '<meta name="twitter:card" content="summary_large_image" />',
+          `<meta name="twitter:title" content="${title}" />`,
+          `<meta name="twitter:description" content="${words}" />`,
+          `<meta name="twitter:image" content="${image}" />`,
+          `<meta name="twitter:image:alt" content="${CARD.alt}" />`,
+        ];
+        return html.replace("</head>", `  ${tags.join("\n    ")}\n  </head>`);
+      },
+    },
+    // After the build: headers with each inline script's hash, robots, map.
+    writeBundle() {
+      const hashes = new Set<string>();
+      for (const page of readdirSync(outDir, { recursive: true }).map(String)) {
+        if (!page.endsWith(".html")) continue;
+        for (const m of readFileSync(join(outDir, page), "utf8").matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+          if (/\bsrc=|application\/json/.test(m[1] ?? "")) continue;
+          hashes.add(
+            `'sha256-${createHash("sha256")
+              .update(m[2] ?? "")
+              .digest("base64")}'`,
+          );
+        }
+      }
+      writeFileSync(join(outDir, "_headers"), headersFile([...hashes].sort()));
+      writeFileSync(join(outDir, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+      const day = new Date().toISOString().slice(0, 10);
+      const urls = LISTED.map((p) => `  <url><loc>${ORIGIN}${p}</loc><lastmod>${day}</lastmod></url>`);
+      const map = `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`;
+      writeFileSync(join(outDir, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n${map}\n`);
+    },
+    // The preview serves the headers the live site will, for real tests.
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const file = join(outDir, "_headers");
+        if (existsSync(file)) {
+          const pathname = new URL(req.url ?? "/", "http://site").pathname;
+          for (const [name, value] of localHeadersFor(readHeaders(readFileSync(file, "utf8")), pathname)) {
+            res.setHeader(name, value);
+          }
+        }
+        next();
+      });
+    },
+  };
+};
+
 // The preview answers a missing page with 404.html, as the host does.
 const missing = (): Plugin => ({
   name: "missing",
@@ -176,7 +253,7 @@ export default defineConfig(({ mode }) => {
   if (mode === "film") return single("film.html", "../out/film", false);
   // The website: four pages, three.js and gsap in chunks of their own.
   return {
-    plugins: [pages(), icons(false), qr(), tailwindcss(), media(), missing()],
+    plugins: [pages(), icons(false), qr(), tailwindcss(), launch(), media(), missing()],
     resolve,
     build: {
       outDir: "dist",

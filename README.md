@@ -30,7 +30,7 @@ McGill-FIAM Asset Management Hackathon 2026 · Finals
 </p>
 
 <p align="center">
-  <strong>16% net a year</strong> &nbsp;|&nbsp; <strong>Information ratio 0.99</strong> &nbsp;|&nbsp; <strong>Sharpe 1.49</strong> &nbsp;|&nbsp; <strong>Beta 0.06</strong>
+  <strong>16.0% a year after costs</strong> &nbsp;|&nbsp; <strong>Information ratio 0.99</strong> &nbsp;|&nbsp; <strong>Sharpe 1.49</strong> &nbsp;|&nbsp; <strong>Beta 0.06</strong>
 </p>
 
 <a href="https://quarccpurple.ca"><img src="site/docs/site-btn.svg" alt="Visit quarccpurple.ca" width="560"></a>
@@ -52,7 +52,7 @@ Our finals book, January 2021 to August 2026.
 
 | Measure | Finals book |
 |---|---|
-| Net return a year | **16%** |
+| Return a year after costs | **16.0%** |
 | Information ratio | **0.99** |
 | Sharpe ratio | **1.49** |
 | Alpha a year | **11.3%** |
@@ -96,7 +96,7 @@ beside it, it rebuilds the whole book.
 | AI agents | Gemma 4 26B-A4B, Qwen3.8-27B |
 | Website | TypeScript, React 19, Vite, Tailwind CSS, three.js, WebGL, GSAP |
 | Film | Made in code with three.js, voiced by Kokoro, an AI voice that runs locally |
-| Hosting | Cloudflare Pages and R2, GitHub Actions |
+| Hosting | Cloudflare Workers and R2, GitHub Actions |
 
 ## What is where
 

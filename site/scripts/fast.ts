@@ -111,6 +111,9 @@ async function site(browser: Browser, base: string) {
     for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: null }))
       problems.push(`${slug} shows "${m}"`);
   }
+  // No page sets a cookie, so the site never needs a cookie banner.
+  const cookies = await page.context().cookies();
+  if (cookies.length) problems.push(`the site sets cookies: ${cookies.map((c) => c.name).join(", ")}`);
   return [...problems, ...errors.map((e) => `site ${e}`)];
 }
 
@@ -177,6 +180,8 @@ async function desk(browser: Browser, base: string, width: number, height: numbe
       for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: s }))
         problems.push(`${at} shows "${m}"`);
   }
+  // The tour sets no cookie either.
+  if ((await page.context().cookies()).length) problems.push(`${width}x${height} the tour sets cookies`);
   return [...problems, ...errors.map((e) => `${width}x${height} ${e}`)];
 }
 

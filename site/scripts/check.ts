@@ -2,11 +2,14 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 import zlib from "node:zlib";
 import puppeteer from "puppeteer";
+import sharp from "sharp";
 import { build, bundle, types } from "./build.ts";
 import { fast } from "./fast.ts";
+import { CARD, headersFor, LISTED, ORIGIN, readHeaders } from "./headers.ts";
 import { bin, PAGES, run, served, SITE } from "./lib.ts";
 import { screens } from "./screens.ts";
 
@@ -125,6 +128,48 @@ function pages() {
   }
 }
 
+// Share cards, robots, the sitemap and the headers the host serves.
+async function extras() {
+  console.log("share cards, robots, the sitemap and the headers");
+  const read = (file: string) => fs.readFileSync(path.join(DIST, file), "utf8");
+  const headers = headersFor(readHeaders(read("_headers")), "/");
+  const csp = headers.find(([name]) => name === "Content-Security-Policy")?.[1] ?? "";
+  for (const name of ["Content-Security-Policy", "Strict-Transport-Security", "X-Content-Type-Options"]) {
+    if (!headers.some(([n]) => n === name)) fail(`_headers sets no ${name}`);
+  }
+  for (const page of BUILT) {
+    const html = read(page);
+    // Every inline script the page runs must be allowed by its hash.
+    for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+      if (/\bsrc=|application\/json/.test(m[1] ?? "")) continue;
+      const hash = createHash("sha256")
+        .update(m[2] ?? "")
+        .digest("base64");
+      if (!csp.includes(`'sha256-${hash}'`)) fail(`${page} runs an inline script the policy blocks`);
+    }
+    // A listed page has its card and address; the rest stay unlisted.
+    const address = `/${page.replace(/index\.html$/, "")}`;
+    if (!LISTED.includes(address)) {
+      if (!html.includes('<meta name="robots" content="noindex"')) fail(`${page} is not marked noindex`);
+      continue;
+    }
+    const tag = (key: string) => new RegExp(`(?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1];
+    if (tag("og:url") !== ORIGIN + address) fail(`${page} has og:url ${tag("og:url")}`);
+    if (tag("og:image") !== ORIGIN + CARD.path) fail(`${page} has og:image ${tag("og:image")}`);
+    if (tag("twitter:card") !== "summary_large_image") fail(`${page} has no large X card`);
+    for (const key of ["og:title", "og:description", "twitter:title", "twitter:description"])
+      if (!tag(key)) fail(`${page} has no ${key}`);
+  }
+  // The card is 1200 by 630 and under the 300 KB WhatsApp takes.
+  const card = path.join(DIST, CARD.path);
+  const { width, height } = await sharp(card).metadata();
+  if (width !== CARD.width || height !== CARD.height) fail(`the share card is ${width}x${height}`);
+  if (fs.statSync(card).size > 300 * 1024) fail("the share card is over 300 KB");
+  if (!read("robots.txt").includes(`Sitemap: ${ORIGIN}/sitemap.xml`)) fail("robots.txt names no sitemap");
+  for (const address of LISTED)
+    if (!read("sitemap.xml").includes(`<loc>${ORIGIN}${address}</loc>`)) fail(`the sitemap misses ${address}`);
+}
+
 // Puppeteer's Chrome, which Lighthouse drives.
 function chrome() {
   if (!fs.existsSync(puppeteer.executablePath()))
@@ -199,6 +244,7 @@ else if (what === "lighthouse") {
   await code(false);
   if (await attempt("the build", bundle)) {
     await attempt("pages", pages);
+    await attempt("share cards and headers", extras);
     const browsers = all && (await attempt("browsers", chrome));
     // The devices and the quick checks share the wait, side by side.
     await Promise.all([attempt("devices", () => devices(all, all)), attempt("quick checks", quick)]);

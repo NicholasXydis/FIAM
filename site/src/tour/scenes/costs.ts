@@ -106,8 +106,8 @@ export class Costs extends Scene {
     };
     this.panel.append(
       ...header(
-        `${pct(c.gross)} gross, <em>${pct(c.net)} net</em>`,
-        "Commissions, half the real spread, market impact, borrow fees and financing. Drag the slider to see how far costs can rise before the edge is gone.",
+        "After costs, <em>still ahead</em>",
+        "Returns above cash, after commissions, half the spread, impact, borrow and financing. Drag to see how far costs can rise before the edge is gone.",
       ),
       stats(...Object.values(this.readout).map((s) => s.el)),
     );

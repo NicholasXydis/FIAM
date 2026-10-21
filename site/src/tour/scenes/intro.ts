@@ -70,7 +70,7 @@ export class Intro extends Scene {
       stats(
         stat(num(head.ir), "Information ratio after costs").el,
         stat(num(head.sharpe), "Sharpe ratio after costs").el,
-        stat(pct(head.cagr), "Return a year").el,
+        stat(pct(head.cagr), "Return a year after costs").el,
       ),
     );
     this.controls.append(

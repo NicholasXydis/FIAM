@@ -5,6 +5,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import zlib from "node:zlib";
+import { localHeadersFor, readHeaders } from "./headers.ts";
 
 // The site's folder and the repo around it.
 export const SITE = path.resolve(import.meta.dirname, "..");
@@ -72,7 +73,14 @@ function locate(base: string, url: string) {
 // Serves a build on a free local port, missing pages as 404.html.
 export async function serve(root: string) {
   const base = path.resolve(root);
+  // The build's own headers, policy included, as the host serves them.
+  const rules = fs.existsSync(path.join(base, "_headers"))
+    ? readHeaders(fs.readFileSync(path.join(base, "_headers"), "utf8"))
+    : [];
   const server = http.createServer((req, res) => {
+    for (const [name, value] of localHeadersFor(rules, new URL(req.url ?? "/", "http://site").pathname)) {
+      res.setHeader(name, value);
+    }
     let file = locate(base, req.url ?? "/");
     if (file === null) return void res.writeHead(400).end();
     let status = 200;
