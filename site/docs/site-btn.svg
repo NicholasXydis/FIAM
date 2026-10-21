@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="100" viewBox="0 0 760 100">
+  <rect width="760" height="100" rx="50" fill="#040309"/>
+  <rect x="2" y="2" width="756" height="96" rx="48" fill="none" stroke="#a98bff" stroke-width="3"/>
+  <path d="M 214 37 L 236 50 L 214 63 Z" fill="#f2c14e"/>
+  <text x="398" y="61" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="30" font-weight="700" letter-spacing="2" fill="#f4f1fa" text-anchor="middle">QUARCCPURPLE.CA</text>
+</svg>
