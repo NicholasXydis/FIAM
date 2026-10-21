@@ -94,17 +94,21 @@ const media = (): Plugin => {
   return { name: "media", configureServer: serve, configurePreviewServer: serve };
 };
 
+// The page fade opt-in. Chrome reads it as the body starts, so inline.
+const FADE = "<style>@media (prefers-reduced-motion: no-preference) { @view-transition { navigation: auto; } }</style>";
+
 // Previews, robots, the sitemap and the headers the live site needs.
 const launch = (): Plugin => {
   let outDir = "";
   return {
     name: "launch",
     configResolved: (config) => void (outDir = within(config.root, config.build.outDir)),
-    // Each listed page gets a share card from its own title and words.
+    // Every page opts in to the fade; listed ones get a share card too.
     transformIndexHtml: {
       order: "post",
       handler(html, ctx) {
         const address = ctx.path.replace(/index\.html$/, "");
+        html = html.replace("</head>", `  ${FADE}\n  </head>`);
         if (!LISTED.includes(address)) {
           return html.replace("</head>", '  <meta name="robots" content="noindex" />\n  </head>');
         }

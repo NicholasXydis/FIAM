@@ -535,11 +535,8 @@
   }
 }
 
-/* Pages cross-fade as they change; reduced motion stills everything. */
+/* Pages cross-fade as they change; each page opts in from its head. */
 @media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
-  }
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 0.45s;

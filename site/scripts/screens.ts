@@ -311,6 +311,9 @@ async function onSimulators(base: string) {
     if (!sim) continue;
     if (sim.state !== "Booted") simctl("boot", sim.udid);
     simctl("bootstatus", sim.udid, "-b");
+    // Safari's first start after a boot is slow, so it warms up first.
+    simctl("openurl", sim.udid, `${base}/`);
+    await sleep(8000);
     for (const [page, at] of PAGES) {
       simctl("openurl", sim.udid, base + at);
       await sleep(5000);

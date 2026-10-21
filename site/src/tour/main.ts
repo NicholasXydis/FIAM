@@ -23,8 +23,13 @@ const layer = h("div", { class: "ui" });
 document.body.append(canvas, layer);
 if (params.has("present")) document.body.classList.add("present");
 
-// If WebGL or the sim cannot run, says so instead of a blank page.
-function fail(reason: string): never {
+// What the note says when the tour cannot start, or stops midway.
+const CANNOT =
+  "This screen cannot run the 3D tour. Open this page in a recent Chrome, Edge, Safari or Firefox with hardware acceleration on.";
+const STOPPED = "The 3D tour stopped. Reload the page to start it again.";
+
+// Says so in plain words instead of a blank page; the reason is logged.
+function fail(words: string, reason: string): never {
   layer.append(
     h(
       "div",
@@ -33,11 +38,7 @@ function fail(reason: string): never {
         "div",
         { class: "glass rounded-2xl p-6 max-w-md flex flex-col gap-3" },
         h("p", { class: "headline text-[32px]" }, "QUARCC Purple · FIAM"),
-        h(
-          "p",
-          { class: "body" },
-          `This screen cannot run the 3D tour (${reason}). Open this page in a recent Chrome, Edge, Safari or Firefox with hardware acceleration on.`,
-        ),
+        h("p", { class: "body" }, words),
       ),
     ),
   );
@@ -51,13 +52,13 @@ try {
   stage = new Stage(canvas);
   sim = new Sim(stage.renderer);
 } catch (error) {
-  fail(error instanceof Error ? error.message : "WebGL is unavailable");
+  fail(CANNOT, error instanceof Error ? error.message : "WebGL is unavailable");
 }
 stage.scene.add(sim.points);
 // A lost graphics context ends the tour with a note to reload.
 canvas.addEventListener("webglcontextlost", (e) => {
   e.preventDefault();
-  fail("the graphics context was lost, reload the page");
+  fail(STOPPED, "the graphics context was lost");
 });
 
 // The intro draws its titles in these faces, so load them before it.

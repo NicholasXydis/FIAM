@@ -147,6 +147,9 @@ async function extras() {
         .digest("base64");
       if (!csp.includes(`'sha256-${hash}'`)) fail(`${page} runs an inline script the policy blocks`);
     }
+    // The fade's opt-in sits in the head, read before any stylesheet loads.
+    const head = html.slice(0, html.indexOf("<body"));
+    if (!/<style>[^<]*@view-transition \{ navigation: auto; \}/.test(head)) fail(`${page} does not opt in to the fade`);
     // A listed page has its card and address; the rest stay unlisted.
     const address = `/${page.replace(/index\.html$/, "")}`;
     if (!LISTED.includes(address)) {

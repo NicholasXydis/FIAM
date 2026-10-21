@@ -25,9 +25,6 @@ html:has(.tour-back) .brand {
 }
 /* The tour fades in from the site, as the site's pages do. */
 @media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
-  }
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 0.45s;
