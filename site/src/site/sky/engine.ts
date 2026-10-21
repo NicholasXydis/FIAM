@@ -2,8 +2,8 @@ import { seeded } from "@/shared/math";
 import { FLOATS, points } from "./gl";
 import { fontsReady, letters } from "./letters";
 
-// What the motes form: the name, or dust drifting through the sky.
-type Shape = "name" | "dust";
+// What the motes form: the name, dust, or the film's first light.
+type Shape = "name" | "dust" | "light";
 
 // What the page gives the sky: the box the name fills, if any.
 interface Options {
@@ -38,6 +38,8 @@ interface Mote {
   wait: number;
   free: boolean;
   g: number;
+  sx: number;
+  sy: number;
 }
 
 // A speck of dust rising through the light.
@@ -94,6 +96,17 @@ interface Comet {
 
 // Dust between the stars: a soft violet, dimmer than the name.
 const DUST: [number, number, number] = [0.72, 0.68, 1];
+// The film's first light, warm gold.
+const GOLD: [number, number, number] = [1, 0.8, 0.14];
+// Each gathered mote's share of light, so together they glow, not burn.
+const GATHERED = 0.026;
+// How far the halos spread round the gathered point, and their light.
+const HALO = 4.5;
+const GLOW = 0.065;
+// The gather: a mote's flight, its latest start, its turn on the way.
+const FLIGHT = 0.8;
+const STAGGER = 0.15;
+const SPIN = 0.9;
 // At most three shooting stars at once, each a head and a tail.
 const COMETS = 3;
 const TAIL = 30;
@@ -130,6 +143,14 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
   let raf = 0;
   // Whether something covers the sky, as the film does, so it rests.
   let resting = false;
+  // The film's first light the motes gather to, and when they set off.
+  const focus = { x: 0, y: 0, r: 8 };
+  let gatherAt = 0;
+  // Each gathered mote's share of the light, set by the light's size.
+  let share = GATHERED;
+  // How dark the sky round the light has gone, easing to where it heads.
+  let dark = 0;
+  let darkTo = 0;
   let o = 0;
   let ring: Ring | null = null;
 
@@ -180,6 +201,8 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         wait: reduce || was ? 0 : random() * 1.2,
         free: true,
         g: was ? was.g : 0,
+        sx: 0,
+        sy: 0,
       };
     });
     embers = Array.from({ length: Math.round(Math.min(520, Math.max(140, area / 2800))) }, () => ({
@@ -197,14 +220,19 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     instant = false;
   }
 
-  // Sends the motes to the name or to dust; instant skips the flight.
+  // Sends the motes to the name, dust or light; instant skips the flight.
   function shape(next: Shape, now = false) {
     current = next;
     const box = next === "name" ? options.stage() : null;
     const spots = box ? letters(box, motes.length, random) : [];
     motes.forEach((m, i) => {
       const s = spots[i];
-      if (s) Object.assign(m, { tx: s.x, ty: s.y, col: tint(s.across), free: false });
+      // Gathered, each mote rests near the light, most of them close in.
+      if (next === "light") {
+        const a = random() * Math.PI * 2;
+        const d = focus.r * Math.sqrt(-2 * Math.log(1 - random() * 0.999)) * 0.6;
+        Object.assign(m, { tx: focus.x + Math.cos(a) * d, ty: focus.y + Math.sin(a) * d, free: false });
+      } else if (s) Object.assign(m, { tx: s.x, ty: s.y, col: tint(s.across), free: false });
       else Object.assign(m, { tx: m.dx, ty: m.dy, col: DUST, free: true });
       if (reduce || now) Object.assign(m, { x: m.tx, y: m.ty, vx: 0, vy: 0, wait: 0, g: m.free ? 0 : 1 });
     });
@@ -227,6 +255,10 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     const py = (pointer.y - h / 2) / h;
     o = 0;
     light.k += (light.on - light.k) * Math.min(1, dt * 2.5);
+    // The sky round a gathering light goes dark, and the motes dim.
+    dark += (darkTo - dark) * Math.min(1, dt * 4.5);
+    const lit = 1 - dark;
+    const gathering = current === "light";
     // Stars drift at their depth, and brighten in the name's light.
     for (const s of stars) {
       const tw = 0.4 + 0.6 * Math.sin(t * s.f + s.ph);
@@ -234,13 +266,25 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       const y = (((s.y + (reduce ? 0 : -py * 12 * s.z + t * 2 * s.z)) % h) + h) % h;
       const gx = (x - light.x) / light.rx;
       const gy = (y - light.y) / light.ry;
-      const lit = light.k * Math.exp(-(gx * gx + gy * gy));
-      put(x, y, 0.8 + lit * 0.1, 0.74 + lit * 0.08, 1, s.a * tw * (0.7 + lit * 1.8), s.s);
+      const glow = light.k * Math.exp(-(gx * gx + gy * gy));
+      put(x, y, 0.8 + glow * 0.1, 0.74 + glow * 0.08, 1, s.a * tw * (0.7 + glow * 1.8) * lit, s.s);
     }
     // Motes spring home, swirl gently, and part around the pointer.
     let halo = o + motes.length * FLOATS;
     for (const m of motes) {
-      if (!reduce && t > m.wait) {
+      // Gathering, each mote flies a set path: in, turning, by one second.
+      let arrived = 0;
+      if (gathering && !reduce) {
+        const p = Math.min(1, Math.max(0, (t - gatherAt - (m.ph / 6.29) * STAGGER) / FLIGHT));
+        arrived = p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
+        const ox = (m.sx - m.tx) * (1 - arrived);
+        const oy = (m.sy - m.ty) * (1 - arrived);
+        const turn = arrived * SPIN;
+        m.x = m.tx + ox * Math.cos(turn) - oy * Math.sin(turn);
+        m.y = m.ty + ox * Math.sin(turn) + oy * Math.cos(turn);
+        m.vx = m.vy = 0;
+      } else if (gathering) arrived = 1;
+      else if (!reduce && t > m.wait) {
         const wob = m.free ? 40 : 2.2;
         const tx = m.tx + Math.sin(t * (m.free ? 0.15 : 1.3) + m.ph) * wob;
         const ty = m.ty + Math.cos(t * (m.free ? 0.12 : 1.1) + m.ph) * wob;
@@ -250,7 +294,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         const dx = m.x - pointer.x;
         const dy = m.y - pointer.y;
         const d = Math.hypot(dx, dy) + 0.001;
-        if (d < reach && !ring) {
+        if (d < reach && ring === null) {
           const f = (1 - d / reach) ** 2;
           ax += ((dx / d) * 2200 - (dy / d) * 1300) * f + pointer.vx * f * 16;
           ay += ((dy / d) * 2200 + (dx / d) * 1300) * f + pointer.vy * f * 16;
@@ -277,20 +321,34 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       const speed = Math.min(1, Math.hypot(m.vx, m.vy) / 600);
       const breath = 1 - 0.1 * m.g + 0.1 * m.g * Math.sin(t * 0.9);
       const glow = (0.45 + 0.55 * m.g + near * 0.9) * breath * (0.8 + 0.2 * Math.sin(t * 2 + m.ph));
-      const [r, g, b] = m.col;
+      // Arriving, a mote turns gold and gives its light to the point.
+      const motesLit = 1 - arrived * (1 - share);
+      const r = m.col[0] + (GOLD[0] - m.col[0]) * arrived;
+      const g = m.col[1] + (GOLD[1] - m.col[1]) * arrived;
+      const b = m.col[2] + (GOLD[2] - m.col[2]) * arrived;
       put(
         m.x,
         m.y,
         r + speed * 0.3 + near * 0.2,
         g + speed * 0.2 + near * 0.15,
         b,
-        m.a * glow,
+        m.a * glow * motesLit,
         m.s * (1 + speed * 0.6),
       );
       // A wide, faint copy of every mote: the bloom that lights the dark.
       const at = o;
       o = halo;
-      put(m.x, m.y, (r + speed * 0.3) * 0.8, (g + speed * 0.2) * 0.7, b, (0.015 + 0.055 * m.g) * m.a, m.s * 7);
+      // Gathered, the halos spread round the point as its soft glow.
+      const spread = 1 + arrived * HALO;
+      put(
+        focus.x + (m.x - focus.x) * spread,
+        focus.y + (m.y - focus.y) * spread,
+        (r + speed * 0.3) * (0.8 + 0.2 * arrived),
+        (g + speed * 0.2) * (0.7 + 0.3 * arrived),
+        b,
+        (0.015 + 0.055 * m.g) * m.a * (1 - arrived * (1 - (GLOW * share) / GATHERED)),
+        m.s * 7,
+      );
       halo = o;
       o = at;
     }
@@ -308,7 +366,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       }
       if (e.y < -10) Object.assign(e, { y: h + 10, x: Math.random() * w });
       const sway = reduce ? 0 : Math.sin(t * e.f + e.ph) * 14;
-      put(e.x + sway, e.y, 0.82, 0.76, 1, e.a * (0.6 + 0.4 * Math.sin(t * e.f * 2 + e.ph)), e.s);
+      put(e.x + sway, e.y, 0.82, 0.76, 1, e.a * (0.6 + 0.4 * Math.sin(t * e.f * 2 + e.ph)) * lit, e.s);
     }
     // A shooting star every one to four seconds, quiet and behind.
     if (!reduce && t > nextComet && comets.length < COMETS) {
@@ -334,7 +392,15 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         }
         const age = t - cm.t0 - k * 0.011;
         const fade = Math.sin(((t - cm.t0) / cm.life) * Math.PI);
-        put(cm.x + cm.vx * age, cm.y + cm.vy * age, 0.9, 0.86, 1, fade * (1 - k / TAIL) ** 1.4 * cm.a, 2.6 - k * 0.06);
+        put(
+          cm.x + cm.vx * age,
+          cm.y + cm.vy * age,
+          0.9,
+          0.86,
+          1,
+          fade * (1 - k / TAIL) ** 1.4 * cm.a * lit,
+          2.6 - k * 0.06,
+        );
       }
     }
     pointer.vx *= 0.8;
@@ -411,6 +477,32 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         m.vx += ((m.x - x) / d) * speed + (Math.random() - 0.5) * 160;
         m.vy += ((m.y - y) / d) * speed * 0.8 + (Math.random() - 0.5) * 160;
       }
+    },
+    // Every mote falls into one light at x, y, r wide; the sky goes dark.
+    gather(x: number, y: number, r: number) {
+      Object.assign(focus, { x, y, r });
+      // A small light from few motes, or a big one from many, glow alike.
+      share = GATHERED * (r / 9.75) * Math.sqrt(22000 / motes.length);
+      darkTo = 1;
+      gatherAt = (performance.now() - start) / 1000;
+      for (const m of motes) Object.assign(m, { sx: m.x, sy: m.y });
+      shape("light");
+    },
+    // The light bursts back into dust that forms the name again.
+    release(now = false) {
+      darkTo = 0;
+      // At once, as on a restored page: dust, which then forms the name.
+      if (now || reduce) {
+        dark = 0;
+        return shape(reduce ? "name" : "dust", true);
+      }
+      for (const m of motes) {
+        const a = Math.random() * Math.PI * 2;
+        const speed = 300 + Math.random() * 700;
+        m.vx += Math.cos(a) * speed;
+        m.vy += Math.sin(a) * speed;
+      }
+      shape("name");
     },
     // Draws one frame now and returns the canvas, for a page to keep.
     frame() {

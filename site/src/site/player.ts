@@ -1,12 +1,14 @@
 // The film over the landing: one video at a time, its sound its own.
 import vtt from "@/content/captions.vtt?raw";
 import files from "@/content/media.json";
-import { FILM } from "./ui/press";
+import { FILM, GATHER, type Gather } from "./ui/press";
 
 // Where the copies live: R2 once live, the local /media while building.
 const MEDIA = (import.meta.env["VITE_MEDIA"] as string | undefined) ?? "/media";
 // Where a visitor's captions choice is kept between visits.
 const KEPT = "film:captions";
+// How long the dust takes to gather into the light before the film.
+const GATHER_MS = 1000;
 
 // The shapes: wide 16:9, tall 9:16, side 2.17:1 for sideways phones.
 type Shape = "wide" | "tall" | "side";
@@ -34,6 +36,9 @@ const CUES = [...vtt.matchAll(/([\d:.]+) --> ([\d:.]+)\n(.+)/g)].map((m) => ({
 
 // The player's parts, and what it is doing now.
 let parts: Parts | null = null;
+// Whether the sky holds the film's light, and the wait before the film.
+let gathered = false;
+let gatherTimer = 0;
 let on = false;
 let want = false;
 let shape: Shape = "wide";
@@ -97,7 +102,7 @@ const current = () => shapeOf(innerWidth / innerHeight);
 const upright = () => matchMedia("(max-aspect-ratio: 1/1)");
 const long = () => matchMedia("(min-aspect-ratio: 49/25)");
 // A file's fingerprinted name from the list pnpm media web writes.
-const named = (key: string) => (files as Record<string, string>)[key] ?? "";
+const named = (key: string) => String((files as Record<string, unknown>)[key] ?? "");
 // A copy's full address and the poster of its first light.
 const source = (s: Shape, small: boolean) => new URL(`${MEDIA}/${named(small ? `${s}-lite` : s)}`, location.href).href;
 const poster = (s: Shape) => `/film/${named(`poster-${s}`)}`;
@@ -338,27 +343,68 @@ export function prime() {
   release(b);
 }
 
-// Covers the page with the film and plays it from the start.
+// Where the film's first light falls on this screen, and how wide.
+function firstLight(): Gather {
+  const r = RATIO[shape];
+  const [w, h] = innerWidth / innerHeight > r ? [innerHeight * r, innerHeight] : [innerWidth, innerWidth / r];
+  const [fx = 0.5, fy = 0.44] = (files.lights as Record<Shape, number[]>)[shape];
+  // The light's core is 13 px across a 1080 px short side.
+  return { x: (innerWidth - w) / 2 + fx * w, y: (innerHeight - h) / 2 + fy * h, r: (13 / 1080) * Math.min(w, h) };
+}
+
+// Runs once the player itself has faded, or soon after if it cannot.
+function afterFade(then: () => void) {
+  if (!parts) return then();
+  const root = parts.root;
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    root.removeEventListener("transitionend", own);
+    then();
+  };
+  const own = (e: Event) => e.target === root && (e as TransitionEvent).propertyName === "opacity" && once();
+  root.addEventListener("transitionend", own);
+  setTimeout(once, 900);
+}
+
+// Opens the film: the dust gathers into its first light, then it plays.
 export function open() {
   if (!parts || on) return;
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   on = true;
   turning = warm = started = false;
-  opened = performance.now();
   waited = waits = waitFrom = smoothSince = jumped = 0;
   later = false;
   loading = null;
-  fit();
   history.pushState({ film: true }, "", "#film");
+  behind(true);
+  parts.root.focus({ preventScroll: true });
+  // With the particle sky and motion, the page gives way to the light.
+  const root = document.documentElement;
+  const sky = root.hasAttribute("data-lit") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (sky) {
+    gathered = true;
+    root.setAttribute("data-gather", "");
+    dispatchEvent(new CustomEvent<Gather>(GATHER, { detail: firstLight() }));
+  }
+  gatherTimer = window.setTimeout(show, sky ? GATHER_MS : 0);
+}
+
+// The film fades in over its light, and plays from the start.
+function show() {
+  if (!parts || !on) return;
+  opened = performance.now();
+  fit();
   const root = document.documentElement;
   root.setAttribute("data-film", "");
   requestAnimationFrame(() => on && root.setAttribute("data-film", "on"));
-  // Once it covers the page, the page beneath stops drawing.
-  const covered = () => on && root.setAttribute("data-film", "full");
-  parts.root.addEventListener("transitionend", covered, { once: true });
-  dispatchEvent(new CustomEvent(FILM, { detail: true }));
-  behind(true);
-  parts.root.focus({ preventScroll: true });
+  // Once it covers the page, the page beneath rests and stops drawing.
+  afterFade(() => {
+    if (!on) return;
+    root.setAttribute("data-film", "full");
+    dispatchEvent(new CustomEvent(FILM, { detail: true }));
+  });
   playing(true);
   raf = requestAnimationFrame(tick);
 }
@@ -375,14 +421,25 @@ function close(instant = false) {
   parts.root.removeAttribute("data-turning");
   parts.root.removeAttribute("data-loading");
   cancelAnimationFrame(raf);
+  clearTimeout(gatherTimer);
   for (const v of parts.videos) release(v);
   live = null;
   const root = document.documentElement;
-  const done = () => !on && root.removeAttribute("data-film");
-  root.setAttribute("data-film", "");
-  if (instant || matchMedia("(prefers-reduced-motion: reduce)").matches) done();
-  else parts.root.addEventListener("transitionend", done, { once: true });
+  const shown = root.hasAttribute("data-film");
+  // The film fades off its light; then the light bursts into the name.
+  const done = () => {
+    if (on) return;
+    root.removeAttribute("data-film");
+    if (!gathered) return;
+    gathered = false;
+    root.removeAttribute("data-gather");
+    dispatchEvent(new CustomEvent<Gather>(GATHER, { detail: instant ? "now" : "back" }));
+  };
+  // The sky wakes first, still holding the light, under the fading film.
   dispatchEvent(new CustomEvent(FILM, { detail: false }));
+  if (shown) root.setAttribute("data-film", "");
+  if (instant || !shown || matchMedia("(prefers-reduced-motion: reduce)").matches) done();
+  else afterFade(done);
   behind(false);
   opener?.focus({ preventScroll: true });
 }

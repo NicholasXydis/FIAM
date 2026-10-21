@@ -75,6 +75,13 @@ def captions():
     return "WEBVTT\n\n" + "\n\n".join(f"{stamp(s)} --> {stamp(e)}\n{line}" for s, e, line in out) + "\n"
 
 
+# The brightest point of a frame in shares of its size: the first light.
+def brightest(image, size):
+    gray = subprocess.run([FF, "-v", "error", "-i", image, "-vf", "format=gray", "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+    y, x = divmod(gray.index(max(gray)), size[0])
+    return [round((x + 0.5) / size[0], 4), round((y + 0.5) / size[1], 4)]
+
+
 # Fingerprints a file into its name, so a copy is never mixed or stale.
 def stamped(path):
     digest = hashlib.sha256(path.read_bytes()).hexdigest()[:10]
@@ -102,7 +109,7 @@ MEDIA.mkdir(parents=True, exist_ok=True)
 POSTERS.mkdir(parents=True, exist_ok=True)
 for old in [*MEDIA.glob("film-*.mp4"), *POSTERS.glob("poster-*.jpg")]:
     old.unlink()
-files = {}
+files = {"lights": {}}
 for shape, (suffix, size, level, lite) in SHAPES.items():
     master = DECK / f"QUARCC_Purple_FIAM_trailer{suffix}.mp4"
     # The near lossless render the master came from, at full size.
@@ -117,6 +124,7 @@ for shape, (suffix, size, level, lite) in SHAPES.items():
     files[f"{shape}-lite"] = encode(source, master, lite, "22", "4M", "4.2", MEDIA / f"film-{shape}-lite.mp4")
     # The first frame, the film's first light, shown while it loads.
     ff("-i", master, "-frames:v", "1", "-q:v", "3", POSTERS / f"poster-{shape}.jpg")
+    files["lights"][shape] = brightest(POSTERS / f"poster-{shape}.jpg", size)
     files[f"poster-{shape}"] = stamped(POSTERS / f"poster-{shape}.jpg")
 # The names the player asks for, and the captions it shows.
 MANIFEST.write_text(json.dumps(files, indent=1) + "\n")

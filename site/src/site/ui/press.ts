@@ -8,6 +8,10 @@ export const LEAVE = "site:leave";
 export const ATTRACT = "site:attract";
 // Sent as the film covers the sky and leaves it, so the sky can rest.
 export const FILM = "site:film";
+// Sent as the film opens, the light to gather to, and as it goes.
+export const GATHER = "site:gather";
+// Where the dust gathers: a point and its size, or back to the name.
+export type Gather = { x: number; y: number; r: number } | "back" | "now";
 
 // Runs an action once the press has shown; says where it is going.
 export function afterPress(action: () => void, to?: string) {

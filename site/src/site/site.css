@@ -156,6 +156,22 @@
     }
   }
 
+  /* As the dust gathers into the film's light, the page around goes. */
+  .ways,
+  footer,
+  .sky-nebula,
+  .sky-aura,
+  .sky-grain {
+    transition: opacity 0.6s var(--ease-film);
+  }
+  [data-gather] .ways,
+  [data-gather] footer,
+  [data-gather] .sky-nebula,
+  [data-gather] .sky-aura,
+  [data-gather] .sky-grain {
+    opacity: 0;
+    pointer-events: none;
+  }
   /* The two ways in: twin pills, side by side or stacked, one by one. */
   .ways {
     display: grid;

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { type Ring, startSky } from "../sky/engine";
 import { cameFrom } from "./back";
-import { ATTRACT, FILM, LEAVE } from "./press";
+import { ATTRACT, FILM, GATHER, type Gather, LEAVE } from "./press";
 
 // How a page's sky opens: the landing's name, or dust everywhere else.
 export type Opening = "name" | "dust";
@@ -134,16 +134,24 @@ export function Sky({ opening }: { opening: Opening }) {
     const pull = (e: Event) => sky.attract((e as CustomEvent<Ring | null>).detail);
     // Under the film the sky rests, sparing the frames for the picture.
     const covered = (e: Event) => sky.rest((e as CustomEvent<boolean>).detail);
+    // The film's first light: the dust gathers to it, then bursts back.
+    const light = (e: Event) => {
+      const at = (e as CustomEvent<Gather>).detail;
+      if (typeof at === "object") sky.gather(at.x, at.y, at.r);
+      else sky.release(at === "now");
+    };
     addEventListener("pageshow", restored);
     addEventListener(LEAVE, leave);
     addEventListener(ATTRACT, pull);
     addEventListener(FILM, covered);
+    addEventListener(GATHER, light);
     return () => {
       el.removeEventListener("webglcontextlost", lost);
       removeEventListener("pageshow", restored);
       removeEventListener(LEAVE, leave);
       removeEventListener(ATTRACT, pull);
       removeEventListener(FILM, covered);
+      removeEventListener(GATHER, light);
       sky.stop();
     };
   }, [opening]);
