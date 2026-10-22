@@ -17,7 +17,7 @@ from pathlib import Path
 HELP = """uv run run.py [options]
   no data in data/     checks the submitted holdings and returns against the brief
   with data            builds the data bundle once, rebuilds the book into out/, compares it
-  --official           rewrites submission/, RESULTS.md and BRIEF.md (needs the WRDS tables)
+  --official           rewrites submission/ and RESULTS.md (needs the WRDS tables)
   --ml                 retrains every model        --agents   runs the local-LLM agents
   --all                --ml and --agents, in order, resuming where a stopped run left off
   --smoke              every step on a small slice, a rehearsal of --all in minutes
@@ -60,7 +60,7 @@ REPORT = [
     ("fiam.checks.provenance", "recording which run wrote each artifact"),
     ("fiam.report.charts", "drawing the performance charts"),
     ("fiam.report.research_charts", "drawing the research charts"),
-    ("fiam.report.docs", "filling RESULTS.md and BRIEF.md"),
+    ("fiam.report.docs", "filling RESULTS.md"),
     ("fiam.checks.reproducibility", "auditing for look-ahead and survivorship"),
     ("fiam.checks.verify", "checking the book against the brief's rules"),
 ]
@@ -315,8 +315,7 @@ def keep_awake() -> None:
 def seed_out() -> None:
     shutil.rmtree(OUT / "submission", ignore_errors=True)
     shutil.copytree("submission", OUT / "submission", dirs_exist_ok=True)
-    for doc in ("RESULTS.md", "BRIEF.md"):
-        shutil.copy2(doc, OUT / doc)
+    shutil.copy2("RESULTS.md", OUT / "RESULTS.md")
 
 
 # Prints to the screen and to cache/run.log, so an overnight run can be read in the morning.

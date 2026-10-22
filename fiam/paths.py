@@ -16,7 +16,6 @@ HOLDINGS = SUBMISSION / "holdings.csv"
 RETURNS = SUBMISSION / "returns.csv"
 METRICS = SUBMISSION / "metrics.json"
 RESULTS = OUT_ROOT / "RESULTS.md"
-BRIEF = OUT_ROOT / "BRIEF.md"
 
 # The small-run switch: every slow step shrinks to a slice, so the whole chain is tested in minutes.
 SMOKE = os.environ.get("FIAM_SMOKE") == "1"

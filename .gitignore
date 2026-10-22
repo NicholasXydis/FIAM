@@ -114,8 +114,12 @@ Desktop.ini
 # Drafts the rules reader writes on every drill; only the hand-made references are committed.
 /mandates/*_draft*.json
 
-# Site packages, web build, plan, wrangler scratch.
+# Site packages, web build, wrangler scratch.
 /site/node_modules/
 /site/dist/
-/site/PLAN.md
 /site/.wrangler/
+
+# The local plan, team brief and assistant rules, never committed.
+/docs/PLAN.md
+/docs/TEAM.md
+/CLAUDE.md

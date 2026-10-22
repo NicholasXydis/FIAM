@@ -1,4 +1,4 @@
-# Fills every generated table and every number in the prose of RESULTS.md and BRIEF.md.
+# Fills every generated table and every number in the prose of RESULTS.md.
 
 import json
 import re
@@ -8,7 +8,7 @@ from fiam import paths
 from fiam.book import MARKET_NAME, display_name
 
 SUBMISSION = paths.SUBMISSION
-RESULTS, BRIEF = paths.RESULTS, paths.BRIEF
+RESULTS = paths.RESULTS
 
 # Prose uses a real minus sign, so a negative number has to match either form.
 MINUS = "−"
@@ -68,45 +68,6 @@ def headline(m: dict) -> str:
     )
     # The code hash at the bottom is how you spot a table from other code.
     return f"{body}\n\n_From code `{run['code_sha256']}`._"
-
-
-# The plain-English table in BRIEF.md, with the 2016-2020 check beside the headline.
-def brief(m: dict) -> str:
-    perf, split = m["performance"], load("exhibits/pack.json").get("subperiod", {})
-    clean = load("exhibits/confirmation.json").get("confirmation_2016_2020", {})
-    rows = [
-        ("Net return", f"**{perf['return_net_annual']:.1%} a year** after every modelled fee"),
-        ("Information ratio", f"**{perf['information_ratio']:.2f}**"),
-        ("Information ratio before costs", f"{perf['information_ratio_before_costs']:.2f}"),
-        ("Alpha", f"{perf['alpha_annual']:.1%} a year, t = {perf['alpha_tstat']:.2f}"),
-        (
-            "Beta to the S&P 500, monthly",
-            f"{perf['beta_realized']:.2f}, standard error {perf['beta_stderr']:.2f}",
-        ),
-        ("Worst drawdown", f"{perf['max_drawdown_total']:.1%}"),
-    ]
-    daily = load("exhibits/daily_risk.json").get("beta_to_sp500_daily")
-    if daily:
-        t = daily["beta"] / daily["stderr"]
-        tilt = "no clear tilt" if abs(t) < 2 else f"a {'short' if t < 0 else 'long'} market tilt"
-        text = f"{daily['beta']:+.2f}, t = {t:.1f}: {tilt}"
-        rows.insert(4, ("Beta, daily returns 2021-25", text))
-    if split:
-        first = split["first_half_2021_2022"]["information_ratio"]
-        second = split["second_half_2023_2026"]["information_ratio"]
-        rows.append(("Split in half", f"2021-22 IR {first:.2f}, 2023-26 IR {second:+.2f}"))
-        rows.append(
-            (
-                "CRSP years only",
-                f"2021-25 IR {split['crsp_era_2021_2025']['information_ratio']:.2f}",
-            )
-        )
-    if clean:
-        beta = f"beta {clean['beta_realized']:+.2f} (se {clean['beta_stderr']:.2f})"
-        rows.append(
-            ("2016-2020, a historical check", f"IR {clean['information_ratio']:+.2f}, {beta}")
-        )
-    return pairs(rows)
 
 
 # The same book on 2016-2020 beside the record, both on the CRSP market. Seen, so not a clean test.
@@ -848,7 +809,6 @@ TABLES = dict(
     clean=clean,
     placebo=placebo,
     deflation=deflation,
-    brief=brief,
 )
 
 
@@ -882,12 +842,11 @@ def numbers(text: str) -> str:
     return NUMBER.sub(value, text)
 
 
-# Fills RESULTS.md and BRIEF.md from the latest exhibits.
+# Fills RESULTS.md from the latest exhibits.
 def main() -> None:
     m = load("metrics.json")
     assert m["notes"]["market_series"] == MARKET_NAME, "metrics.json is from an older run"
     fill(RESULTS, TABLES, m)
-    fill(BRIEF, TABLES, m)
     # The README's few numbers too, where a README sits beside RESULTS.md.
     readme = RESULTS.parent / "README.md"
     if readme.exists():
