@@ -13,7 +13,9 @@ from fiam import book as P
 from fiam import data, freeze, layers
 from fiam.exhibits import september as S
 
-USB = Path(os.environ.get("FIAM_USB", "E:/Stock Data"))
+# The Stock Data archive: FIAM_STOCK_DATA, else the Mac, else Windows.
+PLACES = (Path("/Applications/@Apps/Stock Data"), Path("E:/Stock Data"))
+USB = Path(os.environ.get("FIAM_STOCK_DATA") or next((p for p in PLACES if p.exists()), PLACES[1]))
 CACHE = P.CACHE / "stress_daily.parquet"
 OUT = Path("out") / "v2" / "stress.json"
 FACTORS = ["mktrf", "smb", "hml", "rmw", "cma", "umd"]
