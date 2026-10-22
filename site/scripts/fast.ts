@@ -83,6 +83,8 @@ async function settle(page: Page, slide: number) {
 // A page with its errors collected, for each check to read.
 async function tab(browser: Browser, options: Parameters<Browser["newContext"]>[0]) {
   const page = await (await browser.newContext(options)).newPage();
+  // CI runners load pages beside the device shots, so wait longer.
+  page.setDefaultNavigationTimeout(process.env["CI"] ? 120_000 : 30_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
   page.on("console", (m) => {
@@ -105,8 +107,9 @@ async function site(browser: Browser, base: string) {
       people.push(...(await page.$$eval("[data-slug]", (els) => els.map((e) => e.dataset["slug"]!))));
     problems.push(...(await keys(page, name)));
   }
+  // A profile's marks are text, so its photos need not finish loading.
   for (const slug of people) {
-    await page.goto(`${base}/team/#${slug}`);
+    await page.goto(`${base}/team/#${slug}`, { waitUntil: "domcontentloaded" });
     await sleep(300);
     for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: null }))
       problems.push(`${slug} shows "${m}"`);
