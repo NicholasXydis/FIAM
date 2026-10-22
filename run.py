@@ -10,6 +10,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import zipfile
 from pathlib import Path
@@ -38,7 +39,13 @@ HELP = """uv run run.py [options]
   --finals-pack        rebuilds the charts, Q&A, both finals decks and the PDF from the results
                        (needs fiam_results.zip: --import fiam_results.zip --finals-pack)
   --export-results     zips agent answers, v2 runs and frozen inputs into fiam_results.zip
-                       (--import takes either zip, and can be given twice)"""
+                       (--import takes either zip, and can be given twice)
+  --data status        every data source: files, sizes, USB budget, licence (data/INVENTORY.json)
+  --data verify        every saved file against its receipt, and the organizer's checksums
+  --data rebuild <source> <verb ...>   rebuilds into a scratch folder and compares with ours
+  --data <source> <verb ...>   one data tool: edgar, noaa, stock, carbon or amazon, e.g.
+                       --data carbon plan <spec> (prices, buys nothing); carbon buy and rebuy
+                       spend tokens, so the leader runs them; --data amazon fetch [category]"""
 
 # The book and everything read from it, in order. Each step is a module run with python -m.
 STEPS = [
@@ -123,6 +130,18 @@ EXITS = BUNDLE / "wrds" / "exits.parquet"
 
 PACKAGES = ["pandas", "numpy", "pyarrow", "scipy", "cvxpy", "statsmodels", "matplotlib"]
 ML_PACKAGES = ["sklearn", "lightgbm", "torch"]
+# Carbon Arc's SDK, pinned, with nothing published after the freeze.
+CARBON_SDK, CARBON_CUTOFF = "carbonarc==1.1.19", "2026-10-14T00:00:00Z"
+# DuckDB for the Amazon reviews, in its own environment, same cutoff.
+AMAZON_ENGINE = "duckdb"
+# Each data tool, the package its env adds, and its folder in data/
+DATA_TOOLS = {
+    "edgar": ("edgar.py", None, "edgar"),
+    "noaa": ("noaa.py", None, "noaa"),
+    "stock": ("stock_data.py", None, "v4/extracts"),
+    "carbon": ("carbon_arc.py", CARBON_SDK, "carbon_arc"),
+    "amazon": ("amazon.py", AMAZON_ENGINE, "amazon"),
+}
 
 # Data any step may read. Large files are keyed on size and date, small ones on their bytes.
 DATA = [*(BUNDLE / name for name in CORE), EXITS, Path("data/benchmarks/sources.json")]
@@ -425,6 +444,44 @@ def day_env(args: list[str]) -> dict | None:
     return extra
 
 
+# One data tool; one needing its own package runs in an isolated env.
+def data_tool(source: str, rest: list[str], light: bool = False) -> int:
+    script, extra, _ = DATA_TOOLS[source]
+    path = str(ROOT / "tools" / "data" / script)
+    if extra is None or light:
+        return subprocess.run([sys.executable, path, *rest]).returncode
+    command = ["uv", "run", "--no-project", "--isolated", "--exclude-newer", CARBON_CUTOFF]
+    command += ["--with", extra, "python", path, *rest]
+    return subprocess.run(command).returncode
+
+
+# --data: status, verify, rebuild <source> <verbs>, or <source> <verb ...>.
+def data_command(rest: list[str]) -> int:
+    status = [sys.executable, str(ROOT / "tools" / "data" / "status.py")]
+    if rest == ["status"]:
+        return subprocess.run([*status, "status"]).returncode
+    if rest == ["verify"]:
+        failed = [s for s in DATA_TOOLS if data_tool(s, ["verify"], light=True)]
+        from fiam import data as bundle
+
+        wrong = bundle.checksum_mismatches()
+        print(f"bundle: organizer checksums {'match' if not wrong else f'DIFFER {wrong}'}")
+        failed += ["bundle"] if wrong else []
+        print("All data verified." if not failed else f"Problems in: {failed}")
+        return 1 if failed else 0
+    if rest[:1] == ["rebuild"] and len(rest) > 2 and rest[1] in DATA_TOOLS:
+        source, verbs = rest[1], rest[2:]
+        with tempfile.TemporaryDirectory(dir=ROOT / "data", prefix="rebuild_") as scratch:
+            code = data_tool(source, [*verbs, "--into", scratch])
+            folder = DATA_TOOLS[source][2]
+            compare = [*status, "compare", f"{scratch}/{folder}", str(ROOT / "data" / folder)]
+            return code or subprocess.run(compare).returncode
+    if rest[:1] and rest[0] in DATA_TOOLS:
+        return data_tool(rest[0], rest[1:])
+    print("Usage: uv run run.py --data status | verify | rebuild <source> <verb> | <source> <verb>")
+    return 2
+
+
 # Reads the options, then runs every step they ask for, in order.
 def main() -> int:
     os.chdir(ROOT)
@@ -439,6 +496,8 @@ def main() -> int:
         return 0
     if "--export-data" in args:
         return export_data()
+    if "--data" in args:
+        return data_command(args[args.index("--data") + 1 :])
     everything = "--all" in args
     ml, agents = everything or "--ml" in args, everything or "--agents" in args
     if not ready(ml):
