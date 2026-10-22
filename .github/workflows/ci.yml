@@ -13,6 +13,11 @@ permissions:
 env:
   UV_LOCKED: "1"
 
+# A newer push cancels the branch's older run; main always finishes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   backtest:
     runs-on: ubuntu-latest
@@ -45,8 +50,34 @@ jobs:
           uv run python tools/build_main.py --out "$RUNNER_TEMP/judge/MAIN.py"
           cd "$RUNNER_TEMP/judge" && uv run MAIN.py
 
+  # Whether this push or pull request touches the site or this workflow.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.diff.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # An unknown base, like a new branch, runs the site job anyway.
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$BASE" HEAD -- site .github/workflows/ci.yml)"
+          else
+            changed="unknown"
+          fi
+          if [ -n "$changed" ]; then site=true; else site=false; fi
+          echo "site=$site" >> "$GITHUB_OUTPUT"
+
   # The website: types, format, comments, budgets, headers, browsers.
   site:
+    needs: changes
+    # Skipped when site/ is unchanged; a skipped job counts as passed.
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -68,6 +99,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: site/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # The browsers, cached by the lock file so versions match.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('site/pnpm-lock.yaml') }}
       # The three engines the device and quick checks open.
       - run: pnpm exec playwright-core install --with-deps chromium firefox webkit
       - run: pnpm check
