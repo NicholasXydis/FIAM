@@ -109,6 +109,8 @@ Desktop.ini
 !/submission/models/*.parquet
 !/submission/exhibits/agents/*.parquet
 /out/
+# Past research runs from the results kit; the trial count reads them.
+/research/
 # The generated deck; the PDF made from it is submitted, not committed.
 /deck/
 # Drafts the rules reader writes on every drill; only the hand-made references are committed.
