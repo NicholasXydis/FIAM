@@ -15,6 +15,8 @@ LABELS = DIR / "labels_monthly.parquet"
 FILINGS = DIR / "filings.parquet"
 MANIFEST = DIR / "manifest.json"
 WRDS = DIR / "wrds"
+# Our WRDS extracts (tools/data/stock_data.py), never the raw archive.
+EXTRACTS = ROOT / "data" / "v4" / "extracts"
 
 # What every step needs. The WRDS tables and the research layers are extras a judge will not have.
 CORE = (FEATURES, LABELS, FILINGS, MANIFEST)

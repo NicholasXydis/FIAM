@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -253,3 +254,75 @@ def test_every_data_tool_exists():
     run = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(run)
     assert all((TOOLS / script).exists() for script, _, _ in run.DATA_TOOLS.values())
+
+
+# Run-time code reads only data/; the two bundle builders take a folder.
+def test_run_time_code_never_names_the_raw_archive():
+    builders = {"fiam/build_data.py", "fiam/wrds.py"}
+    banned = ("Stock Data", "FIAM_STOCK_DATA", "@Apps", "E:/", "E:\\")
+    for path in [*sorted((ROOT / "fiam").rglob("*.py")), ROOT / "run.py"]:
+        name = path.relative_to(ROOT).as_posix()
+        if name not in builders:
+            text = path.read_text(encoding="utf-8")
+            assert not [b for b in banned if b in text], name
+
+
+# Compacting keeps every value and the same bytes from any row groups.
+def test_compact_keeps_values_whatever_the_row_groups(tmp_path, monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    stock = tool("stock_data")
+    monkeypatch.setattr(stock, "GROUP", 7)
+    table = pa.table({"k": [str(i) for i in range(30)], "v": [i / 3 for i in range(30)]})
+    small, whole = tmp_path / "small.parquet", tmp_path / "whole.parquet"
+    pq.write_table(table, small, row_group_size=4, compression="zstd")
+    pq.write_table(table, whole, compression="zstd")
+    stock.compact(small)
+    stock.compact(whole)
+    assert pq.read_table(small).equals(table)
+    assert small.read_bytes() == whole.read_bytes()
+    assert pq.ParquetFile(small).metadata.num_row_groups == 5
+
+
+# Without the CRSP daily extract, replays are N/A and say so.
+def test_stress_replays_are_missing_not_guessed(tmp_path, monkeypatch, capsys):
+    from fiam.exhibits import stress
+
+    monkeypatch.setattr(stress, "CACHE", tmp_path / "none.parquet")
+    monkeypatch.setattr(stress, "DAILY", tmp_path / "crsp_daily")
+    assert stress.episode_returns() is None
+    assert "replays are N/A" in capsys.readouterr().err
+
+
+# A month keeps the description in force on its date, never a later one.
+def test_dedupe_keeps_the_description_known_on_the_date(tmp_path):
+    stock = tool("stock_data")
+    rows = [
+        ("1", "2003-10-31", "2001-10-01", "OLD"),
+        ("1", "2003-10-31", "2003-11-01", "NEW"),
+        ("1", "2003-10-31", "2003-11-01", "NEW"),
+        ("2", "2004-05-28", "2004-05-29", "LATER"),
+        ("2", "2004-05-28", "2004-06-02", "LATEST"),
+    ]
+    path = tmp_path / "m.parquet"
+    pd.DataFrame(rows, columns=["PERMNO", "MthCalDt", "SecInfoStartDt", "Ticker"]).to_parquet(path)
+    assert stock.dedupe(path, ["PERMNO", "MthCalDt"], "SecInfoStartDt") == 3
+    kept = pd.read_parquet(path).set_index("PERMNO")["Ticker"].to_dict()
+    assert kept == {"1": "OLD", "2": "LATER"}
+
+
+# The audit records each result and finds 13F members in any layout.
+def test_audit_records_results_and_finds_members(tmp_path):
+    spec = importlib.util.spec_from_file_location("audit", ROOT / "tools" / "audit.py")
+    audit = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(audit)
+    audit.zero(0, "s", "clean", "fail", "fix")
+    audit.zero(3, "s", "dirty", "warn", "fix", 10)
+    assert [f["level"] for f in audit.FINDINGS] == ["pass", "warn"]
+    assert audit.FINDINGS[1]["evidence"] == "3 of 10 rows"
+    path = tmp_path / "q.zip"
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("2013q2_form13f/SUBMISSION.tsv", "x")
+    with zipfile.ZipFile(path) as zf:
+        assert audit.member(zf, "SUBMISSION.TSV") == "2013q2_form13f/SUBMISSION.tsv"

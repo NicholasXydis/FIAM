@@ -40,5 +40,23 @@
     "retrieved_utc": "2026-10-16T00:29:11+00:00",
     "sha256": "6b11863cba7d750dd95ecc755100f1168560395e7a37eb571b0e7d11782e0d9d",
     "bytes": 279178
+  },
+  "ff5_daily.zip": {
+    "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip",
+    "retrieved_utc": "2026-10-22T19:40:42+00:00",
+    "sha256": "7881223b51929ee0d6d23b8a28524aaec478a2c3d4eeca47224955cc845c5186",
+    "bytes": 150292
+  },
+  "ff_momentum_daily.zip": {
+    "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip",
+    "retrieved_utc": "2026-10-22T19:40:42+00:00",
+    "sha256": "ecf82b116e6ec56d2b79a2f27bd1d1598c217b5c6c25caa55b945bdd8a2c0b78",
+    "bytes": 85269
+  },
+  "TB3MS_full.csv": {
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=TB3MS",
+    "retrieved_utc": "2026-10-22T19:40:42+00:00",
+    "sha256": "631bc444a8c5370c3a2df12f484a67ae7b9a68c00fe8a33215895fb49c8cc08c",
+    "bytes": 17865
   }
 }

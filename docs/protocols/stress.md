@@ -5,6 +5,8 @@
   nothing here changes a position.
 - Daily data: `daily_market.parquet` (2015-2025) and the USB CRSP daily file (2000-2025, read-only)
   for earlier episodes; FF5 + UMD daily factors from `layers/market/factors_daily`.
+- Source note (2026-10-22): CRSP daily and the factors now come from our read-only extracts in
+  `data/v4/extracts/`, from the same WRDS files; a rerun matched 2026-10-15 to 4e-16, same method.
 
 ## 1. Seventeen crises (chosen from market events, not from our book's returns)
 | # | Episode | Dates |

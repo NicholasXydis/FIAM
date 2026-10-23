@@ -1,7 +1,6 @@
 # Crash tests on the fixed September books: 17 crises, named scenarios, reverse stress, liquidity.
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -10,12 +9,11 @@ import pandas as pd
 import statsmodels.api as sm
 
 from fiam import book as P
-from fiam import data, freeze, layers
+from fiam import data, freeze
 from fiam.exhibits import september as S
 
-# The Stock Data archive: FIAM_STOCK_DATA, else the Mac, else Windows.
-PLACES = (Path("/Applications/@Apps/Stock Data"), Path("E:/Stock Data"))
-USB = Path(os.environ.get("FIAM_STOCK_DATA") or next((p for p in PLACES if p.exists()), PLACES[1]))
+# CRSP daily from our extract, one parquet file per year.
+DAILY = data.EXTRACTS / "crsp_daily"
 CACHE = P.CACHE / "stress_daily.parquet"
 OUT = Path("out") / "v2" / "stress.json"
 FACTORS = ["mktrf", "smb", "hml", "rmw", "cma", "umd"]
@@ -54,25 +52,28 @@ SQUEEZE = ("2021-01-22", "2021-02-02")
 SHORT_BAN = ("2008-09-19", "2008-10-08")
 
 
-# Every episode's daily stock returns, read once from the USB's CRSP files into a cache.
+# Each episode's daily stock returns, read once from the extract.
 def episode_returns() -> pd.DataFrame | None:
     if CACHE.exists():
         return pd.read_parquet(CACHE)
-    files = sorted(USB.glob("stocks_daily_*.csv"))
-    if not files:
-        return None
     windows = [*CRISES.values(), *SCENARIOS.values(), SQUEEZE]
+    years = {str(y) for first, last in windows for y in range(int(first[:4]), int(last[:4]) + 1)}
+    files = sorted(p for p in DAILY.glob("*.parquet") if p.stem in years)
+    if not files:
+        print(f"warning: no CRSP daily extract in {DAILY}, replays are N/A", file=sys.stderr)
+        return None
     cols = ["PERMNO", "SICCD", "DlyCalDt", "DlyRet", "DlyCap"]
     parts = []
     for path in files:
-        for chunk in pd.read_csv(path, usecols=cols, chunksize=2_000_000, low_memory=False):
-            day = pd.to_datetime(chunk["DlyCalDt"])
-            keep = np.zeros(len(chunk), dtype=bool)
-            for first, last in windows:
-                keep |= ((day >= first) & (day <= last)).to_numpy()
-            part = chunk[keep].assign(date=day[keep])
-            part["ret"] = pd.to_numeric(part["DlyRet"], errors="coerce")
-            parts.append(part[["PERMNO", "SICCD", "date", "ret", "DlyCap"]])
+        chunk = pd.read_parquet(path, columns=cols)
+        day = pd.to_datetime(chunk["DlyCalDt"])
+        keep = np.zeros(len(chunk), dtype=bool)
+        for first, last in windows:
+            keep |= ((day >= first) & (day <= last)).to_numpy()
+        part = chunk[keep].assign(date=day[keep])
+        part["PERMNO"] = pd.to_numeric(part["PERMNO"]).astype("int64")
+        part["ret"] = pd.to_numeric(part["DlyRet"], errors="coerce")
+        parts.append(part[["PERMNO", "SICCD", "date", "ret", "DlyCap"]])
     out = pd.concat(parts, ignore_index=True).rename(
         columns={"PERMNO": "permno", "SICCD": "sic", "DlyCap": "cap"}
     )
@@ -91,9 +92,17 @@ def books() -> dict:
     return out
 
 
-# Daily FF5 + UMD factor returns from the market layer.
+# One factor table from our WRDS extract; stops with the fix if absent.
+def extract(name: str) -> pd.DataFrame:
+    path = data.EXTRACTS / f"{name}.parquet"
+    if not path.exists():
+        raise SystemExit(f"No {path}: uv run run.py --data stock tables {name}")
+    return pd.read_parquet(path)
+
+
+# Daily FF5 + UMD factor returns from the extract.
 def factor_daily() -> pd.DataFrame:
-    table = layers.load("market/factors_daily")
+    table = extract("ff_daily")
     return table.assign(date=pd.to_datetime(table["date"])).set_index("date")[FACTORS]
 
 
@@ -150,7 +159,7 @@ def conditional_shock(b: pd.Series, factors: pd.DataFrame, first: str, last: str
 
 # The likeliest factor move that costs 10% of NAV in a month, and the closest real month.
 def reverse_stress(b: pd.Series) -> dict:
-    monthly = layers.load("market/factors_monthly")
+    monthly = extract("ff_monthly")
     monthly = monthly.assign(month=pd.to_datetime(monthly["dateff"])).set_index("month")[FACTORS]
     sigma = monthly.loc[:"2020-12-31"].cov().to_numpy()
     bv = b.to_numpy()
@@ -206,7 +215,8 @@ def main() -> None:
         .set_index("permno")
     )
     report = dict(
-        protocol="docs/protocols/stress.md", source=str(USB) if panel is not None else None
+        protocol="docs/protocols/stress.md",
+        source=DAILY.relative_to(data.ROOT).as_posix() if panel is not None else None,
     )
     for name, weights in books().items():
         b = loadings(weights, factors)
