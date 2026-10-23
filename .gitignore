@@ -121,7 +121,5 @@ Desktop.ini
 /site/dist/
 /site/.wrangler/
 
-# The local plan, team brief and assistant rules, never committed.
-/docs/PLAN.md
-/docs/TEAM.md
+# The assistant rules stay local; PLAN.md and TEAM.md are tracked.
 /CLAUDE.md

@@ -1,0 +1,992 @@
+# PLAN: QUARCC Purple, McGill-FIAM 2026 finals (v4)
+
+The single source of truth for the finals work, written for an AI agent to execute exactly. `docs/TEAM.md` is its plain-English twin; keep both in sync (CLAUDE.md rule 2). Agreed with the team leader 2026-10-21 to 2026-10-23; this file wins over any older note. Event: Wed-Thu 2026-10-28/29. Repo `/Users/nicholas/Code/Forkfiam`, branch `Risk-&-AI-Agents-Improvements` (fork `niccc333/Forkfiam`, upstream `NicholasXydis/FIAM`).
+
+## 0. How to read and edit this file
+- Read §1 (rules) and §2 (status) first, then the step you are on in §18 and the sections it names.
+- Tags: [DONE date] finished; [STEP n] built in step n of §18; [LEADER] only the leader does it.
+- Citations: "PDF p15" is the organisers' finals PDF; "§8.3" is this file; a bare A1-A17 or B1-B30 is an approved audit fix (§6.8); K1-K6 are the Kahn (2018) additions (§3.3). Two other label sets reuse letters, so they always carry their word: "lever A2" (the levers A1-A4, B1-B2, C1-C3, D1-D3, E1, E5 of §8.8) and "arm A1" (the AI arms A0, A1, A2, P1 of §10.4).
+- A parameter this file does not fix is never guessed: the step 4 checklist (§18) lists what `versions/v4/protocol.md` must fix before any run.
+- Every number shown to judges comes from an output file, named where the number is used.
+- Editing: stay under 1,000 lines, one idea per bullet; finished work becomes one dated line in Appendix A; a decision changes only with the leader's approval and keeps its date.
+
+## 1. Rules
+
+### 1.1 Ground rules
+- Never `git commit`, `git push` or stage. The leader commits whole files in GitHub Desktop. Propose titles only, `feat: ...`, no scope, no body. Pushing, merging, making the repo public and every Cloudflare step are [LEADER].
+- Never modify: `/Applications/@Apps/Stock Data/` (raw WRDS archive, read-only, the only full copy since 2026-10-23, hashes in `data/v4/stock_data_sha256.json`), `deck/A_backup/`, `data/organisers/` or any copy of the organisers' files, `~/Downloads/OneDrive_1_2026-10-21/`.
+- Never commit data rows (organisers', WRDS, Carbon Arc, EDGAR, Amazon) or `.env`. Never print a secret; never ask for or store a password. `data/*`, `.env`, `/research/` and `CLAUDE.md` are gitignored. Tracked today: `data/benchmarks/*` (public series), `data/edgar_cache.zip`, and round-one outputs under `submission/`, including two WRDS-derived permno-month tables (`models/borrow.parquet`, `models/book_inputs.parquet`); `data/benchmarks/SP500.csv` and those two tables leave before the repo goes public, from a history-purged copy (§16).
+- `.env` holds only `SEC_CONTACT` and `API_AUTH_TOKEN` (`.env.example` lists just these). Overrides, rarely needed: `FIAM_DATA_DIR` (another bundle; `--world` sets it), `FIAM_STOCK_DATA` (archive not at the default path).
+- The finals PDF governs. A round-one rule applies only where the finals text is silent. Quote the exact words when citing a rule.
+- Knowledge rule: finance research that shapes a choice is first public before 2021-01-01 (ML, statistics and engineering methods any date); no choice is decided from 2021-2026 results; what may be done with each period before the freeze is in §1.3.
+- No coding-time estimates; work in §18's order with its checkpoints. Report results exactly; a failing test is reported with its output.
+- House style: one comment line of at most 72 characters above every function and block, saying what and why; ruff (E, F, I, W, 100 columns) and ruff format; type hints, `pathlib`, small pure functions, no hidden globals; every rule parameter named once.
+- On-screen copy (site, film, deck, TEAM.md): no em or en dashes, colons, semicolons or Oxford commas; honest numbers only. Ask before any visible site or film change; visible changes are limited to §16.
+- AI never sets a weight. Deterministic code enforces every rule after any agent (PDF p9).
+- On a new machine run `uv run run.py doctor` first.
+- Carbon Arc: every buy is priced first, approved and run by the leader; the assistant's tools never spend credits.
+- Plan files: `docs/PLAN.md` and `docs/TEAM.md` are tracked in git since 2026-10-23 (the leader's decision) and carried in the kit; `CLAUDE.md` stays local (gitignored). No other plan files. Whether the two plan files stay in the repo when it goes public is the leader's call (§16). Public docs: `README.md`, `RESULTS.md` (filled by `fiam/report/docs.py`).
+
+### 1.2 Banned inputs (the registry refuses each; a trap test each: data bans in step 3, the last two rows in step 6)
+| Banned | Why | Use instead |
+|---|---|---|
+| The organisers' 8-K file and anything derived from it (counts, items, text) | Survivor-biased (A1, PDF p12) | EDGAR. Exceptions: its permno-CIK pairs as one input to the dated link table (B12), and the A1 comparison exhibit (coverage counts, never a signal) |
+| `adjfct` (in `features_monthly`, not in the 147) | Encodes future splits (A4) | Nothing |
+| dsf `prc` as a filter, cap or feature | Split-adjusted to today: NVDA $0.50 in June 2015 vs $20.11 traded (B10) | Traded price: panel `prc` or CRSP `MthPrc`. Exception: `daily_book` reads it for the §6.4 gap ratio only (a ratio of adjusted prices is split-consistent) |
+| Any I/B/E/S field in a forecast, gate, rule or desk card | Levels on today's split basis, rounded (A3); the history was rewritten (Ljungqvist-Malloy-Marston, JF 2009) and we hold no older copy (B27) | Nothing (analyst revisions dropped 2026-10-23). Exception: the last consensus shown live, with its date, on the preview desk (B20) |
+| Compustat `dldte`, `dlrsn` outside the dated exits table | Later deletion (A7, B11) | The exits table (§6.4) |
+| Header fields: Compustat `gsector`/`gind`/`sic`, CRSP `HdrCUSIP`, current names and tickers as signals | Today's values (organisers' `readme.md` §7) | Panel monthly GICS (2015 on), CRSP monthly `SICCD`/`NAICS`, dated tickers and CUSIPs |
+| `shortintadj` | Adjusted to a later split (independent audit M7) | `shortint` |
+| `data/fiam_v1/wrds/*` (v1-v3 only) | Not point-in-time; `compustat_quarterly` runs to 2026-09-22 with `dlrsn` | `data/v4/extracts/` |
+| Key developments `lastmodifieddate`, `mostimportantdateutc`, `speffectivedate`, ticker columns | Revision stamps, copies per ticker (A9) | `entereddateutc`, joined on gvkey |
+| Amazon snapshot fields `average_rating`, `rating_number`, `price` | Current snapshot | Review timestamps |
+| NOAA damage fields | Revised later (A17) | Event dates and counts |
+| Any Carbon Arc series in the backtest (a forecast, gate, rule or backtested desk card), Benzinga (CA0035) included | Current vintage, weekly labels, drifting coverage, today's entity map (PDF p10-16; B29) | EDGAR, WRDS and the organisers' data. Exceptions: CA0065S dollar volume in the 2026 squeeze screens (§6.5, B30); live use only on the final book (Appendix B), such as the X-ray and the preview desk (§12.4) |
+| Any "has data" flag as a feature | A survival proxy (merge rule 4) | Nothing |
+| Any cost or fee parameter in the forecast | PDF p17 | The construction layer only |
+
+### 1.3 What may be done with each period before the freeze
+| Period | Allowed | Never |
+|---|---|---|
+| Up to 2020-12 | Compute, view, test and choose: ML settings on 2019-2020, construction and AI choices on 2017-2020 (§8.0), the crash-control and squeeze tests on longer pre-2021 history (§8.4, §8.6) | Choosing with later data |
+| 2021-01 to 2026-08 | Count rows, dates, coverage, schemas, hashes. Compute features in batch and store them sealed | Returns, signal-return links, performance, viewing sealed values, human hand checks, risk-desk agent cards, any exhibit with returns |
+| 2026-09 on | As 2021-2026 | Anything else; the September book is scored once after the freeze |
+
+- Blind mode is always on: every registered table refuses rows with `available_at` after 2020-12-31, and any label or outcome window (returns, 3-month labels, next-quarter SUE or sales, event windows) that ends, by availability, after 2020-12-31 is refused and its row dropped, never truncated (so `eom` 2020-12-31's January 2021 label is refused), except through the count and coverage functions; step 3 tests it. The v1 reader `fiam.data.panel` obeys it when v4 calls it; a test shows no v4 switch (signals, desk, overlay, crash control) can read a sealed row. The registry enforces it from step 3; `fiam.v4.data` inherits it in step 5. Only `finals --unseal`, after the hash check, lifts it (§13.3).
+- AI calls on 2021+ inputs made before the freeze (the AI crowd's 2026-08-31 month, decided 2026-10-22) are stored sealed and read only after the unseal.
+- Hand checks of text (§7.3) and agent cards before the freeze use 2015-2020 filings only.
+- Data-integrity checks may inspect 2021+ values without returns: glitches, nulls and units (§6.4), and agreement counts such as WRDS vs FINRA short interest on 2021-2025 and CA0065S vs CRSP volume flags on 2025-07..12 (§6.5); never linked to returns or performance.
+- Arcana before the unseal: no v4 book is uploaded. Its overview says mock portfolios "update in real-time" with "historical backfill" and its Excel add-in takes any start and end date, so we assume an uploaded book is tracked forward to today, which would show even the Dec 2020 book's 2021-2026 result. The intro video (transcribed 2026-10-23, `data/arcana/`) never says a book stops at its last date, and a pasted "new book" is analysed over trailing windows to today (year to date, one year), so the conditional drill stays off and no v4 book enters Arcana before the unseal. The pre-freeze lens checks run in our own code (PDF p24: "You do not need Arcana to ask these questions of your own work"). The leader learns the platform on Arcana's sample book only; until `protocol.md` is hashed (end of step 4) the leader also skips Arcana's factor-return, factor-stress and single-stock performance pages, which show 2021-2026 results; no MCP use (§10.1); no v4 choice comes from anything seen there, since every remaining choice is a written rule on pre-2021 data. Never 2021+ holdings, the rehearsal books (relabelled onto 2021-2026 dates), 2021+ factor dashboards for our books or any performance view of our books.
+
+## 2. Status and calendar (update in place)
+- [DONE 2026-10-23] Steps 1 and 2, except the Windows session [LEADER]. The final check against the PDF, Kahn (2018) and two independent reviews of this file, their fixes applied. Fixes A1-A17, B1-B30, K1-K6 and levers A1-A4, B1-B2, C1-C3, D1-D3, E1, E5 recorded; the final plan (the six signals, Benzinga not traded, Carbon Arc's role, the crash-day gross cap, the Arcana rules, CA0065S) approved by the leader 2026-10-23.
+- Pushed 2026-10-23: a082dad, b41b864, 79fa6dc. CI on the Windows, macOS and Ubuntu runners not seen yet (private repo) [LEADER].
+- Next: step 3 on the leader's "go".
+- Waiting on the leader:
+  - the Windows session (§15.5), on the critical path: agent cards, the crowd month and FinBERT run only there
+  - the CI result
+  - the 13 CIK conflicts on step 3's first day, the CA0065S buy decision after its free quote in step 3, the freeze push in step 10, the Carbon Arc buys on Oct 26-27
+  - Arcana (welcome and MCP emails received 2026-10-23; one account, the leader's address, PDF p22): activate it; add every teammate; connect the MCP in claude.ai (directory/arcana) but use it, and connect it in Claude Code, only after the unseal (§10.1); from Arcana's "upload history" button, download its sample holdings file (a template, no upload of ours) and send it, which sets `holdings_spec` (§14.4). [DONE 2026-10-23] the ARCANA overview PDF and the intro video, with an offline faster-whisper transcript, are in `data/arcana/` with SHA-256 sums; their findings are in §1.3, §4.2 and §14
+  - every teammate onboarded on Carbon Arc individually (PDF p2)
+- Fixed dates:
+  - 2026-10-26/27: Carbon Arc snapshot 2 re-buys and the X-ray buys, priced first, run by the leader.
+  - 2026-10-27: the MCP demo recorded in full.
+  - Before 2026-10-29 (ontology change): every Carbon Arc pull finished.
+  - Unseal target: the evening of 2026-10-26 (approved 2026-10-23). If the full book is not ready, the honest core is frozen and unsealed, unbuilt signals counting as failed (§7.4). If there is no unseal by noon on 2026-10-27, the deck and site show v3's signals rerun through the v4 engine under every finals rule (t+1, 200-500 names, the $500m floor, $1bn compounding), labelled partly in-sample and never called clean out of sample, with v4's pre-2021 evidence; v3's own record breaks four rules (§3.2), so it is never the headline.
+  - The X-ray reads the final v4 book if the unseal comes before the buys, else `frozen/september_final.csv`, labelled as the v3 book (§12.4).
+  - After the unseal, before 2026-10-28: our own Arcana pass on 2021-2026 (§14.3).
+  - Before 2026-10-28: the site is live.
+  - 2026-10-27: re-read the PDF and the organisers' emails.
+- Organisers' email 2026-10-23 (Goyenko): "the two days in Montreal are not build time"; arrive "with your models developed, your pipeline running, and your results reproducible"; the final instructions give "a set of constraints to tune against" (our reading, §17); teams that did best "arrived having already discarded three approaches" (deck slide, §4.5). So the unseal target stands and the full kit test (step 11) ends before 2026-10-28.
+- The Carbon Arc MCP pool is 20K tokens a day for all finalists from its release (PDF p8).
+
+## 3. Strategy and locked decisions
+
+### 3.1 Locked decisions
+| Topic | Decision |
+|---|---|
+| Story | "Calm, by design": ML picks, an AI risk desk checks, sizes and explains, code enforces, frozen before we looked. The words follow `decisions.json`: if the exam picks SYY-10 alone or the arm rule picks arm A0, the story says so |
+| Fund | $1bn endowed at the close of 2020-12-31, compounding, no flows (PDF p4) |
+| Headline signals | SYY-10 (Stambaugh-Yu-Yuan, NBER 18560, 2012; §7.1). Our v3 twelve as labelled twin `ours12` ("chosen with 2021-2026 visible"); the gap is "we measured our own early bias" |
+| New signals | Six, each through a pre-written pre-2021 gate under Holm (§7.3, §7.4): short interest, EDGAR red flags, insider buying (SEC Form 4), Lazy Prices, 13F best ideas, customer momentum (approved 2026-10-23). Analyst revisions dropped (B27); Benzinga not traded (B29); disaster propagation and weather are exhibits and live flags (§7.6). No others: more candidates mean more false discoveries (PDF p3, p9). A new idea needs the leader's approval and a written gate, and joins the Holm count |
+| Aim | The return no known factor explains: residual target (§8.2), Arcana lens 1. Design aims, never a gate on 2021+ and never typed as a forecast (K1): Sharpe after costs about 0.8 or more, IR vs T-bill + 4% clearly positive, beta about 0, max drawdown about 10% or less |
+| Universe | New longs and shorts need `me` >= $600m; held while `me` >= $500m, the PDF's short floor, which applies at formation (approved 2026-10-23, lever A3, §8.8); price >= $5 on the traded price (§1.2). Market cap = security `me` (stricter than `me_company`) |
+| Neutrality | Dollar net 0 at formation. Beta 0 on Welch and Dimson. Sectors (GICS-2, SIC fallback) within +/-1% of NAV (lever B1 may widen). Size and value (`be_me`) exposure 0. The forecast is aligned with these before the optimiser (lever C1, §8.2) |
+| Intended styles | Momentum, profitability (quality: `gp_at` everywhere in v4, `ope_be` as robustness), investment, high-ivol and mid cap (non-linear size, approved 2026-10-23, §8.3) capped and declared (§8.4). Momentum gets a crash control if its gate passes (§8.4) |
+| Borrow | Headline: our tiers from short interest. Beside it: the PDF's flat 50 bp for large caps, 5% for the rest (PDF p17; cutoff in the step 4 checklist) |
+| Gross | Balanced, as high as the crash-day cap allows (approved 2026-10-23, lever A2, B26, §8.8): cap C_t = 200% / (1 + m_t), m_t the largest two-day rise seen before t (C = 1.7678 at 2020-12-31, from CRSP value-weighted +13.13% over 2008-11-21 and 2008-11-24); formation gross = min(C_t - d, 0.97 x largest feasible gross); a daily trim when drifted gross passes C_t. No vol target. Sharpe and IR at 100% gross beside |
+| Names | Broad 400-480 or concentrated about 275, as the practice exam picks (lever E1, §8.9); the optimiser free to use the band's breadth (lever B2). Internal band 220-480. Daily fix below 210 or above 490. Rule 200-500 |
+| Name cap | Longs min(1.5% of NAV, 0.4 x ADV / NAV). Shorts min(1.0% of NAV, 0.3 x ADV / NAV) and sellable within 3 days at 10% of ADV. Rule 5% |
+| Short squeezes | Entry screens, smaller shorts and daily cover rules in code (§8.6). The AI only explains |
+| Crowding | No new long in the top 1% of the formation date's universe by 13F hedge-fund crowding (lever C3, §8.8) |
+| Return basis | Arcana's convention (lever D3, §4.2): total return (dsf price-only + δ, §6.4) as the headline, since Arcana reports total returns; price-only beside |
+| Rhythm | Monthly decisions. Execution spilled over closes at <= 10% of ADV per name per day, at most four more closes, exits before entries; each spill day's fills are scaled so net stays inside +/-45%, names >= 210 and Welch beta within +/-0.10 (tested on the 2017-01 build and the synthetic 2021-01 build). Weekly only if the cadence rule says so (§8.7) |
+| Beta model | Welch (NBER 26105) + Dimson. LightGBM beta is a comparison only (pre-2021 errors: Welch 0.518, LightGBM 0.567) |
+| AI headline | Arm A2 (agent) if the memory gate passes and arm A2 minus arm A1 >= 0 and arm A2 minus arm A0 >= 0; else arm A1 (fixed rule) if arm A1 minus arm A0 >= 0; else arm A0 (no desk). Differences are in net IR at $1bn over 2017-2020 on the design the exam picks (§8.9), with paired daily-difference bootstrap s.e. Decided before the unseal. The desk is one switch; all four arms are reported (§10.4) |
+| Models | Gemma 4 26B-A4B (released 2026-04-02, cutoff 2025-01) for agents. FinBERT (pre-2021) for 8-K tone. A time-cutoff model for the memory check, named in step 8 (candidate: Pythia, trained on data through 2020). Qwen research only. Meta-labeling dropped |
+| Fundamentals | SEC as-filed numbers (`companyfacts.zip`: 2009 large filers, 2011 all) and the restatement-date switch; earnings from SEC as-filed EPS; no I/B/E/S in the backtest (B27); the SUE model trains from 2011 if B17 passes, else from 2015; Compustat restated values only where nothing as-filed exists, gap measured on 2011-2020 |
+| Carbon Arc | Open datasets only, through the API/SDK; no request for blocked data (2026-10-22). No part in the forecasts (2026-10-23): evidence, live tools and one risk input, CA0065S dollar volume for the 2026 squeeze screens if it passes its tests (§6.5, B30). Benzinga is not traded (B29). The PDF: "Most alternative panels begin between 2019 and 2024" and "Your handling of them is part of what is being evaluated" (p10); "If you cannot do one of the three, do not build a feature on it" (p16) |
+| Arcana | Before the unseal no v4 book is uploaded (§1.3; its overview and video give no sign a book stops at its last date); our own lens code does the checks, mirroring Arcana's factors (§14.2); its MCP in claude.ai and Claude Code only after the unseal; its optimizer, hedge ideas, conviction-score sizing, notes, price targets and Arcana AI never set or suggest a weight (§10.1) |
+| WRDS | Allowed (round-one rule). Read-only extracts. No 2026 pull, so stated fallbacks (§6.5) |
+| Scope | Everything stays in scope (2026-10-23, "forget the time"). Build order only: the honest core (clean data, engine, ML with the residual target, construction, table and exhibits, the AI counterfactual, Arcana self-checks, freeze); then short interest, red flags, insider buying, Lazy Prices; then 13F best ideas, customer momentum; then the exhibits |
+| Organiser ambiguities | Safest reading, disclosed (§4.2). No emails to the organisers |
+| Deliverables | The deck with Arcana output (p24), the holdings file in Arcana's spec (p24), the agent decision log, "the deliverable as much as the returns" (p9). "We are not going to audit your code" (p23) |
+| MAIN.py | An extra guarantee in four modes (§15.4). Derived values only, WRDS ones included (decision (a), 2026-10-22), so it ships in the kit and to the judges only, never in the public repo (§16) |
+| Disclosure | One confident slide, "we measured our own early bias", plus an appendix history |
+| September 2026 | `frozen/september_final.csv` (committed 2026-10-15, after the month ended) scored once after the freeze, "one held-out month", never "live" |
+| USB | The 249 GB `FIAM_FINALS` stick holds the whole kit (§15). The 64 GB stick becomes `FIAM_COPY` (kit without weights) at the end. Qwen 3.5 9B kept |
+| Site | Live before Oct 28, team page completed, full device test; the repo stays private until the event day (leader, 2026-10-23), deployed from the private repo (§16) |
+| People | The leader builds and runs everything on the Mac. The Windows PC runs AI jobs overnight and is reachable over Tailscale on event day |
+
+### 3.2 Facts to keep straight
+- v3 = `brake+shorts+size+target10+voltarget+zerobeta`. IR 0.991 at $10m and 0.454 at $1bn (2021-01..2026-08); Sharpe 0.985, vol 7.5%, max DD -8.5% at $1bn. On 2016-2020: Sharpe -1.25, max DD -29.5%. IR at $1bn: 1.38 in 2021-22, -0.31 in 2023-26. Its IR already subtracts T-bill + 4%.
+- v3 breaks four finals rules: a fixed $10m NAV with whole shares; under 200 names in some months; shorts under $500m (screen at $300m); same-day earning (the t+1 cost was about 0.02 IR).
+- Fifteen v3 choices were made with 2021-2026 visible (64b6a3e 2026-09-20 to ea4176b 2026-10-01), among them `target10`, the 12-signal set, carry-in, `risk_rank`, the learned hedge, the zero-beta band, ridge 30, pool 200, `MIN_SIGNALS` 9. Disclosed in `docs/protocols/README.md` and `fiam/report/qa.py`. v4 inherits none (B2); v3's 2016-2020 result is shown beside its record (B3). 2016-2020 was v3's check window, not untouched: its results were seen, and two frozen numbers (`vol_bias`, `gross_ceiling`) were fitted there.
+- v3's short ban (`fiam/v2.py` `short_ban`: new shorts blocked within 30 days of an 8-K with items 1.01, 2.01, 8.01) read the survivor-biased organisers' 8-K file. Disclosed; measured on 2016-2020 with EDGAR 8-Ks before the freeze. v3 never used `adjfct`.
+- The ours12 composite has no pre-2021 edge: residual IC +0.0009 (t 0.1) on 2016-2020.
+- SYY-10 alone (2026-10-23, pre-2021, one trial): top-minus-bottom quintile in the $1bn universe, holding months 2015-02..2020-12 (71 months, about 1,550 names): 0.14% a year (t 0.03); FF5+UMD R² 0.74 (RMW +0.62 t 2.7, CMA +0.49 t 3.3, UMD +0.19 t 3.2, SMB -0.35, market -0.18); alpha +2.5% a year (t 1.1). Hence the residual target and the investment cap. No 2021-2026 rule changed.
+- Universe size (pre-2021): names with `me` >= $1bn per month, mean 1,566, min 1,377; the $500m pool about 1,983.
+- FIAM is the Montreal non-profit (fiamtl.com), not Fidelity. Jury: Gil Haddad (Fidelity QRI), Gerald Garvey (BlackRock Systematic; exact title to confirm from the organisers' jury list; co-author of Garvey et al. 2017 on ESG disclosures), chair Russ Goyenko (McGill). Criterion: "originality of strategies and innovative use of technology".
+
+### 3.3 Kahn (2018) additions, approved 2026-10-23
+Kahn, *The Future of Investment Management* (CFA Institute Research Foundation), by the head of BlackRock's systematic equity research, who thanks Garvey. It is the jury's frame, so the deck uses it.
+- **K1 Fundamental law.** IR = IC x √breadth x TC (Grinold 1989; Clarke-de Silva-Thorley 2002). Breadth is a rate: N times the forecast's information turnover, estimated by regressing each month's forecast on the last (Grinold-Kahn 2011), never names x 12. TC = correlation of the book with the unconstrained paper book. Exhibit on pre-2021 data with the implied IR; the same three numbers for 2021-2026 after the unseal. It replaces any typed return target.
+- **K2 Research standard.** Every new signal must be sensible (a pre-2021 paper and a written rationale), predictive (its gate), consistent (IC by year reported) and additive (its gate removes SYY-10 and the 147). Plus one pre-written test of its mechanism that uses no returns (§7.3), reported and used as the live "still working" monitor, not a gate.
+- **K3 Smart beta versus pure alpha.** Our Arcana pass reports the share of active variance explained by static style exposures and splits the rest into stock selection, industry and style timing. The momentum crash control's effect is labelled style timing.
+- **K4 Realism.** IC 0.10 is "great" and is about 53% of signs right; a 90th-percentile long-short fund has IR about 1.17. A forecast IC above 0.10 or a pre-cost IR above 1.2 on pre-2021 or rehearsal books triggers a leak hunt (§14.2).
+- **K5 Text.** Safe-harbour and other legal boilerplate is stripped before FinBERT tone and Lazy Prices similarity (step 4).
+- **K6 Constraints.** Each self-imposed constraint (stricter than the PDF) gets its reason and its pre-2021 cost in TC and IR, reported, never tuned. Dropping even the smallest 80% of positions costs little TC, which supports 400-480 names and no-trade bands. The thesis cites Grossman-Stiglitz (1980). Red-team answer for "why no ESG scores": Garvey et al. (2017).
+
+## 4. Finals rules map
+
+### 4.1 Rule, implementation, test
+| Rule (finals PDF) | Implementation | Test or evidence |
+|---|---|---|
+| US equities; ML/LLM/agents forecast returns or fundamentals (p4) | Panel universe only; `fiam/v4/forecast/` | `combiner.json`, OOS R² |
+| Strictly out of sample 01/2021-08/2026 (p4) | Blind mode always on, one unseal (§13.3) | `frozen/v4/unseal.log` has one line |
+| $1bn start, compounding, no flows (p4-5) | `fiam/v4/daily_book.py` NAV path | Row 1 |
+| 200-500 names (p4) | Band 220-480; sign-fixed 0.10% lower bounds on preselected candidates | `compliance_daily.parquet` |
+| Gross <= 200%, net within +/-50% at all times (p4) | Crash-day cap C_t on formation and on drift (lever A2, B26); fix if drift > C_t or abs(net) > 45% (§9.2) | Same; a breach on a two-day rise above m_t is reported (§9.3) |
+| Shorts >= $500m at formation (p4, "measured at the formation date") | New >= $600m; held short covered when `me` < $500m (§9.2) | Asserted at that close for every short opened or increased on each formation and spill day; exhibit 7 shows the minimum on every holdings date as a labelled line |
+| <= 5% per name (p4) | 1.5% long, 1.0% short internal caps | Max weight per day |
+| Daily to monthly, justified (p4, p6) | Cadence rule (§8.7); daily re-targeting reported | Decay chart |
+| Benchmark b_t = TB3MS/1200 + 0.04/12; daily /25200 + 0.04/252 (p20) | `fiam/benchmarks.py` from FRED TB3MS; the organisers' series, if it arrives, swapped in with an equality check (§6.5) | Row 9 |
+| Beta daily and monthly with s.e. (p5, p20) | Welch + Dimson = 0; 126-day beta re-hedge (§9.2) | Rows 6-7, 252-day rolling beta |
+| Info through t forms the book at close t+1; first return t+1 to t+2 (p15) | Every daily rule acts at close t+1 (§9.2) | `tests/test_finals_daily.py` |
+| Event dated t usable from t+1 (p13) | EDGAR acceptance as the Eastern wall clock (§6.3); Benzinga not traded (B29); no traded signal uses weekly-delivered data | Join assertions |
+| An edge that decays inside a week shows weekly-delivery timing (p14) | Every daily overlay is also run with events seen only at the next Friday close (§8.7) | Decay exhibit |
+| Current-vintage data: three treatments (p15-16) | Carbon Arc out of the forecasts; CA0065S only as a 2026 risk screen, matched to CRSP on 2015-2020 (B30); I/B/E/S out of the backtest (B27); NOAA's and French's revisions measured against archived copies (B23); restated Compustat only where nothing as-filed exists, measured and stated (§19) | Passport |
+| Survivorship through the entity map (p11, p16) | Each source classed immune, crosswalk-only or universe-level; the PDF's test per source (§6.8); PERMNO and CIK joins, never a current ticker (p12); dated tickers only where no other key exists (§6.7) | `out/audit/survivorship.json` |
+| Event vs announcement date (p16) | Field-date audit per source; earnings timing from projected dates (B22) | Leakage register |
+| Regimes with past data only (p15) | Every threshold from data before its date (B21) | Threshold test (§6.3) |
+| Delistings, halts, missing days stated (p16) | §6.4 | `stubs.csv`, halt log |
+| No full-sample standardisation (p16) | Within-date ranks | `ml_transform_is_within_month` |
+| No tuning on the test period (p16) | ML on 2019-2020, construction and AI on 2017-2020 (§8.0) | Knowledge register test |
+| No forward-looking information, "intentionally or accidentally" (p15) | Controls chosen with later events known are disclosed and also run switched off on 2021-2026 (B25) | Deck section 8 |
+| Model memory: release date, re-identification, smaller model, one model-free signal (p16-17) | §10.5 | `model_memory.json` |
+| Costs disclosed with dates, flat alternative beside, never in the forecast (p17) | §8.5 | Assert no cost column in X |
+| Split dates, scheduled refits, one leak assertion per join, separate modules (p18) | §8.1, §6.3, §5 | Tests |
+| Agents see dated inputs only; no live retrieval; prompts logged with dates; cutoff declared (p9, p18) | §10.1 | Decision log |
+| Agent design 1-6: code enforces, log, point in time, counterfactual, triggers, cache (p9) | §10 | §10.4 |
+| Denominator, holdout, rationale first (p9) | Six gates under Holm; the 96 model cells, the exam's four designs and every lever in the trial ledger; 2021+ sealed | Funnel exhibit |
+| Four questions per asset in writing; do not use an asset that fails one (p14-15) | Each source card answers them (§6.7) | Deck section 3 |
+| 23-row table on one slide; 8 exhibits; turnover; holding period (p19-21) | §4.3, §4.4 | Deck test |
+| Ten-minute deck in the minimum order with Arcana output (p21-22, p24) | §4.5 | Deck test |
+| Holdings: date, identifier, weight for every rebalancing date (p24) | Monthly and daily exports in Arcana's spec | Export validation |
+| Report what broke; breaches with rationale (p18, p22) | §9.3 | Deck section 8 |
+| Which filings fed which signal (p12) | Deck section 3 table | Deck test |
+| Python, explicit comments (p24) | House style | ruff, comment check |
+| Round one where the finals are silent | MAIN.py, no data submitted, returns CSV, public-domain licence, WRDS cleaning code and source note, permno+date joins, OOS R², ticker plus full name labels | Submission kit |
+
+### 4.2 Safest readings (on the assumptions page)
+- Return basis (lever D3): the headline follows Arcana's return convention. Arcana's intro video decomposes performance as "total return" into residual and factor returns and says "we'll typically start with total returns" as the default (2026-10-23), so the headline is total return (the organisers' price-only daily returns plus the dividend term δ, §6.4, plus stubs) and price-only sits beside it. Set by convention before any result, recorded in `decisions.json` before the unseal; if the event's Arcana instructions state another basis, both are shown and the difference is explained, never re-chosen.
+- Holdings in Arcana's spec. Limits checked daily. Names counted by permno and by permco, both within 200-500, and the 5% cap applied per permco too ("any one name", p4).
+- Gross: p4 says "Up to 200% of capital" and puts "at all times" on net only; we hold gross under 200% at every close as well (lever A2).
+- No September data in any table statistic.
+- Row 9 is before costs; the headline IR is row 23, net of all costs (PDF p20 calls the IR the headline).
+- Fills at the close by the PDF's convention; a desk would work the 10% of ADV through the day, which the impact model prices (§8.5).
+
+### 4.3 The 23-row table (PDF p19-20; `fiam/v4/report/table_9_1.py`; never typed)
+Monthly for moments, Sharpe, IR and alpha; daily for rows 7, 11, 13 and the rolling beta. Strategy rows are net unless marked. The benchmark column is computed for rows 1-4, 8 and 11-13.
+| # | Row | How |
+|---|---|---|
+| 1 | Ending value (US$ bn) | $1bn x Π(1 + r_net,d) to 2026-08-31; benchmark $1bn at b_t |
+| 2 | Cumulative return | End / start - 1 |
+| 3 | Annualised return | Arithmetic (monthly mean x 12) and CAGR in one cell, labelled |
+| 4 | Annualised volatility | Monthly sd x √12 |
+| 5 | Alpha vs S&P 500 (+ s.e.) | Monthly OLS of (r - rf) on (S&P - rf), intercept x 12, Newey-West 3 lags |
+| 6 | Beta monthly (+ s.e.) | Same regression |
+| 7 | Beta daily (+ s.e.) | Daily OLS, HAC 5 lags; Dimson in a footnote |
+| 8 | Sharpe | Mean excess over TB3MS / sd x √12; benchmark "undefined, constant excess" |
+| 9 | IR vs T-bill + 4% | Monthly active return, mean / sd x √12, before trading, borrow and financing costs, labelled |
+| 10 | Tracking error | sd(active) x √12 |
+| 11 | Max drawdown | Daily compounded NAV |
+| 12 | Max one-month loss | Calendar-month NAV |
+| 13 | Max one-day loss | Daily NAV |
+| 14 | Positions held | Daily count avg / min / max |
+| 15 | Gross exposure | Daily drifted avg / max |
+| 16 | Net exposure | Daily avg / min / max |
+| 17 | One-way turnover | ½Σ\|w - w_carried\| per rebalance and x 12 (x 52 weekly, x 252 for the daily re-targeting variant); spill days inside one rebalance; trades between rebalances added to the one before; with and without the initial build |
+| 18 | Average holding period | Position-weighted run length in trading days, measured directly |
+| 19 | Average position size (US$ m) | Mean \|w\| x NAV over names and days |
+| 20 | Short book median market cap (US$ m) | Median over holdings dates of the short book's median post-trade cap; minimum beside it |
+| 21 | Trading cost (% NAV / yr) | Fees + spread + impact |
+| 22 | Borrow cost (% NAV / yr) | Tiers (headline), flat beside |
+| 23 | IR net of all costs | Row 9 on net returns, with s.e.; Sharpe and IR at 100% gross beside |
+
+### 4.4 The 8 required exhibits (PDF p21; `fiam/v4/report/exhibits.py`; a deck test fails if one is missing)
+1. Cumulative active return vs the benchmark, S&P 500 faint for context.
+2. Rolling 252-day beta to the S&P 500.
+3. Calendar-year returns before and after costs vs the benchmark (2026 marked partial).
+4. Gross, net and position count over time, with the 200 and 500 names, 200% gross and +/-50% net lines.
+5. Top and bottom ten holdings by average weight, with weights; labels "TICKER, Full Company Name", label source recorded.
+6. Ten largest positive and negative contributors, each with a "why it was on" line.
+7. Short-book market cap and dollar-volume distributions, the minimum on every holdings date, the $500m line.
+8. Position size in days of ADV (ADV = `dolvol_126d`), long and short legs separately.
+
+Extra exhibits (§13.6): fundamental law (K1), capacity over time, 2026 as its own sub-period, the data passport, edge decay, the audit and agreement exhibit.
+
+### 4.5 The deck (PDF p21-22 order; ten minutes; Arcana output in marked slots)
+| Section | Time | Content |
+|---|---|---|
+| 1 Executive summary | 0:00-1:00 | Four sentences, the methods; IR vs T-bill + 4% after costs and Sharpe after costs side by side with s.e., as the site's tour leads (approved 2026-10-23); alpha a year and months over the hurdle, as in the site's race; CAGR and arithmetic return labelled |
+| 2 Thesis and signals | 1:00-2:00 | The inefficiency and why it exists (§7.0); SYY-10 and why the book earns the residual; the six gates with their denominator in Kahn's four tests (K2); when it stops; "we measured our own early bias" |
+| 3 Data and methodology | 2:00-3:15 | Sources and their four answers; which filings fed which signal (8-Ks for timing, 10-Ks for content, Forms 4 and 13F for insiders and holdings, p12); models, split dates, OOS R², agent architecture; why Benzinga is not traded (B29) |
+| 4 Construction | 3:15-4:30 | Forecast to positions, neutrality definitions and the forecast alignment (lever C1), sizing, the $600m universe and the $500m floor, gross under the crash-day cap and why (§8.8), the crowding screen, rhythm and why; the practice exam's four designs (§8.9); IC, breadth and TC with alpha's own IR before the hurdle (K1) |
+| 5 Risk and agent evidence | 4:30-6:00 | Rule vs agent vs placebo, decision log, one worked example, re-identification, release split |
+| 6 Table and exhibits | 6:00-7:15 | §4.3 on one slide; exhibits 1-2 large, 3-8 as a grid; Arcana slot |
+| 7 Costs and implementation | 7:15-8:30 | Assumptions with dates and omissions, before and after costs, flat borrow beside, capacity over time |
+| 8 Discussion | 8:30-10:00 | Behaved as trained; drivers; macro events; what broke and every breach with its reason; "What we threw away and why", from the trial ledger (v1-v3 and v3's 2016-2020 Sharpe of -1.25, Benzinga, analyst revisions, storms and weather as traded signals, every failed gate, the exam's losing designs; PDF p9's denominator; the organisers' "discarded three approaches", §2); kill criteria; next steps; why a few well-understood free primary sources beat bolting on alt data (p3, p15) |
+
+Appendix: prompts, schemas and tools; registers; crises; Carbon Arc dossier (passport, catalogue screen, Benzinga vs SEC audit); model cards; Arcana lenses; 20-year history; limitations. `tools/build_deck_finals.py` [STEP 11] reads `out/finals/CURRENT.json`; its linter fails on em dashes, en dashes, colons, semicolons or Oxford commas in slides.
+
+## 5. Architecture, settings and commands
+```
+fiam/                  shared engine (v1-v3 untouched apart from bug fixes behind tests)
+fiam/v4/
+  kit.py               [DONE] export / setup / doctor / installers / caches for the part-zip kit
+  clock.py             [STEP 3] available_at, first_close, joins with leak assertions, past-only thresholds
+  sources.py           [STEP 3] registry, bans, blind mode, cards; cleaned tables -> data/v4/clean/
+  links.py             [STEP 3] dated PERMNO link table
+  data.py              [STEP 5] registered-table reader (pyarrow, cached parquet keyed by SHA-256), calendar
+  daily_book.py        [STEP 5] daily NAV, t+1, drift, compounding, stubs, halts, costs, borrow, compliance
+  universe.py          [STEP 5] $600m entry / $500m hold, price >= $5 on traded price, short floor
+  forecast/            [STEP 6] returns.py, ensemble.py, fundamentals.py, confidence.py,
+                       baselines.py (organisers' penalized linear + 1/N), combiner.py
+  signals/             [STEP 4-6] syy.py, edgar_flags.py, lazy_prices.py, short_interest.py,
+                       insiders.py, best_ideas.py, customer_momentum.py, history.py (2000-2014 twin)
+  construct.py         [STEP 7] CVXPY problem, constraints, alignment (lever C1), crash-day cap,
+                       relax order, enforce_constraints()
+  squeeze.py           [STEP 7] short-squeeze screens and daily cover rules
+  crowding.py          [STEP 7] the 13F churn classes and the crowding screen (lever C3)
+  exam.py              [STEP 7] the practice exam's four designs and its rule (lever E1, §8.9)
+  betas.py             [STEP 5] Welch and Dimson against a dsf value-weighted market
+  costs_v4.py          [STEP 7] spread, square-root impact, borrow tiers and flat, fees
+  risk_desk/           [STEP 8] triggers, sizing_agent, devils_advocate, constraint_explainer, drift,
+                       anomaly, narrators, red_team, reproducibility, guard (the fixed rule, arm A1)
+  alt/                 [STEP 6-9] passport, catalogue_screen, benzinga_audit, ca_volume (CA0065S),
+                       disasters, weather, customer_voice, crowd_vs_13f, network, xray, mcp_demo
+  report/              [STEP 9] table_9_1, exhibits, holdings, attribution, arcana_lens,
+                       fundamental_law, leakage, assumptions, model_cards, factsheet, certificate,
+                       stress_report
+tools/data/            acquisition, `uv run run.py --data <source> <verb>`: edgar.py, noaa.py,
+                       stock_data.py, carbon_arc.py, amazon.py, status.py, _shared.py [DONE];
+                       edgar.py `forms`, finra.py, the CA0065S quote [STEP 3]; edgar.py
+                       `insiders`, fema.py (with the Federal Register check), noaa.py
+                       `archive`, french.py `archive` [STEP 3b]
+tools/audit.py         [DONE] read-only data audit -> out/audit/, rerun until clean (§6.8)
+versions/v1..v4/       recipe.json per version (uv run -m fiam.versions write), one README.md [DONE]
+out/v1..v4/            results (gitignored)
+frozen/v4/             config.json, decisions.json, v4.sha256, unseal.log (tracked) [STEP 10]
+mandates/finals_2026.json  [STEP 5] organiser rules block, created from rules_2026.json
+```
+- Layers are separate with typed dataclass interfaces (PDF p18): forecast, construction, costs and accounting, reporting.
+- Isolation: every source has its own tool and `data/<source>/` folder with receipts. Every alt piece is its own module reading registered tables only and writing only `out/v4/alt/<piece>/`. Each new signal is a switch, off unless its gate passes. The core book never imports a piece; a failing piece is logged and skipped. A test asserts the core book is bit-identical with every switch off.
+- Mandate `rules` block: `nav_start`, `compound`, `names_min/max`, `gross`, `net_band`, `name_cap`, `short_min_market_cap`, `lag_days`, `window`, `benchmark_path`, `holdings_spec`; pre-built for event day: `turnover_annual/monthly`, `participation`, `style_cap`, `sector_cap`, `beta_cap`, `liquidity_floor`, `adv_days`, `exclude_sectors`, `min_market_cap`. Our own choices live in `frozen/v4/config.json`, hashed.
+- Month counts follow the window, never a hard-coded 68 (v1-v3 hard-code it in `fiam/book.py`, `fiam/ml/dataset.py`, `fiam/checks/reproducibility.py` and `fiam/exhibits/pack.py` HALVES).
+- Run names `v4+agent@1e9`, `v4+guard@1e9` or `v4@1e9` per the gate (§10.4). `Settings` gains `seed`. Every switch maps to a protocol in `protocol()` (`fiam/v2.py`). `CURRENT.json` holds the run hash; every site and deck input carries it (test).
+- Commands (`uv run run.py <verb>`):
+  - [DONE] `setup [kit] [--skip parts]`, `doctor [--deep]`, `export [folder] [--dry-run] [--skip parts]`, `installers`, `caches [kit]`, `--data <source> <verb>`, `--data status | verify | rebuild`.
+  - [STEP 5-11] `finals [--mandate file] [--quick] [--synthetic] [--unseal] [--dry]`, `site`, `film`, `ai [--check]`. Blind mode has no flag: it is always on until `--unseal` (§13.3). `--mandate` avoids the clash with today's `run.py --rules <pdf>` (the rules reader). The v3-era flags `--finals <mandate>`, `--finals-drill` and `--finals-pack` keep running v3 and are labelled so; in step 5 the rules reader's printed next command becomes `finals --mandate`.
+
+## 6. Data
+
+### 6.1 Sources
+| Source | Path | From-to | Use | Licence |
+|---|---|---|---|---|
+| Organisers' daily | `data/organisers/dsf_mini_from_2014.csv` (`permno, date, prc, daily_return` only) | 2014-01..2026-09-28 (the test is cut at 2026-08-31) | Engine returns only (§6.4) | Competition use only |
+| Organisers' panel | `chars_final_with_names.parquet`; the 147 predictors in `factor_char_list.csv` | `eom` 2015-01..2026-08 | Signals, `me`, `dolvol_126d`, `ami_126d`, `gics`/`sic`/`ff49`, `ret`, names; row t's `ret_exc_lead1m` is month t+1 (already led; organisers' `readme.md` §5) | Competition use only, never redistributed (judges run MAIN.py with their own copy) |
+| Organisers' 8-K | `8k_20150101_20260831_identified.parquet` | 2015-2026 | Banned (§1.2); only the A1 comparison exhibit (coverage counts) and the link pairs | Competition use only |
+| Organisers' guide, workbook, templates | `readme.md`, `MCGILL_2026_CarbonArc_Data_Screen.xlsx` (merge rules, Appendix B), `penalized_linear_hackathon.py`, `portfolio_analysis_hackathon.py` | n/a | Rules become checks; baseline, OOS R² | Competition use only |
+| Project bundle | `data/fiam_v1/` (copy of `~/Code/FIAM/data/fiam_v1`) | 2015-2025 | `daily_market.parquet` (CRSP total return with delisting rows, volume, bid, ask) for delisting returns and checks; `wrds/*` banned | WRDS (McGill) |
+| WRDS archive and extracts | `/Applications/@Apps/Stock Data/` (read-only) -> `data/v4/extracts/` (§6.6) | 2000-2025 (options to 2025-08, TAQ from 2003-09, short interest from 2006-07) | History 2000-2014, inputs, calibration | WRDS through McGill, private kit only |
+| EDGAR filings and documents | `data/edgar/` (`tools/data/edgar.py`, `SEC_CONTACT` user agent, at most 5 requests a second) | 2012-today | 8-K items and acceptance times, 10-K text, named customers, FinBERT; the index of Forms 4, 424B, S-1 and S-3 for the insider clock and the Benzinga audit (§11) | Public |
+| SEC insider data sets | `data/edgar/insiders/` [STEP 3b] (DERA Forms 3, 4 and 5 data sets, quarterly zips from 2006q1; `tools/data/edgar.py insiders`); tables SUBMISSION, REPORTINGOWNER, NONDERIV_TRANS; `FILING_DATE` is date-only, no acceptance time | 2006-2026 (2026q3 if posted) | Insider buying (§7.3) | Public |
+| SEC as-filed facts | `data/edgar/companyfacts.zip` | 2009 (all filers 2011)-today | Unrestated fundamentals: each value with the `accn` that first reported it | Public |
+| SEC 13F | `data/edgar/13f/` (DERA data sets) | 2013q2-2026 | 13F best ideas (§7.3), the crowding screen (lever C3) and the crowd exhibit; CUSIP to PERMNO by date; replaces Carbon Arc CA0099 | Public |
+| NOAA climate divisions | `data/noaa/climdiv/` (`tools/data/noaa.py climdiv`, version 2026-10-06) | 1895-2026 | Weather exhibit and live headwind (§7.6) | Public domain, cite NOAA NCEI |
+| NOAA Storm Events | `data/noaa/storms/` (`tools/data/noaa.py storms`; county, local start times) | 1950-2026 (published to 2026-06) | Disaster exhibit and live physical-risk flag (§7.6) | Public domain |
+| FEMA declarations | `data/fema/` [STEP 3b]: OpenFEMA `DisasterDeclarationsSummaries`, `FemaWebDeclarationAreas` | 1953-today | The fast disaster clock for the exhibit and the live flag, county by county (B1) | Public domain, cite OpenFEMA |
+| Federal Register | `data/fema/federal_register/` [STEP 3b]: notices for the B1 sample from the federalregister.gov API | 1994 on | The FEMA back-dating check (B1) | Public domain |
+| FINRA | `data/finra/` [STEP 3]: short-interest files and daily short-sale volume files (off-exchange volume only), keyed by ticker | Short interest for 2026 (and the 2021-2025 overlap, if published, for the agreement count); volume 2009-08 on | 2026 short interest (§6.5); the 2026 volume stand-in if CA0065S fails (B24) | FINRA terms, attributed |
+| Amazon Reviews 2023 | `data/amazon/` (UCSD McAuley lab, Hugging Face `McAuley-Lab/Amazon-Reviews-2023`; `uv run run.py --data amazon fetch`, `tools/data/amazon.py` in an isolated env with DuckDB, raw deleted after each category) | 1996-2023-09 | Customer voice exhibit only, never traded | No licence stated; research use approved 2026-10-22, cited (Hou et al. 2024), never redistributed |
+| Carbon Arc | `data/carbon_arc/` (SDK `carbonarc` 1.1.19, token passed explicitly) | Mostly 2017-2019 to today; CA0065S 1990 on | Live use and exhibits; CA0065S 2026 volume if it passes (§6.5, §12) | Derived results only, "Based in part on Carbon Arc data" |
+| French factors | `data/benchmarks/ff5_daily.zip`, `ff_momentum_daily.zip`, pinned in `sources.json` | 1963 on | Loadings, factor proxies, crash control; matched WRDS's copy exactly 2000-2025 (both current vintage, so B23 also checks French against an archived copy) | Public |
+| T-bills | `data/benchmarks/TB3MS_full.csv` (FRED) | 1934 on | Benchmark and the T-bill + 4% line | Public |
+| S&P 500 daily | CRSP `sprtrn` (price only) in the extracts 2000-2025; FRED `SP500` for 2026, downloaded at run time. Never Yahoo | 2000-2026 | Beta, alpha, market lines | Public / WRDS |
+
+### 6.2 Window rules
+- Each feature declares its window; it enters the model only if it covers train and test, or has a fallback written before the unseal (§6.5). A late-starting source is tested on its own window, stated.
+- Missing because a source had not begun is flagged apart from missing for a firm (merge rule 4).
+- The test is cut at 2026-08-31; September is scored on its own. The audit prints the source x year coverage matrix.
+
+### 6.3 One clock for every merge (`fiam/v4/clock.py`, step 3)
+- `available_at`: the instant the public could first see the row, stored in UTC, compared in America/New_York.
+- `first_close`: the first trading close at or after `available_at`, on one calendar: CRSP trading days 2000-2013, the organisers' dsf days from 2014 to 2026-09-28, each with its real close (16:00, or 13:00 on early-close days from the pinned `exchange_calendars` XNYS calendar, cross-checked against those days). Holidays and weekends roll forward. Rows outside the calendar keep a null `first_close` and are never joined.
+- Market data (dsf and CRSP returns and prices, the panel's `eom` row, French factors, VIX, TB3MS) is available at its trading day's close, so its `first_close` is that close; the panel row uses the last trading day on or before `eom`.
+- Event stamps (filings, events, news): a stamp before the close counts for that close; a stamp at or after the close counts for the next one. A date-only stamp means the end of that day, 23:59:59 America/New_York, so it counts for the next close; a month-end date-only row therefore joins the next `eom` (conservative, intended).
+- The t+1 rule: information with `first_close` = d forms the book at the close of the next trading day, d+1, and first earns from d+1 to d+2 (PDF p15). So the `eom` 2020-12-31 row forms the first book, traded at the 2021-01-04 close (§9.1).
+- Joins: daily on `(permno, first_close)`; monthly on `(permno, eom)` only when `first_close` is on or before that month's last trading day. Never on the observation date. Every join asserts that the latest `first_close` on the feature side is before the formation close (PDF p18).
+- Thresholds (B21): any threshold that classifies a date (regime, percentile, trigger, screen) uses only data before that date (expanding window), in the pre-2021 tests and after.
+- Short interest becomes available 8 trading days after settlement (one calendar everywhere).
+
+| Source | Stamp | `available_at` |
+|---|---|---|
+| EDGAR | `acceptanceDateTime`, digits Eastern for some filings and UTC for others (read as UTC, 33% of 2,989 filings matched to Audit Analytics come out 4-5 hours early) | Read as the Eastern wall clock, the latest reading (never early in 2,989 of 2,989), never before 06:00 ET on the filing date (A6) |
+| SEC as-filed facts | `filed`, `accn` | The acceptance second of that `accn` (else end of the filed day) |
+| SEC 13F | `FILING_DATE` | End of the filing day; amendments from their own date (B13) |
+| SEC insider data sets | `ACCESSION_NUMBER`, `FILING_DATE` (date only) | The acceptance second of that accession in the EDGAR index (A6 rule), else end of `FILING_DATE`; 4/A from its own date; never `TRANS_DATE` or `PERIOD_OF_REPORT` (PDF p16) |
+| Restatements | `file_date` | End of that day |
+| Key developments | `entereddateutc` | That instant; back-filled events (from 2000, entered in 2005) count from entry; the audit prints entered minus announced by year |
+| Short interest (WRDS and FINRA) | `datadate` (settlement) | 8 trading days later, end of day |
+| FINRA daily volume | File date | End of that day, so it acts at close t+2 |
+| I/B/E/S | `STATPERS`; actuals `ANNDATS_ACT` | End of that day |
+| WRDS ratios | `public_date` (before `rdq` on 3.45% of rows) | Month end on or after the later of `public_date` and `rdq` + 1 (A5) |
+| Compustat | `rdq` | End of the day after `rdq`; items first in the 10-Q/10-K: the later of that and the filing date (`fdateq` a median 19 days after `rdq`); no `rdq` (27% of rows): `datadate` + 4 months; annual rows: fiscal Q4 `rdq`, else `datadate` + 4 months; `rdq` before period end treated as missing (A7) |
+| Organisers' panel | `eom` | Known at `eom`, as the organisers define it |
+| Carbon Arc | Observation date; CA0035 weekly rows labelled with the week's Friday (labels ahead of the pull) | End of the labelled day + the workbook's lag, never earlier: CA0065S day t's volume at the end of t+1, so it acts at close t+3; live, exhibits and the 2026 volume screen only |
+| NOAA climate divisions | Month | The 15th of the next month (releases about the 8th), or later per B23 |
+| NOAA Storm Events | `BEGIN_YEARMONTH`, `BEGIN_DAY`, `BEGIN_TIME` in `CZ_TIMEZONE` standard time | End of the event month + 4 months (NCEI publishes 2-4 months late; decided 2026-10-23), or later per B23 |
+| FEMA | `declarationDate`, each county's `designationDate` | End of that day, county by county, after the B1 check |
+| Amazon reviews | Review timestamp (ms, UTC), summed to product-month | End of the month |
+| FRED TB3MS | Month | Benchmark only, never a predictor |
+| French factors | Trading day | End of that day; loadings use days up to the book date only |
+
+- Tests (`tests/test_clock.py`): filings at 15:59 and 16:01 Eastern on each side of a DST change; a stamp at exactly 16:00:00 (counts for the next close); an early-close day; a Friday evening and a holiday; a day-t return feature forms the book at close t+1 and earns t+1 to t+2; the `eom` 2020-12-31 row trades on 2021-01-04; a threshold at t reads no row on or after t; a Form 4 joins at its acceptance, never its trade date; a CA0065S day-t row acts at close t+3; for one named stock and month per source, the observation date printed next to the date the value entered the model (merge rule 1).
+
+### 6.4 Daily return rules (each counted and logged)
+- Return basis: dsf `daily_return` = CRSP `DlyRetx` (price only) on 99.997% of rows. Dividend term δ = (1 + chars `ret`) / Π(1 + dsf r) - 1 per name-month, booked on the month's last trading day; longs receive it, shorts pay it; it gives the total-return line, the headline or beside it per lever D3 (§4.2).
+- Halts and missing days: a held name with no dsf row that day cannot trade and is held at its last value. On the 5th straight missing day it is written off at the stub (no trade assumed): -30% on longs, +10% against shorts (Shumway 1997). Halts are listed in the halt log.
+- Stubs are trued up: through 2025 to the CRSP delisting return (`daily_market`, `crsp_delistings`) or the panel's exit-month `ret`; in 2026, exits dated from SEC filings (Forms 25 and 15, 8-K items 2.01 and 3.01), mergers at the last trade, failures keep the stub (A12, A13, B8). Stub log by year and leg; robustness run adverse both ways.
+- The dated exits table `data/v4/exits.parquet` (step 3):
+  - through 2025, CRSP delistings with their codes (2xx-3xx merger or exchange, 4xx-5xx failure)
+  - in 2026, a name whose dsf rows stop is an exit only if a Form 25, a Form 15 or an 8-K with item 2.01 is filed within 30 trading days of its last row (forms from `tools/data/edgar.py forms`, §11): a merger if an item 2.01 8-K is among them, else a failure; otherwise it is a data gap under the halts rule
+  - dropping out of the panel alone is never an exit (the organisers' `readme.md` §7)
+  - Compustat `dldte`/`dlrsn` enter only here, counted from their own dates (B11)
+- Prices: dsf `prc` is split-adjusted to today and holds `inf` (permno 12350 to 2024-09-16); banned except for the gap ratio below (§1.2). Cap = chars `me` at the last `eom` x cumulative dsf return since then.
+- Nulls (6,550): a first-row null cannot be held; after a gap use the price ratio if finite, else 0, flagged. Sub-penny 2026 glitches (permno 21298 on 2026-09-08 = 2999) never pass the $600m screen (asserted). Held \|r\| > 50% is checked against chars `ret` and listed, never edited.
+- Window: cut at 2026-08-31. No 2026 entrants exist (0 permnos first seen in 2026, 153 in 2025, counted in the independent audit 2026-10-23; disclosed).
+
+### 6.5 2026 and other stated fallbacks
+- Short interest and borrow tiers: FINRA's 2026 files with the 8-day lag, mapped by dated ticker (§6.7); 2026 days to cover = short interest / (`dolvol_126d` / traded price), a change from the 20-day CRSP volume used through 2025, stated in the 2026 sub-period. The call-option screen ends with OptionMetrics (2025-08-29) and the TAQ order-imbalance screen with TAQ (2025-12); both are off after that. A WRDS vs FINRA agreement count on the 2021-2025 overlap is reported (§1.3). If FINRA's files are unavailable or find fewer than 95% of universe names on any 2026 settlement date (counts only), borrow tiers carry the last value up to 6 months, then flat, and the signal carries at most 2 months, then off.
+- Squeeze screens: realised vol stands in for implied vol after 2025-08. 2026-01..08 volume spikes (B24, B30), in an order fixed 2026-10-23 and never chosen by returns: (1) CA0065S, if bought and it passes; (2) FINRA's daily volume, if it passes; (3) else the volume screens are off in 2026 and the price and short-interest screens run. The spike flag is volume above 5 times its 6-month average, split-safe (a raw share count jumps at a split): dollar volume where the source has prices (CRSP |`prc`| x `vol` through 2025, CA0065S), share volume with split days removed from the window for FINRA (no prices; the split method in the data section of protocol.md, step 3). Pass: on 2015-2020 universe stock-days a source's flag matches CRSP's with precision and recall both >= 0.8, and it covers at least 95% of universe names on every 2026 date (counts only).
+- CA0065S (Fiscal AI daily open, close and volume; "CBOE-listed only", 1,500-2,000 firms; lag T+1; added to Carbon Arc 2026-04-23, so its whole history is today's copy). Pull: universe tickers 2025-07..2026-09 (one source for the 6-month window), a fixed-seed sample of 300 universe names 2015-2020 and the six named failures (§6.8); priced free first, bought only by the leader (§12.2). Rules, fixed before the check:
+  - dollar volume (close x volume) and ratios inside the window only, never price or share levels; split days checked against CRSP; the $5 floor stays on the panel's traded price
+  - tickers to PERMNO by dated ticker (§6.7), share classes normalised (BRK.B vs BRK-B), match rate counted
+  - (ticker, date) deduped; non-XNYS days dropped; zero or negative values flagged; no gap filling; unit jumps checked against CRSP
+  - whether volume is consolidated or CBOE-only is measured; the ratio flag works either way if the share is steady
+  - a name missing in 2026 gets the price and short-interest screens only, never a "missing" flag (merge rule 4)
+  - 2021+ rows stored sealed: counts, coverage and the 2025-07..12 flag agreement with CRSP as counts only (§1.3); the 2026 returns vs dsf only after the unseal
+  - never in a forecast, gate or desk card; rows in the leakage register, the passport and the 2026 sub-period (§13.5, §13.6)
+- SEC insider data: 2026q3 is used if posted when step 3b runs; otherwise the signal carries its last value at most 2 months, then off (counts only).
+- Earnings timing (B22): every forward-looking use (triggers, earnings windows, the sizing card) uses the projected date in `data/v4/earnings_calendar.parquet` (step 3): the same fiscal quarter's `rdq` a year earlier + 364 days; with no such quarter (a new firm, a fiscal-year change) the last `rdq` + 91 days; with no `rdq` at all, no projection and the trigger is off for that name. 2026 projects from 2025's `rdq`. The live preview desk uses dates as announced. Availability clocks and SUE labels use the real release, known once it happens. Key developments hold only results announcements, not dates announced in advance (checked 2026-10-23).
+- Spreads in 2026: each stock carries its last 2025 estimate, else its size group's median. No whole-share rounding in v4 (immaterial at $1bn, stated).
+- Benchmark: FRED TB3MS by the PDF formula; the organisers' series is not in their folder (checked 2026-10-23). If it arrives, swap it in and assert equality.
+- History, labels and calibration need no 2026 data.
+
+### 6.6 WRDS extracts (`uv run run.py --data stock tables`; read-only; kit only)
+| Extract | Use | Traps |
+|---|---|---|
+| CRSP daily and monthly 2000-2025, delistings, distributions | History 2000-2014, validation, ADV, delisting returns | Dedupe (permno, date); the description in force on the date; header and end-date fields dropped |
+| Compustat quarterly, annual, ratios | History inputs by `rdq` | Restated values; header sectors current; deletion fields only in the exits table; earliest-reported row of 581 two-calendar periods kept (A7); ratios per A5; two gvkeys per PERMNO picked by the link table (A16) |
+| I/B/E/S actuals, summary, recommendations, link (score <= 2) | The live preview desk only (B20, B27) | Exact copies dropped (A16); ends 2025-12 (B20) |
+| TAQ daily + link | Spread and impact calibration (2015-2020 fit), retail vs institutional flow | Every trading day from 2003-09 (counted per year); link ends 2024-12, so 2025 maps by dated CRSP ticker and CUSIP (A15) |
+| Short interest (current series from 2006-07 only, A10) | Borrow tiers, squeeze protection, the signal, crowding | `available_date` = settlement + 8 trading days |
+| OptionMetrics (to 2025-08-29) | Implied vol for triggers and screens | Join on the row date, never `mdate`/`wdate`; PERMNO re-attached from the dated link, best score (A8) |
+| Factors, VIX | Attribution, crisis replays, narrators | Expanding windows only; two duplicate VIX dates dropped (A16) |
+| Restatements | Accounting risk (replaces CA0092); validates EDGAR 4.02 | Event and file dates only |
+| Key developments (US, our gvkeys, 2004-2025) | Risk-desk event feed | §1.2 bans; deduped, joined on gvkey, from 2004 (A9) |
+
+- Fixes live in the registry's cleaning rules (§6.7), not in the extracts, which stay faithful copies of the archive: WRDS A7, A8, A9, A10, A15, A16; EDGAR and 13F A6, A11, B13; the bundle B18; NOAA A17; Carbon Arc A14. Compustat `dldte`/`dlrsn` stay in the extract and are readable only by the exits builder.
+- The raw archive files behind each extract are named in its receipt (`data/v4/extracts/receipts.json`).
+- In the extracts but unused by v4 (registered only): `frb_fx_daily`, `frb_rates_daily`, `riskfree_*`, `liquidity_monthly`, `ff_2x3_monthly`, `ff_5x5_monthly`, `ibes_adjustments`, `ibes_companies`, `ibes_price_targets` (levels, banned), `compustat_financials`, `short_interest_legacy` (A10). Not extracted: bonds, funds, Canada, ExecuComp, patents, `beta_daily`, `treasury_daily`, raw option contracts (75 GB), raw TAQ beyond the extract.
+- `daily_market` duplicates (1,151 rows) removed (B18).
+
+### 6.7 One data standard, registry, links and cards
+- Raw sources stay where they are, read-only: the Stock Data folder, `data/organisers/`, EDGAR raw documents (hashes in `data/edgar/docs/log.jsonl`), Carbon Arc raw replies.
+- Registry `fiam/v4/sources.py`: per source the raw path and SHA-256, identifier type, clock rule (§6.3), cleaning rules, kept columns, bans (§1.2) and blind mode (§1.3). Cleaned tables are written to `data/v4/clean/<table>.parquet`; `fiam.v4.data` (step 5) reads only those. A new source enters only by a registry entry, an extract and an audit pass.
+- Step 3 registers every source and converts the tables the engine and checks read now: the organisers' panel and dsf; CRSP daily, monthly, delistings, distributions and market; short interest; the EDGAR filings index with the new forms; key developments; restatements; VIX; French factors; TB3MS; links, exits and the earnings calendar; FINRA and CA0065S (if bought). The rest (Compustat, I/B/E/S, TAQ, OptionMetrics, ratios, 13F, SEC insider data, NOAA, FEMA, Amazon, Carbon Arc) are converted, with their kept columns, in the step that first reads them.
+- Every cleaned table: parquet, snake_case, explicit dtypes, one row per declared key (asserted); `permno` on every firm row through the link table; `available_at` (UTC), `first_close`, and `eom` when monthly; returns as decimals, prices in USD, market values in USD millions, counts as integers; missing is null, never 0; outliers flagged, never edited; one trading calendar.
+- Link table `data/v4/links.parquet`: `permno` to gvkey+iid, CUSIP and NCUSIP, ticker, CIK, I/B/E/S ticker, OptionMetrics `secid`, TAQ symbol, Carbon Arc entity id and FIGI, each with `valid_from`, `valid_to` and source. The archive has no CRSP-Compustat link (checked 2026-10-23), so:
+  - gvkey+iid: the panel's monthly rows from 2015; before 2015 `wrds_ratios` (gvkey, permno by `public_date`), iid `01` when the firm has one security, else counted and dropped
+  - CUSIP, NCUSIP and ticker: CRSP monthly by date; I/B/E/S, OptionMetrics and TAQ: their WRDS links by date (TAQ after 2024-12 by dated CRSP ticker and CUSIP, A15)
+  - CIK: SEC records and the organisers' 8-K permno-CIK pairs, dated by filing, first; Compustat's `cik` (a current header field) only as a tie-break (B12; 17 firms filed under another CIK; 295 have none, listed and left without text data)
+  - Carbon Arc entity ids valid from their pull date only
+  - the 13 CIK conflicts are listed with evidence and settled by the leader on step 3's first day, never guessed
+- Joins use PERMNO or CIK, never a current ticker (PDF p12). Dated tickers are used only where a source has no other key (FINRA, Carbon Arc, TAQ 2025), through this table, with match rates counted.
+- Data card per table in `data/v4/cards/`: source, raw hash, rows in and out, count per rule, coverage by year, audit results, and the PDF's four answers: history start, lag of the metric used, revisions and vintage, coverage and whether it is random with respect to returns (PDF p14-15). A source whose card cannot answer all four is not used.
+- Cross-source agreement (thresholds written in the data section of protocol.md before the check runs in step 3; an exhibit; CA0065S's rows run once it is bought): chars `ret` vs CRSP monthly; dsf compounded vs chars `ret`; chars `me` vs CRSP price x shares; panel exits vs CRSP delistings; Compustat `cik` vs EDGAR filer names; I/B/E/S, OptionMetrics and TAQ link scores; CA0065S closes, dollar volume and spike flags vs CRSP on 2015-2020; 13F CUSIP to `permno` match rate; the insider data's issuer CIK to `permno` match rate.
+- Values changed after the fact: as-filed values per (CIK, tag, period) from the first filing that reported them; `restatements` marks restated quarters (original before `file_date`, corrected after); the Compustat vs as-filed gap on 2011-2020 (share of firm-quarters off by over 1%, by item); the ten SYY inputs rebuilt as-filed for 2015-2020 and their ranks compared with the panel, both reported if the rank correlation is below 0.95.
+- Limit: cleaning cannot remove restated values or current-vintage fields. Current-vintage fields are banned from decisions; restated Compustat values are allowed only where nothing as-filed exists (2000-2010 and the history twin), measured on 2011-2020 and stated (§19).
+
+### 6.8 The data audit and the approved fixes
+- `uv run tools/audit.py` (read-only; 2021+ counts and dates only) writes `out/audit/report.md`, `findings.json`, `coverage.csv`. Per source: survivorship, timing (rows used before `available_at` must be 0), vintage, identifiers, coverage (merge rules 5 and 6), values (units, splits, `inf`, outliers), has-data flags (merge rule 4).
+- The PDF's survivorship test (PDF p11), every firm-keyed source, in the step that converts it and before its first use (step 3 for the step 3 tables), output `out/audit/survivorship.json` (approved 2026-10-23; `tools/audit.py` today checks coverage only):
+  - resolve rate: the PDF's six (Sears, Bon-Ton, Pier 1, GNC, Ascena, J.C. Penney) plus every 2017-2020 CRSP delisting whose last `me` was $500m or more
+  - return test: covered minus uncovered equal-weight panel `ret` in the trading universe (§3.1), monthly 2015-2020, Newey-West t (6 lags)
+  - class: immune if not keyed to firms; universe-level if under 50% of leavers resolve; else crosswalk-only
+  - a return gap with \|t\| > 2 needs a written control in the source's card before the source is used
+- "Clean" means 0 fail and every warn either fixed or accepted by the leader with a written reason in its card. `tools/audit.py` is extended to every new table (links, exits, clean tables, FINRA, CA0065S, SEC insider data, FEMA). An independent auditor (one agent, blind to our results) reruns after the fixes; its findings are reproduced before they are accepted (first pass: `out/audit/independent_audit.md`).
+- Approved fixes (2026-10-23). Each rule is stated once where it lives; this is the index.
+
+| # | Finding | Fix (where) |
+|---|---|---|
+| A1 | The organisers' 8-K file keeps survivors (in it for 93.4% of 8-K months of firms still listed, 16.3% of firms that later left; with one, 0.09% exit within 12 months, without, 18.7%) | Banned; 8-K counts and items from the EDGAR index for every panel firm (702,462 8-Ks); permno-CIK pairs only for links (§1.2, §6.7); disclosed for v3 |
+| A2 | The first EDGAR document set was chosen with 2015-2026 caps (329 firms only through 2021+ caps) | Documents for every panel firm, the 132,757 kept; stated in the honesty notes (§11) |
+| A3 | I/B/E/S levels split-adjusted to today and rounded (NVDA consensus EPS 0.02 in 2015) | SUE from SEC as-filed EPS; no WRDS re-pull; since 2026-10-23 no I/B/E/S in the backtest at all (B27, §1.2) |
+| A4 | `adjfct` encodes future splits; the panel's strongest pre-2021 predictor (rank IC 0.093) | Banned, test (§1.2) |
+| A5 | WRDS ratios public before the earnings release on 43,863 rows | Clock row (§6.3) |
+| A6 | SEC acceptance times mix clocks | Clock row (§6.3) |
+| A7 | Compustat deletion fields; 581 two-calendar periods; `rdq` before period end on 92 | §1.2, §6.3, §6.6 |
+| A8 | OptionMetrics: 2.6% of rows outside the link window; one id on two share classes | Dated link, best score (§6.6) |
+| A9 | Key developments: one copy per ticker (262,084 rows); pre-2004 entered years late; revision stamp | §1.2, §6.6 |
+| A10 | Two short interest series disagree (0.22% equal) | The current series from 2006-07 (§6.6) |
+| A11 | 13F VALUE in thousands before 2023-01-03, dollars after | Earlier VALUE x 1,000 (a cleaning rule, §6.6) |
+| A12 | 2026 exits have no final return (v1-v3 book zero) | SEC-dated exits, stated (§6.4) |
+| A13 | dsf has no delisting-return days | Delisting returns from CRSP through 2025; the headline still marks on dsf (§6.4) |
+| A14 | Carbon Arc: last period partial; today's tickers | Unfinished periods dropped; tickers to PERMNO by date (§12) |
+| A15 | TAQ link ends 2024-12 | 2025 by dated CRSP ticker and CUSIP (§6.6) |
+| A16 | I/B/E/S copies; 2 duplicate VIX dates; two gvkeys per PERMNO in ratios | §6.6 |
+| A17 | NOAA sentinels differ by file (-99.90, -9.99, -99.99, -9999); normals include 1991-2020; storm files are 2026 revisions | Null every sentinel; expanding past-only normals; storm dates and counts only (§6.3, B23) |
+| B1 | Storms published 2-4 months late | Event month + 4 months; FEMA as the fast clock after a back-dating check: no county designated before its declaration, and 100 random 1994-2020 county designations matched to Federal Register notices (its API starts in 1994; step 3b); if more than 5% of notices came over 30 days after FEMA's date, FEMA counts from the notice date |
+| B2 | v3's fifteen choices made with 2021-2026 visible | Each re-decided by theory, convention or a pre-2021 test, listed in protocol.md |
+| B3 | v3's record is partly in-sample | v3's 2016-2020 result beside its record, labelled its check window (its results were seen; `vol_bias` and `gross_ceiling` were fitted there); its short ban measured with EDGAR 8-Ks on 2016-2020 |
+| B4 | Six gates can pass by luck | Holm (§7.4) |
+| B5 | Momentum crashes (Nov 2020; Oct 2026 in the news) | Crash control gated on UMD 1963-2020 and the 2017-2020 book (§8.4); the October 2026 news changes nothing |
+| B6 | Pre-2011 Compustat values are restated | SUE model from 2011 (from 2015 if B17 fails); gap measured |
+| B7 | AI model memory | Desk also reported on 2025-02..2026-08, after Gemma's cutoff |
+| B8 | 2026 delistings after CRSP ends | SEC-dated exits (§6.4) |
+| B9 | LightGBM needs OpenMP on a fresh machine | Step 3 first checks, on a clean Mac folder and a clean Debian container, whether the pinned LightGBM wheel already carries OpenMP. If not: Homebrew's libomp bottle (Mac arm64, x64) and Debian's libgomp1 package (Linux arm64, x64), each hash-checked, in `installers/<machine>/`; setup installs them offline where the wheel looks (found with `otool -L` or `ldd`); README steps; doctor detects it |
+| B10 | dsf `prc` split-adjusted to today | Banned as filter or feature; test (§1.2) |
+| B11 | Compustat deletion fields carry the future | Only in the dated exits table (§6.4) |
+| B12 | Compustat's current CIK misses 17 firms; 295 have none | Dated multi-source CIK links (§6.7) |
+| B13 | 13F amendments | Each from its own date, never back-filled (§6.3) |
+| B14 | Cross-validation leakage | No shuffled CV; the last label month before each fit purged; guard and test in step 3, enforced on models in step 6 |
+| B15 | FRED S&P 500 starts 2016-09-26 | CRSP `sprtrn` through 2025, FRED for 2026 only (§6.1) |
+| B16 | Hindsight about 2021-2026 | Every choice cites pre-2021 research and is written before running (knowledge register) |
+| B17 | The 2000-2014 history twin may not match the panel | Used only if its signals match the panel on 2015-2020 at rank correlation >= 0.95 (§8.0) |
+| B18 | `daily_market` duplicates | Removed |
+| B19 | A leak could slip past every rule | Trap tests: a planted one-month-ahead feature is refused (step 3); planted noise shows no edge through the gates (step 6) |
+| B20 | I/B/E/S ends 2025-12 | The live preview desk shows the last consensus with its date, or leaves it out |
+| B21 | Thresholds fixed on 2000-2020 judge 2008 with later data, the PDF's "regime identification with future data" (p15) | Past-only thresholds (§6.3) |
+| B22 | PDF p16: "A scheduled earnings date is known in advance and is legitimate", but we hold no historical schedule of announced dates (key developments hold only results) | Projected dates for forward-looking uses (§6.5) |
+| B23 | NOAA re-issues its files (storm years re-issued 2026-03-23, climate version 2026-10-06, all climate history re-computed in 2014), a current vintage (PDF p15-16) | Step 3 compares today's files with archived copies (the Internet Archive holds NOAA's storm folder from 2019-09 and 2020-10) and measures, by age, how much pre-2021 data changed. Lag L = the shortest age after which >= 99% of county-month storm counts are unchanged and >= 99% of state-month climate values are within 0.1. L <= 12 months: the storm and weather exhibits and live flags count from L (never earlier than §6.3), evidence on the passport slide. L > 12 months or no archived file: both exhibits are labelled current vintage and their desk flags are live only. Neither is in the Holm family (§7.3). The weather window starts after the 2014 re-computation. The same kind of check runs on French's daily factors against an archived pre-2021 copy (`tools/data/french.py archive`, step 3b): its bar (the share of daily UMD values within a tolerance, by age), the lag applied to the crash control's 126-day window when it passes, and the archive source are written in the data section of protocol.md before the check (step 3); a fail or no archived copy means the crash control stays off. All in step 3b |
+| B24 | No volume in the organisers' daily file; CRSP ends 2025-12 | CA0065S, else FINRA, else the volume screens off (§6.5) |
+| B25 | Controls chosen with later events known: the squeeze protection with the January 2021 GameStop squeeze known, the crash control beside October 2026 news (PDF p15, "intentionally or accidentally") | Both disclosed; thresholds and tests on pre-2021 data only; 2021-2026 also reported with each switched off (approved 2026-10-23) |
+| B26 | Gross near 1.9 with trims at 195% breaks the 200% limit (p4, read as at all times, §4.2) on a big up day: both legs rise and the trim comes a close later (CRSP value-weighted +11.49% on 2008-10-13; +13.13% over 2008-11-21 and 2008-11-24) | The crash-day cap on two-day rises (lever A2, §8.8, independent audit 2026-10-23); only a two-day rise above every earlier one can breach, and it is reported (§9.3) |
+| B27 | I/B/E/S is today's vintage and its history was rewritten (Ljungqvist-Malloy-Marston, JF 2009); we hold no older copy | Analyst revisions dropped; no I/B/E/S in any forecast, gate, rule or card; the live desk shows the last consensus with its date (§1.2) |
+| B28 | The practice exam reuses 2017-2020, where construction settings were chosen, and overlaps the ML validation (2019-2020) and the gates (2015-2020), which favour designs 1-3 over design 4, so its level flatters | It compares four fixed designs; disclosed with the deflated Sharpe (§8.9) |
+| B29 | Benzinga CA0035 as bought (§12.2): every row dated a Friday, labels ahead of the pull; thin (before 2021: insider news 3,251 rows, offerings 1,717, deals 1,356, nearly all deals in 2019-2020); coverage drift (insider news 280 rows in 2019, 1,463 to 1,637 a year in 2021-2023, 133 in 2025, counts only); today's entity map (20% of leavers resolve) | Not traded, decided from counts and dates only, before any return test (§1.3); EDGAR covers the same events with second stamps and dead firms; the Benzinga vs SEC audit, the snapshot 2 revision check and the live desk instead (§12.4) |
+| B30 | CA0065S is today's copy (added 2026-04-23), "CBOE-listed only", and its library pages returned not found on 2026-10-21/22 | A 2026 risk screen only, never a forecast; the B24 bars on 2015-2020 and the rules of §6.5; else FINRA, else off |
+
+## 7. Signals
+
+### 7.0 Thesis and when it stops (written 2026-10-23, before any v4 run)
+- Thesis: investors underreact to slow, complex or costly-to-read information about a firm's real business: accounting and investment quality (the SYY anomalies), disclosures whose wording changes, red-flag filings, what informed insiders, the best fund managers and short sellers do, and news that travels along customer links. Limited attention and short-sale frictions delay the response; information that is costly to process stays partly unpriced (Grossman-Stiglitz 1980), which is where pure alpha lives (Kahn 2018). In large caps those frictions are smaller, so the edge must be residual, not factor tilts (Arcana lens 1).
+- When it stops: crowding or post-publication decay (McLean-Pontiff); momentum crashes after rebounds (Daniel-Moskowitz); low cross-sectional dispersion; a liquidity crisis forcing correlated deleveraging (August 2007); style rotations swamping stock-level information. Each has a kill or brake rule (§13.5, §8.3, §8.4) and a slide.
+- Edge levers (2026-10-23): the residual target (§8.2); signals combined by the ML as monotone inputs with fixed signs, never hand-set weights; the forecast aligned with the constraints (lever C1); cost and turnover discipline (no-trade bands, the frozen cost budget, the no-trade rule, patient execution); the daily overlays if their decay tests pass (lever E5, §8.7); no further signals.
+
+### 7.1 SYY-10 (headline)
+Within-month signed ranks (`rank_z` x sign); missing counts as 0; eligible with at least 5 of 10 present (rank universe and aggregation: step 4 checklist). CHS failure probability has no column, so 10 of 11.
+| Anomaly | Column | Sign |
+|---|---|---|
+| O-score | `o_score` | - |
+| Net stock issues | `chcsho_12m` | - |
+| Composite equity issuance | `eqnetis_at` | - |
+| Total accruals | `oaccruals_at` | - |
+| Net operating assets | `noa_at` | - |
+| Momentum | `ret_12_1` | + |
+| Gross profitability | `gp_at` | + |
+| Asset growth | `at_gr1` | - |
+| Return on assets | `niq_at` | + |
+| Investment to assets | `ppeinv_gr1a` | - |
+
+### 7.2 ours12 twin
+v3's twelve signals (`fiam/book.py`) with the same v4 engine and rules, labelled; the gap to SYY-10 is "our early bias".
+
+### 7.3 The six gated signals (approved 2026-10-23; every gate and ancillary test is fixed in protocol.md before any run)
+All six come from public regulatory or exchange records with stated dates that include dead firms (filings stamped to the second; short interest and 13F dated by day, §6.3). Build order (§3.1): short interest, red flags, insider buying, Lazy Prices; then 13F best ideas, customer momentum.
+- **EDGAR red flags** (Lerman-Livnat 2008).
+  - Items 1.03, 2.06, 3.01, 4.01, 4.02, and from 5.02 only departures: a CEO or CFO leaving or a director resigning over a disagreement (5.02(a), (b)); 5.02(c)-(f) never count. 8-K/A never double-counts; 2.02 earnings 8-Ks are out. Sign negative; window and decay from the paper (step 4 checklist).
+  - Of 23,689 red-flag 8-Ks for $1bn-universe firms in 2015-2020 (counts, taken before lever A3 lowered the floor), 23,011 carry 5.02, so the departure rules are written in the protocol and hand-checked on 200 random 2015-2020 filings.
+  - Clock: §6.3. Gate window 2015-2020. Ancillary test: next-quarter SUE.
+  - Daily overlay (lever E5): if its decay test (§8.7) passes, a held long that files a red flag is cut by the overlay cut (checklist) at the close after the filing's `first_close`; new shorts wait for the monthly rebalance.
+- **Insider buying** (Lakonishok-Lee, RFS 2001; Cohen-Malloy-Pomorski, JF 2012, SSRN 2010).
+  - SEC Forms 4 and 4/A (§6.1): open-market purchases (`TRANS_CODE` P) and sales (S) of common stock by officers and directors. As in Cohen-Malloy-Pomorski, an insider is classified only after trading in each of the three prior calendar years: routine if those trades fall in the same calendar month each year, else opportunistic; unclassified insiders are left out. The data starts 2006q1, so the label exists from 2009.
+  - Signal: the opportunistic net purchase ratio over the past 6 months, (buys - sells) / (buys + sells), 0 with no trades; the window, the roles counted and a dollar variant in the step 4 checklist.
+  - Sign positive. Clock: the Form 4's acceptance, never the trade date (§6.3, PDF p16). Gate window 2015-2020. Ancillary: next-quarter SUE.
+  - Daily overlay (lever E5): if its decay test passes, a held short whose insiders make an opportunistic purchase is cut by the overlay cut (checklist) at the close after the Form 4's `first_close`; new longs wait for the monthly rebalance.
+- **Lazy Prices** (Cohen-Malloy-Nguyen, 2010 WP).
+  - Cosine similarity of Item 1A and Item 7 against the same firm's previous annual report of the same type (10-K, 10-K405, 10-KT); both must exist; Jaccard as robustness; boilerplate stripped (K5).
+  - Extraction hand-checked on 100 random 2015-2020 filings. Ranked within each month (cancels Reg S-K modernisation, Nov 2020); each score carries 12 months; Feb-Mar clustering stated.
+  - Sign: low similarity negative. Clock: §6.3. Gate window 2015-2020. Ancillary: later red-flag 8-Ks.
+- **Short interest** (Boehmer-Huszar-Jordan, JFE 2010, SSRN 2008; Rapach-Ringgenberg-Zhou, JFE 2016, SSRN 2015).
+  - Short interest over shares outstanding, and days to cover (short interest over 20-day average volume), from `shortint` and CRSP shares and volume on the same date; current series only (A10).
+  - Sign negative, used mainly on the long side: lightly shorted names tend to do well (Boehmer-Huszar-Jordan, "The good news in short interest") and heavily shorted ones are avoided as longs; the squeeze screens (§8.6) come first, so it never pushes the book into squeeze-prone shorts. In 2015-2020, 2.5% of $1bn stock-months had short interest above 20% (counts, before lever A3; recounted for the $600m universe in step 3). 2026 per §6.5. Gate window 2015-2020. Ancillary: next-quarter SUE.
+- **13F best ideas** (Cohen-Polk-Silli, SSRN 2010).
+  - A filer's best idea is its holding with the largest tilt: the holding's weight in the filer's 13F portfolio minus the stock's weight in the value-weighted market. Signal: the share of a stock's 13F holders for which it is a best idea, from each filer's latest 13F with `first_close` before the formation; amendments from their own date (B13); VALUE units fixed (A11); CUSIP to PERMNO by date. Minimum holdings per filer and the top-k in the step 4 checklist. The paper used mutual funds; 13F filers are our adaptation, disclosed.
+  - Sign positive. Clock: §6.3 (filed up to 45 days after the quarter). Gate window 2015-2020 (13F from 2013q2). Ancillary: next-quarter SUE.
+- **Customer momentum** (Cohen-Frazzini, JF 2008; Menzly-Ozbas, SSRN 2004).
+  - A supplier's next-month return from its 10-K-named customers' last-month return; sign positive; links dated by filing, dead firms included; Carbon Arc connections feed only the live network map, never the signal.
+  - Gate window 2013-2020 (2015-2020 if B17 fails). Ancillary: supplier next-quarter SUE.
+
+### 7.4 Gate method, Holm and the research standard (approved 2026-10-23)
+- Statistic: each month, the Spearman correlation in the trading universe (§3.1) between the signal, first cross-sectionally orthogonalised to the SYY-10 composite and the 147 characteristics, and the next-month residual return (§8.2). p-value: one-sided t-test of the monthly series' mean, Newey-West with 6 lags.
+- Holm step-down at 5% family-wise over the six (smallest p at 0.83%, then 1%, 1.25%, 1.67%, 2.5%, 5%). A signal not built counts as tested and failed, never dropped.
+- The six were fixed on 2026-10-23 from pre-2021 research, before any v4 gate ran; analyst revisions (B27), Benzinga (B29), disaster propagation and weather (§7.6) left the family on data and design grounds, never on results. The decision date is disclosed (B16).
+- Every new signal also: K2's four tests and its ancillary test; the organisers' survivorship diagnostic; a trial-ledger row. The SUE model is a core model, validated like the grid (§8.2), not a Holm member.
+
+### 7.5 Text inputs
+- FinBERT tone of 8-K main text is a desk input only (red-flag severity on the card), never a standalone alpha and never a weight in the gated red-flag signal, which stays unweighted; boilerplate stripped first (K5).
+- The footprint map and customer links come from 10-K text (§11).
+
+### 7.6 Exhibits, never traded
+- Disaster propagation (Barrot-Sauvagnat, QJE 2016, SSRN 2014; Kruttli-Roth Tran-Watugala, FEDS 2019-054): an extreme storm in a supplier's footprint (NOAA events by county over the footprint map, dates and counts only; FEMA designations as the fast clock after B1) carried to its 10-K-named customers; their residual returns and next-quarter as-filed sales on 2013-2020 (2015-2020 if B17 fails); clock §6.3 and B23; the live physical-risk flag for the desk. "Extreme" and how the two clocks combine in the step 4 checklist. Out of the traded family since 2026-10-23: weak in large caps, the heaviest data work, and each Holm member raises the bar for the rest.
+- Weather and earnings (Hong-Li-Xu, J. Econometrics 2019, SSRN 2016; Addoum-Ng-Ortiz-Bobea, SSRN 2019: 24 of 59 industries react, both signs): footprint-weighted temperature and rainfall anomaly against a trailing 30-year past-only normal for the fiscal quarter; as-filed sales growth and SUE of the named industries (starting from food producers and drought) from the month after NOAA's 2014 re-computation to 2020-12, under B23; the live "weather headwind" for the desk. Industries and signs in the step 4 checklist.
+- The Benzinga vs SEC audit (§12.4 piece 9).
+- Customer voice (Huang, JFE 2018, SSRN 2016: abnormal Amazon ratings earn +56-73 bp a month, sample 2004-2015): (a) replication on 2016-2020 with Amazon Reviews 2023; (b) extension to business software with Carbon Arc CA0052 ratings and review counts (199 of 216 universe names, 2013-2020). Brands map to companies through Carbon Arc's free ontology, ownership dated by acquisitions or limited to brands that never changed hands. Store-month summaries are built in step 4, after the protocol.
+- Edge decay (McLean-Pontiff, JF 2016, SSRN 2012): every published signal we use, before vs after its first-public date, on pre-2021 data before the freeze.
+- Job openings dropped (about 42 credits a name cannot cover the universe).
+
+## 8. Forecast and construction
+
+### 8.0 Pre-2021 forecasts and the history twin (approved 2026-10-23)
+- Any choice made on 2017-2020 uses walk-forward forecasts: each year's model is trained only on earlier years (with the twin if B17 passes). The ML's own settings use the 2019-2020 validation (§8.1).
+- History twin: signals rebuilt 2000-2014 from CRSP/Compustat, used to train only if they match the panel on 2015-2020 at rank correlation >= 0.95 (B17; per signal, step 4 checklist). If B17 fails: the SUE model starts in 2015, the 2013-2020 gates run on 2015-2020, and tests needing pre-2015 books use 2015-2020 only, each stated. The twin also gives a robustness exhibit and real crisis runs, never the headline choice.
+
+### 8.1 ML schedule (from the organisers' round-one design, PDF p18, made stricter)
+- Splits by target month (row t's label is month t+1): train 2015-02..2018-12, validate 2019-01..2020-12, test 2021. Settings are chosen once on 2019-2020 and frozen; each January the models refit on an expanding window with those settings, never re-tuned. PDF p18 rolls "the validation window forward one year at a time"; we do not, so no setting is ever chosen on 2021+ (stated as a departure).
+- Labels realised in a test year never enter training or validation. A label enters a fit only if its last month ends before the fit's first forecast month, so a 1-month label purges one month and a 3-month label (lever C2) three; blind mode refuses any label window that reaches 2021 before the unseal. No shuffled CV (B14); 2022+ fits run only at the unseal.
+
+### 8.2 Models
+- Return model: LightGBM with `monotone_constraints` +1 on every signed input with a published sign (the SYY-10 parts and passing new signals), except `gp_at`, `at_gr1` and `ret_12_1`, which the residual target already removes and which stay unconstrained; other inputs unconstrained (input set in the step 4 checklist).
+- Target: next-month residual return from a cross-sectional √me-weighted regression of the label on GICS-2 dummies and z-scores of size, `be_me`, Welch beta, `gp_at`, `at_gr1` and `ret_12_1`, ranked to [-1, 1]. Labels for exiting names come from the daily engine. Lever C2: a 3-month target (the same regression on the compounded months t+1..t+3) is one grid option.
+- Grid, fixed now: `num_leaves` {7, 15, 31} x `min_child_samples` {500, 2000} x w_ML {0.25, 0.5, 0.75, 1} x target {1, 3 months} (lever C2) x training stocks {the trading universe, every panel stock} (lever D1; the book trades only the universe); lr 0.05, 200 trees, bagging 0.8/1, λ2 10, seed 42, deterministic, 4 threads. Pick the highest pooled 2019-2020 validation rank IC against the 1-month residual label in the trading universe, whatever the cell's target or training stocks, scored on the final blend z (the ensemble's other members at their own settings, chosen first by the same rule); ties to the more regularised cell (fewer `num_leaves`, then larger `min_child_samples`), then w_ML nearest 0.5, then the 1-month target, then the universe. All 96 cells are trials.
+- Ensemble: LightGBM + ElasticNet + a 3-layer net (Gu-Kelly-Xiu), averaged, settings by the same validation rule (grids in the checklist). The net is not monotone, so the ensemble claims no monotonicity.
+- Blend: z = (1 - w_ML) z(1/N) + w_ML z(ML), re-standardised, sector-demeaned; the 1/N composite of the published signals is the baseline the blend shrinks toward. α = scale x residual vol x z (the IC x ω x z form, Grinold-Kahn); the scale is re-derived on v4's pre-2021 walk-forward forecasts by v2's method (v2: 0.00707, `frozen/v2_params.json`). Assert the scale is positive.
+- Alignment (lever C1, Grinold-Kahn): α is replaced by its residual from a cross-sectional regression on the exposures the optimiser holds at zero (GICS-2 dummies, size, `be_me`, Welch and Dimson beta), so the optimiser never spends risk fighting its own forecast. Mechanical, no parameter; TC is reported with and without it (K1).
+- Confidence sizing: cross-model rank spread shrinks \|α\| by a fixed map set on 2019-2020; conformal intervals as a disclosed variant.
+- SUE model: LightGBM on the 147 (the twin's rebuild before 2015, if B17 passes), trained on the stocks the grid picks (lever D1), predicts next-quarter SUE; labels from SEC as-filed EPS at acceptance (Compustat `rdq` where no as-filed data exists); its forecast enters the return model as a monotone + input; gate validation IC > 0 on 2019-2020 (statistic in the step 4 checklist).
+- Baselines reported: the organisers' penalized linear, 1/N, ML only, our pre-results 147-feature design.
+
+### 8.3 Optimiser (CVXPY, convex QP, CLARABEL first, warm start)
+- max α'w - λ w'Σw - ridge ‖w‖² - borrow'w⁻ subject to: 1'w = 0; \|w\|₁ = formation gross; Welch β'w = 0 and Dimson β'w = 0 (solver tolerance); sector nets within +/-1% (lever B1 may widen this to +/-2% or +/-3%, §8.8); size and value exposures 0; \|x_k'w\| <= b·gross for momentum, quality, investment, high-ivol and mid cap; name caps; participation cap; the monthly cost budget on spread + impact; sign-fixed 0.10% lower bounds on the top 110 candidates per side (pool widening decile, 15%, quintile, until 130 allowed); universe and short rules.
+- Σ: factor form BFB' + D from `fiam/risk.py`: sectors plus size, value, momentum, quality (`gp_at` in v4; `ope_be` as robustness), investment (added 2026-10-23), high-ivol (today `low_vol` on `ivol_capm_252d`, renamed `high_ivol` in v4) and mid cap (added 2026-10-23: non-linear size as in Barra USE4, the cube of the size z-score orthogonalised to size and re-standardised within each month, Menchero-Orr-Wang 2011; the $600m floor, lever A3, adds mid caps, and Arcana's model shows a Mid Cap factor that a linearly size-neutral book can still load on; one trial, its pre-2021 cost reported, K6). Half-life 36, minimum 24 months; HAR specific vol (`fiam/vol.py`); cached per `eom`.
+- Ridge: the grid value whose median 2017-2020 name count at $1bn is closest to 425 (275 for the concentrated design, §8.9; grid in the checklist); then recompute `gamma` and `risk_lambda` (`fiam/freeze.py`).
+- The monthly cost budget is re-derived on v4's pre-2021 books by v3's method, at the new gross (v3: 0.165% of NAV). Gross follows lever A2 (§8.8); it replaces v3's no-trim ceiling G = min(180%, 200% / r), r the largest day-to-month-start gross ratio (v3: r 1.2363, G 1.6178).
+- Bands: Novy-Marx-Velikov; enter from the top or bottom decile, hold while inside the quintile.
+- Relax order for an infeasible month (counted): betas +/-0.02; sectors +/-1.5%; size/value +/-0.05; b x 2; cost budget x 2; participation off at the initial build only; formation gross down to feasible; hold the drifted book. Rule limits are never relaxed; `enforce_constraints(w, date)` runs last.
+- Brake (v3's drawdown brake, `docs/protocols/v2_amendment_2.md`): kept only if the 2017-2020 21-day return autocorrelation is positive with t >= 2 (Newey-West, >= 21 lags).
+
+### 8.4 Style cap b and the momentum crash control
+- b: the largest of {0.05, 0.10, 0.20, 0.30, 0.50} whose median ex-ante factor share across 2017-2020 formations at $1bn is <= 35% under our model and the attribution model (no returns used).
+- Crash control (approved 2026-10-23): momentum's cap becomes b x min(1, s / s_t), s_t the annualised vol of daily UMD over the 126 trading days to t, s its median over all days before t from 1963 (Barroso-Santa-Clara, SSRN 2012); halved again when the market's 24-month return is negative and its 1-month vol is in the top quintile of its own history before t (Daniel-Moskowitz panic state, NBER 2011). Gate (revised 2026-10-23, so it does not depend on the history twin): on daily UMD 1963-2020 the scaled factor cuts its worst 1% of monthly returns (about 7 months) by >= 25%, and the book's 2017-2020 walk-forward IR falls by <= 0.05 (2002-2020 if B17 passes; the first books need 24 months of factor returns). Its effect is reported as style timing (K3); B23's French check and B25 apply.
+
+### 8.5 Costs (`costs_v4.py`)
+- Fees: SEC Section 31 $22.10/M, FINRA TAF $0.000119/share capped at $5.95, no CAT (the schedule in force at 2020-12-31); today's schedule as a stress.
+- Spread: the high-low estimator scaled to TAQ effective spread per size group, fitted on 2015-2020; 2026 per §6.5.
+- Impact: Y σ_d √(Q/ADV), Y = 1, on the whole monthly trade (headline); a per-day twin beside. Fills at the close by the PDF's convention (§4.2).
+- Financing: cash earns the full bill in the headline, the PDF's own assumption: "the capital posted as collateral earns the bill rate" (p6; approved 2026-10-23, lever A1). The bill less 0.5% (`fiam/costs.py`) is reported beside as a sensitivity.
+- Borrow: tiers 0.3 / 1 / 3 / 8% from short interest, accrued daily on drifted short value (headline); the flat alternative beside; flat rates never reach the short ban.
+- No-trade rule: skip trades whose expected α gain is below cost. No cost column in the forecast.
+
+### 8.6 Short-squeeze protection (approved 2026-10-23, enforced in code after any agent)
+- GameStop was about $1.3bn at the end of 2020, so a size floor alone would not have kept it out, and the $600m floor (lever A3) brings in more small, crowded names.
+- No new short if any holds: short interest above 20% of shares; days to cover above the 90th percentile of that date's universe; a borrow tier of 3% or more; a 20-day return above +50%; volume above 5 times its 6-month average, split-safe (§6.5); call-option volume or skew, or buy-side order imbalance (TAQ), above the 99th percentile of all stock-days before that date. After their sources end, §6.5.
+- Smaller shorts: at most 1.0% of NAV and sellable within 3 days at 10% of ADV.
+- Daily watch (§9.2): cover half at close t+1 if, through day t, the price rose more than 30% in 5 trading days, short interest (as published) crossed 20%, the borrow tier jumped two levels, or volume passed 5 times its 6-month average, split-safe (in 2026 from the §6.5 source, on its own clock); cover in full if the price rose more than 50% in 5 days.
+- Tested on 2000-2020 (Tesla early 2020, the 2008 short ban): losses avoided and false-alarm cost both reported. Stress adds a +50% one-day jump in the most-shorted held names; the January 2021 squeeze is replayed only after the unseal. B25: disclosed as chosen with GameStop known, and 2021-2026 also reported with the protection off.
+
+### 8.7 Cadence rule (blind, 2017-2020)
+- Top-minus-bottom quintile residual return of the forecast at 5, 10 and 21 days: if >= 60% of the 21-day spread arrives within 5 days and the 5-day spread exceeds 2 s.e., go weekly; else monthly. Daily re-targeting is run and reported (PDF p6 credits it).
+- Daily overlays (lever E5): the same test on each dated event alone (2015-2020; its residual return at 5, 10 and 21 trading days after `first_close`) decides its overlay: red flags (cut a held long) and opportunistic insider purchases (cut a held short). Overlays are shrink-only and act at the close after `first_close` (§9.2). Each kept overlay is also reported with events seen only at the next Friday close, the PDF's weekly-delivery timing (p14).
+
+### 8.8 Levers (levers A1-A4 and B1-B2 approved 2026-10-23 first, the rest later that day; always written "lever X")
+- The headline is IR = (alpha - costs - 4%) / tracking error, so the fixed 4% favours more active risk and lower costs as well as more skill. A neutral large-cap book runs a tracking error near 5-7%, so break-even needs an alpha IR near 0.55-0.75 (Kahn's top 10-15% of long-short funds).
+- **Lever A1 financing:** the full bill in the headline, the haircut as a sensitivity (§8.5).
+- **Lever A2 gross under the crash-day cap (B26):** C_t = 2.00 / (1 + m_t), m_t the larger of (a) the largest two-day compounded value-weighted market total return from 2000-01-03 to t-1 (CRSP `vwretd` through 2025, the dsf value-weighted market in 2026) and (b) the largest two-day compounded rise of our own book's drifted gross-to-NAV ratio before t (the pre-2021 walk-forward books count, and the twin's if B17 passes). At 2020-12-31 (a) is +13.13% (2008-11-21 and 2008-11-24; the largest one day was +11.49% on 2008-10-13), so C = 1.7678. Formation gross = min(C_t - d, 0.97 x largest feasible gross), d the smallest of {0.01, 0.03, 0.05, 0.08} whose 2017-2020 books keep trading costs, trims included, within the monthly cost budget (no returns used; derivation order in step 7). Daily: drifted gross above C_t at close t is trimmed back to the formation gross at close t+1 (§9.2). Two days, because a trim seen at close t trades at close t+1, so the mark just before that trade carries two days of drift; every closing mark, before or after its trades, is then at most C_t x (1 + a two-day rise), so only a two-day rise above m_t can breach, and it is reported (§9.3). v3's 1.6178 stays in the robustness chart. More gross raises the hurdle IR but magnifies losses and costs, so the ending value and drawdowns are shown beside.
+- **Lever A3 universe $600m entry, $500m hold:** Stambaugh-Yu-Yuan (2012; JF 2015, "Arbitrage asymmetry") find mispricing concentrated on the short side and in harder-to-arbitrage names; the pre-2021 pool grows from about 1,566 to about 1,983 names; size and high-ivol exposure stay neutral or capped; the squeeze screens and the "sellable in 3 days" cap keep small shorts small.
+- **Lever A4 trading speed from the measured decay:** the book trades toward its target at the rate the forecast's measured information turnover (K1) and the impact model imply (Gârleanu-Pedersen, JF 2013, SSRN 2009), inside the published bands and the no-trade rule; no free parameter.
+- **Lever B1 constraint loosening:** only the sector band may widen, to +/-2% or +/-3% of NAV, and only if the ex-ante TC gain clears a bar written in protocol.md before computing; dollar, beta, size and value neutrality never loosen (they would create the factor tilts Arcana's lens 1 flags).
+- **Lever B2 breadth and speed:** the 400-480 target; the overlays and weekly cadence only through their decay tests (§8.7).
+- **Lever C1 forecast alignment:** §8.2.
+- **Lever C2 3-month target:** one grid option (§8.2), purged per §8.1.
+- **Lever C3 crowding screen:** no new long in the top 1% of the formation date's universe by hedge-fund crowding: the share of its shares held by short-horizon 13F institutions (the top third by churn rate over their previous four quarters; Gaspar-Massa-Matos, JFE 2005; Yan-Zhang, RFS 2009, SSRN 2006), from 13F filings with `first_close` before the formation. 13F does not label hedge funds, so short horizon stands in (the August 2007 quant unwind, Khandani-Lo, SSRN 2007; Sias-Turtle-Zykaj, SSRN 2011). Held longs are not forced out. One rule, one trial; its pre-2021 cost in TC and IR is reported, never tuned (K6). The churn formula in the step 4 checklist.
+- **Lever D1 every stock for training:** §8.2 grid.
+- **Lever D2 history twin first:** step 6 builds the twin and its B17 test before any model (§8.0).
+- **Lever D3 return basis:** Arcana's convention (§4.2).
+- **Lever E1 practice exam:** §8.9.
+- **Lever E5 daily overlays:** §8.7.
+- **Overfitting guard:** levers A1-A4 and C1 are set by the PDF, theory, mechanics or the cost model; lever B1 on ex-ante TC (forecasts and weights, never returns); levers C2 and D1 by the 2019-2020 validation rule inside the logged grid; lever C3 is one fixed rule; lever D2 by B17's match test; lever D3 by Arcana's convention; lever E1 by one pre-written rule over four fixed designs; lever E5 by pre-written decay tests. Realised pre-2021 effects pick nothing except where a written rule says so (the gates, levers E1 and E5). Each lever is one trial-ledger row; none is chosen from 2021-2026 results (§1.3).
+- **Arcana:** no new factor tilt (the neutralities stay); a wider sector band, if adopted, is declared as intended; the drift report watches liquidity and short crowding from the smaller names; the mid-cap cap keeps the smaller names from showing as a factor bet; the crowding screen answers the crowding lens.
+
+### 8.9 The practice exam (lever E1, approved 2026-10-23)
+- When: the end of step 7, desk off (arm A0), every other setting frozen as chosen, still blind to 2021+.
+- Four designs, walk-forward on 2017-2020 with all costs and rules (§8.0): (1) full broad: the core plus every signal that passed its gate, 400-480 names; (2) full concentrated: the same with the ridge set for about 275 names (§8.3); (3) honest core: SYY-10 and the 147 through the ML with the grid's chosen cell (step 6), no new signals, broad; (4) SYY-10 alone as α, broad.
+- Rule, fixed now: the headline design has the highest 2017-2020 IR vs T-bill + 4% net of all costs (row 23's method); an exact tie goes to the simpler design (4, then 3, then 1, then 2). All four are reported and logged as trials; the deflated Sharpe states the winner's-curse discount; the choice is in `decisions.json` and hashed.
+- Reading: IR >= 0, freeze and run. IR < 0 with Sharpe > 0, freeze anyway; the deck keeps IR and Sharpe side by side (§4.5) and adds alpha's own IR. Sharpe <= 0, stop and report to the leader before the freeze; any redesign is pre-written, counted in the ledger and disclosed, never tweaked until it passes.
+- Limits: 48 months (IR s.e. about +/-0.5), and 2017-2020 also set construction settings, so its level flatters (B28): it compares designs, it does not forecast 2021-2026.
+- Step 8 builds and tests the desk on the chosen design.
+
+## 9. Accounting and daily rules (`daily_book.py`)
+
+### 9.1 NAV and turnover
+- $1bn endowed at the close of 2020-12-31; the first book forms then, trades at the 2021-01-04 close, first earns 2021-01-05; 2021-01-04 earns the bill.
+- NAV_d = NAV_{d-1}(1 + r_d). Trade sizes, impact, ADV caps, floors use NAV and weights through the previous close; rules read NAV through t, never later.
+- Turnover per §4.3 row 17; holding period measured directly.
+
+### 9.2 Every daily rule: seen at t, acts at close t+1
+| Rule | Seen through day t | Action at close t+1 |
+|---|---|---|
+| Red-flag overlay (if kept, lever E5) | A held long's red flag with `first_close` = t | Cut by the overlay cut (checklist), in every arm |
+| Insider overlay (if kept, lever E5) | An opportunistic insider purchase in a held short with `first_close` = t | Cut by the overlay cut (checklist), in every arm |
+| Squeeze watch | §8.6 conditions | Cover half or all |
+| Short floor | A held short's `me` below $500m | Cover in full |
+| Beta re-hedge | 126-day daily beta beyond +/-0.10 (estimator in the checklist) | Minimum-cost reweighting of held panel names to Welch and Dimson beta 0 (no index futures or ETFs), then `enforce_constraints` |
+| Long floor | A held long's `me` below $500m | Leaves at the next formation |
+| Name-cap drift | A held name's weight past the drift threshold below 5% (checklist) | Trimmed back to its formation cap |
+| Gross and net | Drifted gross above C_t (lever A2) or abs(net) above 45% | Costed fix: gross back to the formation gross, net back inside +/-45% |
+| Names | Count below 210 or above 490 | Costed fix |
+| Agent shrink | A trigger at t (§10.2) | Shrink-only, then `enforce_constraints` |
+| Missing price | No dsf row | Hold; stub on the 5th day (§6.4) |
+
+- Daily compliance: names (by permno and by permco, both within 200-500), gross, net, max \|w\| per permno and per permco, the short floor for shorts opened or increased that day, days of ADV, rolling beta.
+
+### 9.3 Breaches
+- Before the unseal, a rule breach (PDF limits) fails the build and is fixed as a bug.
+- After the unseal, every breach is reported with its date, size and reason in deck section 8, never silently fixed; a fix is an amendment with both numbers (§13.4). A gross breach on a two-day rise above m_t (B26) is one of these.
+
+## 10. AI team
+
+### 10.1 Rules
+- AI never sets a weight; exception-triggered only; shrink-only; code checks every rule after it.
+- No web retrieval for any agent; inputs are dated registered tables only; every prompt is logged with its formation date; the cutoff is declared (PDF p9, p18).
+- MCP: the Carbon Arc MCP only for the demo (§12.5). Arcana: before the unseal no v4 book goes in (§1.3, §14.2); its MCP serves 2021-2026 performance data and "An instruction is not a control" (PDF p16), so it is connected in Claude Code only after the unseal. After the unseal: the 2021-2026 pass (§14.3) and read-only explanations of the live book, in claude.ai or Claude Code. Its optimizer, hedge ideas, mock-book conviction-score sizing ("Convert analyst conviction scores directly into dynamic book sizing", its overview), Arcana AI, notes, price targets and performance views never set or suggest a weight and never feed a forecast, gate, trigger or desk card (today's opinions, not dated data); after the unseal they may appear only as labelled "what Arcana would do" comparisons; never in the backtest or the decision log; every call logged; stated on a slide.
+- Tier-1 cache key = sha256(model sha | llama build | server args | messages | schema | temperature | seed | max_tokens); old rows migrate by `prompt_sha256`. A missing answer stops the build and lists the keys to run (`uv run run.py ai`).
+- Windows server [STEP 8]: llama.cpp b11132 and the kit's GGUF weights; add `FIAM_LLM_HOST` to `fiam/agents/harness.py` (it binds 127.0.0.1 today and reads `FIAM_LLM_URL`), serve on the Tailscale IP, port 8081; allow inbound TCP 8081 on the Tailscale interface only; on the Mac set `FIAM_LLM_URL=http://<tailscale-ip>:8081`; `uv run run.py ai --check` asserts the served model SHA matches the cache keys.
+
+### 10.2 Triggers (code, at formation and daily; thresholds past-only, B21)
+- Earnings within 5 trading days of the forecast date, by the projected date (B22).
+- Borrow tier jump >= 2 levels. Days to exit > 5 at 10% of ADV.
+- Implied or realised vol jump above the 99th percentile of all stock-days before that date.
+- AI-crowd overlap: off in the backtest. No single crowd design covers 24 months in either decision window: `crowd_lab` holds 2025-01..2026-07 cards (holding months 2025-02..2026-08), and the 2015-12..2020-11 crowd (`crowd.py`) is another design. The crowd stays an exhibit and the live herding thermometer.
+- Loss beyond 3σ of predicted (anomaly). A constraint near its bound (threshold in the checklist).
+
+### 10.3 Agents
+| Agent | Input | Output |
+|---|---|---|
+| Sizing agent | Masked numeric card (percentiles, triggers, no names or dates) | Shrink in {1, 0.75, 0.5, 0.25} + reason (JSON schema) |
+| Devil's advocate | Same card + the proposal | Counter-argument |
+| Code after both | n/a | Accepts shrink-only within bounds, redistributes freed gross to the same gross and caps, re-enforces |
+| Constraint explainer | Optimiser dual values | "X cost Y of expected return; cheapest fix Z" |
+| Drift agent | Daily exposures (§14.2) | Intended vs unintended exposures with start dates |
+| Anomaly detective | Loss, EDGAR items, corporate actions, data checks | News, corporate action or data error, with escalation |
+| AI crowd (existing) | 60 AI investors | Herding thermometer; universe pinned to v1's screen (price >= $5, `me` >= $300m); zero new calls under rule changes; the 2026-08-31 month (540 calls on Windows) asked sealed; its existing 2025-26 answers (v1-v3 era) are read by v4 only after the unseal; the older `crowd.py` design is validated vs real short interest, TAQ retail flow and 13F on 2016-2020, `crowd_lab` on 2025-26 after the unseal |
+| Explainer (existing) | n/a | Monthly investor letter; `--explain` lookup |
+| Narrators | Code results | Crisis and macro notes |
+| Rules reader (existing) | Event rules text | Mandate draft with quotes; the leader approves |
+| Honesty tester (existing) | n/a | Re-identification hit rate, before and after the cutoff |
+| Red team (critic) | n/a | The hardest questions (§14.4) |
+| Reproducibility agent | n/a | Reruns the pipeline, compares fingerprints, runs leak tests (`risk_desk/`, distinct from `fiam/checks/reproducibility.py`) |
+| Carbon Arc scout | Dictionaries, samples and metadata of all 77 real datasets | Coverage, history start, lag, entity key and version columns (PDF p10), the four answers per asset, and its denominator ("77 screened, N usable, none traded") |
+| Triage and analyst | n/a | Research only, labelled |
+
+### 10.4 Counterfactual and fairness gate (written 2026-10-22)
+- Arms at the same formation gross and caps, on the design the exam picks (§8.9): arm A0 no desk (switch off, bit-identical to the book without desk code, test); arm A1 the fixed-rule guard (shrinks on the same triggers by a fixed map, checklist); arm A2 the agent; arm P1 random shrinks matched in count and multipliers (100 seeds).
+- Reported: IR, Sharpe, return, vol, DD, exposure drift, breaches, worst days, turnover, costs, interventions, P&L per intervention at 1/5/21 days; paired daily-difference bootstrap s.e.; two worked examples (one helped, one hurt).
+- Decision on 2017-2020 only: (1) memory gate: Gemma names the company or month within the 95% band of chance (band and minimum number of cards in the checklist); (2) paired differences arm A2 minus arm A1, arm A2 minus arm A0 and arm A1 minus arm A0 in net IR at $1bn over 2017-2020, with paired daily-difference bootstrap s.e.; (3) the headline per §3.1. After the unseal all four arms are shown whatever happens. The explaining agents never touch weights and run whatever the rule decides.
+
+### 10.5 Model memory
+- Release and cutoff stated; results split at 2026-04-02 (release) and 2025-02 (cutoff); the desk alone on 2025-02..2026-08 (B7).
+- Re-identification on numeric cards; the time-cutoff model makes the same decisions and agreement is reported (PDF p17 item 3); FinBERT (pre-2021) for text; SYY-10 and the panel are model-free signals.
+
+## 11. EDGAR
+- `tools/data/edgar.py bulk | map | filings | docs | facts | 13f` [DONE]: `SEC_CONTACT` user agent, 4 threads behind one gate, at most 5 requests a second, resumable, atomic writes, SHA-256 per file in `data/edgar/docs/log.jsonl`. `submissions.zip` stays on the Mac (rebuilt nightly by SEC, hash recorded).
+- Map: dated CIK links (§6.7); joins by CIK, never ticker.
+- [STEP 3] documents for every panel CIK (A2): annual reports (10-K, 10-K405, 10-KT) and the red-flag 8-Ks of §7.3, 2012 on, for the firms not yet held, logged; the 132,757 held are kept; firms without a CIK are listed and left without text data.
+- [STEP 3] `forms`: from `submissions.zip` into the filings index, Forms 25, 25-NSE, 15-12B, 15-12G and 15-15D for the exits table (§6.4); Forms 4 and 4/A for the insider clock (§6.3); 424B1-424B5, S-1 and S-3 for the Benzinga audit (§12.4).
+- [STEP 3b] `insiders`: the DERA Forms 3, 4 and 5 data sets from 2006q1 (SUBMISSION, REPORTINGOWNER, NONDERIV_TRANS kept), receipts and hashes; 2026q3 if posted (§6.5).
+- [STEP 4] `sections` (Item 1A, MD&A, named major customers into one table), `events` (8-K event table with `available_at` and `first_close`), `footprint` (per 10-K, the cover-page state and zip and the states in Item 2 Properties, as weights dated by acceptance; survivorship-free, unlike Carbon Arc's current tags), customer links (Cohen-Frazzini, matched to our universe; replaces CA0069B).
+- An acceptance-clock exhibit shows each event's public second next to the first close we traded it.
+- [STEP 4] Fix `fiam/build_data.py`'s 2.05/2.06 swap and missing 3.01 in v4 paths only, using EDGAR item codes (v1-v3 results stay identical; `tests/test_versions.py`).
+- Raw documents travel in the private kit; only derived results are shown.
+
+## 12. Carbon Arc (originality prize)
+
+### 12.1 Access
+- SDK, explicit token, `get_framework_data(fetch_all=True)` (never `stream_framework_data`, it duplicates); under 100 buys a minute; 120 s timeout, retries, SHA-256 manifest.
+- A metric framework needs an aggregate (`sum` or `mean`): without one it quotes 0.0 and cannot be bought; with one it quotes a real price and buys normally.
+- Verbs: `--data carbon catalogue | check | entities | verify | refetch` (free); `plan <spec>` prices without buying; `buy <plan> <cap>` [LEADER] re-prices each item, stops if a price rose more than 2% or the cap would be passed, checks the balance after each, saves data and receipts, skips what is saved; `rebuy <from> <to> <cap>` [LEADER] for snapshot 2.
+- Downloading an owned framework is free (balance unchanged, 2026-10-22); whether a re-buy costs 0 and returns fresh data is checked first (§12.4).
+- Every pull saves `framework_id`, `order_id`, pull time, metadata, status and ontology version.
+- Blocked means closed to us: 36 of 498 sources; no request for blocked data. Among the organisers' picks CA0031, CA0069B, CA0092, CA0058, CA0098 are blocked; among our planned uses CA0099, CA0103, CA0069B. CA0043 and CA0065C list no insights. MCP cannot surface restricted data or buy frameworks.
+- Cleaning: the current partial period dropped (A14); text values cast with a check; CA0052 months averaging below 1 (zero-coded ratings) excluded and counted; tickers mapped to PERMNO by date.
+
+### 12.2 What we own (receipts in `data/carbon_arc/`)
+- Catalogue: information, dictionary, sample, schedule and insights for all 503 ids, the ontology (49 versions), 2,437 files, 3 gaps on Carbon Arc's side (CA0034 sample, CA0045B and CA0065S dictionaries).
+- Entities: 67,944 entries (11,723 tickers, 56,161 names), 2,175 tickers with a FIGI; a first ticker-only read resolves 1,722 of 2,409 still-listed universe stocks (71%) but 278 of 1,365 that left (20%), so the scorecard states the gap.
+- Bought, 7 orders, balance 400.33 (from 500): CA0043B company connections (9,268 links, no dates, live only); Benzinga CA0035 capital markets, M&A and insider news (22,946 rows, 2014-01..2026-10, Friday labels); WMT card spend, foot traffic and web traffic; CA0052 business-software review counts and star ratings (9,120 rows each, 199 of 216 names, 2012-08..2026-10).
+- Benzinga as bought (checked 2026-10-23, counts and dates only): quoted and bought at week resolution (whether a daily resolution is offered is unknown), every row a Friday; a row labelled 2026-10-23 existed at the 2026-10-21 pull, so a label is the week's end. Insight 497 offerings 3,795 rows (1,717 before 2021, 737 tickers, median 4 a week); 501 deals 8,826 (1,356 before 2021, 1 to 3 a year before 2019); 461 insider news 9,153 (3,251 before 2021, 948 tickers). Analyst ratings (491) quoted 452.53; earnings events (498) quoted 0.0, unbuyable. Not traded (B29).
+- CA0065S (catalogue listing): Fiscal AI daily open, close and volume, 1990 on, "1,500-2,000 companies (companies listed on CBOE)", lag T+1, added 2026-04-23; its information, insights and sample pages returned not found at the 2026-10-21/22 pull, so it may not be orderable. Step 3 re-checks it and prices it free; the leader decides (§6.5, B30).
+- Price menu (`snapshot_1/price_menu.json`, monthly, full history, US): card CA0056 8.72 for WMT, 94.41 for 10 names; foot traffic CA0060 4.99 for WMT, 15.48 for 10; web CA0030 4.99, 27.53 for 10; CA0052 4.99 per metric; job openings CA0043A 42.22 for WMT; weather CA0037 about 97 and wind CA0059 about 494 per city area (so weather comes from NOAA). Legal news (20.97) and analyst ratings (452.53) not bought.
+- Free: 45 prisms and 9 arrays (sector card spend, foot traffic, store sales; one-year window), saved with their date, for slides and live desk context only (Appendix B).
+- Still to price, the leader decides on Oct 26-27: CA0038 reported financials, CA0028, CA0029 and CA0047 (card and store sales), CA009 ads, CA0043C software customers, CA0043D product launches. CA0013 is dropped (keyed by category, not company).
+- Folders: `catalogue/`, `entities/`, `access/` (blocked-data probes), `snapshot_1/` (quotes, price menu, data), `plans/`.
+- About 250 credits are held for snapshot 2 and the X-ray on Oct 26-27, every buy priced and run by the leader; the rest (about 150) is a buffer, which CA0065S draws on first in step 3; if its quote is above the buffer, the leader chooses between it and the X-ray items.
+
+### 12.3 Rules for every piece
+- One hypothesis and sign from a pre-2021 paper, in protocol.md before any run; a blind pre-2021 test where history allows; the survivorship diagnostic; residual IC over our signals; a trial-ledger row.
+- Only data whose timing we can state trades in the backtest (SEC filings, Form 4, 13F, WRDS and the organisers' data; restated Compustat and the panel's uncertified vintages are disclosed, §19). Carbon Arc has no part in the forecasts: it is current vintage, so it is live or descriptive (PDF p15-16 third treatment), except CA0065S volume as one 2026 risk screen after its CRSP match (§6.5, B30); no traded signal uses weekly-delivered data (PDF p14).
+
+### 12.4 The eleven pieces
+| # | Piece | Data | Research (first public) | Use |
+|---|---|---|---|---|
+| 1 | Disaster propagation | NOAA storms over the footprint map, FEMA, 10-K customers | Barrot-Sauvagnat (2014); Kruttli et al. (2019); BlackRock BII "Getting physical" (2019) | Exhibit (§7.6); live physical-risk flag |
+| 2 | Weather and earnings | NOAA climate divisions, footprint map | Hong-Li-Xu (2016); Addoum-Ng-Ortiz-Bobea (2019) | Exhibit (§7.6); live headwind |
+| 3 | Customer momentum and the network map | 10-K customers, CA0043B, 13F shared owners | Cohen-Frazzini (2008); Menzly-Ozbas (2004) | Gated signal; live graph of hidden concentration |
+| 4 | Customer voice | Amazon ratings, CA0052 | Huang (2016) | Exhibit (§7.6) |
+| 5 | AI crowd vs real crowd | Our 60 AI investors vs 13F hedge-fund crowding (the lever C3 measure), 2013 on | Sias-Turtle-Zykaj (2011) | Exhibit |
+| 6 | Earnings preview desk (live X-ray) | CA0056, CA0060, CA0030 for the final book; Benzinga; NOAA headwinds; the last I/B/E/S consensus with its date | BlackRock SAE 2018; Froot-Kang-Ozik-Sadka (2016); Agarwal-Qian-Zou (2017); Katona et al. (2018); Da-Engelberg-Gao (2010) | Live only (Appendix B), shrink-only, logged; never changes a scored month; earnings dates as announced at the time |
+| 7 | Data passport | Every pulled dataset, snapshots 1 and 2, independent sources | Workbook merge rules; BlackRock SAE 2018 | One slide: what can honestly be backtested |
+| 8 | Live MCP moment | Carbon Arc MCP, shared pool | n/a | Claude answers a judge's question with the passport beside it |
+| 9 | Benzinga vs SEC audit | CA0035 (owned), the EDGAR index (§11), key developments | PDF p13-14; workbook merge rules | Exhibit: each Benzinga row matched to an SEC filing of its type within 5 trading days of its week (offerings: 424B1-424B5, S-1, S-3; deals: 8-K items 1.01 and 2.01 and key developments; insider news: Forms 4), by year and for listed vs departed firms; rows per year (drift); days from EDGAR's acceptance to the Friday label; the week bucket checked first. No Holm slot |
+| 10 | Catalogue screen | All 77 real datasets' dictionaries, samples and metadata (free) | PDF p8, p10 ("documentation archaeology") | The scout agent's table with its denominator (§10.3) |
+| 11 | 2026 volume screen | CA0065S, if bought | PDF p22 (CA0065S for liquidity measures) | The one risk input (§6.5, B30) and the agreement exhibit |
+
+- Passport fields: dead vs listed coverage, share of history rewritten between snapshots, true start (row counts) vs label, observed vs claimed lag, coverage of universe and gross, residual IC vs our signals; survivorship scorecard (Sears, Bon-Ton, Pier 1, GNC, Ascena, J.C. Penney and every 2017-2020 CRSP delisting in our universe); covered vs uncovered returns on pre-2021 data before the freeze.
+- Independent cross-checks: Benzinga vs SEC (piece 9); CA0043B vs 10-K customers; WMT card spend vs WMT as-filed revenue; CA0065S vs CRSP (§6.5).
+- Snapshot 2 (Oct 26-27) re-buys snapshot 1, Benzinga included (14.97); first check that a re-buy returns fresh data (pull metadata and row hashes), else the revision check is reported as not possible. Changed pre-2021 rows go on the passport.
+- The X-ray reads the final v4 book (2026-08-31) if the unseal is done, else `frozen/september_final.csv`, labelled. Extras only if cheap: AI crowd vs attention (CA0030, CA009); housing permits (CA002).
+- Jury fit: Garvey's research on sustainable investing (Garvey et al. 2017) makes pieces 1-2, on physical risk, relevant; BlackRock's 2018 paper describes piece 6; Goyenko's option and borrow work supports the squeeze screens.
+
+### 12.5 MCP demo and licence
+- Free lookup tools plus a few paid calls from the shared pool; Document Search costs 100 MCP tokens a call. Every call, cost and answer logged; slide labelled "AI-generated, reviewed by the team"; human review on every output (finance is high-risk use in Carbon Arc's terms).
+- Never in the backtest, a trade or any training. Recorded in full on Oct 27; live on the day only if the pool has room.
+- Derived results only, credit "Based in part on Carbon Arc data"; no raw data public; no training on MCP output.
+
+## 13. Proof and honesty
+
+### 13.1 Rehearsals
+- `--synthetic`: seeded block resamples of 2016-2020 months relabelled onto the 2021-2026 calendar; full pack, site to a scratch path; a test fails if tracked `fiam.json` carries a synthetic hash. Rehearsal 1 in step 7, rehearsal 2 in step 9, each with zero breaches.
+
+### 13.2 Freeze
+- `frozen/v4/config.json`, `decisions.json` and the protocol hashed into `v4.sha256`; the leader commits and pushes before the unseal (GitHub timestamp).
+- `decisions.json` holds: every gate result and the Holm table; ancillary results (K2); the SUE gate; the grid cell, w_ML, target and training stocks (levers C2, D1); ensemble and confidence settings; the re-derived α scale and cost budget; C at 2020-12-31, m and d (lever A2); the sector band (lever B1); lever A4's rate; ridge for both name targets; b; the French vintage result and crash control kept or not; brake kept or not; cadence; each overlay on or off (lever E5); the crowding screen's pre-2021 cost (lever C3); the mid-cap cap's pre-2021 cost; B17; B23's L or current vintage; FINRA short-interest coverage; the 2026 volume source (CA0065S, FINRA or off) with its test results; the return basis (lever D3); the exam's four results and the chosen design (lever E1); the headline AI arm and its inputs; the time-cutoff model's name; v3's fifteen choices as re-decided (B2).
+
+### 13.3 Unseal
+- `uv run run.py finals --unseal` refuses on any hash mismatch, lifts blind mode, appends one line to `frozen/v4/unseal.log`, then runs 2021-2026 once; 2021-2026 agent cards are answered overnight on Windows; September is scored. Target and fallback in §2 (the evening of 2026-10-26; the honest core if needed; v3's signals on the v4 engine, labelled, if there is no unseal by noon on 2026-10-27).
+
+### 13.4 Bug rule
+- Preflight, compliance, join asserts, canaries and leak-signature checks run whatever the result. A fix found by hand after the unseal is an amendment, with both numbers shown.
+
+### 13.5 Registers, kill criteria, cards
+- Leakage register (`report/leakage.py`), one row per hazard (exposure, control, test, result): full-sample selection; regime labels and thresholds from future data (B21); same-day events; earning a return already used; current-vintage data incl. NOAA (B23); survivorship through the entity map and the 8-K corpus (A1); event vs announcement date incl. earnings (B22); missing stubs and halts; full-sample standardisation; tuning on the test period; model memory; costs in the forecast; clock errors; future corporate actions in split-adjusted fields (A3, A4, B10); data chosen with future information (A2); a planted leak must be caught (B19); controls chosen with later events known (B25); a trade date used instead of a filing date (Form 4) and a quarter end instead of a 13F filing date; multi-month labels overlapping a fit or the cutoff (lever C2, §8.1); a vendor's week label (Benzinga, exhibit only, B29); a current-vintage risk input (CA0065S, B30); the exam's reuse of 2017-2020 (B28).
+- Knowledge register (`tests/test_knowledge_dates.py`): every source pre-2021 or a method; fitted windows end by 2020-12-31 except walk-forward. Assumptions register. Trial ledger (`out/v2/trials.csv`, one row per configuration run; 1,665+ past fits, every v4 cell and trial) with the deflated Sharpe at three counts. Placebos: random, shuffled, sign-flip, style-preserving.
+- Kill criteria (written now; reported when they would have fired, not applied in the backtest): shut down if 12-month IR < -1 and factor share > 60%, or DD > 2x expected with a decay test failing (definitions in the checklist).
+- Model cards for every model and agent; robustness tornado (costs +/-50%, flat vs tiers, the $600m universe vs $1bn, formation gross vs 1.62, monthly vs weekly, the crowding screen, mid-cap cap and overlays off, price-only vs total return); reproducibility certificate verified by MAIN.py; factsheet.
+
+### 13.6 Evidence exhibits beyond the PDF's eight
+- K1 fundamental law (IC, breadth, TC, implied IR; constraint costs per K6).
+- Capacity over time: by year, NAV, share of trades held back by the 10% cap, median days to exit, and what we would do (PDF p5).
+- 2026 as its own sub-period (CA0065S or FINRA and the fallbacks), beside the full result.
+- Data passport, edge decay, audit and agreement exhibit, survivorship test, acceptance clock.
+
+## 14. Crises and Arcana
+
+### 14.1 Stress (decided 2026-10-22; PDF p23)
+- Engine: `fiam/exhibits/stress.py` generalised to any book and date (a test keeps v1-v3 numbers identical); `fiam/v4/report/stress_report.py` reads `data/` only and writes `out/v4/stress/stress.json`.
+- Per episode: real replay (today's names, industry-and-size peer fill, coverage reported), factor proxy (FF5+UMD loadings on the 252 trading days to the book date times the episode's factor returns), S&P 500 and T-bill + 4%. Also 7 named conditional factor shocks, reverse stress to a 10% monthly loss with the closest real month and Mahalanobis distance, liquidity and unwind from $1M to $5B by side with $1bn first, the 2008 short ban, the 2021 squeeze.
+- Episodes: the 17 crises and 7 scenarios in `stress.py`, plus 1987, 1990, 1994 and 1998 as factor proxy only. A missing replay shows N/A with a warning, never a zero.
+- Before the freeze: the Dec 2020 book and the rehearsal, through 2000-2020 episodes and the four pre-2000 proxies; blind mode refuses 2021+ windows. After the unseal: the final book through every episode, plus Arcana's list, with our realised 2022, Mar 2023, Aug 2024 and Jan 2026 beside. `docs/protocols/stress.md` gets a v4 amendment before any run.
+- Output: RESULTS.md tables (AUTO markers), two charts per episode in `docs/figures/stress/` with `fiam/report/charts.py` styles (path from 63 trading days before to 126 after, from 0%; window return and worst drawdown bars; never an annualised CAGR), one deck slide beside Arcana's, a scenario-mapping table at the event, history-twin runs through 2007-08, 2008, 2009 and 2020, a narrator note per episode; the film's crisis line only if its criterion passes.
+
+- Tests: factor proxy = loadings x factor sum; paths start at 0% and compound; worst drawdown on a hand-built series; missing data gives N/A and a warning; no data after the book date; blind mode refuses 2021+ episodes; v1-v3 numbers unchanged; chart and table row counts; regenerating RESULTS.md changes only the stress markers.
+
+### 14.2 Arcana's lenses and our own pass (before the event)
+- Lenses (`arcana_lens.py` -> `lens.json`): factor vs idiosyncratic; unintended exposures with start dates; sizing vs selection (vs equal-weight and equal-risk books); hit rate vs win/loss (expect about 52%); alpha decay, also by position age in the buckets of the overview's "Alpha by Aging Curves" (0-15, 16-30, 30-60, 60-126, 126-252, 252-504 and 504+ days, as labelled there; the video does not say whether trading or calendar days, so both are reported); earnings vs ex-earnings (actual dates, after the fact) over the windows Arcana offers, one day and five days around each announcement (video); drawdown episodes, each with its factor, style and industry drivers (Arcana's drawdowns tab); stress.
+- Two attribution models: FF5+UMD, and a Barra-like set from panel characteristics mirroring the Arcana-US factors its overview shows (market, beta, excess beta, momentum, size, mid cap, value, growth, earnings yield, dividend yield, leverage, liquidity, quality `gp_at`, volatility, industry) plus investment; each built from the panel with its formula in the step 4 checklist. Plus K3's split of pure alpha.
+- Drift report: industry concentration within sectors (GICS-6), liquidity and short-interest crowding, and exposures to growth, leverage, dividend yield, liquidity and one-month momentum (Arcana's "Other" factors show it, video), each with the date a drift began (the drift agent explains it). Arcana also shows each stock's 13F hedge-fund ownership by fund type (quant, Tiger cubs, macro, credit) and short interest (video); our crowding screen (lever C3) and short-interest rules are the answer.
+- Leak self-test: stop and look for a leak if a pre-2021 or rehearsal book shows a hit rate above 56%, an idiosyncratic share above 90% with no driver we can name, more than a third of P&L from ten names or ten days, exposures that contradict the thesis (PDF p24), a forecast IC above 0.10 or a pre-cost IR above 1.2 (K4).
+- Run on the Dec 2020 book, the rehearsal and 2017-2020 before the freeze.
+- No Arcana drill before the unseal: the video gives no sign that a book stops at its last date (§1.3), so our own lens code (above) is the pre-freeze check and Arcana sees our books only after the unseal. Never the rehearsal books (2021-2026 dates). The PDF calls Arcana "a tool you use while building" (p22) and also says "You do not need Arcana to ask these questions of your own work" (p24). Arcana's factor model (its US or global lens) is chosen by the organisers at the event (video), so our pass mirrors the US lens and is rerun on the event's choice.
+
+### 14.3 After the unseal, before Oct 28
+- The same lenses, drift report and leak self-test on 2021-2026 (PDF p24 "do it before the event"). If the self-test fires, investigate and report it through the amendment path; never re-tune.
+
+### 14.4 Onboarding, holdings, red team
+- Arcana: one account to the leader's address (welcome and MCP emails received 2026-10-23); add every teammate; the MCP used only after the unseal, with "always allow" left off until then (§10.1); upload 2021-2026 holdings only after the unseal. Books go in as tickers and weights, pasted into a "new book" or uploaded as a spreadsheet through "upload history", whose sample file sets `holdings_spec` (video, 2026-10-23). So the exporter maps each PERMNO to its ticker on that date (§6.7), keeps PERMNO, CUSIP and the name beside it, and lists any name Arcana cannot resolve (delisted firms, reused tickers) with its weight, never dropping it silently.
+- Holdings: monthly (formation) exports and a daily export for every trading day with any trade (spills, covers, overlays, re-hedges, trims), since each is a rebalancing date (p24); upload, reconcile returns, show Arcana's view beside ours, never re-tune.
+- Red team answers for: factor tilts (lens 1), the survivor-biased 8-K file, why Benzinga and analyst revisions are not traded, why Carbon Arc is not in the forecasts, squeezes, data chosen with hindsight, signals picked on test years, 2021-22 concentration, smart beta, beta, AI memory, agent null, costs at $1bn, capacity, cadence, delistings and halts, same-day leak, hit rate, why ML, crowding, when it stops, why this trade, IR vs BlackRock, why no ESG scores (Garvey et al. 2017).
+
+## 15. Kit, commands, platforms
+
+### 15.1 The kit
+- `fiam_finals/` on the 249 GB exFAT stick `FIAM_FINALS` (128 KB clusters, 161 MB/s read, 33 MB/s write; the 64 GB stick's 1 MB clusters were one reason for zips): part zips, each written beside its old copy, checked (zip CRC and SHA-256 per file) and swapped in; `MANIFEST.json` lists every file with part, size and hash; an update rewrites only changed parts.
+- Parts (`fiam/v4/kit.py` `parts()`, the more specific first, each file in one part): `data-organisers`, `data-bundle`, `data-edgar-docs`, `data-edgar-13f`, `data-edgar`, `data-stock-taq`, `data-stock`, `data-noaa`, `data-carbon-arc`, `data-amazon`, `data-other` (benchmarks, `edgar_cache.zip`, inventory), `results`, `media`, `media-film`, `weights-gemma`, `weights` (models, llama.cpp for every machine, Hugging Face models), `docs` (PLAN.md, TEAM.md, CLAUDE.md). [STEP 3] add parts for `data/fema`, `data/finra`, `data/arcana` and `data/edgar/insiders` if `data-edgar` does not already hold it (export would otherwise leave them out).
+- Beside the parts: `installers/<machine>/` (uv 0.12.18, Node 24.22.1, pnpm 12.8.1, checked against published SHA-256; ffmpeg comes with the `imageio-ffmpeg` wheel), `caches/<machine>.zip` (Python 3.14, the uv cache, the site's pnpm store), `MAIN.py`, `LICENSES.md`, `README.txt`, `MANIFEST.json`. [STEP 3] the OpenMP libraries if the wheel lacks them (B9).
+- The stick is case-insensitive, so the old `FIAM_finals` folder IS the kit folder `fiam_finals/`: never delete it; deleting anything on the stick is [LEADER].
+- `media` holds `deck/` (`A_backup` untouched), `out/media` and the score samples in `cache/vsco2`; `media-film` holds `out/ad`; the finals PDF travels in `data-organisers`, the round-one PDF in `media`.
+- Models: Gemma 4 26B (13.6 GB), Qwen 3.5 9B (MLX), GLM-OCR, FinBERT, Qwen 0.5B, faster-whisper, Kokoro, and llama.cpp b11132 for every machine in `models/downloads/`, each checked against its pinned SHA-256; Hugging Face models restore into the Hugging Face cache.
+- Size: 17 parts, 137,647 files, 62.6 GB, about 174 GB free (2026-10-23).
+- Off the USB, on the Mac: `submissions.zip`, raw option contracts (75 GB), raw TAQ (74 GB), the 59 GB uv cache, unused Stock Data files.
+- `LICENSES.md` holds the licence lines of §6.1.
+
+### 15.2 Setup and doctor
+- Setup copies missing files only, each through a part file checked by SHA-256, so it never overwrites a file, a second run changes nothing and a stopped run resumes; it checks room first and records what it restored in `data/KIT.json`, which doctor checks (sizes, or hashes with `--deep`, inputs only). The old results kit's `kit.restore` is not used.
+- Export refuses names Windows cannot hold, checks room before writing and leaves foreign files alone; Caches build with the kit's own uv (Windows at `C:\fiam_kit_build`, giving `caches/windows-x64.zip`); the site's pnpm store is fetched into a scratch copy with scripts off, never touching `site/` (tested).
+
+### 15.3 Platforms
+- `.gitattributes` `* text=auto eol=lf`; short paths for Windows; no shell scripts; MAIN.py rebuilt from an LF checkout; `unpack()` gains `--refresh` [STEP 11].
+
+### 15.4 Ways to run and MAIN.py
+| Who has what | Command | Status |
+|---|---|---|
+| Clone + USB | `uv run run.py setup` (finds the USB on Mac volumes, Windows drive letters, Linux mounts) | [DONE], tested on Mac and Linux |
+| USB only, offline | Copy `MAIN.py` from the stick to an empty folder, `uv run MAIN.py`, then `uv run run.py setup <the stick's fiam_finals>` | [DONE] tested offline; MAIN.py's own `setup` mode [STEP 11] |
+| MAIN.py alone, offline | `uv run MAIN.py`: audit of holdings and returns against every rule, every metric, the 23-row table, fingerprints, "why was this trade on" | [STEP 11] |
+| MAIN.py alone | `uv run MAIN.py --selftest` | [STEP 11] |
+| MAIN.py + organisers' files | `uv run MAIN.py --rebuild <folder>`: rebuilds the book within a stated tolerance, lists rebuilt vs carried | [STEP 11] |
+
+- MAIN.py extends `tools/build_main.py` (every git-tracked file, pinned packages, `--check`), adds `tools/data/` to `CARRIED_TOOLS`, carries results, the decision log, fitted models, saved AI answers, public SEC and NOAA derived tables and WRDS-derived values (decision (a)); never raw organisers', WRDS, Carbon Arc or Amazon data, PLAN.md, TEAM.md or stress charts (the two plan files are git-tracked since 2026-10-23, so `tools/build_main.py` leaves them out by name, [DONE 2026-10-23] with a test in `tests/test_tools.py`); a size budget with a test.
+
+### 15.5 The Windows session [LEADER]
+- In the repo: `git pull`, `uv sync`, `uv run run.py doctor` (send the output); with the stick in, `uv run run.py caches E:\fiam_finals` (the stick's letter), then `uv run run.py setup`; look for `data\fiam_v1\layers` and, if found, copy it to `E:\from_windows\layers` for fingerprinting (the 2026-10-15 stress run was made there; v4 never reads it).
+
+### 15.6 Copies and tests
+- Copies: the Mac, `FIAM_FINALS`, the Windows PC after setup, `FIAM_COPY` at the end. The irreplaceables backup (Carbon Arc purchases and catalogue, receipts, the inventory, the organisers' files, the AI cache) is on the 64 GB stick in `backup_2026-10-22/` (2,779 files, 1.75 GB).
+- Regenerable: `--data verify` proves every file against its receipt; `--data rebuild <source> <verb>` rebuilds into scratch and compares; new SEC and NOAA downloads may be newer versions, reported. The organisers' files, Carbon Arc purchases and AI answers cannot be regenerated, so the copies are the record.
+- Three-machine test from the USB alone (step 11): a fresh Mac folder, the Windows PC, a clean Linux Docker, each running setup, doctor, `finals --quick`, site build, film preview, one AI answer; plus MAIN.py alone, and MAIN.py with the organisers' files.
+- Change drills, offline on a fresh machine: change a setting and rerun; retrain one model; edit a site line and rebuild; change a film caption and preview; ask the AI one question locally. Publishing, Carbon Arc pulls, GitHub and Tailscale need internet.
+- Break-it suite: no internet, no git, spaces in paths, a read-only USB, Windows long paths and line endings, a damaged file, a full disk, setup killed halfway, setup run twice, other time zones and DST, Apple vs Intel chips, red-team cases; each passes or prints one clear fix. "Guaranteed" only after all.
+- Performance: vectorise the `fiam/stats.py` bootstrap; cache Σ per `eom`; a process pool of 6-8 books; `rebuild` skips unchanged steps; 5 min or less per book at $1bn, about 30 min for `--quick`.
+
+## 16. Website, film, launch
+- Numbers: `finals` writes `fiam.json` from `CURRENT.json` (replacing the hard-coded `BOOK` in `tools/build_site.py`, decoupling the crowd keys, removing the `@1e7` pin in `run.py`); README numbers through `<!--N:-->` markers.
+- Wording fixes: "Information ratio 0.99" becomes the $1bn after-cost number; "names are hidden where memory could cheat" becomes the measured guess rate; the S&P race becomes the hurdle chase, S&P faint; "Scales to $5 billion" becomes the capacity point; `factor_story` sign fixed; the film's crisis and crowd lines kept only if they pass; "LightGBM holds beta" becomes Welch and Dimson; "LightGBM forecasts volatility" becomes HAR; FIAM is never Fidelity.
+- Cards: the risk-agent card takes the Analyst's slot ("Seven" stays); a build stops with "re-voice needed" if a spoken count changes.
+- Team page: roles, bios, LinkedIn, Nokto's photo (from the leader), in the existing layout.
+- Film: `uv run run.py film`; the leader approves the preview; `pnpm media web`; upload exactly the files `site/src/content/media.json` lists to R2 (x264 is not bit-for-bit repeatable). Never touch `deck/A_backup/`.
+- Checks: `pnpm check`, `pnpm check lighthouse`, then the full device test on every device and browser.
+- Before public: remove `data/benchmarks/SP500.csv`, `submission/models/borrow.parquet` and `submission/models/book_inputs.parquet` (WRDS-derived permno-month tables; download or rebuild at run time); stop tracking `MAIN.py` and gitignore it (v4's carries WRDS-derived values, so it ships in the kit and to the judges only). Removing files leaves them in git history, so [LEADER] publishes from a copy with that history purged, and the licence scan, which reads MAIN.py, runs over every commit and every permno-keyed table. The repo stays private until the event day (leader, 2026-10-23). `docs/PLAN.md` and `docs/TEAM.md` show the whole strategy to other finalists, so the public copy leaves them out until after 2026-10-29 unless the leader decides otherwise.
+- Cloudflare [LEADER] (resume at its Part 4): workers.dev subdomain; R2 bucket public on `media.quarccpurple.ca`, masters uploaded; API token (Edit Cloudflare Workers template) and account ID as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`; while the repo is private, GitHub gives environment required reviewers only on Enterprise and environments only on Pro or above (GitHub docs, checked 2026-10-23), so the leader first checks the account's plan: with environments, a `production` environment on `main` only; without them, the deploy job runs only by a manual `workflow_dispatch` the leader starts, with repository secrets, or the leader runs `wrangler deploy` from the Mac; the required reviewer and branch protection requiring `ci` are added when the repo goes public; Dependabot alerts on; Bot Fight Mode, Email Obfuscation, Rocket Loader and auto Web Analytics off.
+- Launch [LEADER]: push the branch to `NicholasXydis/FIAM`; PR, CI green, preview checked; merge while private; the leader starts the deploy (claims `quarccpurple.ca`); live checks, UptimeRobot. Live before Oct 28. The repo goes public on the event day, from the cleaned copy below.
+- Gotchas: Tailwind reads bare words as classes (`@source not inline`; write `ring === null`, never `!ring`); the tour waits on real time; Safari keeps a stale fitted width after turning; a blocking call in `check.ts` starves its server; Playwright WebKit cannot resolve `.local` (use the IP); the page-fade opt-in stays inline in each head (`FADE` in `vite.config.ts`).
+- Commands: `pnpm start`, `pnpm check`, `pnpm check fix`, `pnpm check lighthouse`, `pnpm media web`; phones: `vite preview --config node_modules/.phone/preview.config.mjs` at `http://Nicholas-MacBook-Pro.local:4174/`.
+
+## 17. Event day
+| Surprise | Answer |
+|---|---|
+| Arcana's holdings format arrives | Tickers and weights per Arcana's sample file (§14.4); every identifier ready (PERMNO, ticker, CUSIP, CIK, names); one exporter for any reasonable format, rehearsed in three; the factor lens (US or global) the organisers pick, our pass rerun on it |
+| "Further constraints" at the start (p24); "a set of constraints to tune against" (organisers' email 2026-10-23) | One editable mandate file; timed rerun drill. "Tune" means rerunning the frozen strategy under the new limits with our pre-written construction rules (the same re-derivation order as step 7), both numbers shown; never re-picking signals, models or settings from 2021-2026 results (PDF p16) |
+| "The final data configuration" at the start (p24) | The global switch (`fiam/world.py`), drilled on fake variants: new columns, extra countries |
+| Deck format and Arcana slots | Marked slots in the deck builder |
+| "Why was this trade on, what did the strategy believe, what did it earn?" (p24) | Decision log, explainer, attribution tables, offline |
+| Stress scenarios outside our sample (p23) | Crisis replays and factor shocks prepared |
+| A machine or the network fails | Four copies; AI answers cached, so no GPU needed live; Tailscale as a bonus |
+| A damaged file on the USB | Setup refuses it by name and keeps going; export again or use the second drive |
+| No internet on a fresh machine | `installers/` and `caches/<machine>.zip`, drilled offline |
+| LightGBM will not load | The kit's OpenMP library (B9); doctor names the fix (Mac `brew install libomp`, Linux `sudo apt install libgomp1`) |
+| Deadlines | Carbon Arc pulls before Oct 29; MCP backup recorded Oct 27; PDF and emails re-read the day before |
+
+1. Re-download the organisers' folder into a new folder `data/organisers_event/` (never over `data/organisers/`), hash it; `finals --dry` prints schema diffs.
+2. The rules reader drafts `mandates/<stem>_draft.json`; the leader approves it as `mandates/finals_event.json` and commits it before the run.
+3. `finals --mandate mandates/finals_event.json --quick`, logged as a rule rerun with the code hash unchanged; then the full list in the background.
+4. Export holdings in Arcana's spec, reconcile, fill the deck's Arcana slots.
+5. A new kind of rule goes through the amendment path (both numbers shown).
+6. Prepared beforehand: the rule-change stress map (about 20 mock rules) and a drill of three surprise rule sets.
+
+## 18. Order of work (each step: done when)
+Checkpoints after steps 3, 7, 9 and 11: report status; anything behind is raised with the leader, never dropped silently. Steps 1 and 2 are in Appendix A.
+
+3. **Clock, links, registry, audit** (next). In this order; done when every item holds:
+   1. The EDGAR documents for every panel firm (A2) and the new `forms` verb with its exit, Form 4 and offering forms (§11) start in the background.
+   2. The 13 CIK conflicts go to the leader with their evidence on the first day (§6.7).
+   3. `fiam/v4/clock.py` and `tests/test_clock.py` pass (§6.3): market-data and event rules, the calendar, the join assertion, past-only thresholds (B21), the projected earnings calendar (B22).
+   4. `data/v4/links.parquet` exists with match rates (§6.7).
+   5. `fiam/v4/sources.py`: every source registered; the step 3 tables converted to `data/v4/clean/` with the fixes as cleaning rules (§6.6, §6.7); every data ban with its trap test (§1.2); blind mode (§1.3); the planted-feature trap (B19); the no-shuffle guard and its test (B14).
+   6. `data/v4/exits.parquet` exists (§6.4).
+   7. `tools/data/finra.py` with receipts, the 2026 coverage check, the WRDS agreement count and the 2015-2020 volume check (§6.5, B24), its split method written first in the data section of protocol.md. CA0065S: the free re-check of its library pages and the free quote (`--data carbon plan`); the leader decides and runs any buy [LEADER]; if bought, its cleaning, the same checks and the 2025-07..12 agreement counts (§6.5, B30).
+   8. The rest of the data section of `versions/v4/protocol.md` (agreement thresholds; the French vintage bar, its lag rule and archive source, B23) is written, then the PDF survivorship test (§6.8) and the cross-source agreement exhibit run (§6.7).
+   9. Every converted table has its card with the four answers (§6.7); the 2015-2020 universe counts are redone for the $600m floor (names per month, the short-interest share in §7.3), counts only.
+   10. OpenMP in the kit if needed (B9); kit parts for FINRA and FEMA; the stick updated with `uv run run.py export` once the leader plugs it in.
+   11. Both audits rerun clean (§6.8); tests and ruff pass; PLAN.md and TEAM.md re-scanned in full.
+   - Commit title: `feat: add v4 clock, sources and links`.
+3b. **Insider data, the factor vintage, disaster and weather data.** First, before step 6's gates and step 7's crash-control gate: `tools/data/edgar.py insiders` with receipts (§11), its card and the PDF survivorship test; `tools/data/french.py archive` and the French factor vintage check (B23). Then, for the exhibits and live flags: `tools/data/fema.py` with receipts and the B1 Federal Register check; `noaa.py archive` and the B23 measurement, with the 2014 re-computation month confirmed from NCEI's documentation.
+4. **Text, maps and the protocol.** Done when the 10-K sections and customers table, the footprint map and the 8-K event table exist with `available_at` and `first_close`, boilerplate stripped (K5), hand checks done on 2015-2020 filings, and `versions/v4/protocol.md` fixes, before any run:
+   - per signal: window, universe, gate statistic details (§7.4), the ancillary test (K2), the red-flag window and decay, the 5.02 rules and the hand-check accuracy bar, the Lazy Prices extraction bar, the insider window, roles and dollar variant, the 13F best-ideas minimum holdings and top-k
+   - for the exhibits: "extreme" storms and how FEMA and NOAA combine, weather industries and signs (§7.6)
+   - SYY-10's rank universe and aggregation; the ML input set and monotone rules; ensemble and net grids; the confidence map; the ridge grid; B17 per signal
+   - the factor-share model for b; the brake's v4 form; the fixed-rule guard's shrink map; the "near its bound" threshold; the 126-day beta estimator; the memory gate's chance band and minimum number of cards; the SUE gate's statistic; how the "largest feasible gross" is found; lever C3's churn formula (Gaspar-Massa-Matos 2005); the formula of each attribution factor that mirrors Arcana-US (§14.2)
+   - the one gated construction per signal (variants are robustness only, reported after the gate, never gate-tested, PDF p9); the overlay cut sizes (overlays are construction, present in every arm); customer momentum's name-to-PERMNO matching and customer weights
+   - the derivation order and base gross for the α scale, cost budget, ridge, b and d, so none depends on another not yet set; lever A4's partial-adjustment rate and inputs (Gârleanu-Pedersen) and how it sits with the four-close spill; the name-cap drift threshold
+   - kill-criteria definitions; the large-cap cutoff for flat borrow; the borrow tiers' source and as-of date (PDF p17), else labelled our assumption; lever B1's ex-ante TC bar for widening the sector band
+   - how v4 decides each of v3's fifteen choices (B2); the Holm rule (B4)
+5. **Engine.** `fiam/v4/data.py`, the blind mask, `daily_book.py`, universe, compliance, halts and tests pass; `mandates/finals_2026.json` created. Done when v3's stored 2016-2020 holdings replay under v3's own same-day convention within tolerance (mean monthly difference < 0.05%, correlation > 0.98), then under t+1 separately.
+6. **ML.** In this order: the history twin and its B17 test (lever D2); the as-filed SYY rebuild and the Compustat gap (§6.7); the blind pre-2021 gates under Holm in build order (they need only SYY-10 and the 147, §7.4): short interest, red flags, insider buying, Lazy Prices; 13F best ideas, customer momentum; then the models with the residual target, alignment and the 96-cell grid (levers C1, C2, D1), fitted once on the full input set (the 147, SYY-10, the SUE forecast and the passing signals), the honest-core design reusing the chosen cell (§8.9); the model-level ban tests and the planted-noise trap (§1.2, B19); then the pre-2021 exhibits: disaster propagation, weather and earnings, customer voice. Done when every gate is evaluated blind and recorded, passes and fails alike, and any not built is recorded as failed.
+7. **Construction.** Optimiser, costs, the squeeze protection and its 2000-2020 test, the crowding screen (lever C3), the mid-cap cap (§8.3), the crash-day cap (lever A2). Then the derived settings in the order the checklist fixes: the α scale, the cost budget, ridge, b, d (lever A2), the sector band (lever B1), lever A4's rate, then the crash-control and brake gates; cadence and the overlay decisions with their weekly-delivery runs (lever E5). Then the practice exam (lever E1, §8.9). **Rehearsal 1** on synthetic data with zero breaches.
+8. **AI team** (on the design the exam picks). Backtested card inputs, dated only: 13F crowding, the network map from 10-K customers and 13F shared owners, key developments, and the NOAA and FEMA flags only if B23 gives L <= 12 months (lagged by L, else off). Live only (Appendix B): CA0043B links, the earnings preview desk, Carbon Arc and I/B/E/S. Cards on 2017-2020 answered on Windows; the memory gate and the time-cutoff model; crowd checks; narrators; red team; reproducibility agent. Windows: the crowd's 2026-08-31 month (sealed), then FinBERT once the 8-K text table exists.
+9. **Evidence.** Table, 8 exhibits, §13.6 exhibits, lenses and our own Arcana pass with the leak self-test (no Arcana upload, §14.2), v3's 2016-2020 result and short-ban measurement (B3), the stress report on the Dec 2020 book and the rehearsal, the passport, catalogue screen, Benzinga audit and X-ray, registers, kill criteria, model cards, factsheet. **Rehearsal 2**, full pack, zero breaches. Fixed dates in §2.
+10. **Freeze and unseal** (target the evening of 2026-10-26; fallback in §2). Hash, leader commit and push, one unseal, 2021-2026 cards answered overnight on Windows, September scored, the stress report on the final book through every episode, §14.3.
+11. **Finish.** Deck (§4.5 order) and its builder, MAIN.py's four modes with its size test, kit v-final, the three-machine test and break-it suite from the USB alone, MAIN.py alone and with the organisers' files, red-team rehearsal, event drills (§17).
+12. **Frontend.** §16 end to end, live before Oct 28. Then the event (§17).
+
+Remaining commit titles (the leader commits): `feat: add v4 clock, sources and links`, `feat: add v4 daily engine and finals rules`, `feat: add v4 forecasts and EDGAR signals`, `feat: add v4 construction and costs`, `feat: add the AI risk desk`, `feat: add Carbon Arc screen and live X-ray`, `feat: add finals reporting and registers`, `feat: pre-register v4`, `feat: add finals pack, deck and site data`, `feat: launch the site`.
+
+## 19. Accepted limits (stated first in the deck)
+1. The panel starts in 2015, eased by the 2000-2014 history twin.
+2. The headline signals are well known, eased by the six gated filed-data signals.
+3. AI memory is measured, not zero.
+4. Carbon Arc has no as-of history, so it has no part in the forecasts: evidence, live tools and one 2026 risk input (CA0065S, if it passes). Benzinga, as bought, is weekly, thin and drifting (B29). 36 datasets are closed to us, so crowding, links and accounting risk come from SEC 13F, 10-K text and Stock Data.
+5. About +/-0.4 sampling error on any 68-month IR.
+6. WRDS ends 2025-12, so 2026 uses stated fallbacks; the SEC sources and organisers' data run to 2026-08.
+7. 2000-2010 fundamentals are Compustat's restated values, gap measured on 2011-2020, so the earnings model trains from 2011 (from 2015 if B17 fails).
+8. Not modelled: management fees, taxes, recalls and locate failures (PDF p18).
+9. The organisers' 8-K file was survivor-biased; v4 uses the SEC, and v3's short ban read it (measured).
+10. Analyst data (I/B/E/S) is today's vintage and its history was rewritten, so it feeds nothing in the backtest (B27).
+11. Storms count only once NOAA published them (about 4 months, longer if B23 says so); FEMA gives major disasters within days; both are exhibits and live flags only.
+12. SYY-10 alone showed no 2015-2020 edge in large caps and is mostly known factors, so the book targets the residual; if the finished book shows little pre-2021 edge, we say so plainly.
+13. NOAA rewrites its past files, so the storm and weather exhibits count from the measured lag or are labelled current vintage (B23).
+14. The organisers' daily file has no volume, so the 2026 volume screens use CA0065S or FINRA if one passes, else they are off (B24, B30).
+15. Two controls were chosen with later events known (B25); both are disclosed and also shown switched off.
+16. The hurdle needs about 4% a year of net alpha; at a tracking error near 7% that is an alpha IR near 0.55, rare among long-short funds (§8.8). Alpha's own IR before the hurdle is shown beside the headline (K1).
+17. The gross cap keeps gross near 1.69-1.77, not 2.00, so a record two-day rally cannot break the limit; only a bigger one than any since 2000 could (B26).
+18. The practice exam shares 2017-2020 with construction settings, so its level flatters (B28).
+19. The six signals were chosen in October 2026 from pre-2021 research, before any v4 gate ran; the date is disclosed (B16).
+20. The organisers' panel does "not independently verify the release date of each underlying accounting value" or "certify ... original accounting vintages" (their `readme.md` §5, §7); the SYY-10 inputs are rebuilt as-filed for 2015-2020 and compared (§6.7).
+
+## Appendix A. Done log
+- 2026-10-21: plan agreed; `BRIEF.md` removed; `feat: update local docs and remove brief.md` (6abf31c).
+- 2026-10-22, data in: `companyfacts.zip` (1,411,028,297 bytes, 20,488 companies); NOAA climate divisions (7 state series 1895-2026) and 77 years of storm events, checksums verified; SEC 13F 2013q2 on (54 of 54, 2.8 GB); WRDS key developments (1,509,472 events, 22,362 gvkeys) and restatements (28,541); Amazon Reviews 2023 (34 categories, 564,540,881 reviews into 219,594,186 product-months, 35,393,189 items, 97.2% with a store or brand, 1996-06..2023-09, raw matched Hugging Face's SHA-256 and was deleted; 136 all-zero product-months dropped; 61,955,160 reviews (11.0%) in `Unknown` have no product record, excluded).
+- 2026-10-22, EDGAR: `submissions.zip` 1.57 GB (`8c05b99d...`); `cik_map.parquet` 6,266 of 6,561 stocks with a CIK (universe 3,767 of 3,777; left the panel 2,773 of 3,064); `filings.parquet` 6,177 filers, 759,025 filings since 2012 (56,563 annual, 702,462 8-K, 151,111 red-flag); 132,757 documents for 3,720 universe firms (36,749 annual, 7,822 strong red-flag, 88,186 5.02-only), 8.8 GB gzipped, 0 failed.
+- 2026-10-22, Carbon Arc: catalogue and entities (§12.2); 498 sources reconciled to 77 real datasets (the workbook rates 76) and 421 single-company web catalogues; zero quotes found unbuyable; snapshot 1 bought by the leader in four runs (CA0043B 4.99; Benzinga 14.97; Phase A 49.21; star ratings 30.50).
+- 2026-10-22, WRDS extracts: 35 tables in 107 files, 12.9 GB, receipts, fixed million-row groups and byte-identical rebuilds; CRSP daily dropped 11,703 exact copies; CRSP monthly dropped 29,621 description-only duplicates keeping the description in force (a first version gave 1,542 rows next-day descriptions; caught, fixed and tested before any read).
+- 2026-10-22, foundations: version folders and `tests/test_versions.py`; the kit tool and 16 tests; installers for five machines (0.43 GB) and caches for Mac (0.59 GB), Linux arm64 (0.60 GB) and x64 (0.71 GB); llama.cpp b11132 for every machine, SHA-256 matched; French daily factors and TB3MS full pinned (`data/benchmarks/sources.json`); `fiam/exhibits/stress.py` reads the extracts and reproduced the 2026-10-15 run to 4e-16; protocol wording corrected for the fifteen choices.
+- 2026-10-23, audit: `tools/audit.py` 0 fail, 31 warn, 22 info, 64 pass; passed panel keys and labels, delisting returns in the panel (1,045 of 1,052 match CRSP), panel coverage independent of future exit (98.6% of CRSP common stock-months), GICS dated monthly (982 of 6,170 stocks change), every dropped look-ahead column, all 132,757 documents re-hashed; the independent audit's findings reproduced; A1-A17 and B1-B20 approved.
+- 2026-10-23, stick: `FIAM_FINALS` chosen; the raw archive backup on it hash-checked identical (52 files, 198.7 GB) and deleted by the leader with the Oct 15 packer files; full kit exported (17 parts, 137,647 files, 62.6 GB); setup into a fresh folder with a space restored 137,492 files; doctor 0 problems; offline Mac and Linux (arm64, x64) restores pass; models restore and FinBERT loads offline.
+- 2026-10-23, decisions: crash control, squeeze protection, short interest, residual target with `gp_at`/`at_gr1`/`ret_12_1`, investment cap, Holm over six, earnings model from 2011, red-flag overlay test, Arcana self-checks, monthly and daily holdings; B21-B25; Kahn K1-K6; the precision rules of §1.3, §6.5, §7.4, §8.0, §9.3, §10.1.
+- 2026-10-23, step 2 commits pushed: a082dad, b41b864, 79fa6dc. 117 tests pass; ruff clean on CI's paths; `--data verify` "All data verified".
+- 2026-10-23, final audit (a second independent review plus our own): market-data clock rule fixed; step 3 put in dependency order with step 3b; links built without a CCM file (none in the archive); exits from SEC forms; the survivorship test specified; fixes moved to registry cleaning rules; B25 and the French vintage check added; the unseal target and fallback set; CLAUDE.md rule 3 repointed.
+- 2026-10-23, metric levers A1-A4 and B1-B2 approved (§8.8); the deck's headline matches the site's tour (IR and Sharpe after costs side by side).
+- 2026-10-23, final plan approved by the leader ("yes to all"): levers C1-C3, D1-D3, E1, E5; the six traded signals (§7.3; analyst revisions dropped, disasters and weather to exhibits); Benzinga not traded after its data check (B29); Carbon Arc out of the forecasts, CA0065S as a 2026 risk input if it passes (B30); the crash-day gross cap, C = 1.7678 at 2020-12-31 on two-day rises after the independent audit (B26); Arcana before the unseal on pre-2021 books only, in the web app, its MCP only after the unseal (independent audit); B26-B30; lever, arm and fix labels separated (§0).
+- 2026-10-23, after the organisers' email and Arcana's overview PDF, approved by the leader: no v4 book in Arcana before the unseal unless its manual or video says a book stops at its last date (§1.3); our lens code mirrors Arcana-US's factors and position-age buckets (§14.2); the mid-cap cap (§8.3); Arcana's optimizer, hedge ideas and conviction sizing explain-only (§10.1); the "tune" reading (§17); the discard slide (§4.5); `docs/PLAN.md` and `docs/TEAM.md` tracked in git (§1.1), MAIN.py leaving them out (118 tests pass, ruff clean).
+- 2026-10-23, Arcana's intro video (25 minutes) transcribed offline into `data/arcana/` with the overview PDF: no sign a book stops at its last date, so no v4 upload before the unseal and no pre-unseal drill (§1.3, §14.2); total return as the headline basis (lever D3, §4.2); books as tickers and weights with a sample file (§14.4); lens additions (earnings windows, drawdowns, one-month momentum, hedge-fund-type crowding). The leader chose: repo private until the event day; the People line no longer names Claude (§3.1, §16).
+- 2026-10-23, independent audit of this file against the PDF (one agent, 4 high, 19 medium, 21 low and 9 TEAM.md findings; the factual claims re-verified before fixing): fixed the two-day gross cap, the fallback under the finals rules, live inputs out of backtested cards, the French check, spill-day net, the formation-date short floor, step 6 and 7 order, blind label windows, permco counts, the beta hedge, overlay and holdings rules, the AI-crowd trigger, the Arcana MCP timing and the wording points.
+
+## Appendix B. Glossary
+- **Merge rules** (the organisers' workbook, sheet "3. Merge rules"): 1 "Shift every series by its published lag", merge on the availability date; 2 "Treat the data as current-vintage, not point-in-time"; 3 "Link on PERMNO with a historical ticker map"; 4 "Never trade the 'has data' flag"; 5 "Size the sleeve to the coverage" (names with data per month, share of universe and of gross); 6 "Check the start date against the data, not the label" (row counts by month).
+- **Residual return**: the label after the §8.2 regression. **Residual IC**: Spearman correlation of a signal with it (§7.4).
+- **IC, breadth, TC**: skill, independent bets per year, and correlation of the book with the unconstrained paper book (K1).
+- **Factor share**: the share of the book's ex-ante variance from the style factors (§8.4).
+- **Brake**: v3's drawdown brake; its v4 form is fixed in step 4.
+- **Chance band**: the 95% binomial band of guessing the company or month at random (§10.4).
+- **Stub**: the provisional return booked when a name disappears (§6.4).
+- **Current vintage**: a series as it stands today, possibly revised since (PDF p15).
+- **Formation**: the monthly decision and its spill days; **first_close**: §6.3.
+- **CURRENT.json**: the run hash every site and deck input carries.
+- **Arms A0, A1, A2, P1**: no desk, fixed rule, agent, random placebo (§10.4), always written "arm A1".
+- **Levers**: the metric and design choices of §8.8, always written "lever A2"; a bare A1-A17 or B1-B30 is an audit fix (§6.8).
+- **Crash-day cap C_t**: 200% / (1 + m_t), m_t the largest two-day rise seen before t (lever A2).
+- **Live**: the final 2026-08-31 book and event-day use only; never a backtested card, never a scored month (the September book is frozen).
+- **Best idea**: a 13F filer's holding with the largest weight above its market weight (§7.3). **Opportunistic insider**: one with no same-month trades in each of the three prior years (§7.3).
+- **Churn rate**: how much of a 13F portfolio turns over in a quarter; the top third are short-horizon institutions (lever C3).
+- **Practice exam**: lever E1's pre-2021 comparison of four designs (§8.9).

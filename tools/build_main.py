@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Everything git ships except tests, tools, the showcase site and data too large for one file.
+# What git ships except tests, tools, the site and the two plan files.
 LEAVE_OUT = (
     "tests/",
     "tools/",
@@ -17,6 +17,8 @@ LEAVE_OUT = (
     ".gitattributes",
     ".gitignore",
     ".env.example",
+    "docs/PLAN.md",
+    "docs/TEAM.md",
 )
 # The finals decks' builders, so run.py --finals-pack works from MAIN.py alone.
 CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}

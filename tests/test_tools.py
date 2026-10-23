@@ -326,3 +326,13 @@ def test_audit_records_results_and_finds_members(tmp_path):
         zf.writestr("2013q2_form13f/SUBMISSION.tsv", "x")
     with zipfile.ZipFile(path) as zf:
         assert audit.member(zf, "SUBMISSION.TSV") == "2013q2_form13f/SUBMISSION.tsv"
+
+
+# MAIN.py never carries the two plan files, though git tracks them.
+def test_main_py_leaves_out_the_plan_files(monkeypatch):
+    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    listing = type("Listing", (), {"stdout": "docs/PLAN.md\0docs/TEAM.md\0run.py\0"})()
+    monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
+    assert set(build.carried(with_edgar=False)) == {"run.py"}
