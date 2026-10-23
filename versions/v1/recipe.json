@@ -1,0 +1,26 @@
+{
+ "version": "v1",
+ "title": "Round one, the submitted book",
+ "status": "closed",
+ "code": [
+  "fiam/book.py"
+ ],
+ "command": "uv run run.py",
+ "protocols": [
+  "docs/protocols/README.md"
+ ],
+ "frozen": [
+  "frozen/september_v1.csv"
+ ],
+ "results": [
+  "submission/holdings.csv",
+  "submission/returns.csv",
+  "submission/metrics.json"
+ ],
+ "fingerprints": {
+  "frozen/september_v1.csv": "973cc750f24077c6c34df75006641b7c220f97c2de61c294f20a7fc2aa64606a",
+  "submission/holdings.csv": "ceb1c2f568f9e97419bc891e1fe99d27ad500785020c3e9e7a3fff1c0e84be18",
+  "submission/returns.csv": "d27ca44eedb346028fd953fc9198b4ded396c96e1670ec7e9b569f13a286384d",
+  "submission/metrics.json": "5c878a5d5ffc6a8a0535316bc26518241dc1e109bc481ecc643002271406e36b"
+ }
+}

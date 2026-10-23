@@ -28,13 +28,13 @@ MODELS = paths.SUBMISSION / "models"
 FIRST_FORECAST, LAST_FORECAST = "2020-12-31", "2026-07-31"
 N_HOLDING_MONTHS = 68
 
-# How many of the twelve a stock needs before we trade it. Demanding all twelve is worse.
+# How many of the twelve a stock needs; chosen with 2021-26 visible.
 MIN_SIGNALS = 9
 
 # Only matters for rounding. At $10m, one share of an expensive stock is a real slice.
 NAV = 10_000_000.0
 
-# The twelve measures. +1 means higher is better. Signs from theory, fixed before we ran.
+# Twelve measures, signs from theory; set chosen with 2021-26 visible.
 SIGNALS = {
     "ivol_capm_21d": -1,
     "be_me": +1,
@@ -50,7 +50,7 @@ SIGNALS = {
     "eqnetis_at": -1,
 }
 
-# 160% gross never rose above 200% on any trading day of 2021-25; `pool` is candidates per side.
+# Limits set with 2021-26 visible; `pool` is candidates per side.
 LIMITS = dict(gross=1.6, beta=0.02, risk=0.02, sector=0.01, name=0.015, pool=200, ridge=30.0)
 
 

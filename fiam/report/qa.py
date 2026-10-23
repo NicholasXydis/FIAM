@@ -622,12 +622,12 @@ def main() -> None:
         (
             "Which book would you present at the finals?",
             "Written down before any run (v2_amendment_3.md): final v3 at every fund size, with "
-            "v1, the submitted book, v2, v2-pass and v3 as benchmarks. Never picked by comparing "
-            "2021-2026 results."
+            "v1, the submitted book, v2, v2-pass and v3 as benchmarks. Fifteen of its choices were "
+            "made with 2021-2026 visible, so that record is partly in-sample."
             if f["dsr_fv3"] != "-"
             else "Written down before any run (v2_amendment_2.md): v3 at every fund size, with "
-            "v1, the submitted book, and v2 as benchmarks. Never picked by comparing 2021-2026 "
-            "results."
+            "v1, the submitted book, and v2 as benchmarks. Some of its choices were made with "
+            "2021-2026 visible, so that record is partly in-sample."
             if f["v3_size"] == "pass"
             else f"Written down before the finals (finals.md): v1 with no stated fund size; with "
             f"one, v1's method below {f['crossover']} and v2 above. Never picked by comparing "

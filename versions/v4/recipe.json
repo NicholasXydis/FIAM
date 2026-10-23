@@ -1,0 +1,19 @@
+{
+ "version": "v4",
+ "title": "v4, the finals book",
+ "status": "in progress",
+ "code": [
+  "fiam/v4/"
+ ],
+ "command": "uv run run.py finals (built from step 5)",
+ "protocols": [
+  "versions/v4/protocol.md (written before any run, step 4)"
+ ],
+ "frozen": [
+  "frozen/v4/ (at the freeze, step 10)"
+ ],
+ "results": [
+  "out/v4/"
+ ],
+ "fingerprints": {}
+}
