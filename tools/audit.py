@@ -1,4 +1,4 @@
-# Read-only data audit (PLAN 6.7); from 2021 on counts and dates only.
+# Read-only data audit (PLAN §6.8); from 2021 on counts and dates only.
 
 import gzip
 import json

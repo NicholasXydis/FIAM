@@ -1,4 +1,4 @@
-# The finals kit for clone + USB: export, setup and doctor (PLAN 14).
+# The finals kit for clone + USB: export, setup and doctor (PLAN §15).
 
 import hashlib
 import json
