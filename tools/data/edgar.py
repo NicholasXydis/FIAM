@@ -18,6 +18,8 @@ from _shared import ROOT, check, data_root, fingerprint, receipts, setting, stam
 
 OUT = ROOT / "data" / "edgar"
 BULK = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
+# SEC rebuilds it nightly, so it stays on the Mac with its hash kept.
+HOME_ONLY = {"submissions.zip"}
 FACTS = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 F13 = "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets"
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data"
@@ -328,6 +330,9 @@ def verify(deep: bool = False) -> int:
     bad = 0
     for book in sorted((OUT / "receipts").glob("*.json")):
         name = book.name.removesuffix(".json")
+        if name in HOME_ONLY and not (OUT / name).exists():
+            print(f"edgar {name}: kept on the Mac, not in the kit")
+            continue
         wrong = check(OUT, {name: receipts(book)["sha256"]})
         print(f"edgar {name}: {'ok' if not wrong else 'WRONG'}")
         bad += len(wrong)

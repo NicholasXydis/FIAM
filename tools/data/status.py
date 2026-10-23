@@ -8,7 +8,8 @@ from _shared import ROOT, fingerprint, stamp
 
 DATA = ROOT / "data"
 INVENTORY = DATA / "INVENTORY.json"
-USB_GB = 61.0
+# The finals stick, FIAM_FINALS.
+USB_GB = 249.3
 # Each source's data folder and its licence note.
 SOURCES = {
     "organisers": ("organisers", "competition use only, never redistributed"),

@@ -45,7 +45,12 @@ HELP = """uv run run.py [options]
   --data rebuild <source> <verb ...>   rebuilds into a scratch folder and compares with ours
   --data <source> <verb ...>   one data tool: edgar, noaa, stock, carbon or amazon, e.g.
                        --data carbon plan <spec> (prices, buys nothing); carbon buy and rebuy
-                       spend tokens, so the leader runs them; --data amazon fetch [category]"""
+                       spend tokens, so the leader runs them; --data amazon fetch [category]
+  setup [kit]          restores the finals kit from the USB, missing files only, then doctor
+  doctor [--deep]      checks Python, packages, data, the kit's files, settings and the AI link
+  export [folder]      writes the finals kit to the USB, rewriting only parts that changed;
+                       --dry-run shows sizes, --skip PART,PART leaves parts out
+  installers, caches   uv, Node and pnpm for every machine; this machine's offline packages"""
 
 # The book and everything read from it, in order. Each step is a module run with python -m.
 STEPS = [
@@ -491,6 +496,11 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
     args = sys.argv[1:]
+    # Kit verbs run before any data check, so a bare clone can use them.
+    if args[:1] and args[0] in ("setup", "doctor", "export", "installers", "caches"):
+        from fiam.v4 import kit
+
+        return kit.main(args)
     if "-h" in args or "--help" in args:
         print(HELP)
         return 0
