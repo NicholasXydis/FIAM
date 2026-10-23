@@ -146,6 +146,8 @@ DATA_TOOLS = {
     "stock": ("stock_data.py", None, "v4/extracts"),
     "carbon": ("carbon_arc.py", CARBON_SDK, "carbon_arc"),
     "amazon": ("amazon.py", AMAZON_ENGINE, "amazon"),
+    "finra": ("finra.py", None, "finra"),
+    "openmp": ("openmp.py", None, "openmp"),
 }
 
 # Data any step may read. Large files are keyed on size and date, small ones on their bytes.
@@ -491,6 +493,10 @@ def data_command(rest: list[str]) -> int:
 def main() -> int:
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
+    # LightGBM's OpenMP from the kit when this machine lacks it (B9).
+    from fiam import openmp
+
+    openmp.preload()
     LOG.parent.mkdir(exist_ok=True)
     LOG.write_text("", encoding="utf-8")
     if hasattr(sys.stdout, "reconfigure"):

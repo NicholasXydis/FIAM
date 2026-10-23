@@ -53,6 +53,7 @@ DATA = {
     "v4/extracts": "data-stock",
     "carbon_arc": "data-carbon-arc",
     "amazon": "data-amazon",
+    "finra": "data-finra",
 }
 # Installers and caches travel as plain files, needed before setup.
 EXTRAS = ("installers", "caches")
@@ -192,7 +193,10 @@ def parts() -> dict[str, list[tuple[Path, str]]]:
         "data-noaa": here("data/noaa"),
         "data-carbon-arc": here("data/carbon_arc"),
         "data-amazon": here("data/amazon"),
-        "data-other": here("data/benchmarks", "data/edgar_cache.zip", "data/INVENTORY.json"),
+        "data-finra": here("data/finra"),
+        "data-other": here(
+            "data/benchmarks", "data/edgar_cache.zip", "data/INVENTORY.json", "data/arcana"
+        ),
         "results": here(*results.PARTS, "out/v4"),
         "media": here("deck", "out/media", "cache/vsco2"),
         "media-film": here("out/ad"),
@@ -251,6 +255,24 @@ def digest(path: Path, known: dict | None = None) -> str:
             sha.update(block)
     known[str(path)] = [*mark, sha.hexdigest()]
     return sha.hexdigest()
+
+
+# Small text files compare without line endings, so a Windows checkout
+# with CRLF still matches the kit's LF copy.
+TEXT = {".json", ".sha256", ".csv", ".md", ".txt", ".py", ".toml", ".yml", ".yaml"}
+TEXT_LIMIT = 50 << 20
+
+
+# True when a file matches its kit entry: size, or hash when deep.
+def matches(path: Path, entry: dict, deep: bool = False) -> bool:
+    size = path.stat().st_size
+    if path.suffix.lower() in TEXT and size <= TEXT_LIMIT and size != entry["size"]:
+        data = path.read_bytes().replace(b"\r\n", b"\n")
+        same = len(data) == entry["size"]
+        return same and (not deep or hashlib.sha256(data).hexdigest() == entry["sha256"])
+    if size != entry["size"]:
+        return False
+    return not deep or digest(path) == entry["sha256"]
 
 
 # One fingerprint for a part: its names and hashes in order.
@@ -476,7 +498,7 @@ def setup(kit: Path, skip: set[str] = frozenset(), root: Path = ROOT) -> int:
         path = destination(name, root)
         if path.exists():
             kept += 1
-            if path.stat().st_size != entry["size"]:
+            if not matches(path, entry):
                 differs.append(name)
         else:
             todo.setdefault(entry["part"], []).append(name)
@@ -609,12 +631,16 @@ def packages(pins: list[str]) -> list[tuple[str, str]]:
     return out
 
 
-# LightGBM loads, which needs the system's OpenMP runtime.
+# LightGBM loads, with the system's OpenMP or the kit's copy (B9).
 def openmp() -> list[tuple[str, str]]:
     try:
+        from fiam import openmp as runtime
+
+        runtime.preload()
         import lightgbm  # noqa: F401
     except (ImportError, OSError) as err:
-        fixes = {"Darwin": "brew install libomp", "Linux": "sudo apt install libgomp1"}
+        fixes = {"Darwin": "uv run run.py setup (part weights), or brew install libomp"}
+        fixes["Linux"] = "uv run run.py setup (part weights), or sudo apt install libgomp1"
         fix = fixes.get(platform.system(), "install the OpenMP runtime LightGBM needs")
         return [(f"lightgbm cannot load ({str(err)[:60]})", fix)]
     return []
@@ -633,7 +659,7 @@ def kit_files(deep: bool) -> list[tuple[str, str]]:
         path = destination(name)
         if not path.exists():
             out.append((f"{name} is missing", "uv run run.py setup"))
-        elif path.stat().st_size != entry["size"] or deep and digest(path) != entry["sha256"]:
+        elif not matches(path, entry, deep):
             out.append((f"{name} differs from the kit", "delete it, then uv run run.py setup"))
     return out[:20]
 

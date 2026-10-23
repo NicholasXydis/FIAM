@@ -23,12 +23,19 @@ HOME_ONLY = {"submissions.zip"}
 FACTS = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 F13 = "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets"
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data"
-USAGE = "uv run run.py --data edgar bulk | facts | 13f | map | filings | docs | verify [--deep]"
+USAGE = (
+    "uv run run.py --data edgar bulk | facts | 13f | map | filings | forms | docs | verify [--deep]"
+)
 EIGHT_K = "8k_20150101_20260831_identified.parquet"
 # Annual reports for Lazy Prices, and the 8-K items that are red flags.
 ANNUAL = {"10-K", "10-K405", "10-KT", "10-KSB"}
 FLAGS = {"1.03", "2.06", "3.01", "4.01", "4.02", "5.02"}
 START = "2012-01-01"
+# Exits, insider trades and share offerings, indexed from 2006 on.
+EXITS = {"25", "25-NSE", "15-12B", "15-12G", "15-15D"}
+INSIDERS = {"4", "4/A"}
+OFFERINGS = {"424B1", "424B2", "424B3", "424B4", "424B5", "S-1", "S-3"}
+FORMS_START = "2006-01-01"
 # The gap between requests across threads; SEC allows ten a second.
 PACE, WORKERS = 0.2, 4
 GATE = {"next": 0.0, "lock": threading.Lock()}
@@ -226,10 +233,14 @@ def link() -> int:
     return 0
 
 
-# Our firms' annual reports and 8-Ks since 2012, from the bulk file.
-def filings() -> int:
-    firms = pd.read_parquet(OUT / "cik_map.parquet")
-    ciks = sorted(int(c) for c in firms["cik"].dropna().unique())
+# Every SEC id a panel stock may file under, both sources (fix B12).
+def panel_ciks(firms: pd.DataFrame) -> list[int]:
+    found = pd.concat([firms[c] for c in ("cik", "cik_compustat", "cik_8k") if c in firms])
+    return sorted(int(c) for c in found.dropna().unique())
+
+
+# Each filing of the wanted forms since a date, from the bulk file.
+def index(ciks: list[int], wanted, since: str) -> tuple[list[dict], list[int]]:
     rows, missing = [], []
     with zipfile.ZipFile(OUT / "submissions.zip") as zf:
         names = set(zf.namelist())
@@ -247,7 +258,7 @@ def filings() -> int:
                 count = len(page.get("accessionNumber", []))
                 for i in range(count):
                     form, date = page["form"][i], page["filingDate"][i]
-                    if date < START or (form not in ANNUAL and form != "8-K"):
+                    if date < since or not wanted(form):
                         continue
                     rows.append(
                         {
@@ -262,6 +273,13 @@ def filings() -> int:
                             "document": page["primaryDocument"][i],
                         }
                     )
+    return rows, missing
+
+
+# Our firms' annual reports and 8-Ks since 2012, from the bulk file.
+def filings() -> int:
+    ciks = panel_ciks(pd.read_parquet(OUT / "cik_map.parquet"))
+    rows, missing = index(ciks, lambda form: form in ANNUAL or form == "8-K", START)
     table = pd.DataFrame(rows).drop_duplicates("accession")
     table["red_flag"] = table["items"].fillna("").map(lambda s: bool(FLAGS & set(s.split(","))))
     table.to_parquet(OUT / "filings.parquet", index=False)
@@ -274,13 +292,32 @@ def filings() -> int:
     return 0
 
 
-# Our universe's annual reports and red-flag 8-Ks, saved gzipped.
+# Exit, insider and offering forms since 2006, for exits and the clock.
+def forms() -> int:
+    ciks = panel_ciks(pd.read_parquet(OUT / "cik_map.parquet"))
+    wanted = EXITS | INSIDERS | OFFERINGS
+    rows, missing = index(ciks, lambda form: form in wanted, FORMS_START)
+    table = pd.DataFrame(rows).drop_duplicates("accession")
+    table["kind"] = table["form"].map(
+        lambda f: "exit" if f in EXITS else "insider" if f in INSIDERS else "offering"
+    )
+    table.to_parquet(OUT / "forms.parquet", index=False)
+    report = {"filers": len(ciks), "not_in_bulk": len(missing), "filings": len(table)}
+    report["by_kind"] = table["kind"].value_counts().to_dict()
+    report["by_form"] = table["form"].value_counts().to_dict()
+    report["first"], report["last"] = table["filing_date"].min(), table["filing_date"].max()
+    (OUT / "forms.json").write_text(json.dumps(report, indent=1))
+    print(json.dumps(report, indent=1))
+    return 0
+
+
+# Every panel firm's annual reports and red-flag 8-Ks, gzipped (A2).
 def docs() -> int:
     firms = pd.read_parquet(OUT / "cik_map.parquet")
-    universe = set(firms.loc[firms["universe"], "cik"].dropna().astype(int))
+    panel = set(panel_ciks(firms))
     table = pd.read_parquet(OUT / "filings.parquet")
     pick = table["form"].isin(ANNUAL) | ((table["form"] == "8-K") & table["red_flag"])
-    want = table[pick & table["cik"].isin(universe) & (table["document"] != "")].copy()
+    want = table[pick & table["cik"].isin(panel) & (table["document"] != "")].copy()
     # Annual reports first, strong red flags next, officer changes last.
     strong = want["items"].fillna("").map(lambda s: bool((FLAGS - {"5.02"}) & set(s.split(","))))
     want["order"] = 2
@@ -291,7 +328,7 @@ def docs() -> int:
     folder.mkdir(parents=True, exist_ok=True)
     have = {f"{p.parent.name}/{p.stem}" for p in folder.glob("*/*.gz")}
     todo = [r for r in want.itertuples() if f"{r.cik}/{r.accession}" not in have]
-    print(f"{len(want)} documents for {len(universe)} firms, {len(todo)} to fetch", flush=True)
+    print(f"{len(want)} documents for {len(panel)} firms, {len(todo)} to fetch", flush=True)
     saved = failed = 0
     with ThreadPoolExecutor(WORKERS) as pool, log.open("a", encoding="utf-8") as fh:
         for n, entry in enumerate(pool.map(grab, todo), 1):
@@ -357,7 +394,7 @@ def verify(deep: bool = False) -> int:
 if __name__ == "__main__":
     OUT = data_root(sys.argv) / "edgar"
     verbs = {"bulk": bulk, "facts": facts, "13f": thirteen_f, "map": link}
-    verbs |= {"filings": filings, "docs": docs, "verify": verify}
+    verbs |= {"filings": filings, "forms": forms, "docs": docs, "verify": verify}
     verb = sys.argv[1] if len(sys.argv) > 1 else ""
     if verb not in verbs:
         print(f"Usage: {USAGE}")

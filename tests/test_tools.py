@@ -37,6 +37,30 @@ def test_13f_links_cover_both_folders_and_nothing_else():
     ]
 
 
+# The forms index keeps exit, insider and offering forms, both ids.
+def test_forms_index_keeps_wanted_forms_from_both_sec_ids(tmp_path, monkeypatch):
+    edgar = tool("edgar")
+    monkeypatch.setattr(edgar, "OUT", tmp_path)
+    ids = {"cik": [1, None], "cik_compustat": [1, None], "cik_8k": [2, 3]}
+    pd.DataFrame(ids).to_parquet(tmp_path / "cik_map.parquet")
+    page = {
+        "accessionNumber": ["a1", "a2", "a3", "a4", "a5"],
+        "form": ["25-NSE", "4", "10-K", "424B5", "4/A"],
+        "filingDate": ["2026-09-01", "2005-12-30", "2020-03-01", "2019-05-01", "2007-01-02"],
+        "acceptanceDateTime": ["2026-09-01T16:05:00.000Z"] * 5,
+        "primaryDocument": ["x.htm"] * 5,
+    }
+    with zipfile.ZipFile(tmp_path / "submissions.zip", "w") as zf:
+        for cik in (1, 2):
+            doc = {"name": f"Firm {cik}", "filings": {"recent": page, "files": []}}
+            zf.writestr(f"CIK{cik:010d}.json", json.dumps(doc))
+    assert edgar.forms() == 0
+    table = pd.read_parquet(tmp_path / "forms.parquet")
+    assert set(table["form"]) == {"25-NSE", "424B5", "4/A"}
+    assert set(table["kind"]) == {"exit", "insider", "offering"}
+    assert json.loads((tmp_path / "forms.json").read_text())["not_in_bulk"] == 1
+
+
 # Only a real positive number is a price; 0.0 means it cannot be filled.
 @pytest.mark.parametrize(
     "price, ok",

@@ -19,6 +19,7 @@ dependencies = [
     "transformers==5.17.0",
     "python-pptx==1.0.2",
     "pypdf==6.19.0",
+    "exchange-calendars==4.13.2",
 ]
 
 [project.optional-dependencies]

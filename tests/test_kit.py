@@ -234,3 +234,14 @@ def test_doctor_names_the_openmp_fix(monkeypatch):
     monkeypatch.delitem(sys.modules, "lightgbm", raising=False)
     problem = kit.openmp()[0]
     assert "lightgbm cannot load" in problem[0] and problem[1]
+
+
+# A Windows CRLF checkout of a small text file still matches its kit entry.
+def test_crlf_text_matches_its_lf_kit_entry(tmp_path):
+    lf = b'{\n "a": 1\n}\n'
+    path = tmp_path / "x.json"
+    path.write_bytes(lf.replace(b"\n", b"\r\n"))
+    entry = {"size": len(lf), "sha256": kit.hashlib.sha256(lf).hexdigest()}
+    assert kit.matches(path, entry) and kit.matches(path, entry, deep=True)
+    path.write_bytes(b'{\r\n "a": 2\r\n}\r\n')
+    assert not kit.matches(path, entry, deep=True)
