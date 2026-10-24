@@ -1,5 +1,6 @@
 # NOAA's free climate and storm records, saved once with receipts.
 
+import base64
 import hashlib
 import json
 import re
@@ -11,11 +12,20 @@ from _shared import ROOT, check, data_root, fetch, receipts, stamp
 OUT = ROOT / "data" / "noaa"
 CLIMDIV = "https://www.ncei.noaa.gov/monitoring-content/data/us/climdiv/monthly/current/"
 STORMS = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
-USAGE = "uv run run.py --data noaa climdiv | storms | verify"
+USAGE = "uv run run.py --data noaa climdiv | storms | archive | verify"
+# Pre-2021 copies in the Internet Archive for the B23 check (protocol.md).
+CDX = "http://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,original,digest"
+CDX += "&matchType=prefix&to=20201231&filter=statuscode:200"
+STORM_COPIES = "www1.ncdc.noaa.gov/pub/data/swdi/stormevents/csvfiles/StormEvents_details"
+CLIMATE_COPIES = (
+    "ftp.ncdc.noaa.gov/pub/data/cirs/climdiv/climdiv-",
+    "www1.ncdc.noaa.gov/pub/data/cirs/climdiv/climdiv-",
+)
+STORM_YEARS, CLIMATE_KINDS = range(2000, 2021), ("tmpcst", "pcpnst")
 # State-level temperature, rainfall, drought, degree days and normals.
 KINDS = ("tmpcst", "pcpnst", "pdsist", "hddcst", "cddcst", "norm-tmpcst", "norm-pcpnst")
 PACE = 0.5
-FOLDERS = ("climdiv", "storms")
+FOLDERS = ("climdiv", "storms", "archive")
 
 
 # The file names a NOAA folder page links to, matching one pattern.
@@ -80,6 +90,68 @@ def storms() -> int:
     return save(STORMS, names + guides, OUT / "storms")
 
 
+# The archive's own content fingerprint: SHA-1 in base 32.
+def archive_digest(body: bytes) -> str:
+    return base64.b32encode(hashlib.sha1(body).digest()).decode()
+
+
+# The captures to fetch: storm years 2000-2020 and the two climate kinds.
+def copies() -> list[tuple[str, str, str, str]]:
+    found = {}
+    for prefix in (STORM_COPIES, *CLIMATE_COPIES):
+        rows = json.loads(fetch(f"{CDX}&url={prefix}", pace=PACE) or b"[]")[1:]
+        for when, original, digest in rows:
+            name = original.rsplit("/", 1)[-1]
+            year = re.search(r"_d(\d{4})_c\d{8}", name)
+            kind = re.match(r"climdiv-([a-z]+)-", name)
+            wanted = (year and int(year.group(1)) in STORM_YEARS) or (
+                kind and kind.group(1) in CLIMATE_KINDS
+            )
+            # One fetch per distinct file content, its newest capture.
+            if wanted and (digest not in found or when > found[digest][0]):
+                found[digest] = (when, original, name)
+    return sorted((w, o, n, d) for d, (w, o, n) in found.items())
+
+
+# Pre-2021 archived copies, each checked against the archive's digest.
+def archive() -> int:
+    folder = OUT / "archive"
+    folder.mkdir(parents=True, exist_ok=True)
+    book = folder / "receipts.json"
+    saved = receipts(book)
+    todo = copies()
+    print(f"{len(todo)} archived copies", flush=True)
+    failed = 0
+    for n, (when, original, name, digest) in enumerate(todo, 1):
+        key = f"{when}_{name}"
+        if key in saved and (folder / key).exists():
+            continue
+        url = f"http://web.archive.org/web/{when}id_/{original}"
+        try:
+            body = fetch(url, pace=PACE)
+        except Exception as err:  # noqa: BLE001
+            print(f"{key}: failed ({type(err).__name__})", flush=True)
+            failed += 1
+            continue
+        if archive_digest(body) != digest:
+            print(f"{key}: content does not match the archive's digest; not saved", flush=True)
+            failed += 1
+            continue
+        part = folder / f"{key}.part"
+        part.write_bytes(body)
+        part.replace(folder / key)
+        saved[key] = {"url": url, "captured": when, "bytes": len(body)}
+        saved[key] |= {
+            "archive_digest": archive_digest(body),
+            "sha256": hashlib.sha256(body).hexdigest(),
+        }
+        saved[key]["pulled_at"] = stamp()
+        book.write_text(json.dumps(saved, indent=1))
+        print(f"{n} of {len(todo)} {key} ({len(body) / 1e6:.1f} MB)", flush=True)
+    print(f"archive: {len(saved)} saved, {failed} failed")
+    return 1 if failed else 0
+
+
 # Every saved file against its receipt; prints and counts any mismatch.
 def verify() -> int:
     bad = 0
@@ -95,7 +167,7 @@ def verify() -> int:
 # One or more verbs per run; --into sends the output elsewhere.
 if __name__ == "__main__":
     OUT = data_root(sys.argv) / "noaa"
-    verbs = {"climdiv": climdiv, "storms": storms, "verify": verify}
+    verbs = {"climdiv": climdiv, "storms": storms, "archive": archive, "verify": verify}
     asked = sys.argv[1:]
     if not asked or any(v not in verbs for v in asked):
         print(f"Usage: {USAGE}")

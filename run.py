@@ -147,6 +147,8 @@ DATA_TOOLS = {
     "carbon": ("carbon_arc.py", CARBON_SDK, "carbon_arc"),
     "amazon": ("amazon.py", AMAZON_ENGINE, "amazon"),
     "finra": ("finra.py", None, "finra"),
+    "french": ("french.py", None, "benchmarks/french_archive"),
+    "fema": ("fema.py", None, "fema"),
     "openmp": ("openmp.py", None, "openmp"),
 }
 
