@@ -64,7 +64,9 @@ def captions():
         for span, line in zip(spans, lines):
             start, end = span[0][1], span[-1][2]
             part = next(
-                c for c in cues if c["key"] == key and c.get("from", -1e9) <= start < c.get("to", 1e9)
+                c
+                for c in cues
+                if c["key"] == key and c.get("from", -1e9) <= start < c.get("to", 1e9)
             )
             shift = part["at"] - part.get("from", 0)
             out.append([start + shift - 0.05, end + shift + 0.35, line])
@@ -72,12 +74,20 @@ def captions():
     # Each caption stops before the next begins.
     for a, b in zip(out, out[1:]):
         a[1] = min(a[1], b[0] - 0.05)
-    return "WEBVTT\n\n" + "\n\n".join(f"{stamp(s)} --> {stamp(e)}\n{line}" for s, e, line in out) + "\n"
+    return (
+        "WEBVTT\n\n"
+        + "\n\n".join(f"{stamp(s)} --> {stamp(e)}\n{line}" for s, e, line in out)
+        + "\n"
+    )
 
 
 # The brightest point of a frame in shares of its size: the first light.
 def brightest(image, size):
-    gray = subprocess.run([FF, "-v", "error", "-i", image, "-vf", "format=gray", "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+    gray = subprocess.run(
+        [FF, "-v", "error", "-i", image, "-vf", "format=gray", "-f", "rawvideo", "-"],
+        capture_output=True,
+        check=True,
+    ).stdout
     y, x = divmod(gray.index(max(gray)), size[0])
     return [round((x + 0.5) / size[0], 4), round((y + 0.5) / size[1], 4)]
 
@@ -95,10 +105,30 @@ def encode(source, sound, scale, crf, rate, level, out):
     ff(
         *["-i", source, "-i", sound, "-map", "0:v", "-map", "1:a", "-c:a", "copy"],
         *(["-vf", f"scale={scale}:flags=lanczos"] if scale else []),
-        *["-c:v", "libx264", "-preset", "slow", "-crf", crf, "-maxrate", rate, "-bufsize", f"{2 * int(rate[:-1])}M"],
+        *[
+            "-c:v",
+            "libx264",
+            "-preset",
+            "slow",
+            "-crf",
+            crf,
+            "-maxrate",
+            rate,
+            "-bufsize",
+            f"{2 * int(rate[:-1])}M",
+        ],
         *["-x264-params", f"{X264}:keyint=30:min-keyint=30"],
         *["-profile:v", "high", "-level", level, "-pix_fmt", "yuv420p"],
-        *["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"],
+        *[
+            "-colorspace",
+            "bt709",
+            "-color_primaries",
+            "bt709",
+            "-color_trc",
+            "bt709",
+            "-color_range",
+            "tv",
+        ],
         *["-movflags", "+faststart", "-shortest", out],
     )
     return stamped(out)
@@ -115,13 +145,19 @@ for shape, (suffix, size, level, lite) in SHAPES.items():
     # The near lossless render the master came from, at full size.
     source = ROOT / "out" / "ad" / f"master{suffix}.mp4"
     if not master.is_file() or not source.is_file():
-        sys.exit(f"web.py: {shape} needs {master.name} and {source.name}; pnpm media video makes them")
-    probe = subprocess.run([FF, "-hide_banner", "-i", source], capture_output=True, text=True).stderr
+        sys.exit(
+            f"web.py: {shape} needs {master.name} and {source.name}; pnpm media video makes them"
+        )
+    probe = subprocess.run(
+        [FF, "-hide_banner", "-i", source], capture_output=True, text=True
+    ).stderr
     if f"{size[0]}x{size[1]}" not in probe:
         sys.exit(f"web.py: {source.name} is a preview, not {size[0]}x{size[1]}; render it again")
     # The full copy at the master's quality, and a lite one for slow links.
     files[shape] = encode(source, master, None, "16", "12M", level, MEDIA / f"film-{shape}.mp4")
-    files[f"{shape}-lite"] = encode(source, master, lite, "22", "4M", "4.2", MEDIA / f"film-{shape}-lite.mp4")
+    files[f"{shape}-lite"] = encode(
+        source, master, lite, "22", "4M", "4.2", MEDIA / f"film-{shape}-lite.mp4"
+    )
     # The first frame, the film's first light, shown while it loads.
     ff("-i", master, "-frames:v", "1", "-q:v", "3", POSTERS / f"poster-{shape}.jpg")
     files["lights"][shape] = brightest(POSTERS / f"poster-{shape}.jpg", size)
@@ -129,5 +165,7 @@ for shape, (suffix, size, level, lite) in SHAPES.items():
 # The names the player asks for, and the captions it shows.
 MANIFEST.write_text(json.dumps(files, indent=1) + "\n")
 CAPTIONS.write_text(captions())
-for f in sorted(p for p in [*MEDIA.iterdir(), *POSTERS.iterdir(), MANIFEST, CAPTIONS] if p.is_file()):
+for f in sorted(
+    p for p in [*MEDIA.iterdir(), *POSTERS.iterdir(), MANIFEST, CAPTIONS] if p.is_file()
+):
     print(f"  {f.relative_to(ROOT)}  {f.stat().st_size / 1e6:.2f} MB")
