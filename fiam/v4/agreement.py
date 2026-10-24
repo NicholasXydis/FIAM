@@ -57,6 +57,15 @@ def coverage_sets() -> dict[str, set]:
     months = k.dropna().drop_duplicates(["permno", "month"])
     window = {(r.permno, r.month + i) for r in months.itertuples() for i in range(12)}
     sets["key_developments"] = window
+    # Insiders: a Form 4 public in the 12 months up to the month (step 3b).
+    path = CLEAN / "sec_insiders.parquet"
+    if path.exists():
+        ins = pd.read_parquet(path, columns=["permno", "first_close"]).dropna()
+        ins["month"] = pd.to_datetime(ins["first_close"]).dt.to_period("M")
+        months = ins.drop_duplicates(["permno", "month"])
+        sets["sec_insiders"] = {
+            (r.permno, r.month + i) for r in months.itertuples() for i in range(12)
+        }
     return sets
 
 
@@ -192,11 +201,17 @@ def agreement() -> dict:
         sub = lk[lk["kind"] == kind]
         scores[kind] = sub["score"].value_counts(dropna=False).sort_index().to_dict()
     report["link_scores"] = {k: {str(s): int(n) for s, n in v.items()} for k, v in scores.items()}
-    report["pending"] = {
-        "ca0065s": "not orderable (2026-10-23)",
-        "13f": "step 6",
-        "insiders": "step 3b",
-    }
+    card = DATA / "v4" / "cards" / "sec_insiders.json"
+    if card.exists():
+        rules = json.loads(card.read_text())["rules"]
+        linked = rules["lines_on_panel_firms"] - rules["rows_without_permno"]
+        share = linked / max(1, rules["lines_on_panel_firms"])
+        report["sec_insider_issuer_cik_to_permno"] = {
+            "lines_on_panel_firms": rules["lines_on_panel_firms"],
+            "linked_on_filing_date": round(share, 4),
+            "with_acceptance_time": rules["with_acceptance_time"],
+        }
+    report["pending"] = {"ca0065s": "not orderable (2026-10-23)", "13f": "step 6"}
     return report
 
 

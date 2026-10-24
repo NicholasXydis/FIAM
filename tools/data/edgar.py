@@ -22,9 +22,13 @@ BULK = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
 HOME_ONLY = {"submissions.zip"}
 FACTS = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 F13 = "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets"
+INSIDER_PAGE = "https://www.sec.gov/data-research/sec-markets-data/insider-transactions-data-sets"
+# SEC files recent quarters under another folder, so any folder counts.
+INSIDER_FILES = r"/files/[^\"]+/insider-transactions-data-sets/\d{4}q\d_form345\.zip"
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data"
 USAGE = (
-    "uv run run.py --data edgar bulk | facts | 13f | map | filings | forms | docs | verify [--deep]"
+    "uv run run.py --data edgar bulk | facts | 13f | insiders | map | filings | forms | docs"
+    " | verify [--deep]"
 )
 EIGHT_K = "8k_20150101_20260831_identified.parquet"
 # Annual reports for Lazy Prices, and the 8-K items that are red flags.
@@ -152,15 +156,14 @@ def facts() -> int:
     return download(FACTS, "companyfacts.zip")
 
 
-# The 13F zip links on the SEC page, in whichever folder it files them.
-def listed(page: str) -> list[str]:
-    return sorted(set(re.findall(r'href="(/files/[^"]+_form13f\.zip)"', page)))
+# The data-set zip links on an SEC page matching one pattern.
+def listed(page: str, pattern: str = r"/files/[^\"]+_form13f\.zip") -> list[str]:
+    return sorted(set(re.findall(rf'href="({pattern})"', page)))
 
 
-# Every 13F data set the SEC lists, each zip checked and receipted.
-def thirteen_f() -> int:
-    links = listed(fetch(F13).decode("utf-8", "replace"))
-    folder = OUT / "13f"
+# Every data set an SEC page lists, each zip checked and receipted.
+def data_sets(page_url: str, pattern: str, folder: Path) -> int:
+    links = listed(fetch(page_url).decode("utf-8", "replace"), pattern)
     folder.mkdir(parents=True, exist_ok=True)
     book = folder / "receipts.json"
     saved = receipts(book)
@@ -184,6 +187,16 @@ def thirteen_f() -> int:
     missing = [link for link in links if link.rsplit("/", 1)[1] not in saved]
     print(f"Done: {len(saved)} of {len(links)} saved, {len(missing)} missing, in {folder}")
     return 1 if missing else 0
+
+
+# Every 13F data set the SEC lists.
+def thirteen_f() -> int:
+    return data_sets(F13, r"/files/[^\"]+_form13f\.zip", OUT / "13f")
+
+
+# The Forms 3, 4 and 5 data sets from 2006q1 (§11, step 3b).
+def insiders() -> int:
+    return data_sets(INSIDER_PAGE, INSIDER_FILES, OUT / "insiders")
 
 
 # Each panel stock's SEC id, from Compustat or else the 8-K file.
@@ -396,7 +409,7 @@ def verify(deep: bool = False) -> int:
 # One verb per run; --into sends the output elsewhere.
 if __name__ == "__main__":
     OUT = data_root(sys.argv) / "edgar"
-    verbs = {"bulk": bulk, "facts": facts, "13f": thirteen_f, "map": link}
+    verbs = {"bulk": bulk, "facts": facts, "13f": thirteen_f, "insiders": insiders, "map": link}
     verbs |= {"filings": filings, "forms": forms, "docs": docs, "verify": verify}
     verb = sys.argv[1] if len(sys.argv) > 1 else ""
     if verb not in verbs:

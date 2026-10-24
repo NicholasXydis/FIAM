@@ -24,6 +24,24 @@ EXTRACTS = DATA / "v4" / "extracts"
 SEAL = pd.Timestamp("2020-12-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
 # CRSP's own days before 2014; the organisers' dsf days from 2014 on.
 DSF_FROM = pd.Timestamp("2014-01-01")
+# The insider data sets' kept columns; names and addresses never read.
+INSIDER_FORMS = ("4", "4/A")
+INSIDER_SUB = ["ACCESSION_NUMBER", "FILING_DATE", "PERIOD_OF_REPORT", "DOCUMENT_TYPE", "ISSUERCIK"]
+INSIDER_OWNER = ["ACCESSION_NUMBER", "RPTOWNERCIK", "RPTOWNER_RELATIONSHIP", "RPTOWNER_TITLE"]
+INSIDER_TRANS = [
+    "ACCESSION_NUMBER", "NONDERIV_TRANS_SK", "SECURITY_TITLE", "TRANS_DATE", "TRANS_CODE",
+    "EQUITY_SWAP_INVOLVED", "TRANS_SHARES", "TRANS_PRICEPERSHARE", "TRANS_ACQUIRED_DISP_CD",
+    "SHRS_OWND_FOLWNG_TRANS", "DIRECT_INDIRECT_OWNERSHIP",
+]  # fmt: skip
+INSIDER_NAMES = {
+    "ACCESSION_NUMBER": "accession", "NONDERIV_TRANS_SK": "trans_sk", "SECURITY_TITLE": "security",
+    "TRANS_DATE": "trans_date", "TRANS_CODE": "trans_code", "EQUITY_SWAP_INVOLVED": "equity_swap",
+    "TRANS_SHARES": "shares", "TRANS_PRICEPERSHARE": "price", "TRANS_ACQUIRED_DISP_CD": "acq_disp",
+    "SHRS_OWND_FOLWNG_TRANS": "shares_after", "DIRECT_INDIRECT_OWNERSHIP": "direct",
+    "FILING_DATE": "filing_date", "PERIOD_OF_REPORT": "period_of_report", "DOCUMENT_TYPE": "form",
+    "ISSUERCIK": "issuer_cik", "RPTOWNERCIK": "owner_cik", "RPTOWNER_RELATIONSHIP": "relationship",
+    "RPTOWNER_TITLE": "title",
+}  # fmt: skip
 # FINRA's files hold exchange-listed short interest from June 2021.
 FINRA_FROM = pd.Timestamp("2021-06-01")
 
@@ -190,7 +208,22 @@ REGISTRY = {
                 "2006-01 (forms) and 2012-01 (annual reports and 8-Ks)",
                 "the acceptance second, read as the Eastern wall clock (A6)",
                 "filings are never revised; amendments are new filings",
-                "every panel firm with a CIK (6,266 of 6,561), dead firms included",
+                "every panel firm with a CIK (6,256 of 6,561), dead firms included",
+            ),
+        ),
+        Source(
+            "sec_insiders",
+            ("edgar/insiders/*_form345.zip", "edgar/forms.parquet"),
+            # One filer can hold several listed classes: a line per stock.
+            ("accession", "trans_sk", "permno"),
+            "permno",
+            "edgar",
+            answers=four(
+                "2006q1, SEC's Forms 3, 4 and 5 data sets (Forms 4 and 4/A kept)",
+                "the filing's acceptance second (A6), else the end of its filing day; "
+                "never the trade date (PDF p16)",
+                "as filed; a 4/A is its own row from its own date",
+                "every Form 4 on a panel firm, dead firms included, linked by dated CIK",
             ),
         ),
         Source(
@@ -325,7 +358,6 @@ LATER = {
     "taq_daily": 7,
     "options_daily": 7,
     "sec_13f": 6,
-    "sec_insiders": 6,
     "sec_facts": 6,
     "noaa": 6,
     "fema": 6,
@@ -527,6 +559,63 @@ def load_edgar(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return stamped(f, public, cal)
 
 
+# SEC Forms 4 and 4/A: open-market lines, timed by acceptance (§6.3).
+def load_sec_insiders(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    forms = pd.read_parquet(
+        data / "edgar" / "forms.parquet", columns=["accession", "form", "accepted"]
+    )
+    forms = forms[forms["form"].isin(INSIDER_FORMS)].drop_duplicates("accession")
+    accepted = forms.set_index("accession")["accepted"]
+    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    ours = set(
+        pd.to_numeric(lk.loc[lk["kind"] == "cik", "value"], errors="coerce")
+        .dropna()
+        .astype("int64")
+    )
+    parts, seen = [], {"form4_filings_all_issuers": 0, "lines_on_panel_firms": 0}
+    for path in sorted((data / "edgar" / "insiders").glob("*_form345.zip")):
+        with zipfile.ZipFile(path) as zf:
+            sub = pd.read_csv(zf.open("SUBMISSION.tsv"), sep="\t", dtype=str, usecols=INSIDER_SUB)
+            sub = sub[sub["DOCUMENT_TYPE"].isin(INSIDER_FORMS)]
+            seen["form4_filings_all_issuers"] += len(sub)
+            sub = sub[pd.to_numeric(sub["ISSUERCIK"], errors="coerce").isin(ours)]
+            owners = pd.read_csv(
+                zf.open("REPORTINGOWNER.tsv"), sep="\t", dtype=str, usecols=INSIDER_OWNER
+            )
+            trans = pd.read_csv(
+                zf.open("NONDERIV_TRANS.tsv"), sep="\t", dtype=str, usecols=INSIDER_TRANS
+            )
+        trans = trans[trans["ACCESSION_NUMBER"].isin(sub["ACCESSION_NUMBER"])]
+        seen["lines_on_panel_firms"] += len(trans)
+        # Joint filings: the first owner stands for the line, the count kept.
+        owners = owners[owners["ACCESSION_NUMBER"].isin(sub["ACCESSION_NUMBER"])]
+        first = owners.drop_duplicates("ACCESSION_NUMBER")
+        first = first.assign(
+            n_owners=first["ACCESSION_NUMBER"].map(owners["ACCESSION_NUMBER"].value_counts())
+        )
+        parts.append(
+            trans.merge(sub, on="ACCESSION_NUMBER").merge(first, on="ACCESSION_NUMBER", how="left")
+        )
+    t = pd.concat(parts, ignore_index=True).rename(columns=INSIDER_NAMES)
+    log |= seen
+    before = len(t)
+    t = t.drop_duplicates(["accession", "trans_sk"])
+    log["repeated_lines_dropped"] = before - len(t)
+    # Typed dates outside 1990-2030 (a year "0008") are missing, counted.
+    for col in ("filing_date", "trans_date", "period_of_report"):
+        when = pd.to_datetime(t[col], format="%d-%b-%Y", errors="coerce")
+        bad = when.notna() & ~when.dt.year.between(1990, 2030)
+        log[f"{col}_out_of_range"] = int(bad.sum())
+        t[col] = when.where(~bad).astype("datetime64[ns]")
+    for col in ("shares", "price", "shares_after"):
+        t[col] = pd.to_numeric(t[col], errors="coerce")
+    t["cik"] = pd.to_numeric(t["issuer_cik"], errors="coerce").astype("int64")
+    t = by_cik(t.drop(columns=["issuer_cik"]), lk, "filing_date", log)
+    stamp_at = t["accession"].map(accepted)
+    log["with_acceptance_time"] = round(float(stamp_at.notna().mean()), 4)
+    return stamped(t, clock.insider_available(stamp_at, t["filing_date"]), cal)
+
+
 # Rows keyed by SEC id spread to every PERMNO that id held on the date.
 def by_cik(frame: pd.DataFrame, lk: pd.DataFrame, date: str, log: dict) -> pd.DataFrame:
     ids = lk.loc[lk["kind"] == "cik", ["permno", "value", "valid_from", "valid_to"]]
@@ -692,6 +781,7 @@ LOADERS = {
     "crsp_market_daily": load_market,
     "short_interest": load_short_interest,
     "edgar_filings": load_edgar,
+    "sec_insiders": load_sec_insiders,
     "key_developments": load_key_developments,
     "restatements": load_restatements,
     "vix": load_vix,
