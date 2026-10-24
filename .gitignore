@@ -43,6 +43,8 @@ htmlcov/
 /data/*
 !/data/benchmarks/
 !/data/edgar_cache.zip
+# Archived pre-2021 French copies for the B23 check: kit only, never git.
+/data/benchmarks/french_archive/
 
 # Cached LLM & encoder output
 cache/

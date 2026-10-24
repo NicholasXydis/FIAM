@@ -245,3 +245,12 @@ def test_crlf_text_matches_its_lf_kit_entry(tmp_path):
     assert kit.matches(path, entry) and kit.matches(path, entry, deep=True)
     path.write_bytes(b'{\r\n "a": 2\r\n}\r\n')
     assert not kit.matches(path, entry, deep=True)
+
+
+# A data folder no part holds is named, so export never drops it quietly.
+def test_left_out_names_data_no_part_holds(tmp_path):
+    (tmp_path / "data" / "kept").mkdir(parents=True)
+    (tmp_path / "data" / "kept" / "a.csv").write_text("1")
+    (tmp_path / "data" / "new").mkdir()
+    (tmp_path / "data" / "new" / "b.csv").write_text("2")
+    assert kit.left_out([tmp_path / "data" / "kept"], tmp_path) == {"data/new": 1}

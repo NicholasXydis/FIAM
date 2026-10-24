@@ -54,6 +54,7 @@ DATA = {
     "carbon_arc": "data-carbon-arc",
     "amazon": "data-amazon",
     "finra": "data-finra",
+    "fema": "data-fema",
 }
 # Installers and caches travel as plain files, needed before setup.
 EXTRAS = ("installers", "caches")
@@ -195,6 +196,7 @@ def parts() -> dict[str, list[tuple[Path, str]]]:
         "data-carbon-arc": here("data/carbon_arc"),
         "data-amazon": here("data/amazon"),
         "data-finra": here("data/finra"),
+        "data-fema": here("data/fema"),
         "data-other": here(
             "data/benchmarks", "data/edgar_cache.zip", "data/INVENTORY.json", "data/arcana"
         ),
@@ -394,10 +396,35 @@ def budget(chosen: dict, skip: set[str], folder: Path | None) -> float:
     return (total + more) / 1e9
 
 
+# Files under data/ in no part's folder, by folder, so none is missed.
+def left_out(sources: list[Path], root: Path = ROOT) -> dict[str, int]:
+    held = {s.relative_to(root).as_posix() for s in sources if s.is_relative_to(root)}
+    # Only a kit whose parts hold data/ is checked (not a test's tiny kit).
+    if not any(h == "data" or h.startswith("data/") for h in held):
+        return {}
+    missing: dict[str, int] = {}
+    for path in (root / "data").rglob("*") if (root / "data").is_dir() else []:
+        name = path.relative_to(root).as_posix()
+        if not path.is_file() or name.startswith(SKIP) or name.endswith(JUNK):
+            continue
+        if path.name.startswith("._") or "__pycache__" in name:
+            continue
+        # Covered when the file or any folder above it is a part's source.
+        pieces = name.split("/")
+        if any("/".join(pieces[:k]) in held for k in range(1, len(pieces) + 1)):
+            continue
+        top = "/".join(pieces[:2])
+        missing[top] = missing.get(top, 0) + 1
+    return missing
+
+
 # Writes the kit into folder, rewriting only the parts that changed.
 def export(folder: Path, dry: bool = False, skip: set[str] = frozenset()) -> int:
     chosen = plan()
     budget(chosen, set(skip), folder)
+    sources = [source for items in parts().values() for source, _ in items]
+    for top, count in sorted(left_out(sources).items()):
+        print(f"Not in the kit: {top} ({count:,} files). Fix: add a part in fiam/v4/kit.py")
     if dry:
         return 0
     folder.mkdir(parents=True, exist_ok=True)
