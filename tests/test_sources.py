@@ -64,7 +64,15 @@ def test_bans_and_restrictions_refuse_reads(clean):
 
 # Sources the backtest may never touch are refused by name.
 @pytest.mark.parametrize(
-    "name", ["organisers_8k", "fiam_v1_wrds", "features_monthly_adjfct", "ibes", "carbon_arc"]
+    "name",
+    [
+        "organisers_8k",
+        "fiam_v1_wrds",
+        "features_monthly_adjfct",
+        "ibes",
+        "carbon_arc",
+        "short_interest_lending",
+    ],
 )
 def test_never_sources_are_refused(clean, name):
     with pytest.raises(sources.NotForBacktest):
@@ -104,3 +112,51 @@ def test_real_clean_tables_hold_no_banned_field():
         path = sources.DATA / "v4" / "clean" / (name if name == "crsp_daily" else f"{name}.parquet")
         if path.exists():
             assert not set(source.banned) & set(ds.dataset(path).schema.names), name
+
+
+# Short interest is one exchange series that switches once (A10).
+def test_real_short_interest_is_one_exchange_series():
+    path = sources.DATA / "v4" / "clean" / "short_interest.parquet"
+    if not path.exists():
+        pytest.skip("no clean short interest on this machine")
+    s = pd.read_parquet(path, columns=["settlement", "source", "permno"])
+    assert set(s["source"]) == {"wrds_legacy", "finra"}
+    assert s.loc[s["source"] == "wrds_legacy", "settlement"].max() < sources.FINRA_FROM
+    assert s.loc[s["source"] == "finra", "settlement"].min() >= sources.FINRA_FROM
+    assert not s.duplicated(["permno", "settlement"]).any()
+
+
+# Fields banned everywhere (§1.2) appear in no clean table (L4).
+def test_real_clean_tables_hold_no_globally_banned_field():
+    import pyarrow.dataset as ds
+
+    always = {"adjfct", "shortintadj", "splitadjdate", "dldte", "dlrsn"}
+    always |= {"lastmodifieddate", "mostimportantdateutc", "speffectivedate"}
+    for name in sources.REGISTRY:
+        path = sources.DATA / "v4" / "clean" / (name if name == "crsp_daily" else f"{name}.parquet")
+        if path.exists():
+            assert not always & set(ds.dataset(path).schema.names), name
+
+
+# Blind reads of the link table show no period ending after the seal (M4).
+def test_real_links_hide_ends_after_the_seal():
+    path = sources.DATA / "v4" / "clean" / "links.parquet"
+    if not path.exists():
+        pytest.skip("no clean links on this machine")
+    got = sources.read("links", ["valid_to"])
+    assert not (pd.to_datetime(got["valid_to"]) > pd.Timestamp("2020-12-31 23:59:59")).any()
+
+
+# Only declared labels carry next month's return (M4, B19), on 2019.
+def test_real_panel_has_no_hidden_next_month_return():
+    path = sources.DATA / "v4" / "clean" / "panel.parquet"
+    if not path.exists():
+        pytest.skip("no clean panel on this machine")
+    p = pd.read_parquet(path, filters=[("eom", ">=", pd.Timestamp("2019-01-31"))])
+    p = p[p["eom"] <= "2019-12-31"]
+    label = p["ret_exc_lead1m"]
+    labels = set(sources.REGISTRY["panel"].labels)
+    numeric = p.select_dtypes("number").drop(columns=[*labels, "permno"], errors="ignore")
+    numeric = numeric.loc[:, numeric.std() > 0]
+    close = [c for c in numeric if abs(numeric[c].corr(label)) > 0.9]
+    assert close == [], close

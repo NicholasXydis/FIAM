@@ -35,6 +35,8 @@ START = "2012-01-01"
 EXITS = {"25", "25-NSE", "15-12B", "15-12G", "15-15D"}
 INSIDERS = {"4", "4/A"}
 OFFERINGS = {"424B1", "424B2", "424B3", "424B4", "424B5", "S-1", "S-3"}
+# A new filer taking over listed shares, the CIK decisions' dates (L6).
+SUCCESSION = {"8-K12B", "8-K12G3", "8-A12B"}
 FORMS_START = "2006-01-01"
 # The gap between requests across threads; SEC allows ten a second.
 PACE, WORKERS = 0.2, 4
@@ -203,7 +205,8 @@ def link() -> int:
             name=("company_name", "last"),
         )
     )
-    comp = pd.read_parquet(bundle() / "wrds" / "compustat_quarterly.parquet")
+    # The v4 extract, never the v1 bundle's copy (§1.2; same values, H4).
+    comp = pd.read_parquet(ROOT / "data" / "v4" / "extracts" / "compustat_quarterly.parquet")
     comp = comp[["gvkey", "datadate", "cik"]].dropna(subset=["cik"]).sort_values("datadate")
     by_gvkey = comp.groupby("gvkey")["cik"].last()
     filed = pd.read_parquet(organisers() / EIGHT_K, columns=["permno", "cik"]).dropna()
@@ -295,12 +298,12 @@ def filings() -> int:
 # Exit, insider and offering forms since 2006, for exits and the clock.
 def forms() -> int:
     ciks = panel_ciks(pd.read_parquet(OUT / "cik_map.parquet"))
-    wanted = EXITS | INSIDERS | OFFERINGS
+    wanted = EXITS | INSIDERS | OFFERINGS | SUCCESSION
     rows, missing = index(ciks, lambda form: form in wanted, FORMS_START)
     table = pd.DataFrame(rows).drop_duplicates("accession")
-    table["kind"] = table["form"].map(
-        lambda f: "exit" if f in EXITS else "insider" if f in INSIDERS else "offering"
-    )
+    groups = {"exit": EXITS, "insider": INSIDERS, "succession": SUCCESSION, "offering": OFFERINGS}
+    kinds = {form: kind for kind, members in groups.items() for form in members}
+    table["kind"] = table["form"].map(kinds)
     table.to_parquet(OUT / "forms.parquet", index=False)
     report = {"filers": len(ciks), "not_in_bulk": len(missing), "filings": len(table)}
     report["by_kind"] = table["kind"].value_counts().to_dict()

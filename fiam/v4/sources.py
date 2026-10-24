@@ -24,6 +24,8 @@ EXTRACTS = DATA / "v4" / "extracts"
 SEAL = pd.Timestamp("2020-12-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
 # CRSP's own days before 2014; the organisers' dsf days from 2014 on.
 DSF_FROM = pd.Timestamp("2014-01-01")
+# FINRA's files hold exchange-listed short interest from June 2021.
+FINRA_FROM = pd.Timestamp("2021-06-01")
 
 
 # A read that asks for a banned or restricted field.
@@ -162,18 +164,20 @@ REGISTRY = {
         ),
         Source(
             "short_interest",
-            ("v4/extracts/short_interest.parquet",),
+            ("v4/extracts/short_interest_legacy.parquet", "finra/short_interest.parquet"),
             ("permno", "settlement"),
             "permno",
             "short_interest",
             banned=("shortintadj", "splitadjdate"),
             answers=four(
-                "2006-07 (the current series only, A10)",
+                "2000-01 (exchange short interest only, A10)",
                 "8 trading days after settlement",
-                "exchange reports as first published; no adjusted series (M7)",
-                "Compustat's short interest file; ends 2025-12, FINRA for 2026. Control "
-                "(approved 2026-10-23): missing months earned 1.2% a month less (t 2.85), "
-                "so a missing report is neutral, the month's median, never a signal",
+                "exchange counts, never split-adjusted (M7); before 2021-06 WRDS holds "
+                "today's corrected values (stated); a FINRA row corrected later takes the "
+                "stock's last uncorrected value from up to 2 months before (1B)",
+                "WRDS legacy file to 2021-05, FINRA's own files from 2021-06-15 (they "
+                "agree on 99.96% of 2021-06..2024-12 pairs). Survivorship gap t 0.20; a "
+                "missing report is neutral, the month's median, never a signal",
             ),
         ),
         Source(
@@ -210,6 +214,17 @@ REGISTRY = {
             ("restatement_notification_key", "permno"),
             "permno",
             "file_date",
+            # Restated amounts may be revised later; dates only (L7).
+            banned=(
+                "initial_cum_net_income_usd",
+                "restated_cum_net_income_usd",
+                "change_cum_net_income_usd",
+                "initial_cum_tot_sto_equ_usd",
+                "restated_cum_tot_sto_equ_usd",
+                "change_cum_tot_sto_equ_usd",
+                "res_adverse",
+                "res_improves",
+            ),
             answers=four(
                 "2000",
                 "the end of the filing day",
@@ -222,18 +237,23 @@ REGISTRY = {
             ("v4/extracts/vix_daily.parquet",),
             ("date",),
             "none",
-            "market",
-            answers=four("2000-01-03", "that day's close", "CBOE series", "the index"),
+            "end_of_day",
+            answers=four(
+                "2000-01-03",
+                "the end of that day, so the next close (its close is 4:15 pm)",
+                "CBOE series",
+                "the index",
+            ),
         ),
         Source(
             "french",
             ("benchmarks/ff5_daily.zip", "benchmarks/ff_momentum_daily.zip"),
             ("date",),
             "none",
-            "market",
+            "monthly_release",
             answers=four(
                 "1963-07 (five factors), 1926 (momentum)",
-                "that day's close",
+                "the end of the next month (French posts each month weeks later)",
                 "current vintage; checked against an archived pre-2021 copy (B23)",
                 "the US market",
             ),
@@ -245,7 +265,12 @@ REGISTRY = {
             "none",
             "benchmark",
             use="benchmark",
-            answers=four("1934-01", "benchmark only", "FRED series", "n/a"),
+            answers=four(
+                "1934-01",
+                "the end of the first business day after the month; benchmark only",
+                "FRED series",
+                "n/a",
+            ),
         ),
         Source(
             "earnings_calendar",
@@ -274,8 +299,10 @@ REGISTRY = {
             answers=four(
                 "2000 (CRSP) and 2026 (SEC forms)",
                 "CRSP: once the delisting return is known; 2026: the last form used",
-                "CRSP's record; SEC filings never change",
-                "every CRSP delisting; every 2026 stock whose daily rows stop",
+                "CRSP's record, its delisting return booked at the exit date by CRSP's "
+                "convention even when liquidation pays later (L1); SEC filings never change",
+                "every CRSP delisting; every stock whose daily rows stop in 2026, or on "
+                "2025-12-31 with no CRSP exit (2B)",
             ),
         ),
         Source(
@@ -302,7 +329,6 @@ LATER = {
     "sec_facts": 6,
     "noaa": 6,
     "fema": 6,
-    "finra": 3,
     "ca0065s": 3,
     "amazon": 6,
     "carbon_arc": 9,
@@ -314,6 +340,7 @@ NEVER = {
     "features_monthly_adjfct": "encodes future splits (A4)",
     "ibes": "today's vintage, history rewritten (B27); the live desk only",
     "carbon_arc": "current vintage (B29); live only, CA0065S volume excepted (B30)",
+    "short_interest_lending": "stock-lending demand, not exchange short interest (A10)",
 }
 
 
@@ -439,21 +466,49 @@ def load_market(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return stamped(m, None, cal, market_day=m["date"])
 
 
-# Short interest by settlement, public 8 sessions later, on PERMNO.
+# Exchange short interest on PERMNO: WRDS legacy, then FINRA (A10).
 def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    s = pd.read_parquet(EXTRACTS / "short_interest.parquet")
+    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    s = pd.read_parquet(EXTRACTS / "short_interest_legacy.parquet")
     s = s.drop(columns=["shortintadj", "splitadjdate"]).rename(columns={"datadate": "settlement"})
     s["settlement"] = pd.to_datetime(s["settlement"]).astype("datetime64[ns]")
+    s = s[s["settlement"] < FINRA_FROM]
     s["gvkey_iid"] = s["gvkey"].astype(str) + ":" + s["iid"].astype(str)
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
     owner = link_table.permno_at(lk, "gvkey_iid", s["gvkey_iid"], s["settlement"])
     s["permno"] = owner.to_numpy()
-    log["unlinked"] = int(s["permno"].isna().sum())
+    log["legacy_unlinked"] = int(s["permno"].isna().sum())
     s = s.dropna(subset=["permno"]).astype({"permno": "int64"})
     wrds = pd.to_datetime(s["available_date"], errors="coerce")
     ours = clock.short_interest_available(s["settlement"], cal)
     log["ours_later_than_wrds_days"] = int((ours.dt.tz_localize(None).dt.normalize() > wrds).sum())
-    return stamped(s.drop(columns=["available_date"]), ours, cal)
+    s = s.drop(columns=["available_date"]).assign(source="wrds_legacy")
+    # FINRA from its first exchange-listed date; revised rows left out.
+    f = pd.read_parquet(data / "finra" / "short_interest.parquet")
+    f = f[f["settlement"] >= FINRA_FROM].copy()
+    f["settlement"] = pd.to_datetime(f["settlement"]).astype("datetime64[ns]")
+    f["permno"] = link_table.permno_by_symbol(lk, f["symbol"], f["settlement"]).to_numpy()
+    log["finra_unmapped"] = int(f["permno"].isna().sum())
+    f = f.dropna(subset=["permno"]).astype({"permno": "int64"})
+    # Two symbols on one stock and date cannot be told apart: both out.
+    twice = f.duplicated(["permno", "settlement"], keep=False)
+    log["finra_shared_left_out"] = int(twice.sum())
+    f = f[~twice].rename(columns={"short": "shortint"})
+    f = f[["settlement", "permno", "symbol", "shortint", "revision"]].assign(source="finra")
+    both = pd.concat([s.assign(revision=""), f], ignore_index=True)
+    both = both.sort_values(["permno", "settlement"], ignore_index=True)
+    # A row FINRA later corrected takes the stock's last uncorrected value
+    # from up to 2 months before, published then (approved 2026-10-23, 1B).
+    fixed = both["revision"].eq("R")
+    prior = both["shortint"].where(~fixed).groupby(both["permno"]).ffill()
+    when = both["settlement"].where(~fixed).groupby(both["permno"]).ffill()
+    near = (both["settlement"] - when) <= pd.Timedelta(days=62)
+    both.loc[fixed & near, "shortint"] = prior[fixed & near]
+    both["carried_from"] = when.where(fixed & near)
+    log["finra_corrected_rows_given_earlier_value"] = int((fixed & near).sum())
+    log["finra_corrected_rows_left_missing"] = int((fixed & ~near).sum())
+    both = both[~fixed | near].drop(columns=["revision"])
+    ours = clock.short_interest_available(both["settlement"], cal)
+    return stamped(both, ours, cal)
 
 
 # Filings and forms on the acceptance clock, per filing and PERMNO.
@@ -515,8 +570,9 @@ def load_key_developments(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame
 # Restatements from the end of their filing day, on PERMNO by SEC id.
 def load_restatements(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     r = pd.read_parquet(EXTRACTS / "restatements.parquet")
+    banned = set(REGISTRY["restatements"].banned)
     keep = [c for c in r.columns if not c.startswith(("http_", "ftp_")) and c != "disclosure_text"]
-    r = r[keep].copy()
+    r = r[[c for c in keep if c not in banned]].copy()
     r["file_date"] = pd.to_datetime(r["file_date"], errors="coerce").astype("datetime64[ns]")
     r["cik"] = pd.to_numeric(r["company_fkey"], errors="coerce")
     r = r.dropna(subset=["cik", "file_date"])
@@ -532,7 +588,8 @@ def load_vix(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     before = len(v)
     v = v.drop_duplicates("date", keep="first")
     log["duplicate_dates_dropped"] = before - len(v)
-    return stamped(v, None, cal, market_day=v["date"])
+    # VIX settles at 4:15 pm, after the stock close, so the next close.
+    return stamped(v, clock.end_of_day(v["date"]), cal)
 
 
 # French's daily factors, percent to decimals, at each day's close.
@@ -543,15 +600,10 @@ def load_french(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     f.columns = [c.strip().lower().replace("-", "") for c in f.columns]
     f = f.rename(columns={"mom": "umd"})
     log["from"], log["to"] = str(f["date"].min().date()), str(f["date"].max().date())
-    on = f["date"] >= cal.index[0]
-    f["first_close"] = pd.NaT
-    f.loc[on, "first_close"] = clock.market_session(f.loc[on, "date"], cal).to_numpy()
-    log["days_before_the_calendar"] = int((~on).sum())
-    closes = cal.reindex(pd.DatetimeIndex(f["first_close"]))
-    f["available_at"] = pd.Series(closes.array, index=f.index)
-    eod = clock.end_of_day(f["date"]).dt.tz_convert("UTC")
-    f["available_at"] = f["available_at"].fillna(eod)
-    return f
+    # French posts each month's days weeks later: public at next month end.
+    release = f["date"] + pd.offsets.MonthEnd(0) + pd.offsets.MonthEnd(1)
+    log["days_before_the_calendar"] = int((f["date"] < cal.index[0]).sum())
+    return stamped(f, clock.end_of_day(release), cal)
 
 
 # One French CSV's daily table, percent turned to decimals.
@@ -578,7 +630,8 @@ def load_tb3ms(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     t = t.rename(columns={"observation_date": "month", "TB3MS": "tb3ms"})
     t["month"] = pd.to_datetime(t["month"]).astype("datetime64[ns]")
     t["tb3ms"] = pd.to_numeric(t["tb3ms"], errors="coerce") / 100
-    end = t["month"] + pd.offsets.MonthEnd(0)
+    # FRED posts a month's average the next business day.
+    end = t["month"] + pd.offsets.MonthEnd(0) + pd.offsets.BDay(1)
     return t.assign(available_at=clock.end_of_day(end).dt.tz_convert("UTC"), first_close=pd.NaT)
 
 
@@ -602,9 +655,12 @@ def load_earnings_calendar(data: Path, cal: pd.Series, log: dict) -> pd.DataFram
         lk.loc[lk["kind"] == "gvkey", ["permno", "value", "valid_from", "valid_to"]]
     )
     both = projected.merge(gv.rename(columns={"value": "gvkey"}), on="gvkey")
-    when = both["projected"].fillna(both["known_from"]).astype("datetime64[ns]")
+    # The link on the day the projection is made, never the projected day.
+    when = both["known_from"].astype("datetime64[ns]")
     live = (when >= both["valid_from"]) & (both["valid_to"].isna() | (when <= both["valid_to"]))
     both = both[live & both["projected"].notna()].drop(columns=["valid_from", "valid_to"])
+    # The real release date is known only once it happens (H2), so it is cut.
+    both = both.drop(columns=["rdq"])
     both = both.drop_duplicates(["permno", "gvkey", "fyearq", "fqtr"]).astype({"permno": "int64"})
     log["permno_quarters"] = len(both)
     return stamped(both, clock.end_of_day(both["known_from"]), cal)
@@ -757,7 +813,12 @@ def sealed_out(frame: pd.DataFrame, source: Source, asked: set) -> pd.DataFrame:
         if label in asked and "eom" in frame.columns:
             ends = pd.to_datetime(frame["eom"]) + pd.offsets.MonthEnd(months)
             keep &= ends <= SEAL.tz_convert(None)
-    return frame[keep.to_numpy()]
+    out = frame[keep.to_numpy()].copy()
+    # A period ending after the seal reveals a later exit (M4): left open.
+    if "valid_to" in out.columns:
+        late = pd.to_datetime(out["valid_to"]) > SEAL.tz_convert(None)
+        out.loc[late, "valid_to"] = pd.NaT
+    return out
 
 
 # Row counts per year of any registered table, sealed rows included.
@@ -771,7 +832,10 @@ def count(name: str) -> dict:
 if __name__ == "__main__":
     names = sys.argv[1:] or ["crsp_daily", *LOADERS]
     calendar = trading_calendar()
-    report = {"calendar": clock.cross_check(calendar.index)}
+    # A run of some tables updates their entries and keeps the rest.
+    old = CARDS / "step3.json"
+    report = json.loads(old.read_text()) if old.exists() else {}
+    report["calendar"] = clock.cross_check(calendar.index)
     for name in names:
         made = convert(name, cal=calendar)
         report[name] = {"rows": made["rows_out"], "rules": made["rules"]}

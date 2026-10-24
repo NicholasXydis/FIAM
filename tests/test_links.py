@@ -80,3 +80,37 @@ def test_cik_decisions_apply_and_unsettled_stocks_fail(tmp_path):
         links.ciks(
             tmp_path / "map.parquet", tmp_path / "eightk.parquet", tmp_path / "decisions.json"
         )
+
+
+# An undated SEC id starts at its filer's first filing, never 1900 (H4).
+def test_undated_cik_starts_at_the_first_filing(tmp_path):
+    pd.DataFrame({"permno": [1], "cik": [None], "cik_compustat": [30]}).to_parquet(
+        tmp_path / "map.parquet"
+    )
+    pd.DataFrame({"permno": [9], "cik": ["90"]}).to_parquet(tmp_path / "eightk.parquet")
+    (tmp_path / "decisions.json").write_text(json.dumps({"stocks": {}}))
+    first = pd.Series({30: DAY("2020-10-29")})
+    out, _ = links.ciks(
+        tmp_path / "map.parquet", tmp_path / "eightk.parquet", tmp_path / "decisions.json", first
+    )
+    assert out.loc[out["permno"] == 1, "valid_from"].tolist() == [DAY("2020-10-29")]
+    got = links.value_at(out, "cik", [1, 1], ["2019-12-31", "2021-01-04"]).tolist()
+    assert pd.isna(got[0]) and got[1] == "30"
+
+
+# FINRA-style symbols find their stock: class dots, "NA", and dates.
+def test_permno_by_symbol_reads_classes_na_and_dates():
+    table = pd.DataFrame(
+        {
+            "permno": [10, 20, 30, 40],
+            "kind": ["symbol", "symbol", "ticker", "ticker"],
+            "value": ["BRK.B", "NA", "OLD", "NEW"],
+            "valid_from": [DAY("2000-01-01")] * 3 + [DAY("2022-01-01")],
+            "valid_to": [pd.NaT, pd.NaT, DAY("2021-12-31"), pd.NaT],
+        }
+    )
+    symbols = ["BRK/B", "NA", "OLD", "OLD", "NEW", None]
+    dates = [DAY("2023-01-03")] * 6
+    dates[2] = DAY("2021-06-15")
+    got = links.permno_by_symbol(table, symbols, dates).astype(object)
+    assert [None if pd.isna(v) else v for v in got] == [10, 20, 30, None, 40, None]

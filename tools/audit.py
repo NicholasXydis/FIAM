@@ -12,8 +12,11 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[1]
+# The repo root on the path, so the v4 checks read the registry's rules.
+sys.path.insert(0, str(ROOT))
 DATA = ROOT / "data"
 X = DATA / "v4" / "extracts"
+CLEAN = DATA / "v4" / "clean"
 OUT = ROOT / "out" / "audit"
 SEALED = pd.Timestamp("2021-01-01")
 FINDINGS: list[dict] = []
@@ -406,6 +409,8 @@ def short_interest() -> None:
     days = pd.DatetimeIndex(pd.to_datetime(extract("crsp_market_daily", ["dlycaldt"])["dlycaldt"]))
     for name in ("short_interest", "short_interest_legacy"):
         s = extract(name, ["gvkey", "iid", "datadate", "available_date"])
+        # The current file is stock-lending demand, never used (A10).
+        name = "short_interest_lending (unused)" if name == "short_interest" else name
         settle, ready = pd.to_datetime(s["datadate"]), pd.to_datetime(s["available_date"])
         inside = ready <= days[-1]
         gap = days.searchsorted(ready[inside]) - days.searchsorted(settle[inside], side="right") + 1
@@ -758,7 +763,7 @@ def survivorship(p: pd.DataFrame) -> None:
         ]
     )
     q = extract("compustat_quarterly", ["gvkey", "rdq"]).dropna()
-    s = extract("short_interest", ["gvkey", "iid", "datadate"]).dropna(subset=["gvkey"])
+    s = extract("short_interest_legacy", ["gvkey", "iid", "datadate"]).dropna(subset=["gvkey"])
     have = {
         "crsp_monthly": set(
             zip(m["PERMNO"].astype("int64"), pd.to_datetime(m["MthCalDt"]).dt.to_period("M"))
@@ -830,6 +835,171 @@ def agreement(p: pd.DataFrame) -> None:
     )
 
 
+# The v4 link table: ordered periods, one value per stock at a time.
+def v4_links() -> None:
+    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    s = pd.to_datetime(lk["valid_from"])
+    e = pd.to_datetime(lk["valid_to"]).fillna(pd.Timestamp("2262-01-01"))
+    zero(int((e < s).sum()), "v4 links", "periods that end before they start", "fail", "rebuild")
+    t = lk.assign(s=s, e=e).sort_values(["kind", "permno", "s"])
+    nxt = t.groupby(["kind", "permno"])["s"].shift(-1)
+    two = t[nxt <= t["e"]].groupby("kind").size()
+    for kind in sorted(t["kind"].unique()):
+        level = (
+            "warn" if kind in ("cusip", "ticker", "symbol", "gvkey", "gvkey_iid", "cik") else "info"
+        )
+        fix = "one period per stock and kind" if level == "warn" else ""
+        zero(
+            int(two.get(kind, 0)),
+            "v4 links",
+            f"{kind}: one stock with two values at once",
+            level,
+            fix,
+        )
+    report = json.loads((DATA / "v4" / "links.json").read_text(encoding="utf-8"))
+    shares = {k: v["all"] for k, v in report["panel_coverage"].items()}
+    note("info", "v4 links", "panel stock-months with each id", json.dumps(shares))
+
+
+# The v4 exits: one row per stock, date and source, each stamped.
+def v4_exits() -> None:
+    ex = pd.read_parquet(CLEAN / "exits.parquet")
+    dupes = int(ex.duplicated(["permno", "exit_date", "source"]).sum())
+    zero(dupes, "v4 exits", "repeated stock, date and source", "fail", "dedupe", len(ex))
+    zero(int(ex["available_at"].isna().sum()), "v4 exits", "no available_at", "fail", "stamp them")
+    late = ex[ex["exit_date"] >= SEALED]
+    note(
+        "info",
+        "v4 exits",
+        "2021 on by group (counts)",
+        json.dumps(late["group"].value_counts().to_dict()),
+    )
+    cover("v4 exits", ex["exit_date"], ex["permno"])
+
+
+# Every clean table: no banned field, stamped, read at its first close.
+def v4_clean() -> None:
+    import pyarrow.dataset as ds
+
+    from fiam.v4 import sources
+
+    cal = sources.trading_calendar()
+    close = pd.Series(pd.DatetimeIndex(cal).tz_localize(None).as_unit("ns"), index=cal.index)
+    for name, source in sources.REGISTRY.items():
+        path = CLEAN / name if name == "crsp_daily" else CLEAN / f"{name}.parquet"
+        if not path.exists():
+            note("info", f"v4 {name}", "not converted yet", "converted in its step")
+            continue
+        fields = set(ds.dataset(path).schema.names)
+        hit = sorted(set(source.banned) & fields)
+        zero(len(hit), f"v4 {name}", "banned fields present", "fail", f"drop {hit}")
+        f = pd.read_parquet(path, columns=["available_at", "first_close"])
+        stamp = pd.to_datetime(f["available_at"], utc=True).dt.tz_localize(None)
+        sealed = int((stamp > sources.SEAL.tz_localize(None)).sum())
+        note("info", f"v4 {name}", "rows public after 2020 (sealed, counts)", f"{sealed:,}")
+        # Link periods and the bill rate carry no close by design (§6.3).
+        if source.use in ("links", "benchmark"):
+            note("info", f"v4 {name}", "no first close by design", source.use)
+            continue
+        # Rows with no stamp, or public outside the calendar, are never read.
+        market = source.clock in ("market", "eom", "month_end")
+        last = (stamp > close.iloc[-1]) if market else (stamp >= close.iloc[-1])
+        outside = (stamp < close.iloc[0]) | last
+        never = int((stamp.isna() | outside).sum())
+        note(
+            "info",
+            f"v4 {name}",
+            "rows never readable (no stamp, or off the calendar)",
+            f"{never:,}",
+        )
+        inside = stamp.notna() & ~outside
+        lost = int((inside & f["first_close"].isna()).sum())
+        zero(lost, f"v4 {name}", "rows public in range but no first close", "fail", "re-date")
+        session = pd.DatetimeIndex(f["first_close"]).as_unit("ns")
+        at = close.reindex(session).to_numpy()
+        prev = close.shift(1).reindex(session).to_numpy()
+        ok = inside.to_numpy() & ~pd.isna(at)
+        off = int((f["first_close"].notna() & pd.isna(at)).sum())
+        zero(off, f"v4 {name}", "first close not a session", "fail", "use the calendar")
+        # Market data joins at that day's close; events at the next one.
+        if market:
+            wrong = int((ok & (at != stamp.to_numpy())).sum())
+            zero(wrong, f"v4 {name}", "not at its own day's close", "fail", "re-date", len(f))
+            continue
+        early = int((ok & (at <= stamp.to_numpy())).sum())
+        zero(early, f"v4 {name}", "first close not after the stamp", "fail", "re-date", len(f))
+        skipped = int((ok & ~pd.isna(prev) & (prev > stamp.to_numpy())).sum())
+        zero(skipped, f"v4 {name}", "an earlier close after the stamp", "fail", "re-date")
+
+
+# v4 short interest: one source a date, public 8 sessions on (A10).
+def v4_short_interest() -> None:
+    from fiam.v4 import sources
+
+    days = pd.DatetimeIndex(sources.trading_calendar().index)
+    s = pd.read_parquet(CLEAN / "short_interest.parquet")
+    zero(
+        int(s.duplicated(["permno", "settlement"]).sum()),
+        "v4 short interest",
+        "repeated stock and settlement",
+        "fail",
+        "dedupe",
+    )
+    both = s.groupby("settlement")["source"].nunique()
+    zero(int((both > 1).sum()), "v4 short interest", "dates from two sources", "fail", "one source")
+    # Settlement and first close as session positions; NaT is never read.
+    read = s.dropna(subset=["first_close"])
+    gap = days.searchsorted(read["first_close"]) - days.searchsorted(read["settlement"])
+    zero(
+        int((gap < 9).sum()), "v4 short interest", "read before 8 full sessions", "fail", "re-date"
+    )
+    note("info", "v4 short interest", "never read (no first close)", f"{len(s) - len(read):,}")
+    mix = s.groupby([s["settlement"].dt.year, "source"]).size().unstack(fill_value=0)
+    note("info", "v4 short interest", "rows by source (counts)", json.dumps(mix.sum().to_dict()))
+    banned = sorted({"shortintadj", "splitadjdate"} & set(s.columns))
+    zero(len(banned), "v4 short interest", "adjusted fields present", "fail", "drop")
+    cover("v4 short interest", s["settlement"], s["permno"])
+
+
+# FINRA's files: one row per symbol and date, on sessions, sane sizes.
+def finra() -> None:
+    from fiam.v4 import sources
+
+    sessions = pd.DatetimeIndex(sources.trading_calendar().index)
+    days, last = set(sessions), sessions.max()
+    si = pd.read_parquet(DATA / "finra" / "short_interest.parquet")
+    dupes = int(si.duplicated(["symbol", "settlement"]).sum())
+    zero(dupes, "finra short interest", "repeated symbol and settlement", "fail", "dedupe")
+    off = int((~si["settlement"].isin(days) & (si["settlement"] <= last)).sum())
+    zero(off, "finra short interest", "settlements off the calendar", "warn", "check the date")
+    zero(int((si["short"] < 0).sum()), "finra short interest", "negative positions", "fail", "drop")
+    note(
+        "info",
+        "finra short interest",
+        "rows flagged revised (left out)",
+        f"{(si['revision'] == 'R').sum():,}",
+    )
+    cover("finra short interest", si["settlement"], si["symbol"])
+    v = pd.read_parquet(DATA / "finra" / "volume.parquet")
+    zero(
+        int(v.duplicated(["symbol", "date"]).sum()),
+        "finra volume",
+        "repeated symbol and date",
+        "fail",
+        "dedupe",
+    )
+    zero(
+        int((~v["date"].isin(days) & (v["date"] <= last)).sum()),
+        "finra volume",
+        "days off the calendar",
+        "warn",
+        "check",
+    )
+    over = int((v["short_volume"] > v["total_volume"]).sum())
+    zero(over, "finra volume", "short volume above total volume", "warn", "check the file")
+    note("info", "finra volume", "not used: failed its 2015-2020 check (§6.5)", f"{len(v):,} rows")
+
+
 # Writes the findings, the coverage table and a short report.
 def write() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -865,6 +1035,11 @@ def main() -> int:
         "amazon": amazon,
         "survivorship": lambda: survivorship(p),
         "agreement": lambda: agreement(p),
+        "v4_links": v4_links,
+        "v4_exits": v4_exits,
+        "v4_clean": v4_clean,
+        "v4_short_interest": v4_short_interest,
+        "finra": finra,
     }
     for name, check in checks.items():
         try:

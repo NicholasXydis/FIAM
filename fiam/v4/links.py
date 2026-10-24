@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
@@ -27,8 +28,11 @@ def paths(data: Path = DATA) -> dict[str, Path]:
         "options": extracts / "options_link.parquet",
         "taq": extracts / "taq_link.parquet",
         "panel": data / "organisers" / "chars_final_with_names.parquet",
+        "ids": extracts / "compustat_ids.parquet",
         "eightk": data / "organisers" / "8k_20150101_20260831_identified.parquet",
         "cik_map": data / "edgar" / "cik_map.parquet",
+        "filings": data / "edgar" / "filings.parquet",
+        "forms": data / "edgar" / "forms.parquet",
         "decisions": data / "v4" / "cik_decisions.json",
         "carc": data / "carbon_arc" / "catalogue" / "entities" / "companies.json",
         "carc_manifest": data / "carbon_arc" / "catalogue" / "entities" / "manifest.json",
@@ -83,35 +87,112 @@ def panel(path: Path) -> pd.DataFrame:
     return pd.concat([gvkey, iid, pair])
 
 
-# Gvkey before 2015 from WRDS ratios, one per stock and date (A16).
-def ratios(path: Path, panel_path: Path) -> tuple[pd.DataFrame, dict]:
+# Common stocks per CRSP company and month, to tell one-security firms.
+def common_per_company(crsp_path: Path) -> pd.Series:
+    cols = ["PERMNO", "PERMCO", "MthCalDt", "ShareType", "SecurityType"]
+    m = pd.read_parquet(crsp_path, columns=cols)
+    m = m[(m["ShareType"] == "NS") & (m["SecurityType"] == "EQTY")]
+    month = pd.to_datetime(m["MthCalDt"]).dt.to_period("M")
+    counts = m.groupby([m["PERMCO"], month])["PERMNO"].transform("nunique")
+    key = pd.MultiIndex.from_arrays([pd.to_numeric(m["PERMNO"]).astype("int64"), month])
+    return pd.Series(counts.to_numpy(), index=key).groupby(level=[0, 1]).max()
+
+
+# Compustat's header CUSIP and each gvkey's first and last data dates.
+def compustat_ids(path: Path) -> pd.DataFrame:
+    q = pd.read_parquet(path)
+    q["datadate"] = pd.to_datetime(q["datadate"])
+    life = q.groupby("gvkey")["datadate"].agg(born="min", died="max")
+    head = q.dropna(subset=["cusip"]).sort_values("datadate").drop_duplicates("gvkey", keep="last")
+    return life.join(head.set_index("gvkey")["cusip"].str[:8].rename("cusip8"))
+
+
+# WRDS ratios' gvkey per stock and month; two on one date resolved (A16).
+def ratio_months(path: Path, first: pd.DataFrame) -> tuple[pd.DataFrame, int]:
     r = pd.read_parquet(path, columns=["gvkey", "permno", "public_date"]).dropna()
     r["date"] = pd.to_datetime(r["public_date"])
     r = r[r["date"] < PANEL_START].copy()
     r["permno"] = pd.to_numeric(r["permno"]).astype("int64")
-    r["start"] = r["date"].dt.to_period("M").dt.start_time
-    first = first_panel_pairs(panel_path)
-    # Two gvkeys on one date: the panel's own gvkey, else the usual one.
     r["panel_match"] = r["gvkey"].eq(r["permno"].map(first["gvkey"]))
     r["usual"] = r.groupby(["permno", "gvkey"])["date"].transform("size")
     r = r.sort_values(["permno", "date", "panel_match", "usual", "gvkey"])
     picked = r.drop_duplicates(["permno", "date"], keep="last")
-    report = {"pre_2015_two_gvkey_dates_resolved": len(r) - len(picked)}
-    gvkey = runs(picked.assign(value=picked["gvkey"]), "gvkey", "wrds_ratios", None)
-    gvkey["valid_to"] = gvkey["valid_to"].clip(upper=PANEL_START - DAY)
-    per_firm = picked.groupby("gvkey")["permno"].nunique()
-    single = gvkey["value"].map(per_firm).eq(1)
-    # A firm with several securities takes its 2015 panel iid if it agrees.
-    carried = gvkey["value"].eq(gvkey["permno"].map(first["gvkey"]))
-    iids = pd.Series(pd.NA, index=gvkey.index, dtype="string")
-    iids[single] = "01"
-    iids[~single & carried] = gvkey.loc[~single & carried, "permno"].map(first["iid"])
-    known = iids.notna()
-    iid = gvkey[known].assign(kind="iid", value=iids[known])
-    pair = gvkey[known].assign(kind="gvkey_iid", value=gvkey["value"][known] + ":" + iids[known])
-    report["pre_2015_iid_from_the_panel"] = int((~single & carried).sum())
-    report["pre_2015_iid_unknown_periods"] = int((~known).sum())
-    return pd.concat([gvkey, iid, pair]), report
+    picked = picked.assign(month=picked["date"].dt.to_period("M"))
+    return picked.drop_duplicates(["permno", "month"], keep="last"), len(r) - len(picked)
+
+
+# Pre-2015 gvkey and iid by month (A16, M2, 4A+, approved 2026-10-23):
+# WRDS ratios first; then the stock's own 2015 pair carried back from the
+# gvkey's first Compustat date; then Compustat's CUSIP matched to CRSP's
+# CUSIP of that month; then a stock whose every link names one gvkey.
+def ratios(
+    path: Path, panel_path: Path, crsp_path: Path, ids_path: Path | None = None
+) -> tuple[pd.DataFrame, dict]:
+    first = first_panel_pairs(panel_path)
+    picked, resolved = ratio_months(path, first)
+    report = {"pre_2015_two_gvkey_dates_resolved": resolved}
+    cols = ["PERMNO", "MthCalDt", "CUSIP9", "PERMCO", "ShareType", "SecurityType"]
+    g = pd.read_parquet(crsp_path, columns=cols)
+    g["date"] = pd.to_datetime(g["MthCalDt"])
+    g = g[g["date"] < PANEL_START].copy()
+    g["permno"] = pd.to_numeric(g["PERMNO"]).astype("int64")
+    g["month"] = g["date"].dt.to_period("M")
+    g = g.sort_values(["permno", "date"]).drop_duplicates(["permno", "month"], keep="last")
+    g = g.merge(picked[["permno", "month", "gvkey"]], on=["permno", "month"], how="left")
+    g["source"] = np.where(g["gvkey"].notna(), "wrds_ratios", None)
+    if ids_path is not None:
+        ids = compustat_ids(ids_path)
+        born, died = ids["born"], ids["died"] + pd.offsets.MonthEnd(3)
+        alive = lambda gv: (g["date"] >= gv.map(born)) & (g["date"] <= gv.map(died))  # noqa: E731
+        carry = g["permno"].map(first["gvkey"])
+        by_cusip = ids.dropna(subset=["cusip8"]).reset_index()
+        sole = by_cusip.groupby("cusip8")["gvkey"].agg(["nunique", "first"])
+        cusip = g["CUSIP9"].astype("string").str[:8].map(sole.loc[sole["nunique"] == 1, "first"])
+        found = pd.concat([g[["permno", "gvkey"]], g[["permno"]].assign(gvkey=carry)])
+        found = pd.concat([found, g[["permno"]].assign(gvkey=cusip)]).dropna()
+        panel = pd.read_parquet(panel_path, columns=["permno", "gvkey"]).dropna()
+        found = pd.concat([found, panel.astype({"permno": "int64"})]).drop_duplicates()
+        one = found.groupby("permno")["gvkey"].agg(["nunique", "first"])
+        fill = g["permno"].map(one.loc[one["nunique"] == 1, "first"])
+        # Each route checked against WRDS ratios where both name a gvkey.
+        checks, ratio = {}, g["gvkey"].copy()
+        for name, route in (
+            ("carry_2015", carry),
+            ("cusip_dated", cusip),
+            ("fill_one_gvkey", fill),
+        ):
+            both = ratio.notna() & route.notna() & alive(route)
+            checks[name] = round(float((route[both] == ratio[both]).mean()), 4)
+            take = g["gvkey"].isna() & route.notna() & alive(route)
+            g.loc[take, "gvkey"] = route[take]
+            g.loc[take, "source"] = name
+        report["pre_2015_route_agreement_with_ratios"] = checks
+    g = g.dropna(subset=["gvkey"])
+    report["pre_2015_months_by_source"] = g["source"].value_counts().to_dict()
+    g["start"] = g["month"].dt.start_time
+    # iid 01 only when CRSP shows one common stock for the company (M2);
+    # else the stock's own 2015 panel iid when its gvkey agrees; else none.
+    count = common_per_company(crsp_path)
+    single = count.reindex(pd.MultiIndex.from_arrays([g["permno"], g["month"]])).eq(1)
+    single = single.to_numpy()
+    own = ~single & g["gvkey"].eq(g["permno"].map(first["gvkey"])).to_numpy()
+    g["iid"] = pd.Series(pd.NA, index=g.index, dtype="string")
+    g.loc[single, "iid"] = "01"
+    g.loc[own, "iid"] = g.loc[own, "permno"].map(first["iid"]).to_numpy()
+    # One pass per kind, so a period never spans another source's months.
+    tagged = g.assign(value=g["gvkey"] + "|" + g["source"])
+    known = g[g["iid"].notna()]
+    parts = [runs(tagged, "gvkey", "", None)]
+    parts.append(runs(known.assign(value=known["iid"] + "|" + known["source"]), "iid", "", None))
+    pairs = known.assign(value=known["gvkey"] + ":" + known["iid"] + "|" + known["source"])
+    parts.append(runs(pairs, "gvkey_iid", "", None))
+    for frame in parts:
+        frame[["value", "source"]] = frame["value"].str.split("|", n=1, expand=True)
+    out = pd.concat(parts, ignore_index=True)
+    out["valid_to"] = pd.to_datetime(out["valid_to"]).clip(upper=PANEL_START - DAY)
+    report["pre_2015_iid_from_the_panel"] = int(own.sum())
+    report["pre_2015_iid_unknown_rows"] = int(g["iid"].isna().sum())
+    return out, report
 
 
 # Each stock's gvkey and iid in its first panel month (2015 on).
@@ -176,8 +257,18 @@ def taq(path: Path) -> pd.DataFrame:
     )
 
 
+# Each SEC filer's first filing in our index, so a link starts there.
+def first_filings(paths: list[Path]) -> pd.Series:
+    parts = [pd.read_parquet(p, columns=["cik", "filing_date"]) for p in paths if p.exists()]
+    f = pd.concat(parts, ignore_index=True)
+    f["filing_date"] = pd.to_datetime(f["filing_date"], errors="coerce")
+    return f.groupby(pd.to_numeric(f["cik"]).astype("int64"))["filing_date"].min()
+
+
 # SEC ids by date: decisions, then 8-K pairs, else Compustat's header.
-def ciks(cik_map: Path, eightk: Path, decisions: Path) -> tuple[pd.DataFrame, dict]:
+def ciks(
+    cik_map: Path, eightk: Path, decisions: Path, first: pd.Series | None = None
+) -> tuple[pd.DataFrame, dict]:
     chosen = json.loads(decisions.read_text(encoding="utf-8"))["stocks"]
     firms = pd.read_parquet(cik_map)
     pairs = pd.read_parquet(eightk, columns=["permno", "cik"])
@@ -192,19 +283,26 @@ def ciks(cik_map: Path, eightk: Path, decisions: Path) -> tuple[pd.DataFrame, di
     for permno, entry in chosen.items():
         for cik, start, stop in entry["links"]:
             rows.append((int(permno), str(cik), start, stop, "decision_2026-10-23"))
+    first = pd.Series(dtype="datetime64[ns]") if first is None else first
     for firm in firms.itertuples():
         if str(firm.permno) in chosen:
             continue
         if firm.permno in one.index:
-            rows.append((firm.permno, str(one[firm.permno]), None, None, "organisers_8k_pairs"))
+            cik, source = int(one[firm.permno]), "organisers_8k_pairs"
         elif pd.notna(firm.cik_compustat):
-            rows.append((firm.permno, str(int(firm.cik_compustat)), None, None, "compustat_header"))
+            cik, source = int(firm.cik_compustat), "compustat_header"
+        else:
+            continue
+        # Undated sources start at the filer's first filing (H4).
+        rows.append((firm.permno, str(cik), first.get(cik), None, source))
     out = pd.DataFrame(rows, columns=["permno", "value", "valid_from", "valid_to", "source"])
     out["valid_from"] = pd.to_datetime(out["valid_from"]).fillna(pd.Timestamp("1900-01-01"))
     out["valid_to"] = pd.to_datetime(out["valid_to"])
     out = out.assign(kind="cik", score=pd.NA)[COLUMNS]
     report = {"cik_by_source": out.drop_duplicates("permno")["source"].value_counts().to_dict()}
     report["cik_none"] = int(len(firms) - out["permno"].nunique())
+    dated = out["source"].isin(["organisers_8k_pairs", "compustat_header"])
+    report["cik_starting_at_first_filing"] = int((dated & (out["valid_from"].dt.year > 1900)).sum())
     return out, report
 
 
@@ -278,6 +376,27 @@ def permno_at(links: pd.DataFrame, kind: str, values, dates) -> pd.Series:
     return out
 
 
+# A symbol reduced to letters and digits, so BRK.B, BRK/B and BRKB match.
+def plain_symbol(symbols) -> pd.Series:
+    text = pd.Series(symbols, dtype="string").fillna("").str.upper()
+    return text.str.replace(r"[^A-Z0-9]", "", regex=True)
+
+
+# A ticker-keyed source to PERMNO: CRSP trading symbol, then ticker.
+def permno_by_symbol(links: pd.DataFrame, symbols, dates) -> pd.Series:
+    keys = plain_symbol(symbols)
+    days = pd.Series(pd.to_datetime(pd.Series(dates).to_numpy()))
+    found = pd.Series(pd.NA, index=range(len(keys)), dtype="Int64")
+    for kind in ("symbol", "ticker"):
+        table = links[links["kind"] == kind].copy()
+        table["value"] = plain_symbol(table["value"]).to_numpy()
+        todo = found.isna().to_numpy()
+        if todo.any():
+            got = permno_at(table, kind, keys[todo], days[todo])
+            found[found.index[todo]] = got.to_numpy()
+    return found
+
+
 # Share of panel stock-months with each id kind at that eom (counts).
 def coverage(links: pd.DataFrame, panel_path: Path) -> dict:
     p = pd.read_parquet(panel_path, columns=["permno", "eom"])
@@ -295,8 +414,9 @@ def coverage(links: pd.DataFrame, panel_path: Path) -> dict:
 def build(data: Path = DATA) -> dict:
     p = paths(data)
     crsp_links = crsp(p["crsp"])
-    ratio_links, ratio_report = ratios(p["ratios"], p["panel"])
-    cik_links, cik_report = ciks(p["cik_map"], p["eightk"], p["decisions"])
+    ratio_links, ratio_report = ratios(p["ratios"], p["panel"], p["crsp"], p["ids"])
+    first = first_filings([p["filings"], p["forms"]])
+    cik_links, cik_report = ciks(p["cik_map"], p["eightk"], p["decisions"], first)
     carc_links, carc_report = carbon_arc(p["carc"], p["carc_manifest"], crsp_links)
     parts = [crsp_links, panel(p["panel"]), ratio_links, wrds_links(p["ibes"], p["options"])]
     parts += [taq(p["taq"]), cik_links, carc_links]

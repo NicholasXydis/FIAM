@@ -134,7 +134,7 @@ def volume() -> int:
 # One pipe-delimited FINRA file as a table, trailer rows dropped.
 def table(path) -> pd.DataFrame:
     text = gzip.decompress(path.read_bytes()).decode("utf-8", "replace")
-    frame = pd.read_csv(io.StringIO(text), sep="|", dtype=str)
+    frame = pd.read_csv(io.StringIO(text), sep="|", dtype=str, keep_default_na=False)
     first = frame.columns[0]
     return frame[frame[first].str.fullmatch(r"\d{8}|\d{4}-\d{2}-\d{2}", na=False)]
 

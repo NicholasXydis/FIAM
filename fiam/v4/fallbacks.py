@@ -1,7 +1,6 @@
 # The 2026 fallbacks' checks: FINRA short interest and volume (§6.5).
 
 import json
-import re
 from pathlib import Path
 
 import numpy as np
@@ -18,25 +17,24 @@ SPIKE, WINDOW, MIN_DAYS = 5.0, 126, 63
 PRECISION, RECALL, COVERAGE = 0.8, 0.8, 0.95
 TOLERANCE, MIN_SHARES = 0.01, 100
 TEST = ("2015-01-01", "2020-12-31")
+AGREE = ("2021-06-01", "2025-12-31")
 
 
-# A symbol reduced to letters and digits, so BRK.B, BRK/B and BRKB match.
-def plain(symbols) -> pd.Series:
-    return pd.Series(symbols).astype(str).map(lambda s: re.sub(r"[^A-Z0-9]", "", s.upper()))
-
-
-# Each FINRA symbol and date to PERMNO: trading symbol, then ticker.
+# Each FINRA symbol and date to PERMNO, as the registry maps them.
 def map_symbols(lk: pd.DataFrame, symbols, dates) -> pd.Series:
-    keys = plain(symbols)
-    found = pd.Series(pd.NA, index=range(len(keys)), dtype="Int64")
-    for kind in ("symbol", "ticker"):
-        table = lk[lk["kind"] == kind].copy()
-        table["value"] = plain(table["value"]).to_numpy()
-        todo = found.isna().to_numpy()
-        if todo.any():
-            got = link_table.permno_at(table, kind, keys[todo], pd.Series(dates).iloc[todo])
-            found[np.flatnonzero(todo)] = got.to_numpy()
-    return found
+    return link_table.permno_by_symbol(lk, symbols, dates)
+
+
+# One WRDS short interest extract on PERMNO by its dated gvkey and iid.
+def wrds_series(name: str, lk: pd.DataFrame) -> pd.DataFrame:
+    cols = ["gvkey", "iid", "datadate", "shortint"]
+    w = pd.read_parquet(DATA / "v4" / "extracts" / f"{name}.parquet", columns=cols)
+    w = w.dropna(subset=["gvkey"]).rename(columns={"datadate": "settlement"})
+    w["settlement"] = pd.to_datetime(w["settlement"])
+    w = w[w["settlement"].between(*AGREE)]
+    ids = w["gvkey"].astype(str) + ":" + w["iid"].astype(str)
+    w["permno"] = link_table.permno_at(lk, "gvkey_iid", ids, w["settlement"]).to_numpy()
+    return w.dropna(subset=["permno"]).astype({"permno": "int64"})
 
 
 # Universe names on each date: panel me at least $600m at the last eom.
@@ -51,26 +49,31 @@ def universe(dates) -> pd.DataFrame:
     return days.merge(p, on="eom")[["date", "permno"]]
 
 
-# FINRA short interest: 2026 coverage and the 2021-2025 WRDS agreement.
+# FINRA short interest: coverage from 2021-06 and both WRDS agreements.
 def short_interest(lk: pd.DataFrame) -> dict:
     si = pd.read_parquet(DATA / "finra" / "short_interest.parquet")
     si["permno"] = map_symbols(lk, si["symbol"], si["settlement"]).to_numpy()
     report = {"rows": len(si), "mapped_share": round(float(si["permno"].notna().mean()), 4)}
     mapped = si.dropna(subset=["permno"]).astype({"permno": "int64"})
-    late = mapped[mapped["settlement"] >= "2026-01-01"]
-    names = universe(late["settlement"]).rename(columns={"date": "settlement"})
-    seen = names.merge(late[["settlement", "permno"]].drop_duplicates(), how="left", indicator=True)
+    names = universe(mapped["settlement"]).rename(columns={"date": "settlement"})
+    # Coverage of the rows the backtest reads, the clean table (H1).
+    clean = pd.read_parquet(CLEAN / "short_interest.parquet", columns=["permno", "settlement"])
+    held = clean[clean["settlement"] >= AGREE[0]].drop_duplicates()
+    seen = names.merge(held, how="left", indicator=True)
     by_day = (seen["_merge"] == "both").groupby(seen["settlement"]).mean()
-    report["coverage_2026"] = {str(d.date()): round(float(v), 4) for d, v in by_day.items()}
-    report["coverage_2026_pass"] = bool(len(by_day)) and bool((by_day >= COVERAGE).all())
-    wrds = pd.read_parquet(
-        CLEAN / "short_interest.parquet", columns=["permno", "settlement", "shortint"]
-    )
-    both = mapped.merge(wrds, on=["permno", "settlement"])
-    gap = (both["short"] - both["shortint"]).abs()
-    agree = gap <= np.maximum(TOLERANCE * both["shortint"].abs(), MIN_SHARES)
-    report["wrds_matched_pairs"] = len(both)
-    report["wrds_agreement_share"] = round(float(agree.mean()), 4) if len(both) else None
+    late = by_day[by_day.index >= "2026-01-01"]
+    report["coverage_2026"] = {str(d.date()): round(float(v), 4) for d, v in late.items()}
+    report["coverage_2026_pass"] = bool(len(late)) and bool((late >= COVERAGE).all())
+    report["coverage_min_from_2021_06"] = round(float(by_day.min()), 4)
+    report["coverage_dates_from_2021_06"] = len(by_day)
+    report["coverage_pass_from_2021_06"] = bool((by_day >= COVERAGE).all())
+    # Agreement counts with each WRDS file on the overlap (§1.3).
+    for name in ("short_interest_legacy", "short_interest"):
+        both = mapped.merge(wrds_series(name, lk), on=["permno", "settlement"])
+        gap = (both["short"] - both["shortint"]).abs()
+        agree = gap <= np.maximum(TOLERANCE * both["shortint"].abs(), MIN_SHARES)
+        share = round(float(agree.mean()), 4) if len(both) else None
+        report[f"agreement_{name}"] = {"pairs": len(both), "share": share}
     return report
 
 

@@ -43,9 +43,15 @@ def coverage_sets() -> dict[str, set]:
         sets[name] = set(zip(t["permno"], t[date].dt.to_period("M")))
     lk = pd.read_parquet(DATA / "v4" / "links.parquet")
     p = panel_months()
-    for kind, name in (("cik", "edgar_filings"), ("gvkey", "earnings_calendar")):
-        have = link_table.value_at(lk, kind, p["permno"], p["eom"]).notna().to_numpy()
-        sets[name] = set(zip(p.loc[have, "permno"], p.loc[have, "month"]))
+    have = link_table.value_at(lk, "cik", p["permno"], p["eom"]).notna().to_numpy()
+    sets["edgar_filings"] = set(zip(p.loc[have, "permno"], p.loc[have, "month"]))
+    # A month is covered when a projected release known by then is ahead.
+    e = pd.read_parquet(
+        CLEAN / "earnings_calendar.parquet", columns=["permno", "known_from", "projected"]
+    )
+    e = e.merge(p[["permno", "eom", "month"]], on="permno")
+    ahead = (e["known_from"] <= e["eom"]) & (e["projected"] > e["eom"])
+    sets["earnings_calendar"] = set(zip(e.loc[ahead, "permno"], e.loc[ahead, "month"]))
     k = pd.read_parquet(CLEAN / "key_developments.parquet", columns=["permno", "first_close"])
     k["month"] = pd.to_datetime(k["first_close"]).dt.to_period("M")
     months = k.dropna().drop_duplicates(["permno", "month"])
@@ -59,8 +65,12 @@ def leavers() -> pd.DataFrame:
     p = pd.read_parquet(CLEAN / "panel.parquet", columns=["permno", "eom", "me", "company_name"])
     last = p.sort_values("eom").groupby("permno").tail(1)
     named = []
+    # Names on any row, letters and digits only ("G N C" is GNC) (M3).
+    squash = p["company_name"].fillna("").str.upper().str.replace(r"[^A-Z0-9]", "", regex=True)
     for label, text in NAMED.items():
-        hit = last[last["company_name"].fillna("").str.upper().str.contains(text, regex=False)]
+        key = "".join(ch for ch in text if ch.isalnum())
+        rows = p[squash.str.contains(key, regex=False)]
+        hit = last[last["permno"].isin(rows["permno"])]
         named += [(int(r.permno), r.eom, label) for r in hit.itertuples()]
     ex = pd.read_parquet(CLEAN / "exits.parquet", columns=["permno", "exit_date", "source"])
     ex = ex[
@@ -97,6 +107,16 @@ def survivorship() -> dict:
         trade["covered"] = [(a, b) in have for a, b in zip(trade["permno"], trade["month"])]
         means = trade.groupby(["month", "covered"])["ret"].mean().unstack()
         gap = means.get(True, pd.Series(dtype=float)) - means.get(False, pd.Series(dtype=float))
+        # Robustness: coverage at m against the next month's return, any
+        # panel row, so a name leaving the universe still counts.
+        ahead = trade[trade["month"] < TEST[1].to_period("M")]
+        nxt = ahead.merge(
+            p[["permno", "month", "ret"]].assign(month=p["month"] - 1),
+            on=["permno", "month"],
+            suffixes=("", "_next"),
+        )
+        lead = nxt.groupby(["month", "covered"])["ret_next"].mean().unstack()
+        gap_next = lead.get(True, pd.Series(dtype=float)) - lead.get(False, pd.Series(dtype=float))
         share = float(trade["covered"].mean())
         cls = "universe-level" if resolved < 0.5 else "crosswalk-only"
         report[name] = {
@@ -106,6 +126,7 @@ def survivorship() -> dict:
             "gap_months": int(gap.notna().sum()),
             "gap_mean_monthly": round(float(gap.mean()), 5) if gap.notna().any() else None,
             "gap_nw_t": round(nw_t(gap), 2),
+            "gap_next_month_nw_t": round(nw_t(gap_next), 2),
         }
         report[name]["needs_written_control"] = bool(abs(report[name]["gap_nw_t"]) > 2)
     report["immune"] = ["crsp_market_daily", "vix", "french", "tb3ms"]

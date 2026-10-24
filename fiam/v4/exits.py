@@ -34,11 +34,14 @@ def crsp_exits(data: Path) -> pd.DataFrame:
     return d[keep].assign(source="crsp_delistings", evidence="")
 
 
-# Stocks whose daily rows stop in 2026 before the file's end.
-def stoppers(data: Path) -> pd.Series:
+# Stocks whose daily rows stop in 2026, or on CRSP's last day with no
+# CRSP exit (approved 2026-10-23, 2B), before the file's end.
+def stoppers(data: Path, crsp_done: frozenset = frozenset()) -> pd.Series:
     d = pd.read_parquet(data / "v4" / "clean" / "dsf.parquet", columns=["permno", "date"])
     last = d.groupby("permno")["date"].max()
-    return last[(last > CRSP_END) & (last < d["date"].max())]
+    late = (last > CRSP_END) & (last < d["date"].max())
+    at_end = (last == CRSP_END) & ~last.index.isin(list(crsp_done))
+    return last[late | at_end]
 
 
 # 2026 exits from SEC forms near the last row; none found is a data gap.
@@ -47,8 +50,10 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
     cols = ["permno", "form", "items", "filing_date", "accession", "available_at"]
     f = pd.read_parquet(data / "v4" / "clean" / "edgar_filings.parquet", columns=cols)
     f = f[f["permno"].isin(last.index)]
-    two01 = (f["form"] == "8-K") & f["items"].fillna("").str.split(",").map(lambda s: "2.01" in s)
-    f = f[f["form"].isin(EXIT_FORMS) | two01].assign(merger=two01)
+    items = f["items"].fillna("").str.split(",")
+    two01 = (f["form"] == "8-K") & items.map(lambda s: "2.01" in s)
+    one03 = (f["form"] == "8-K") & items.map(lambda s: "1.03" in s)
+    f = f[f["form"].isin(EXIT_FORMS) | two01 | one03].assign(merger=two01, bankrupt=one03)
     lo = clock.shift_sessions(last, -WINDOW, cal)
     hi = clock.shift_sessions(last, WINDOW, cal)
     span = pd.DataFrame({"permno": last.index.to_numpy(), "last": last.to_numpy()})
@@ -61,9 +66,10 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
         if hits.empty:
             category, group, known, evidence = "data_gap", "data_gap", pd.NaT, ""
         else:
-            merged = bool(hits["merger"].any())
-            category = "merger" if merged else "delisted"
-            group = "merger_or_exchange" if merged else "failure"
+            # A bankruptcy (item 1.03) is a failure even with an asset sale (M5).
+            broke, merged = bool(hits["bankrupt"].any()), bool(hits["merger"].any())
+            category = "bankruptcy" if broke else "merger" if merged else "delisted"
+            group = "merger_or_exchange" if merged and not broke else "failure"
             known = pd.to_datetime(hits["available_at"], utc=True).max().tz_localize(None)
             evidence = ";".join(sorted(hits["form"] + " " + hits["accession"]))
         rows.append((permno, day, category, group, known, evidence))
@@ -89,10 +95,13 @@ def compustat_deletions(data: Path) -> pd.DataFrame:
 # The exits table: CRSP to 2025, SEC in 2026, Compustat beside.
 def build(data: Path = DATA) -> tuple[pd.DataFrame, dict]:
     crsp = crsp_exits(data)
-    last = stoppers(data)
+    last = stoppers(data, frozenset(crsp["permno"]))
     sec = sec_exits(data, last)
     table = pd.concat([crsp, sec], ignore_index=True)
     table = table.merge(compustat_deletions(data), on="permno", how="left")
+    # Compustat's date only when it falls near this exit (L8).
+    far = (table["compustat_dldte"] - table["exit_date"]).dt.days.abs() > 90
+    table.loc[far, ["compustat_dldte", "compustat_dlrsn"]] = None
     table["known"] = pd.to_datetime(table["known"]).astype("datetime64[ns]")
     report = {
         "crsp_exits": len(crsp),
