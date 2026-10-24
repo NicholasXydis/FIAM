@@ -123,7 +123,7 @@ Offline (no internet)
        pnpm install --offline --frozen-lockfile --store-dir C:/fiam_cache/pnpm
      with PUPPETEER_SKIP_DOWNLOAD=1 set, since its browser is not in the kit.
   A machine without caches/<machine>.zip makes one with: uv run run.py caches <this folder>
-  LightGBM needs the OpenMP library: Mac  brew install libomp,  Linux  apt install libgomp1.
+  LightGBM's OpenMP library comes in the kit (models/openmp, part weights); nothing to install.
 
 Before the day
   Rehearse once:  uv run run.py --world fake --finals mandates/case_2025.json
@@ -149,7 +149,8 @@ If something goes wrong
   Other currencies           name the currency column in columns.json, rates run to Oct 2026
   The rules cannot all hold  --finals names them before any run, then fix the mandate
   A film will not play       play deck/ai_crowd_short.mp4 on its own, the PDF has every page
-  LightGBM will not load     Mac brew install libomp, Linux apt install libgomp1
+  LightGBM will not load     setup restores it (part weights); else Mac brew install libomp,
+                             Linux apt install libgomp1
   A file is damaged          setup names it, so export again from the Mac or use FIAM_COPY
 
 Setup copies only missing files, checks each against MANIFEST.json and never overwrites
@@ -738,6 +739,9 @@ def caches(kit: Path | None = None) -> int:
     short = Path(os.environ.get("SystemDrive", "C:") + "/fiam_kit_build")
     work = (short if tag.startswith("windows") else LOCAL / "build") / tag
     shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    # The MAIN.py export writes, so its packages are the ones cached.
+    main_py(work)
     env = os.environ | {
         "UV_CACHE_DIR": str(work / "uv"),
         "UV_PYTHON_INSTALL_DIR": str(work / "python"),
@@ -746,7 +750,7 @@ def caches(kit: Path | None = None) -> int:
     steps = [
         [uv, "python", "install", "3.14"],
         [uv, "sync", "--frozen"],
-        [uv, "sync", "--script", str(ROOT / "MAIN.py")],
+        [uv, "sync", "--script", str(work / "MAIN.py")],
         [uv, "sync", "--script", str(ROOT / "site" / "ad" / "web.py")],
     ]
     # pnpm fetches into a scratch copy; site/node_modules stays as is.
@@ -764,6 +768,7 @@ def caches(kit: Path | None = None) -> int:
     # Environments are rebuilt offline from the cache, so they stay out.
     for built in [work / "venv", work / "site", *(work / "uv").glob("environments-v*")]:
         shutil.rmtree(built, ignore_errors=True)
+    (work / "MAIN.py").unlink(missing_ok=True)
     out = LOCAL / "caches" / f"{tag}.zip"
     out.parent.mkdir(parents=True, exist_ok=True)
     temp = out.with_name(out.name + ".part")

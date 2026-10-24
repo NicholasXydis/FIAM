@@ -219,7 +219,8 @@ def ready(ml: bool) -> bool:
         try:
             importlib.import_module("lightgbm")
         except OSError:
-            print("LightGBM cannot load OpenMP. On macOS:  brew install libomp")
+            print("LightGBM cannot load OpenMP. Fix: uv run run.py setup (part weights)")
+            print("or on macOS:  brew install libomp")
             return False
     return True
 
