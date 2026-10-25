@@ -317,6 +317,47 @@ def test_compliance_flags_each_rule(monkeypatch):
     assert out.compliance.loc["2019-01-31", "short_floor_breaches"] == 1
 
 
+# The company cap counts before a day's trades as well as after.
+def test_company_cap_counts_before_the_trades(monkeypatch):
+    fake = Fake()
+    jump = pd.Series(0.0, index=fake.days)
+    jump.loc["2019-02-28"] = 0.10
+    fake.stock(1, ret=jump)
+    fake.stock(2)
+    fake.install(monkeypatch)
+    monkeypatch.setattr(data, "permcos", lambda p, d: pd.Series(np.ones(len(p))))
+    targets = {
+        pd.Timestamp("2019-01-31"): pd.Series({1: 0.04, 2: 0.008}),
+        pd.Timestamp("2019-02-28"): pd.Series({1: 0.03, 2: 0.008}),
+    }
+    rules = RULES | dict(name_cap=0.05)
+    out = daily_book.run(targets, fake.days[0], "2019-03-29", lag=0, rules=rules, same_day=True)
+    c = out.compliance
+    assert c.loc["2019-02-27", "cap_ok"] and c.loc["2019-02-28", "max_company_weight"] < 0.05
+    assert c.loc["2019-02-28", "max_company_weight_pre"] > 0.05
+    assert not c.loc["2019-02-28", "cap_ok"]
+
+
+# Names count before a day's trades too: an exit can leave too few.
+def test_names_count_before_the_trades(monkeypatch):
+    fake = Fake()
+    for permno in (1, 2, 4):
+        fake.stock(permno, crsp_ret=0.0)
+    gone = fake.days[fake.days > "2019-02-27"]
+    fake.stock(3, no_dsf=gone, no_crsp=gone, crsp_ret=0.0)
+    fake.exit(3, "2019-02-27", 0.0)
+    fake.install(monkeypatch)
+    targets = {
+        pd.Timestamp("2019-01-31"): pd.Series({1: 0.1, 2: 0.1, 3: -0.1}),
+        pd.Timestamp("2019-02-28"): pd.Series({1: 0.1, 2: 0.1, 4: -0.1}),
+    }
+    rules = RULES | dict(names_min=3)
+    out = daily_book.run(targets, fake.days[0], "2019-03-29", lag=0, rules=rules, same_day=True)
+    c = out.compliance
+    assert c.loc["2019-02-28", "names"] == 3 and c.loc["2019-02-28", "names_pre"] == 2
+    assert not c.loc["2019-02-28", "names_ok"] and c.loc["2019-03-01", "names_ok"]
+
+
 # A formation trades on its own session; two on one day are refused.
 def test_formations_keep_their_own_day(monkeypatch):
     fake = Fake()
@@ -458,6 +499,42 @@ def test_sealed_month_takes_the_last_public_bill(monkeypatch):
     monkeypatch.setattr(data, "table", lambda *a, **k: bills.copy())
     got = data.rf_daily(pd.bdate_range("2020-12-01", "2020-12-04"))
     assert got.tolist() == [pytest.approx(0.0009 / 252)] * 4
+
+
+# Each bill month gets the close after FRED's next-business-day post.
+def test_bill_months_carry_their_first_close(tmp_path):
+    (tmp_path / "benchmarks").mkdir()
+    rows = "observation_date,TB3MS\n2019-05-01,2.40\n2019-06-01,2.22\n"
+    (tmp_path / "benchmarks" / "TB3MS_full.csv").write_text(rows)
+    cal = clock.calendar(clock.xnys_sessions("2019-05-01", "2019-07-31"))
+    got = sources.load_tb3ms(tmp_path, cal, {})
+    want = pd.to_datetime(["2019-06-04", "2019-07-02"])
+    assert pd.DatetimeIndex(got["first_close"]).equals(want)
+
+
+# Betas at T read only bill rates public by T; a row with none is out.
+def test_bill_rates_by_T_skip_unpublished_months(monkeypatch):
+    bills = pd.DataFrame(
+        {
+            "month": pd.to_datetime(["2019-04-01", "2019-05-01", "2019-06-01"]),
+            "tb3ms": [0.0243, 0.0240, 0.0222],
+            "first_close": pd.to_datetime([None, "2019-06-04", "2019-07-02"]),
+        }
+    )
+    monkeypatch.setattr(data, "table", lambda *a, **k: bills.copy())
+    june = pd.bdate_range("2019-06-03", "2019-06-28")
+    got = data.rf_daily(june, by="2019-06-28")
+    assert got.notna().all() and got.eq(0.0240 / 252).all()
+    assert data.rf_daily(june).eq(0.0222 / 252).all()
+
+
+# On the real data the betas at a 2019 close are all finite.
+@pytest.mark.skipif(
+    not (sources.DATA / "v4" / "clean" / "dsf.parquet").exists(), reason="no data folder"
+)
+def test_betas_run_on_the_real_data():
+    got = betas.at("2019-06-28", [14593, 10107, 12490])
+    assert got[["welch", "dimson", "trigger"]].notna().all(axis=None)
 
 
 # A missing market day drops out of the betas, never voids them.

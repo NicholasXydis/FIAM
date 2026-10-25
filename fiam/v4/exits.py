@@ -147,8 +147,11 @@ def diff(old: Path, new: Path = DATA / "v4" / "clean" / "exits.parquet") -> dict
     show += ["known_old", "known_new"]
     import hashlib
 
-    # Which builds were compared, by path and SHA-256.
-    sha = {str(f): hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in (old, new)}
+    # Which builds were compared: the kit's and ours, by SHA-256 only.
+    sha = {
+        side: dict(file=Path(f).name, sha256=hashlib.sha256(Path(f).read_bytes()).hexdigest())
+        for side, f in (("old", old), ("new", new))
+    }
     return {
         "compared": sha,
         "old_rows": len(a),

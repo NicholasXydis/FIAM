@@ -1001,7 +1001,7 @@ def load_tb3ms(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     t["tb3ms"] = pd.to_numeric(t["tb3ms"], errors="coerce") / 100
     # FRED posts a month's average the next business day.
     end = t["month"] + pd.offsets.MonthEnd(0) + pd.offsets.BDay(1)
-    return t.assign(available_at=clock.end_of_day(end).dt.tz_convert("UTC"), first_close=pd.NaT)
+    return stamped(t, clock.end_of_day(end), cal)
 
 
 # FRED's S&P 500 level and daily return, each at its own close (M5).

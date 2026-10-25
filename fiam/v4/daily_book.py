@@ -331,7 +331,7 @@ class Book:
         self.costs, self.borrow = costs, borrow
         self.missing, self.last_price, self.stubs, self.sell_next = {}, {}, {}, set()
         self.entitled, self.accrued, self.trued, self.formations = {}, {}, 0.0, []
-        self.lowest = {}
+        self.lowest, self.pre_positions = {}, []
         self.rows, self.positions, self.trades, self.events, self.ledger = [], [], [], [], []
         self.nav_before = float(nav)
 
@@ -384,6 +384,7 @@ class Book:
         if order is not None:
             self.formations.append((d, order[0]))
             before, start = dict(self.values), len(self.trades)
+            self.pre_positions.extend((d, p, v) for p, v in before.items())
             cost = self.trade(i, d, order[0], order[1], self.nav_before)
             nav = self.cash + sum(self.values.values())
             turnover = self.turnover(before, pre["nav"], nav, start)
@@ -600,6 +601,7 @@ class Book:
                 traded=order is not None,
                 gross=float(np.abs(w).sum()),
                 net=float(w.sum()),
+                nav_pre=pre["nav"],
                 gross_pre=pre["gross"],
                 net_pre=pre["net"],
                 max_weight_pre=pre["top"],
@@ -639,27 +641,34 @@ class Book:
 # Daily checks: names by stock and company, gross, net, caps, floor.
 def compliance(daily, positions, book: Book) -> pd.DataFrame:
     rules = book.rules
-    pos = positions.merge(daily[["nav"]], left_on="date", right_index=True)
-    pos["weight"] = pos["value"] / pos["nav"]
-    pos["permco"] = data.permcos(pos["permno"], pos["date"]).to_numpy()
+    pre = pd.DataFrame(book.pre_positions, columns=["date", "permno", "value"])
+    both = pd.concat([positions.assign(pre=False), pre.assign(pre=True)], ignore_index=True)
+    both = both.sort_values(["date", "pre"], kind="stable", ignore_index=True)
+    nav = np.where(both["pre"], both["date"].map(daily["nav_pre"]), both["date"].map(daily["nav"]))
+    both["size"] = both["value"].abs() / nav
+    both["permco"] = data.permcos(both["permno"], both["date"]).to_numpy()
     # A link that ends at the last trade keeps the stock's last company.
-    pos["permco"] = pos.groupby("permno")["permco"].ffill().fillna(-pos["permno"])
-    size = pos.assign(size=pos["weight"].abs())
-    by_co = size.groupby(["date", "permco"])["size"].sum()
+    both["permco"] = both.groupby("permno")["permco"].ffill().fillna(-both["permno"])
+    pos = both[~both["pre"]].assign(weight=lambda f: f["value"] / f["date"].map(daily["nav"]))
     out = pd.DataFrame(index=daily.index)
-    out["names"] = pos.groupby("date")["permno"].nunique().reindex(out.index).fillna(0)
-    out["companies"] = pos.groupby("date")["permco"].nunique().reindex(out.index).fillna(0)
+    after, before = held(pos, out.index), held(both[both["pre"]], out.index)
+    out = out.join(after).fillna(0).join(before.add_suffix("_pre"))
+    # Every trade day after the first holds names before its trades.
+    days = sorted({d for d, _ in book.formations})[1:]
+    cols = ["names_pre", "companies_pre", "max_company_weight_pre"]
+    out.loc[out.index.isin(days), cols] = out.loc[out.index.isin(days), cols].fillna(0)
     out["gross"], out["net"] = daily["gross"], daily["net"]
     out["max_weight"] = daily["max_weight"]
-    out["max_company_weight"] = by_co.groupby(level=0).max().reindex(out.index).fillna(0)
     lo, hi = rules["names_min"], rules["names_max"]
-    out["names_ok"] = out["names"].between(lo, hi) & out["companies"].between(lo, hi)
+    counts = out[["names", "companies"]].join(out[["names_pre", "companies_pre"]])
+    out["names_ok"] = (counts.isna() | ((counts >= lo) & (counts <= hi))).all(axis=1)
     # Marks before and after each day's trades both count (PDF p4).
     gross = daily[["gross", "gross_pre"]].max(axis=1)
     net = daily[["net", "net_pre"]].abs().max(axis=1)
     out["gross_ok"] = gross <= rules["gross"] + 1e-12
     out["net_ok"] = net <= rules["net_band"] + 1e-12
-    worst = pd.concat([out[["max_weight", "max_company_weight"]], daily["max_weight_pre"]], axis=1)
+    caps = ["max_weight", "max_company_weight", "max_company_weight_pre"]
+    worst = pd.concat([out[caps], daily["max_weight_pre"]], axis=1)
     out["cap_ok"] = worst.max(axis=1) <= rules["name_cap"] + 1e-12
     floor = short_floor(positions, book, rules)
     out = out.join(floor).fillna({c: 0 for c in floor.columns})
@@ -671,6 +680,19 @@ def compliance(daily, positions, book: Book) -> pd.DataFrame:
     out["days_of_adv_max"] = days_of_adv(pos, book)
     out["beta_sp500_252d"] = book_beta(daily, book)
     return out
+
+
+# Names, companies and the largest company weight on each day.
+def held(pos: pd.DataFrame, index) -> pd.DataFrame:
+    by_co = pos.groupby(["date", "permco"])["size"].sum()
+    out = pd.DataFrame(
+        {
+            "names": pos.groupby("date")["permno"].nunique(),
+            "companies": pos.groupby("date")["permco"].nunique(),
+            "max_company_weight": by_co.groupby(level=0).max(),
+        }
+    )
+    return out.reindex(index)
 
 
 # Days that break a PDF limit once the book is invested (PLAN §9.3).

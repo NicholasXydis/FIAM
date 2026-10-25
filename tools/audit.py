@@ -632,9 +632,13 @@ def thirteen_f() -> None:
         rows += len(info)
         shares = pd.to_numeric(info["SSHPRNAMT"], errors="coerce")
         price = pd.to_numeric(info["VALUE"], errors="coerce") / shares.where(shares > 0)
+        median = float(price.median())
+        # A quarter filed after 2020 keeps its unit class, never a level.
+        sealed = filed.max() >= SEALED
         out[path.name.split("_form13f")[0]] = dict(
             last_filed=str(filed.max().date()),
-            value_per_share=round(float(price.median()), 4),
+            value_per_share=None if sealed else round(median, 4),
+            units="thousands" if median < 0.5 else "dollars" if median > 2 else "unclear",
             cusip_match=round(float(info["CUSIP"].str[:8].isin(cusips).mean()), 3),
             rows=len(info),
         )
@@ -642,14 +646,15 @@ def thirteen_f() -> None:
     (OUT / "thirteen_f.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     # Quarters sorted by when they were filed, not by file name.
     split = pd.DataFrame(out.values()).assign(last_filed=lambda f: pd.to_datetime(f["last_filed"]))
-    before = split.loc[split["last_filed"] < "2023-01-03", "value_per_share"].median()
-    after = split.loc[split["last_filed"] >= "2023-01-03", "value_per_share"].median()
+    before = split.loc[split["last_filed"] < SEALED, "value_per_share"].median()
+    late = split[split["last_filed"] >= "2023-01-03"]
+    dollars = int((late["units"] == "dollars").sum())
     note(
         "warn",
         "sec 13f",
-        "median VALUE per share filed before vs after 2023-01-03",
-        f"{before:.4f} vs {after:.2f}: thousands of dollars, then dollars",
-        "multiply VALUE by 1,000 for filings before 2023-01-03",
+        "median VALUE per share before 2021; unit class from 2023-01-03",
+        f"{before:.4f} (thousands); {dollars} of {len(late)} later quarters in dollars",
+        "units decided per filing (protocol, step 6 13F rules)",
     )
     matches = [v["cusip_match"] for v in out.values()]
     note(
