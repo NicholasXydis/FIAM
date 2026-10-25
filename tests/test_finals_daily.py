@@ -576,7 +576,9 @@ def test_strict_runs_stop_on_a_breach_and_delta_is_guarded(monkeypatch):
 
 
 # The finals run starts at the endowment's close and ends in its window.
-def test_finals_window_is_enforced():
+def test_finals_window_is_enforced(monkeypatch):
+    # A weekday calendar, so the test needs no data folder (CI has none).
+    Fake("2020-12-01", "2026-09-30").install(monkeypatch)
     rules = dict(window=["2021-01-01", "2026-08-31"])
     days = data.sessions("2020-12-31", "2026-08-31")
     daily_book.finals_window(rules, days)

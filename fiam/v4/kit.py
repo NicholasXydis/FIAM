@@ -201,7 +201,8 @@ def parts() -> dict[str, list[tuple[Path, str]]]:
         "data-other": here(
             "data/benchmarks", "data/edgar_cache.zip", "data/INVENTORY.json", "data/arcana"
         ),
-        "results": here(*results.PARTS, "out/v4"),
+        # The audit reports and agreement files are the evidence trail.
+        "results": here(*results.PARTS, "out/v4", "out/audit"),
         "media": here("deck", "out/media", "cache/vsco2"),
         "media-film": here("out/ad"),
         "weights-gemma": here(f"models/{GEMMA}", f"models/{GEMMA}.sha256.json"),
