@@ -267,6 +267,8 @@ def test_only_allowed_v4_modules_open_data_files():
     allowed |= {"hand_checks.py", "kit.py", "text.py", "vintage.py", "fema.py"}
     # The replay reads only v3's stored 2016-2020 check files (step 5).
     allowed |= {"replay.py"}
+    # The step 6 builders read the extracts and CRSP's types to clean them.
+    allowed |= {"compustat.py", "thirteen_f.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):
@@ -281,3 +283,49 @@ def test_registered_sources_keep_their_early_bans():
     for name, fields in sources.BANNED_LATER.items():
         if name in sources.REGISTRY:
             assert set(fields) <= set(sources.REGISTRY[name].banned), name
+
+
+# Step 6 tables: their bans refuse reads and sealed labels never load.
+def test_step6_bans_and_sealed_labels(tmp_path, monkeypatch):
+    monkeypatch.setattr(sources, "CLEAN", tmp_path)
+    for name, col, why in (("sec_facts", "frame", None), ("compustat_quarterly", "dldte", "twin")):
+        with pytest.raises(sources.BannedField):
+            sources.read(name, [col], purpose=why)
+    for name in ("compustat_quarterly", "compustat_annual"):
+        assert {"dldte", "dlrsn", "cik", "ipodate"} <= set(sources.REGISTRY[name].banned)
+    cal = clock.calendar(clock.xnys_sessions("2020-11-01", "2021-02-26"))
+    lab = pd.DataFrame(
+        {
+            "permno": [1, 2],
+            "eom": pd.to_datetime(["2020-10-31", "2020-11-30"]),
+            "horizon": [1, 1],
+            "label": [0.1, 0.2],
+            "available": pd.to_datetime(["2020-12-01", "2021-01-04"]),
+        }
+    )
+    sources.stamped(lab, None, cal, market_day=lab["available"]).to_parquet(
+        tmp_path / "labels.parquet"
+    )
+    got = sources.read("labels", ["label"], purpose="label")
+    assert got["permno"].tolist() == [1]
+    # Labels and restated Compustat refuse any other purpose (audit M2).
+    with pytest.raises(sources.NotForBacktest):
+        sources.read("labels", ["label"])
+    for name in ("compustat_quarterly", "compustat_annual"):
+        with pytest.raises(sources.NotForBacktest):
+            sources.read(name, ["datadate"], purpose="model")
+    assert {"ajexq", "ajex"} <= set(sources.COMPUSTAT_BANNED)
+
+
+# The SUE and 13F holdings stay sealed like every registered table.
+def test_step6_sue_and_holdings_are_sealed(tmp_path, monkeypatch):
+    monkeypatch.setattr(sources, "CLEAN", tmp_path)
+    cal = clock.calendar(clock.xnys_sessions("2020-11-01", "2021-02-26"))
+    filed = pd.to_datetime(["2020-12-30", "2021-01-05"])
+    sue = pd.DataFrame({"permno": [1, 1], "end": pd.to_datetime(["2020-09-30", "2020-12-31"]),
+                        "sue": [1.0, 2.0], "filed": filed})  # fmt: skip
+    sources.stamped(sue, clock.end_of_day(filed), cal).to_parquet(tmp_path / "sue.parquet")
+    held = pd.DataFrame({"accession": ["a", "b"], "permno": [1, 1], "value_usd": [1.0, 2.0]})
+    sources.stamped(held, clock.end_of_day(filed), cal).to_parquet(tmp_path / "sec_13f.parquet")
+    assert sources.read("sue", ["sue"], purpose="label")["sue"].tolist() == [1.0]
+    assert sources.read("sec_13f", ["value_usd"])["accession"].tolist() == ["a"]

@@ -317,7 +317,7 @@ def plan(spec_path: str, client=None) -> int:
     book |= {"total": total, "items": items}
     target.write_text(json.dumps(book, default=str, indent=1), encoding="utf-8")
     print(f"{len(good)} priced, {total} tokens in all, {len(items) - len(good)} not buyable.")
-    print(f"Nothing was bought. To buy: uv run run.py --carbon buy {target} {total}")
+    print(f"Nothing was bought. To buy: uv run run.py --data carbon buy {target} {total}")
     return 0
 
 

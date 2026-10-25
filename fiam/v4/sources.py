@@ -97,6 +97,8 @@ class Source:
     step: int = 3
     answers: dict = field(default_factory=dict)
     control: str = ""
+    # The only purposes a read may name; empty means any purpose.
+    purposes: frozenset = frozenset()
 
 
 # The PDF's four answers per source (p14-15), in plain words.
@@ -105,6 +107,16 @@ def four(start: str, lag: str, vintage: str, coverage: str) -> dict:
 
 
 PANEL_IDS = ("permno", "gvkey", "iid", "eom", "id", "excntry", "exch_main", "common")
+# Compustat fields no reader may ask for: deletion, header, updates.
+COMPUSTAT_BANNED = ("dldte", "dlrsn", "cik", "ipodate", "updq", "updvpq", "updvpy", "upd")
+# Cumulative split factors encode later splits, as adjfct does (audit).
+COMPUSTAT_BANNED += ("ajexq", "ajex")
+# Restated Compustat serves the twin, the gap and the SUE's date only.
+COMPUSTAT_USES = frozenset({"twin", "gap", "announce"})
+# The registered tables the labels and the SUE are built from.
+LABEL_INPUTS = ("panel", "dsf", "crsp_daily", "crsp_monthly", "exits", "crsp_market_daily")
+LABEL_INPUTS += ("tb3ms",)
+SUE_INPUTS = ("sec_facts", "crsp_distributions", "compustat_quarterly", "links")
 REGISTRY = {
     s.name: s
     for s in [
@@ -490,18 +502,132 @@ REGISTRY = {
             use="links",
             answers=four("1900 (CIK) to 2026", "dated periods", "built here", "§6.7"),
         ),
+        Source(
+            "compustat_quarterly",
+            ("v4/extracts/compustat_quarterly.parquet",),
+            ("gvkey", "datadate"),
+            "gvkey",
+            "compustat",
+            # Deletion, header and update fields never leave the extract (B11).
+            banned=COMPUSTAT_BANNED,
+            purposes=COMPUSTAT_USES,
+            step=6,
+            answers=four(
+                "2000-01 (datadate)",
+                "EPS, sales and income the day after rdq; other items the later of that "
+                "and the 10-Q filing day; no rdq, datadate + 4 months (A7); a row enters "
+                "at its later clock, results_at kept beside",
+                "today's restated values: the robustness twin, the descriptive gap and the "
+                "SUE's announcement date only, never a feature or label (PDF p15-16); the "
+                "registry refuses any other purpose",
+                "Compustat North America; to PERMNO by dated gvkey at use; before 2015 dead "
+                "firms' months 95.5% against 99.4% (gap t 3.43)",
+            ),
+        ),
+        Source(
+            "compustat_annual",
+            ("v4/extracts/compustat_annual.parquet", "v4/extracts/compustat_quarterly.parquet"),
+            ("gvkey", "datadate"),
+            "gvkey",
+            "compustat",
+            banned=COMPUSTAT_BANNED,
+            purposes=COMPUSTAT_USES,
+            step=6,
+            answers=four(
+                "2000-01 (datadate)",
+                "its fiscal Q4's later clock, else datadate + 4 months",
+                "today's restated values: the robustness twin and the gap only",
+                "as the quarterly table",
+            ),
+        ),
+        Source(
+            "sec_facts",
+            ("edgar/companyfacts.zip", "v4/links.parquet"),
+            ("permno", "cik", "tag", "unit", "start", "end", "accn"),
+            "permno",
+            "end_of_day",
+            # frame sits on the last-filed row; fy and fp are never periods.
+            banned=("frame", "fy", "fp"),
+            step=6,
+            answers=four(
+                "2009 for large filers, 2011 for all (XBRL)",
+                "the end of the filed day: never early, at most one session late",
+                "as filed: every EPS fact with its accession, and each filer's first report "
+                "of every dollar fact; a later restatement never replaces it",
+                "every SEC filer the dated links give a PERMNO, dead firms included",
+            ),
+        ),
+        Source(
+            "sec_13f_reports",
+            ("edgar/13f/*_form13f.zip",),
+            ("accession",),
+            "filer",
+            "end_of_day",
+            step=6,
+            answers=four(
+                "2013-06-30 (the first full report quarter)",
+                "the end of the filing day; amendments from their own date (B13)",
+                "as filed; units decided per filing from its own lines (A11)",
+                "every 13F-HR and 13F-HR/A; notices carry no holdings",
+            ),
+        ),
+        Source(
+            "sec_13f",
+            ("edgar/13f/*_form13f.zip", "v4/links.parquet", "v4/clean/crsp_monthly.parquet"),
+            ("accession", "permno"),
+            "permno",
+            "end_of_day",
+            step=6,
+            answers=four(
+                "2013-06-30",
+                "its report's filing day, end of day",
+                "as filed; options and principal amounts out; VALUE in dollars per filing",
+                "lines matched to CRSP US common stock by the CUSIP in force at the period",
+            ),
+        ),
+        Source(
+            "labels",
+            tuple(f"v4/cards/{c}.json" for c in LABEL_INPUTS),
+            ("permno", "eom", "horizon"),
+            "permno",
+            # Public at a close, like market data: its window's or its exit's.
+            "market",
+            use="label",
+            purposes=frozenset({"label"}),
+            step=6,
+            answers=four(
+                "formations 2015-01 on",
+                "the window's last close, or its exit return's first close if later; a "
+                "label public after 2020-12-31 is refused, never truncated",
+                "CRSP daily as of the 2025 annual update; each delisting return once",
+                "every panel stock at each formation, dead firms included",
+            ),
+        ),
+        Source(
+            "sue",
+            tuple(f"v4/cards/{c}.json" for c in SUE_INPUTS),
+            ("permno", "end"),
+            "permno",
+            "end_of_day",
+            use="label",
+            purposes=frozenset({"label", "gap"}),
+            step=6,
+            answers=four(
+                "quarters first reported from 2009",
+                "the end of the first report's filed day; announced at Compustat's rdq, "
+                "else that filing",
+                "as filed, first report per PERMNO across its CIKs; earlier differences on "
+                "one share basis by CRSP's split factors; no Compustat fallback",
+                "linked filers with as-filed EPS; a quarter without it has no SUE",
+            ),
+        ),
     ]
 }
 # Sources converted in the step that first reads them (§6.7).
 LATER = {
-    "compustat_quarterly": 6,
-    "compustat_annual": 6,
-    "wrds_ratios": 6,
     "ibes": 9,
     "taq_daily": 7,
     "options_daily": 7,
-    "sec_13f": 6,
-    "sec_facts": 6,
     "noaa": 6,
     "fema": 6,
     "ca0065s": 3,
@@ -609,7 +735,7 @@ def load_crsp_daily(path: Path, cal: pd.Series) -> pd.DataFrame:
 def load_crsp_monthly(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     cols = ["PERMNO", "MthCalDt", "MthRet", "MthRetx", "MthPrc", "MthCap", "MthVol"]
     cols += ["MthPrcVol", "ShrOut", "MthDelFlg", "SICCD", "NAICS", "PrimaryExch"]
-    cols += ["ShareType", "SecurityType", "PERMCO"]
+    cols += ["ShareType", "SecurityType", "PERMCO", "USIncFlg", "IssuerType"]
     m = pd.read_parquet(data / "v4" / "extracts" / "crsp_monthly.parquet", columns=cols)
     m = m.rename(columns=lambda c: c.lower().removeprefix("mth"))
     m = m.rename(columns={"caldt": "date", "cap": "cap_musd", "shrout": "shrout_k"})
@@ -1067,6 +1193,80 @@ def load_links(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return lk.assign(available_at=start.dt.tz_convert("UTC").to_numpy(), first_close=pd.NaT)
 
 
+# Compustat quarterly on its allow-list, at each row's later clock.
+def load_compustat_quarterly(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    from fiam.v4 import compustat
+
+    q = compustat.quarterly(data / "v4" / "extracts" / "compustat_quarterly.parquet", log)
+    return stamped(q, pd.to_datetime(q["items_at"], utc=True), cal)
+
+
+# Compustat annual on its allow-list, on its fiscal Q4's clock.
+def load_compustat_annual(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    from fiam.v4 import compustat
+
+    q = compustat.quarterly(data / "v4" / "extracts" / "compustat_quarterly.parquet", {})
+    a = compustat.annual(data / "v4" / "extracts" / "compustat_annual.parquet", q, log)
+    return stamped(a, pd.to_datetime(a["items_at"], utc=True), cal)
+
+
+# SEC as-filed facts on PERMNO by the link on each filed day (§6.7).
+def load_sec_facts(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    from fiam.v4 import asfiled
+
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
+    facts = asfiled.extract(data / "edgar" / "companyfacts.zip", asfiled.linked_ciks(lk), log)
+    facts = by_cik(asfiled.clean(facts, log), lk, "filed", log)
+    return stamped(facts, clock.end_of_day(facts["filed"]), cal)
+
+
+# The 13F build, run once for its two tables.
+_THIRTEEN_F: dict = {}
+
+
+# The SEC 13F reports and holdings, built once per data folder.
+def thirteen_f_tables(data: Path) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    from fiam.v4 import thirteen_f
+
+    if data not in _THIRTEEN_F:
+        log: dict = {}
+        reports, holdings = thirteen_f.build(data, log)
+        _THIRTEEN_F[data] = (reports, holdings, log)
+    return _THIRTEEN_F[data]
+
+
+# 13F holdings reports, each public at the end of its filing day.
+def load_sec_13f_reports(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    reports, _, built = thirteen_f_tables(data)
+    log.update(built)
+    return stamped(reports, clock.end_of_day(reports["filing_date"]), cal)
+
+
+# 13F holdings per report and PERMNO, on their report's clock.
+def load_sec_13f(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    reports, holdings, built = thirteen_f_tables(data)
+    log.update({k: v for k, v in built.items() if "lines" in k or "holdings" in k})
+    when = holdings["accession"].map(reports.set_index("accession")["filing_date"])
+    return stamped(holdings, clock.end_of_day(when), cal)
+
+
+# The t+1 labels, built through the blind reader (protocol step 6).
+def load_labels(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    from fiam.v4 import labels
+
+    table, report = labels.build()
+    log.update(report)
+    return stamped(table, None, cal, market_day=table["available"])
+
+
+# The as-filed SUE, built through the blind reader (protocol step 6).
+def load_sue(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    from fiam.v4 import asfiled
+
+    table = asfiled.announce(asfiled.sue(log), log)
+    return stamped(table, clock.end_of_day(table["filed"]), cal)
+
+
 LOADERS = {
     "panel": load_panel,
     "dsf": load_dsf,
@@ -1088,7 +1288,17 @@ LOADERS = {
     "earnings_calendar": load_earnings_calendar,
     "exits": load_exits,
     "links": load_links,
+    "compustat_quarterly": load_compustat_quarterly,
+    "compustat_annual": load_compustat_annual,
+    "sec_facts": load_sec_facts,
+    "sec_13f_reports": load_sec_13f_reports,
+    "sec_13f": load_sec_13f,
+    "labels": load_labels,
+    "sue": load_sue,
 }
+# The step 6 tables, built in this order by their own command.
+STEP6 = ("compustat_quarterly", "compustat_annual", "sec_facts", "sec_13f_reports", "sec_13f")
+STEP6 += ("labels", "sue")
 
 
 # Rows per year by first close or availability: counts only.
@@ -1189,6 +1399,9 @@ def read(
     # Exhibit-only sources never reach the backtest (approved 2026-10-23).
     if source.use == "exhibit" and purpose not in {"exhibit", "live"}:
         raise NotForBacktest(f"{name}: exhibits and live context only")
+    # Restated values and labels serve their named uses, never a feature.
+    if source.purposes and purpose not in source.purposes:
+        raise NotForBacktest(f"{name}: only for {sorted(source.purposes)}")
     asked = None if columns is None else set(columns)
     # A row filter is a use of its columns: the same bans apply.
     touched = (asked or set()) | set(where or {})
@@ -1292,17 +1505,18 @@ def count(name: str) -> dict:
     return by_year(frame)
 
 
-# Converts the step 3 tables: uv run python -m fiam.v4.sources [names]
+# Converts tables: python -m fiam.v4.sources [names]; step 6 apart
 if __name__ == "__main__":
-    names = sys.argv[1:] or ["crsp_daily", "sections", *LOADERS]
+    names = sys.argv[1:] or ["crsp_daily", "sections", *[n for n in LOADERS if n not in STEP6]]
     calendar = trading_calendar()
     # A run of some tables updates their entries and keeps the rest.
-    old = CARDS / "step3.json"
+    summary = "step6.json" if set(names) <= set(STEP6) else "step3.json"
+    old = CARDS / summary
     report = json.loads(old.read_text()) if old.exists() else {}
     report["calendar"] = clock.cross_check(calendar.index)
     for name in names:
         made = convert(name, cal=calendar)
         report[name] = {"rows": made["rows_out"], "rules": made["rules"]}
         print(name, made["rows_out"], json.dumps(made["rules"], default=str), flush=True)
-    (CARDS / "step3.json").write_text(json.dumps(report, indent=1, default=str))
+    (CARDS / summary).write_text(json.dumps(report, indent=1, default=str))
     print(json.dumps(report["calendar"], default=str)[:2000])
