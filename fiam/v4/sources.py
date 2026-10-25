@@ -14,16 +14,39 @@ import pandas as pd
 
 from fiam.v4 import clock
 from fiam.v4 import links as link_table
+from fiam.v4 import text as filing_text
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 CLEAN = DATA / "v4" / "clean"
 CARDS = DATA / "v4" / "cards"
 EXTRACTS = DATA / "v4" / "extracts"
+TEXT = DATA / "v4" / "text"
+# Tables kept as a folder of parts, since one frame would be too big.
+FOLDERS = {"crsp_daily", "sections"}
 # Blind mode seals every row public after the end of 2020 (PLAN §1.3).
 SEAL = pd.Timestamp("2020-12-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
 # CRSP's own days before 2014; the organisers' dsf days from 2014 on.
 DSF_FROM = pd.Timestamp("2014-01-01")
+# The SEC's 8-K item codes, never v1's labels (2.05 and 2.06 swapped).
+ITEM_NAMES = {
+    "1.01": "material agreement", "1.02": "agreement ended", "1.03": "bankruptcy",
+    "1.04": "mine safety", "1.05": "cybersecurity incident", "2.01": "acquisition or sale done",
+    "2.02": "results", "2.03": "new financial obligation", "2.04": "obligation accelerated",
+    "2.05": "exit or disposal costs", "2.06": "material impairment", "3.01": "delisting notice",
+    "3.02": "unregistered equity sale", "3.03": "holders' rights changed",
+    "4.01": "auditor change", "4.02": "past financials unreliable", "5.01": "control change",
+    "5.02": "director or officer change", "5.03": "charter, bylaws or fiscal year",
+    "5.04": "plan trading suspended", "5.05": "code of ethics", "5.06": "shell status",
+    "5.07": "shareholder vote", "5.08": "director nominations", "6.01": "ABS",
+    "7.01": "Regulation FD", "8.01": "other events", "9.01": "exhibits",
+}  # fmt: skip
+# Red flags (§7.3): these items always; 5.02 only by the text rule.
+RED_ITEMS = {"1.03", "2.06", "3.01", "4.01", "4.02"}
+# Items beside which a 3.01 is mechanical (deal, control, reorganising).
+MECHANICAL = {"2.01", "5.01", "3.03"}
+# A Form 4 line filed this long after its trade is left out (M1).
+INSIDER_LATE = pd.Timedelta(days=30)
 # The insider data sets' kept columns; names and addresses never read.
 INSIDER_FORMS = ("4", "4/A")
 INSIDER_SUB = ["ACCESSION_NUMBER", "FILING_DATE", "PERIOD_OF_REPORT", "DOCUMENT_TYPE", "ISSUERCIK"]
@@ -42,6 +65,9 @@ INSIDER_NAMES = {
     "ISSUERCIK": "issuer_cik", "RPTOWNERCIK": "owner_cik", "RPTOWNER_RELATIONSHIP": "relationship",
     "RPTOWNER_TITLE": "title",
 }  # fmt: skip
+# Form 4 titles that are common stock, and those that never are (L13).
+COMMON_TITLE = r"(?i)common|ordinary|capital stock|class [a-z] shares"
+NOT_COMMON = r"(?i)preferred|option|warrant|\bunits?\b|\bnotes?\b|debenture|\brights?\b"
 # FINRA's files hold exchange-listed short interest from June 2021.
 FINRA_FROM = pd.Timestamp("2021-06-01")
 
@@ -70,6 +96,7 @@ class Source:
     labels: dict = field(default_factory=dict)
     step: int = 3
     answers: dict = field(default_factory=dict)
+    control: str = ""
 
 
 # The PDF's four answers per source (p14-15), in plain words.
@@ -182,11 +209,15 @@ REGISTRY = {
         ),
         Source(
             "short_interest",
-            ("v4/extracts/short_interest_legacy.parquet", "finra/short_interest.parquet"),
+            (
+                "v4/extracts/short_interest_legacy.parquet",
+                "finra/short_interest.parquet",
+                "v4/links.parquet",
+            ),
             ("permno", "settlement"),
             "permno",
             "short_interest",
-            banned=("shortintadj", "splitadjdate"),
+            banned=("shortintadj", "splitadjdate", "gvkey", "cik", "iid", "gvkey_iid"),
             answers=four(
                 "2000-01 (exchange short interest only, A10)",
                 "8 trading days after settlement",
@@ -200,10 +231,12 @@ REGISTRY = {
         ),
         Source(
             "edgar_filings",
-            ("edgar/filings.parquet", "edgar/forms.parquet"),
+            ("edgar/filings.parquet", "edgar/forms.parquet", "v4/links.parquet"),
             ("accession", "permno"),
             "permno",
             "edgar",
+            # Today's EDGAR name on old rows tells how a firm ended (PDF p16).
+            banned=("edgar_name",),
             answers=four(
                 "2006-01 (forms) and 2012-01 (annual reports and 8-Ks)",
                 "the acceptance second, read as the Eastern wall clock (A6)",
@@ -212,8 +245,68 @@ REGISTRY = {
             ),
         ),
         Source(
+            "events",
+            ("v4/clean/edgar_filings.parquet",),
+            ("accession", "permno", "item"),
+            "permno",
+            "edgar",
+            answers=four(
+                "2012-01 (8-Ks of every panel firm)",
+                "the filing's acceptance second (A6)",
+                "filings are never revised; items as the SEC codes them, 5.02 never a flag",
+                "every panel firm with a CIK, dead firms included; red flags per §7.3",
+            ),
+            step=4,
+            control=(
+                "Coverage, any 8-K in the 12 months to t: 99.6% of trading months, 99.5% of "
+                "leavers; same-month gap t -0.12, next-month t 0.04. A stock with no CIK link "
+                "that month is left out of the red-flag gate, never given a 0."
+            ),
+        ),
+        Source(
+            "sections",
+            ("v4/text/annual/part-*.parquet", "v4/clean/edgar_filings.parquet"),
+            ("accession", "permno"),
+            "permno",
+            "edgar",
+            step=4,
+            answers=four(
+                "2012-01 (annual reports of every panel firm)",
+                "the filing's acceptance second (A6)",
+                "filings are never revised; text as filed, boilerplate stripped (K5)",
+                "every held 10-K, 10-K405 and 10-KT; a section under 500 characters is missing",
+            ),
+            control=(
+                "Uncovered months are mostly new listings before their first 10-K (median 4 "
+                "months in the panel against 30) and firms with no CIK; 99.5% of leavers "
+                "resolve; same-month gap t -2.17, next-month t 0.30. A stock without both "
+                "sections is left out of the Lazy Prices gate that month, signal and "
+                "residualisation alike; the gate is also reported on stocks listed 15 months."
+            ),
+        ),
+        Source(
+            "footprint",
+            ("v4/text/annual/part-*.parquet", "v4/clean/edgar_filings.parquet"),
+            ("accession", "permno", "state"),
+            "permno",
+            "edgar",
+            use="exhibit",
+            step=4,
+            answers=four(
+                "2012-01 (annual reports)",
+                "the filing's acceptance second (A6)",
+                "as filed; never today's address (Carbon Arc tags are current)",
+                "every held annual report with a US headquarters or a named property state",
+            ),
+            control=(
+                "The same causes as sections (new listings, no CIK); 99.2% of leavers resolve; "
+                "same-month gap t -2.53, next-month t -0.08. Exhibits and live flags only, "
+                "each reported on covered firms and labelled."
+            ),
+        ),
+        Source(
             "sec_insiders",
-            ("edgar/insiders/*_form345.zip", "edgar/forms.parquet"),
+            ("edgar/insiders/*_form345.zip", "edgar/forms.parquet", "v4/links.parquet"),
             # One filer can hold several listed classes: a line per stock.
             ("accession", "trans_sk", "permno"),
             "permno",
@@ -222,28 +315,38 @@ REGISTRY = {
                 "2006q1, SEC's Forms 3, 4 and 5 data sets (Forms 4 and 4/A kept)",
                 "the filing's acceptance second (A6), else the end of its filing day; "
                 "never the trade date (PDF p16)",
-                "as filed; a 4/A is its own row from its own date",
+                "as filed; a 4/A that changes a trade replaces it from its own date "
+                "(superseded_at); repeats, code mismatches and lines over 30 days late out",
                 "every Form 4 on a panel firm, dead firms included, linked by dated CIK",
+            ),
+            control=(
+                "Coverage, a Form 4 in the 12 months to t: 99.1% of trading months, 98.7% of "
+                "leavers; same-month gap t -2.12, next-month t 0.56. Of the 1,221 uncovered "
+                "trading months, 401 have no CIK (banks filing with bank regulators), 353 sit "
+                "on 12 stocks with no Form 4 ever and 379 in a stock's first 12 months. The "
+                "signal is 0 with no trade, so coverage never picks the gate's stocks; a stock "
+                "with no CIK link that month is missing, never 0."
             ),
         ),
         Source(
-            "key_developments",
-            ("v4/extracts/events.parquet",),
-            ("keydevid", "permno"),
-            "permno",
-            "entered",
+            "amazon_stores",
+            ("amazon/product_month/*.parquet", "amazon/items/*.parquet"),
+            ("store", "month"),
+            "store",
+            "end_of_day",
             use="exhibit",
-            banned=("ticker", "ticker_startdate", "ticker_enddate", "speffectivedate", "sptodate"),
+            step=4,
             answers=four(
-                "2004 (entered dates; earlier rows entered years late, A9)",
-                "the instant the event was entered (entereddateutc)",
-                "entries stay; revision stamps banned",
-                "our gvkeys; results announcements only, no advance dates",
+                "2000 (UCSD Amazon Reviews 2023, to 2023-09)",
+                "the end of the month the reviews were posted (review timestamps, UTC)",
+                "current vintage (PDF p16): a 2023 release that lacks reviews removed before "
+                "2023, with stores from 2023 metadata; descriptive only, no snapshot field kept",
+                "stores of every category; a store reaches a firm only by the ontology rule",
             ),
         ),
         Source(
             "restatements",
-            ("v4/extracts/restatements.parquet",),
+            ("v4/extracts/restatements.parquet", "v4/links.parquet"),
             ("restatement_notification_key", "permno"),
             "permno",
             "file_date",
@@ -257,6 +360,30 @@ REGISTRY = {
                 "change_cum_tot_sto_equ_usd",
                 "res_adverse",
                 "res_improves",
+                # A later 4.02 8-K's date and key (final audit M3).
+                "date_of_8k_402",
+                "form_fkey_of_8k_402",
+                # Fraud, investigation and auditor fields may be updated later.
+                "res_accounting",
+                "res_accounting_res_cat_fke_lis",
+                "res_accounting_res_cat_tit_lis",
+                "res_fraud",
+                "res_fraud_res_cat_fke_lis",
+                "res_fraud_res_cat_tit_lis",
+                "res_clerical_errors",
+                "res_clerical_err_res_cat_fke_lis",
+                "res_clerical_err_res_cat_tit_lis",
+                "res_other",
+                "res_other_res_cat_fke_lis",
+                "res_other_res_cat_tit_lis",
+                "res_auditor_letter",
+                "res_sec_investigation",
+                "res_board_approval",
+                "res_regulatory_investigation",
+                "file_date_auditor_name",
+                "res_begin_auditor_name",
+                "res_end_auditor_name",
+                "general_type",
             ),
             answers=four(
                 "2000",
@@ -306,8 +433,23 @@ REGISTRY = {
             ),
         ),
         Source(
+            "sp500",
+            ("benchmarks/SP500.csv",),
+            ("date",),
+            "none",
+            "market",
+            use="benchmark",
+            step=4,
+            answers=four(
+                "2016-09-26 (FRED); CRSP sprtrn before, through 2025 (PLAN §6.1)",
+                "the day's close; used for 2026 only, the PDF's beta table",
+                "FRED series, price index without dividends",
+                "n/a",
+            ),
+        ),
+        Source(
             "earnings_calendar",
-            ("v4/extracts/compustat_quarterly.parquet",),
+            ("v4/extracts/compustat_quarterly.parquet", "v4/links.parquet"),
             ("permno", "gvkey", "fyearq", "fqtr"),
             "permno",
             "projected",
@@ -351,8 +493,8 @@ REGISTRY = {
 }
 # Sources converted in the step that first reads them (§6.7).
 LATER = {
-    "compustat_quarterly": 4,
-    "compustat_annual": 4,
+    "compustat_quarterly": 6,
+    "compustat_annual": 6,
     "wrds_ratios": 6,
     "ibes": 9,
     "taq_daily": 7,
@@ -365,6 +507,8 @@ LATER = {
     "amazon": 6,
     "carbon_arc": 9,
 }
+# Fields banned before their source is registered (final audit 1, 15).
+BANNED_LATER = {"noaa": ("DAMAGE_PROPERTY", "DAMAGE_CROPS", "damage_property", "damage_crops")}
 # Sources the backtest may never read (PLAN §1.2).
 NEVER = {
     "organisers_8k": "survivor-biased (A1); its permno-CIK pairs feed the links only",
@@ -373,6 +517,8 @@ NEVER = {
     "ibes": "today's vintage, history rewritten (B27); the live desk only",
     "carbon_arc": "current vintage (B29); live only, CA0065S volume excepted (B30)",
     "short_interest_lending": "stock-lending demand, not exchange short interest (A10)",
+    "customer_links": "customer names failed their check (83 of 100, bar 85); removed 2026-10-24",
+    "key_developments": "universe-level survivorship gap t -3.32; removed 2026-10-24",
 }
 
 
@@ -392,7 +538,9 @@ def raw_files(source: Source, data: Path = DATA) -> list[Path]:
 
 # The one trading calendar: CRSP days before 2014, dsf days from 2014.
 def trading_calendar(data: Path = DATA) -> pd.Series:
-    market = pd.read_parquet(EXTRACTS / "crsp_market_daily.parquet", columns=["dlycaldt"])
+    market = pd.read_parquet(
+        data / "v4" / "extracts" / "crsp_market_daily.parquet", columns=["dlycaldt"]
+    )
     early_days = pd.to_datetime(market["dlycaldt"])
     dsf = pd.read_csv(data / "organisers" / "dsf_mini_from_2014.csv", usecols=["date"])
     late_days = pd.to_datetime(dsf["date"].drop_duplicates().astype(str), format="%Y%m%d")
@@ -461,7 +609,7 @@ def load_crsp_monthly(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     cols = ["PERMNO", "MthCalDt", "MthRet", "MthRetx", "MthPrc", "MthCap", "MthVol"]
     cols += ["MthPrcVol", "ShrOut", "MthDelFlg", "SICCD", "NAICS", "PrimaryExch"]
     cols += ["ShareType", "SecurityType", "PERMCO"]
-    m = pd.read_parquet(EXTRACTS / "crsp_monthly.parquet", columns=cols)
+    m = pd.read_parquet(data / "v4" / "extracts" / "crsp_monthly.parquet", columns=cols)
     m = m.rename(columns=lambda c: c.lower().removeprefix("mth"))
     m = m.rename(columns={"caldt": "date", "cap": "cap_musd", "shrout": "shrout_k"})
     m["permno"] = pd.to_numeric(m["permno"]).astype("int64")
@@ -472,7 +620,9 @@ def load_crsp_monthly(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
 
 # CRSP delistings, public once their return is known (accounting).
 def load_delistings(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    d = pd.read_parquet(EXTRACTS / "crsp_delistings.parquet").drop(columns=["ticker"])
+    d = pd.read_parquet(data / "v4" / "extracts" / "crsp_delistings.parquet").drop(
+        columns=["ticker"]
+    )
     d["permno"] = pd.to_numeric(d["permno"]).astype("int64")
     for col in ("delistingdt", "delnextdt", "delamtdt", "deldlydt"):
         d[col] = pd.to_datetime(d[col], errors="coerce").astype("datetime64[ns]")
@@ -482,7 +632,9 @@ def load_delistings(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
 
 # CRSP distributions, public at their declaration (checks only).
 def load_distributions(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    d = pd.read_parquet(EXTRACTS / "crsp_distributions.parquet").drop(columns=["ticker"])
+    d = pd.read_parquet(data / "v4" / "extracts" / "crsp_distributions.parquet").drop(
+        columns=["ticker"]
+    )
     d["permno"] = pd.to_numeric(d["permno"]).astype("int64")
     for col in ("disexdt", "disdeclaredt", "disrecorddt", "dispaydt"):
         d[col] = pd.to_datetime(d[col], errors="coerce").astype("datetime64[ns]")
@@ -493,15 +645,17 @@ def load_distributions(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
 
 # CRSP's market series at each day's close.
 def load_market(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    m = pd.read_parquet(EXTRACTS / "crsp_market_daily.parquet").rename(columns={"dlycaldt": "date"})
+    m = pd.read_parquet(data / "v4" / "extracts" / "crsp_market_daily.parquet").rename(
+        columns={"dlycaldt": "date"}
+    )
     m["date"] = pd.to_datetime(m["date"]).astype("datetime64[ns]")
     return stamped(m, None, cal, market_day=m["date"])
 
 
 # Exchange short interest on PERMNO: WRDS legacy, then FINRA (A10).
 def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
-    s = pd.read_parquet(EXTRACTS / "short_interest_legacy.parquet")
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
+    s = pd.read_parquet(data / "v4" / "extracts" / "short_interest_legacy.parquet")
     s = s.drop(columns=["shortintadj", "splitadjdate"]).rename(columns={"datadate": "settlement"})
     s["settlement"] = pd.to_datetime(s["settlement"]).astype("datetime64[ns]")
     s = s[s["settlement"] < FINRA_FROM]
@@ -528,8 +682,7 @@ def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     f = f[["settlement", "permno", "symbol", "shortint", "revision"]].assign(source="finra")
     both = pd.concat([s.assign(revision=""), f], ignore_index=True)
     both = both.sort_values(["permno", "settlement"], ignore_index=True)
-    # A row FINRA later corrected takes the stock's last uncorrected value
-    # from up to 2 months before, published then (approved 2026-10-23, 1B).
+    # A corrected FINRA row takes the last clean value in 2 months (1B).
     fixed = both["revision"].eq("R")
     prior = both["shortint"].where(~fixed).groupby(both["permno"]).ffill()
     when = both["settlement"].where(~fixed).groupby(both["permno"]).ffill()
@@ -540,6 +693,8 @@ def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     log["finra_corrected_rows_left_missing"] = int((fixed & ~near).sum())
     both = both[~fixed | near].drop(columns=["revision"])
     ours = clock.short_interest_available(both["settlement"], cal)
+    # WRDS's header ids served the link only (final audit M3).
+    both = both.drop(columns=["gvkey", "cik", "iid", "gvkey_iid"], errors="ignore")
     return stamped(both, ours, cal)
 
 
@@ -551,12 +706,105 @@ def load_edgar(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
             pd.read_parquet(data / "edgar" / "forms.parquet"),
         ],
         ignore_index=True,
-    ).drop_duplicates("accession")
+    ).drop_duplicates(["cik", "accession"])
+    # Forms 4 tag owner companies too, so insiders read sec_insiders (L3).
+    log["insider_forms_left_out"] = int(f["form"].isin(INSIDER_FORMS).sum())
+    f = f[~f["form"].isin(INSIDER_FORMS)].copy()
     f["filing_date"] = pd.to_datetime(f["filing_date"]).astype("datetime64[ns]")
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
-    f = by_cik(f, lk, "filing_date", log)
+    # The download flag is not the red-flag rule, so it is named apart.
+    f = f.drop(columns=["edgar_name"], errors="ignore").rename(
+        columns={"red_flag": "downloaded_for_text"}
+    )
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
+    # Each filer's copy of a joint filing meets its own stock, once.
+    f = by_cik(f, lk, "filing_date", log).drop_duplicates(["accession", "permno"])
     public = clock.edgar_available(f["accepted"], f["filing_date"])
     return stamped(f, public, cal)
+
+
+# 8-K events, one row per item and stock, on the filing's clock (§6.3).
+def load_events(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    cols = ["accession", "permno", "form", "items", "filing_date", "available_at", "first_close"]
+    f = pd.read_parquet(data / "v4" / "clean" / "edgar_filings.parquet", columns=cols)
+    # An 8-K/A is kept apart and never counts again (protocol.md).
+    f = f[f["form"].isin(["8-K", "8-K/A"]) & f["items"].notna()]
+    rows = f.assign(item=f["items"].str.split(",")).explode("item").drop(columns=["items"])
+    rows["item"] = rows["item"].str.strip()
+    rows["amendment"] = rows["form"] == "8-K/A"
+    # Only the SEC's own item codes flag, never 5.02 (leader 2026-10-24).
+    red = rows["item"].isin(RED_ITEMS)
+    # A 3.01 beside 2.01, 5.01 or 3.03 is mechanical, never a flag (M5).
+    deal = rows["accession"].isin(rows.loc[rows["item"].isin(MECHANICAL), "accession"])
+    mechanical = red & (rows["item"] == "3.01") & deal
+    log["red_flag_rows_dropped_as_mechanical_301"] = int(mechanical.sum())
+    red &= ~mechanical
+    earnings = rows["accession"].isin(rows.loc[rows["item"] == "2.02", "accession"])
+    rows["earnings_8k"] = earnings
+    rows["red_flag"] = red & ~rows["amendment"] & ~earnings
+    log["red_flag_rows_dropped_as_earnings_8k"] = int((red & ~rows["amendment"] & earnings).sum())
+    rows["item_name"] = rows["item"].map(ITEM_NAMES)
+    log["items_by_code"] = rows["item"].value_counts().head(30).to_dict()
+    log["red_flag_rows"] = int(rows["red_flag"].sum())
+    log["unknown_item_codes"] = int(rows["item_name"].isna().sum())
+    return rows.drop_duplicates(["accession", "permno", "item"])
+
+
+# Each annual-report text part joined to its stock and clock (§6.3).
+def annual_parts(data: Path, columns: list[str]):
+    keys = ["accession", "permno", "form", "filing_date", "available_at", "first_close"]
+    f = pd.read_parquet(data / "v4" / "clean" / "edgar_filings.parquet", columns=keys)
+    f = f[f["form"].isin(filing_text.ANNUAL)]
+    for path in sorted((data / "v4" / "text" / "annual").glob("part-*.parquet")):
+        part = pd.read_parquet(path, columns=["accession", "cik", *columns])
+        yield part.merge(f, on="accession", how="inner")
+
+
+# One report's state weights: named states equal, headquarters twice.
+def footprint_weights(hq: str | None, named: str) -> dict[str, float]:
+    states = list(dict.fromkeys(([hq] if hq else []) + [s for s in named.split(",") if s]))
+    total = len(states) + (1 if hq else 0)
+    return {s: (2 if s == hq else 1) / total for s in states}
+
+
+# Footprint weights per report: named states equal, headquarters twice.
+def load_footprint(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    a = pd.concat(annual_parts(data, ["hq_state", "hq_zip", "property_states"]), ignore_index=True)
+    rows = []
+    for r in a.itertuples():
+        hq = r.hq_state if isinstance(r.hq_state, str) else None
+        for s, weight in footprint_weights(hq, str(r.property_states or "")).items():
+            rows.append((r.accession, r.permno, s, weight, hq, r.hq_zip, r.form, r.filing_date))
+    cols = ["accession", "permno", "state", "weight", "hq_state", "hq_zip", "form", "filing_date"]
+    out = pd.DataFrame(rows, columns=cols)
+    clocks = a[["accession", "permno", "available_at", "first_close"]].drop_duplicates()
+    out = out.merge(clocks, on=["accession", "permno"])
+    log["reports"] = int(a[["accession", "permno"]].drop_duplicates().shape[0])
+    log["reports_with_hq"] = int(a["hq_state"].notna().sum())
+    log["reports_without_state"] = int(
+        log["reports"] - out[["accession", "permno"]].drop_duplicates().shape[0]
+    )
+    return out
+
+
+# Amazon store-month review counts and ratings, counted at month end.
+def load_amazon_stores(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    sums = ["reviews", "rating_sum", "rating_sq"]
+    frames = []
+    for path in sorted((data / "amazon" / "product_month").glob("*.parquet")):
+        items = pd.read_parquet(
+            data / "amazon" / "items" / path.name, columns=["parent_asin", "store"]
+        )
+        m = pd.read_parquet(path, columns=["parent_asin", "month", *sums]).merge(
+            items.drop_duplicates("parent_asin"), on="parent_asin"
+        )
+        m = m[m["store"].fillna("").str.strip() != ""]
+        frames.append(m.groupby(["store", "month"], as_index=False)[sums].sum())
+    f = pd.concat(frames).groupby(["store", "month"], as_index=False)[sums].sum()
+    f["mean_rating"] = f["rating_sum"] / f["reviews"]
+    log["stores"] = int(f["store"].nunique())
+    log["categories"] = len(frames)
+    ends = pd.to_datetime(f["month"]) + pd.offsets.MonthEnd(0)
+    return stamped(f, clock.end_of_day(ends), cal)
 
 
 # SEC Forms 4 and 4/A: open-market lines, timed by acceptance (§6.3).
@@ -566,7 +814,7 @@ def load_sec_insiders(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     )
     forms = forms[forms["form"].isin(INSIDER_FORMS)].drop_duplicates("accession")
     accepted = forms.set_index("accession")["accepted"]
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
     ours = set(
         pd.to_numeric(lk.loc[lk["kind"] == "cik", "value"], errors="coerce")
         .dropna()
@@ -587,12 +835,20 @@ def load_sec_insiders(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
             )
         trans = trans[trans["ACCESSION_NUMBER"].isin(sub["ACCESSION_NUMBER"])]
         seen["lines_on_panel_firms"] += len(trans)
-        # Joint filings: the first owner stands for the line, the count kept.
-        owners = owners[owners["ACCESSION_NUMBER"].isin(sub["ACCESSION_NUMBER"])]
-        first = owners.drop_duplicates("ACCESSION_NUMBER")
-        first = first.assign(
-            n_owners=first["ACCESSION_NUMBER"].map(owners["ACCESSION_NUMBER"].value_counts())
+        # Joint filings: the first officer or director stands for the line.
+        owners = owners[owners["ACCESSION_NUMBER"].isin(sub["ACCESSION_NUMBER"])].copy()
+        role = (
+            owners["RPTOWNER_RELATIONSHIP"].fillna("").str.contains("Director|Officer", case=False)
         )
+        owners = owners.assign(insider_role=role, order=range(len(owners)))
+        first = owners.sort_values(
+            ["ACCESSION_NUMBER", "insider_role", "order"], ascending=[True, False, True]
+        ).drop_duplicates("ACCESSION_NUMBER")
+        per = owners.groupby("ACCESSION_NUMBER")
+        first = first.assign(
+            n_owners=first["ACCESSION_NUMBER"].map(per.size()),
+            any_officer_or_director=first["ACCESSION_NUMBER"].map(per["insider_role"].any()),
+        ).drop(columns=["insider_role", "order"])
         parts.append(
             trans.merge(sub, on="ACCESSION_NUMBER").merge(first, on="ACCESSION_NUMBER", how="left")
         )
@@ -609,11 +865,61 @@ def load_sec_insiders(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
         t[col] = when.where(~bad).astype("datetime64[ns]")
     for col in ("shares", "price", "shares_after"):
         t[col] = pd.to_numeric(t[col], errors="coerce")
+    # Common stock by its title, never a preferred share or a derivative.
+    title = t["security"].fillna("")
+    t["common_stock"] = title.str.contains(COMMON_TITLE) & ~title.str.contains(NOT_COMMON)
     t["cik"] = pd.to_numeric(t["issuer_cik"], errors="coerce").astype("int64")
     t = by_cik(t.drop(columns=["issuer_cik"]), lk, "filing_date", log)
     stamp_at = t["accession"].map(accepted)
     log["with_acceptance_time"] = round(float(stamp_at.notna().mean()), 4)
-    return stamped(t, clock.insider_available(stamp_at, t["filing_date"]), cal)
+    t = stamped(t, clock.insider_available(stamp_at, t["filing_date"]), cal)
+    return clean_insiders(t, log)
+
+
+# Amendments, repeats, code mismatches and late lines (final audit M1).
+def clean_insiders(t: pd.DataFrame, log: dict) -> pd.DataFrame:
+    group = ["owner_cik", "permno", "trans_date", "trans_code"]
+    sig = [*group, "shares", "price"]
+    t = t.reset_index(drop=True)
+    # A trade's signature as text, so missing values compare as equal.
+    t["_sig"] = t[sig[0]].astype("string").fillna("NA")
+    for col in sig[1:]:
+        t["_sig"] = t["_sig"] + "|" + t[col].astype("string").fillna("NA")
+    # A 4/A changing a trade replaces the earlier lines from its own time.
+    dated = t["trans_date"].notna()
+    amend = t.loc[(t["form"] == "4/A") & dated, [*group, "accession", "available_at"]]
+    amend = amend.drop_duplicates([*group, "accession"])
+    pairs = (
+        t.loc[dated, [*group, "accession", "available_at"]]
+        .reset_index()
+        .merge(amend, on=group, suffixes=("", "_b"))
+    )
+    pairs = pairs[
+        (pairs["accession_b"] != pairs["accession"])
+        & (pairs["available_at_b"] > pairs["available_at"])
+    ]
+    a4 = t[t["form"] == "4/A"]
+    in_b = set(zip(a4["accession"], a4["_sig"]))
+    same = [k in in_b for k in zip(pairs["accession_b"], t.loc[pairs["index"], "_sig"])]
+    pairs = pairs[~pd.Series(same, index=pairs.index, dtype=bool)]
+    t["superseded_at"] = pairs.groupby("index")["available_at_b"].min().reindex(t.index)
+    log["insider_lines_superseded_by_4a"] = int(t["superseded_at"].notna().sum())
+    # A trade a later filing repeats keeps the first filing's lines only.
+    t = t.sort_values("available_at")
+    first = t.drop_duplicates("_sig").set_index("_sig")["accession"]
+    again = t["accession"] != t["_sig"].map(first)
+    log["insider_repeats_in_later_filings_dropped"] = int(again.sum())
+    t = t[~again].drop(columns="_sig")
+    # A purchase marked disposed, or a sale marked acquired, is dropped.
+    bad = ((t["trans_code"] == "P") & (t["acq_disp"] == "D")) | (
+        (t["trans_code"] == "S") & (t["acq_disp"] == "A")
+    )
+    log["insider_code_direction_mismatch_dropped"] = int(bad.sum())
+    t = t[~bad]
+    # A line filed over 30 days after its trade would read old news as new.
+    late = (t["filing_date"] - t["trans_date"]) > INSIDER_LATE
+    log["insider_late_lines_dropped"] = int(late.sum())
+    return t[~late].sort_values(["permno", "available_at"]).reset_index(drop=True)
 
 
 # Rows keyed by SEC id spread to every PERMNO that id held on the date.
@@ -629,50 +935,23 @@ def by_cik(frame: pd.DataFrame, lk: pd.DataFrame, date: str, log: dict) -> pd.Da
     return out.drop(columns=["row"]).astype({"permno": "int64"})
 
 
-# Key developments from their entry instant; one copy per event (A9).
-def load_key_developments(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    e = pd.read_parquet(EXTRACTS / "events.parquet")
-    e = e.drop(
-        columns=["ticker", "ticker_startdate", "ticker_enddate", "speffectivedate", "sptodate"]
-    )
-    before = len(e)
-    e = e.drop_duplicates(["keydevid", "gvkey"])
-    log["copies_dropped"] = before - len(e)
-    e["entered"] = pd.to_datetime(e["entereddateutc"], errors="coerce", utc=True)
-    e = e.dropna(subset=["entered"])
-    e = e[e["entered"] >= pd.Timestamp("2004-01-01", tz="UTC")]
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
-    gv = link_table.nanos(
-        lk.loc[lk["kind"] == "gvkey", ["permno", "value", "valid_from", "valid_to"]]
-    )
-    e["day"] = e["entered"].dt.tz_localize(None).astype("datetime64[ns]")
-    both = e.assign(row=range(len(e))).merge(gv.rename(columns={"value": "gvkey"}), on="gvkey")
-    live = (both["day"] >= both["valid_from"]) & (
-        both["valid_to"].isna() | (both["day"] <= both["valid_to"])
-    )
-    both = both[live]
-    log["events_without_permno"] = int(len(e) - both["row"].nunique())
-    both = both.drop(columns=["row", "day", "valid_from", "valid_to"]).astype({"permno": "int64"})
-    return stamped(both, both["entered"], cal)
-
-
 # Restatements from the end of their filing day, on PERMNO by SEC id.
 def load_restatements(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    r = pd.read_parquet(EXTRACTS / "restatements.parquet")
+    r = pd.read_parquet(data / "v4" / "extracts" / "restatements.parquet")
     banned = set(REGISTRY["restatements"].banned)
     keep = [c for c in r.columns if not c.startswith(("http_", "ftp_")) and c != "disclosure_text"]
     r = r[[c for c in keep if c not in banned]].copy()
     r["file_date"] = pd.to_datetime(r["file_date"], errors="coerce").astype("datetime64[ns]")
     r["cik"] = pd.to_numeric(r["company_fkey"], errors="coerce")
     r = r.dropna(subset=["cik", "file_date"])
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
     r = by_cik(r, lk, "file_date", log)
     return stamped(r, clock.end_of_day(r["file_date"]), cal)
 
 
 # VIX and its siblings at each close; two copied dates dropped (A16).
 def load_vix(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    v = pd.read_parquet(EXTRACTS / "vix_daily.parquet")
+    v = pd.read_parquet(data / "v4" / "extracts" / "vix_daily.parquet")
     v["date"] = pd.to_datetime(v["date"]).astype("datetime64[ns]")
     before = len(v)
     v = v.drop_duplicates("date", keep="first")
@@ -724,10 +1003,22 @@ def load_tb3ms(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return t.assign(available_at=clock.end_of_day(end).dt.tz_convert("UTC"), first_close=pd.NaT)
 
 
+# FRED's S&P 500 level and daily return, each at its own close (M5).
+def load_sp500(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
+    s = pd.read_csv(data / "benchmarks" / "SP500.csv")
+    s = s.rename(columns={"observation_date": "date", "SP500": "sp500"})
+    s["date"] = pd.to_datetime(s["date"]).astype("datetime64[ns]")
+    s["sp500"] = pd.to_numeric(s["sp500"], errors="coerce")
+    s = s.dropna().sort_values("date", ignore_index=True)
+    s["ret"] = s["sp500"].pct_change()
+    log["days"] = len(s)
+    return stamped(s, None, cal, market_day=s["date"])
+
+
 # Projected earnings dates per quarter, on PERMNO by gvkey (B22).
 def load_earnings_calendar(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     cols = ["gvkey", "datadate", "fyearq", "fqtr", "rdq"]
-    q = pd.read_parquet(EXTRACTS / "compustat_quarterly.parquet", columns=cols)
+    q = pd.read_parquet(data / "v4" / "extracts" / "compustat_quarterly.parquet", columns=cols)
     q["datadate"] = pd.to_datetime(q["datadate"])
     q["rdq"] = pd.to_datetime(q["rdq"], errors="coerce")
     early = q["rdq"] < q["datadate"]
@@ -739,7 +1030,7 @@ def load_earnings_calendar(data: Path, cal: pd.Series, log: dict) -> pd.DataFram
     log["repeated_quarters_kept_earliest"] = before - len(q)
     projected = clock.project_earnings(q, key="gvkey", ahead=4)
     log["basis"] = projected["basis"].value_counts().to_dict()
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
     gv = link_table.nanos(
         lk.loc[lk["kind"] == "gvkey", ["permno", "value", "valid_from", "valid_to"]]
     )
@@ -748,7 +1039,7 @@ def load_earnings_calendar(data: Path, cal: pd.Series, log: dict) -> pd.DataFram
     when = both["known_from"].astype("datetime64[ns]")
     live = (when >= both["valid_from"]) & (both["valid_to"].isna() | (when <= both["valid_to"]))
     both = both[live & both["projected"].notna()].drop(columns=["valid_from", "valid_to"])
-    # The real release date is known only once it happens (H2), so it is cut.
+    # The real release date is known only once it happens (H2): cut.
     both = both.drop(columns=["rdq"])
     both = both.drop_duplicates(["permno", "gvkey", "fyearq", "fqtr"]).astype({"permno": "int64"})
     log["permno_quarters"] = len(both)
@@ -761,13 +1052,16 @@ def load_exits(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
 
     table, report = exits.build(data)
     log.update(report)
-    known = table["known"].fillna(table["exit_date"])
+    # An exit is public no earlier than its own exit date (final audit 7).
+    exit_day = pd.to_datetime(table["exit_date"])
+    known = pd.to_datetime(table["known"]).fillna(exit_day)
+    known = known.where(known >= exit_day, exit_day)
     return stamped(table, clock.end_of_day(known), cal)
 
 
 # The link table as registered; its periods are its clock.
 def load_links(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
-    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    lk = pd.read_parquet(data / "v4" / "links.parquet")
     start = clock.end_of_day(lk["valid_from"].clip(lower=pd.Timestamp("1900-01-01")))
     return lk.assign(available_at=start.dt.tz_convert("UTC").to_numpy(), first_close=pd.NaT)
 
@@ -782,7 +1076,10 @@ LOADERS = {
     "short_interest": load_short_interest,
     "edgar_filings": load_edgar,
     "sec_insiders": load_sec_insiders,
-    "key_developments": load_key_developments,
+    "events": load_events,
+    "footprint": load_footprint,
+    "amazon_stores": load_amazon_stores,
+    "sp500": load_sp500,
     "restatements": load_restatements,
     "vix": load_vix,
     "french": load_french,
@@ -825,6 +1122,7 @@ def card(source: Source, files: list[Path], frame: pd.DataFrame, log: dict) -> d
         "rules": log,
         "rows_by_year": by_year(frame),
         "answers": source.answers,
+        "survivorship_control": source.control,
     }
 
 
@@ -836,27 +1134,42 @@ def convert(name: str, data: Path = DATA, cal: pd.Series | None = None) -> dict:
     if not files:
         raise FileNotFoundError(f"{name}: no raw file under {source.raw}")
     log: dict = {}
-    CLEAN.mkdir(parents=True, exist_ok=True)
-    CARDS.mkdir(parents=True, exist_ok=True)
+    # The tables and cards go into the data tree read, never another one.
+    clean, cards = data / "v4" / "clean", data / "v4" / "cards"
+    clean.mkdir(parents=True, exist_ok=True)
+    cards.mkdir(parents=True, exist_ok=True)
     if name == "crsp_daily":
         frames = []
-        folder = CLEAN / "crsp_daily"
+        folder = clean / "crsp_daily"
         folder.mkdir(exist_ok=True)
         for n, path in enumerate(files):
             part = load_crsp_daily(path, cal)
             part.to_parquet(folder / f"part-{n:02d}.parquet", index=False)
             frames.append(part[["permno", "date", "first_close", "available_at"]])
         frame = pd.concat(frames, ignore_index=True)
+    elif name == "sections":
+        folder = clean / "sections"
+        folder.mkdir(exist_ok=True)
+        for old in folder.glob("part-*.parquet"):
+            old.unlink()
+        frames = []
+        for n, part in enumerate(annual_parts(data, ["item1a", "item7"])):
+            part.to_parquet(folder / f"part-{n:02d}.parquet", index=False, compression="zstd")
+            found = part[["item1a", "item7"]].notna()
+            frames.append(part[[*source.key, "first_close", "available_at"]].join(found))
+        frame = pd.concat(frames, ignore_index=True)
+        log["item1a_found"] = round(float(frame["item1a"].mean()), 4)
+        log["item7_found"] = round(float(frame["item7"].mean()), 4)
     else:
         frame = LOADERS[name](data, cal, log)
         bad = [c for c in source.banned if c in frame.columns]
         if bad:
             raise AssertionError(f"{name}: banned columns survived {bad}")
-        frame.to_parquet(CLEAN / f"{name}.parquet", index=False)
+        frame.to_parquet(clean / f"{name}.parquet", index=False)
     log["duplicate_keys"] = assert_unique(frame, source)
     log["rows_without_first_close"] = int(frame["first_close"].isna().sum())
     made = card(source, files, frame, log)
-    (CARDS / f"{name}.json").write_text(json.dumps(made, indent=1, default=str))
+    (cards / f"{name}.json").write_text(json.dumps(made, indent=1, default=str))
     return made
 
 
@@ -874,9 +1187,14 @@ def read(name: str, columns: list[str] | None = None, purpose: str | None = None
     for col, allowed in source.restricted.items():
         if asked is not None and col in asked and purpose not in allowed:
             raise BannedField(f"{name}.{col} only for {sorted(allowed)} (§1.2)")
-    path = CLEAN / name if name == "crsp_daily" else CLEAN / f"{name}.parquet"
+    path = CLEAN / name if name in FOLDERS else CLEAN / f"{name}.parquet"
     need = {"available_at", "first_close", "eom"} | set(source.key)
-    frame = pd.read_parquet(path) if asked is None else read_some(path, sorted(asked | need))
+    if name in FOLDERS:
+        frame = read_unsealed(path, None if asked is None else sorted(asked | need))
+    elif asked is None:
+        frame = pd.read_parquet(path)
+    else:
+        frame = read_some(path, sorted(asked | need))
     if asked is None:
         hidden = [c for c, ok in source.restricted.items() if purpose not in ok]
         frame = frame.drop(columns=[c for c in hidden if c in frame.columns])
@@ -885,6 +1203,17 @@ def read(name: str, columns: list[str] | None = None, purpose: str | None = None
         return frame
     order = [*source.key, *columns, "first_close", "available_at"]
     return frame[[c for c in dict.fromkeys(order) if c in frame.columns]]
+
+
+# A folder table's rows public by the seal, so sealed text never loads.
+def read_unsealed(path: Path, want: list[str] | None) -> pd.DataFrame:
+    import pyarrow as pa
+    import pyarrow.dataset as ds
+
+    table = ds.dataset(path)
+    cols = None if want is None else [c for c in want if c in table.schema.names]
+    seal = pa.scalar(SEAL.value, type=pa.timestamp("ns", tz="UTC"))
+    return table.to_table(columns=cols, filter=ds.field("available_at") <= seal).to_pandas()
 
 
 # Only the columns a table really has, so asking for eom never fails.
@@ -913,14 +1242,14 @@ def sealed_out(frame: pd.DataFrame, source: Source, asked: set) -> pd.DataFrame:
 
 # Row counts per year of any registered table, sealed rows included.
 def count(name: str) -> dict:
-    path = CLEAN / name if name == "crsp_daily" else CLEAN / f"{name}.parquet"
+    path = CLEAN / name if name in FOLDERS else CLEAN / f"{name}.parquet"
     frame = pd.read_parquet(path, columns=["first_close", "available_at"])
     return by_year(frame)
 
 
 # Converts the step 3 tables: uv run python -m fiam.v4.sources [names]
 if __name__ == "__main__":
-    names = sys.argv[1:] or ["crsp_daily", *LOADERS]
+    names = sys.argv[1:] or ["crsp_daily", "sections", *LOADERS]
     calendar = trading_calendar()
     # A run of some tables updates their entries and keeps the rest.
     old = CARDS / "step3.json"

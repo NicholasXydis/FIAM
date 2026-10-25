@@ -473,30 +473,10 @@ def options_and_taq() -> None:
     zero(many, "taq_link", "symbol-days linked to two PERMNOs", "warn", "pick by match level", rows)
 
 
-# Key developments, restatements and ratios: their own dates.
+# Restatements and ratios: their own dates (key developments unused).
 def events_and_ratios() -> None:
-    cols = ["announceddateutc", "entereddateutc", "gvkey", "keydevid", "objectroletype"]
-    e = extract("events", cols)
-    said, entered = pd.to_datetime(e["announceddateutc"]), pd.to_datetime(e["entereddateutc"])
-    late = ((entered - said).dt.days > 30).groupby(said.dt.year).mean().round(3).to_dict()
-    note(
-        "info",
-        "events",
-        "share entered over 30 days after announced, by year",
-        json.dumps(late),
-        "use entereddateutc; before about 2005 events were back-filled",
-    )
-    zero(int(entered.isna().sum()), "events", "rows without an entered time", "warn", "drop")
-    copies = int(e.duplicated().sum())
-    zero(
-        copies,
-        "events",
-        "rows repeated once per ticker the company ever had",
-        "warn",
-        "drop the ticker columns, dedupe, join on gvkey only",
-        len(e),
-    )
-    cover("events", entered, e["gvkey"])
+    # Key developments are refused by the registry, so only noted here.
+    note("info", "events", "key developments", "not used: removed from every use 2026-10-24")
     r = extract("restatements", ["company_fkey", "file_date", "res_end_date"])
     filed = pd.to_datetime(r["file_date"], errors="coerce")
     zero(int(filed.isna().sum()), "restatements", "rows without a file date", "warn", "drop")
@@ -571,12 +551,15 @@ def edgar(p: pd.DataFrame) -> None:
         "use the later date",
     )
     zero(
-        int(f.duplicated(["accession"]).sum()),
+        int(f.duplicated(["cik", "accession"]).sum()),
         "edgar filings",
-        "duplicate accessions",
+        "duplicate accessions per filer",
         "warn",
         "dedupe",
     )
+    # A joint filing sits once under each of its filers, by design.
+    joint = int(f.duplicated(["accession"]).sum())
+    note("info", "edgar filings", "joint filings kept once per filer", f"{joint:,} copies")
     after = int((pd.to_datetime(f["report_date"], errors="coerce") > filed).sum())
     zero(after, "edgar filings", "report period after the filing date", "info", "")
     cover("edgar filings", filed, f["cik"])
@@ -1000,6 +983,65 @@ def finra() -> None:
     note("info", "finra volume", "not used: failed its 2015-2020 check (§6.5)", f"{len(v):,} rows")
 
 
+# Every card's input hashes against the files on disk (final audit 11).
+def v4_cards() -> None:
+    import hashlib
+
+    stale = 0
+    for card in sorted((DATA / "v4" / "cards").glob("*.json")):
+        raw = json.loads(card.read_text()).get("raw")
+        if not isinstance(raw, dict):
+            continue
+        for rel, digest in raw.items():
+            path = DATA / rel
+            if not path.exists():
+                continue
+            h = hashlib.sha256()
+            with path.open("rb") as fh:
+                for block in iter(lambda: fh.read(1 << 24), b""):
+                    h.update(block)
+            if h.hexdigest() != digest:
+                stale += 1
+                note(
+                    "warn", f"card {card.stem}", "input changed since conversion", rel, "reconvert"
+                )
+    zero(stale, "v4 cards", "input hashes that differ from the disk", "warn", "reconvert")
+
+
+# Merge rule 1: per source, Apple's observation date beside its entry.
+def merge_rule1() -> None:
+    from fiam.v4 import sources
+
+    rows = []
+    for name, source in sources.REGISTRY.items():
+        if source.ids != "permno" or source.use == "links":
+            continue
+        path = CLEAN / (name if name in sources.FOLDERS else f"{name}.parquet")
+        if not path.exists():
+            continue
+        import pyarrow.dataset as ds
+
+        table = ds.dataset(path)
+        cols = [c for c in table.schema.names if c in (*source.key, "available_at", "first_close")]
+        frame = table.to_table(columns=cols, filter=ds.field("permno") == 14593).to_pandas()
+        stamp = pd.to_datetime(frame["available_at"], utc=True)
+        frame = frame[(stamp >= "2018-06-01") & (stamp < "2018-07-01")]
+        if frame.empty:
+            continue
+        first = frame.sort_values("available_at").iloc[0]
+        seen = {k: str(first[k]) for k in source.key if k != "permno"}
+        rows.append(f"| {name} | {seen} | {first['available_at']} | {first['first_close']} |")
+    head = "| Source | Observation (Apple, June 2018) | Public at | Enters at close of |\n"
+    head += "|---|---|---|---|"
+    (OUT / "merge_rule1.md").write_text(head + "\n" + "\n".join(rows) + "\n")
+    note(
+        "info",
+        "merge rule 1",
+        "observation beside entry date, Apple June 2018",
+        f"{len(rows)} sources",
+    )
+
+
 # Writes the findings, the coverage table and a short report.
 def write() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -1040,6 +1082,8 @@ def main() -> int:
         "v4_clean": v4_clean,
         "v4_short_interest": v4_short_interest,
         "finra": finra,
+        "v4_cards": v4_cards,
+        "merge_rule1": merge_rule1,
     }
     for name, check in checks.items():
         try:

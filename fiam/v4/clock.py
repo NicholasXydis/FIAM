@@ -152,6 +152,26 @@ def formation(first_closes, cal: pd.Series) -> pd.Series:
     return shift_sessions(first_closes, 1, cal).rename("formation")
 
 
+# The last day a label may reach before the unseal (PLAN §1.3).
+LAST_LABEL_DAY = pd.Timestamp("2020-12-31")
+
+
+# A label window that reaches past the seal: refused, never truncated.
+class SealedWindow(ValueError):
+    pass
+
+
+# The t+1 label: close after T to close after month t+k ends (protocol).
+def label_window(eom, months: int, cal: pd.Series, sealed: bool = True) -> tuple:
+    last = eom_session([eom], cal).iloc[0]
+    start = shift_sessions([last], 1, cal).iloc[0]
+    end_month = pd.Timestamp(eom) + pd.offsets.MonthEnd(months)
+    end = shift_sessions([eom_session([end_month], cal).iloc[0]], 1, cal).iloc[0]
+    if sealed and (pd.isna(end) or end > LAST_LABEL_DAY):
+        raise SealedWindow(f"the {months}-month label of {eom:%Y-%m} ends after 2020-12-31")
+    return start, end
+
+
 # Short interest is public at the end of settlement + 8 sessions.
 def short_interest_available(settlements, cal: pd.Series) -> pd.Series:
     return end_of_day(shift_sessions(settlements, SHORT_INTEREST_LAG, cal))

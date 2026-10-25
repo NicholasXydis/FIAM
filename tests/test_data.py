@@ -1,4 +1,4 @@
-# The data bundle on tiny synthetic files: the label stays apart and the builder misses no filing.
+# Bundle on tiny synthetic files: label apart, builder misses no filing.
 
 import importlib
 import importlib.util
@@ -25,7 +25,7 @@ def bundle(tmp_path, monkeypatch):
     importlib.reload(data)
 
 
-# Features never hold next month's return; the panel adds it on the keys.
+# Features never hold next month's return; the panel joins it on keys.
 def test_features_never_carry_the_label_and_panel_joins_it(bundle):
     assert "ret_exc_lead1m" not in bundle.features(["prc"])
     panel = bundle.panel(["prc", "ret_exc_lead1m"])
@@ -79,7 +79,7 @@ def test_builder_keeps_january_2015_and_matches_items_exactly(tmp_path):
     assert january["filing_count"] == 2 and january["filing_days_before_eom"] == 11
 
 
-# A month with no filing counts zero, and its days-before stays blank rather than a fake zero.
+# No filing in a month counts zero; days-before stays blank, not zero.
 def test_months_without_a_filing_count_zero(tmp_path):
     build = importlib.import_module("fiam.build_data")
     features = pd.DataFrame(dict(permno=[1, 2], eom=pd.to_datetime(["2015-01-31"] * 2)))
@@ -96,7 +96,7 @@ def test_months_without_a_filing_count_zero(tmp_path):
     assert pd.isna(joined.loc[2, "filing_days_before_eom"])
 
 
-# A bundle zip unpacks, and one with an entry outside the bundle folder writes nothing at all.
+# A bundle zip unpacks; one with an entry escaping it writes nothing.
 def test_import_refuses_a_zip_that_escapes_the_bundle(tmp_path):
     spec = importlib.util.spec_from_file_location("run", Path(__file__).parents[1] / "run.py")
     run = importlib.util.module_from_spec(spec)
@@ -116,7 +116,7 @@ def test_import_refuses_a_zip_that_escapes_the_bundle(tmp_path):
     assert not (tmp_path / "escaped.txt").exists() and not (tmp_path / "other").exists()
 
 
-# The excerpt starts at the first item, and names, tickers, the CIK and every date are masked.
+# Excerpt opens at the first item; names, tickers, CIK, dates masked.
 def test_filing_excerpt_is_masked():
     build = importlib.import_module("fiam.build_data")
     row = dict(company_name="PFIZER INC", ticker="PFE", cik="0000078003", provider_ticker="PFE")
@@ -129,3 +129,18 @@ def test_filing_excerpt_is_masked():
     for leak in ("Pfizer", "PFIZER", "PFE", "2015", "2014", "October", "July", "78003"):
         assert leak not in out, leak
     assert "Securities Act of 1933" == build.excerpt("Item 1.01 Securities Act of 1933", {})[10:]
+
+
+# Under FIAM_BLIND=1 the v1 reader drops 2021+ rows and labels (§1.3).
+def test_blind_mode_seals_the_v1_reader(bundle, monkeypatch):
+    monkeypatch.setenv("FIAM_BLIND", "1")
+    keys = pd.DataFrame(
+        dict(permno=[1, 1, 1], eom=pd.to_datetime(["2020-11-30", "2020-12-31", "2021-01-31"]))
+    )
+    keys.assign(prc=[10.0, 11.0, 12.0]).to_parquet(bundle.FEATURES)
+    keys.assign(next_month_excess_return=[0.01, 0.02, 0.03]).to_parquet(bundle.LABELS)
+    assert bundle.features(["prc"])["eom"].max() == pd.Timestamp("2020-12-31")
+    labelled = bundle.panel(["prc", "ret_exc_lead1m"])
+    assert labelled["eom"].tolist() == [pd.Timestamp("2020-11-30")]
+    monkeypatch.delenv("FIAM_BLIND")
+    assert len(bundle.panel(["prc", "ret_exc_lead1m"])) == 3

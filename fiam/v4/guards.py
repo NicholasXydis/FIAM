@@ -16,3 +16,11 @@ def assert_time_split(label_ends, first_forecast) -> None:
     late = ends >= start
     if late.any():
         raise AssertionError(f"{int(late.sum())} training labels end on or after {start} (B14)")
+
+
+# A fit used at formation day T holds only labels ended by T (purge).
+def assert_label_window(label_ends, formation_day) -> None:
+    ends = pd.to_datetime(pd.Series(label_ends))
+    late = ends > pd.Timestamp(formation_day)
+    if late.any():
+        raise AssertionError(f"{int(late.sum())} labels end after {formation_day} (purge)")

@@ -155,3 +155,25 @@ def test_projected_earnings_dates():
     assert out.loc[("A", 2024, 3), "basis"] == "last_plus_91"
     assert out.loc[("A", 2024, 3), "projected"] == DAY("2024-04-18") + pd.Timedelta(days=91)
     assert out.loc[("B", 2024, 2), "basis"] == "none"
+
+
+# The 2020-10 label ends 2020-12-01; 2020-11's reaches 2021 (§1.3).
+def test_label_window_refuses_the_seal():
+    cal = clock.calendar(pd.bdate_range("2020-09-01", "2021-02-26"))
+    start, end = clock.label_window(pd.Timestamp("2020-10-31"), 1, cal)
+    assert (start, end) == (pd.Timestamp("2020-11-02"), pd.Timestamp("2020-12-01"))
+    with pytest.raises(clock.SealedWindow):
+        clock.label_window(pd.Timestamp("2020-11-30"), 1, cal)
+    assert (
+        clock.label_window(pd.Timestamp("2020-11-30"), 1, cal, sealed=False)[1]
+        > clock.LAST_LABEL_DAY
+    )
+
+
+# A fit at T may hold the label of t-2, never t-1's, which ends after T.
+def test_purge_by_label_end_day():
+    from fiam.v4 import guards
+
+    guards.assert_label_window([pd.Timestamp("2020-06-01")], pd.Timestamp("2020-06-30"))
+    with pytest.raises(AssertionError):
+        guards.assert_label_window([pd.Timestamp("2020-07-01")], pd.Timestamp("2020-06-30"))

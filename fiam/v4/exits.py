@@ -34,8 +34,7 @@ def crsp_exits(data: Path) -> pd.DataFrame:
     return d[keep].assign(source="crsp_delistings", evidence="")
 
 
-# Stocks whose daily rows stop in 2026, or on CRSP's last day with no
-# CRSP exit (approved 2026-10-23, 2B), before the file's end.
+# Stocks whose rows stop in 2026 or end 2025 with no CRSP exit (2B).
 def stoppers(data: Path, crsp_done: frozenset = frozenset()) -> pd.Series:
     d = pd.read_parquet(data / "v4" / "clean" / "dsf.parquet", columns=["permno", "date"])
     last = d.groupby("permno")["date"].max()
@@ -59,6 +58,11 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
     span = pd.DataFrame({"permno": last.index.to_numpy(), "last": last.to_numpy()})
     span["lo"], span["hi"] = lo.to_numpy(), hi.to_numpy()
     near = f.merge(span, on="permno")
+    # A bankruptcy filed in the year before the stop still names it (M5).
+    year = near["filing_date"] >= near["last"] - pd.Timedelta(days=365)
+    broke_any = set(
+        near.loc[near["bankrupt"] & year & (near["filing_date"] <= near["hi"]), "permno"]
+    )
     near = near[(near["filing_date"] >= near["lo"]) & (near["filing_date"] <= near["hi"])]
     rows = []
     for permno, day in last.items():
@@ -67,7 +71,8 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
             category, group, known, evidence = "data_gap", "data_gap", pd.NaT, ""
         else:
             # A bankruptcy (item 1.03) is a failure even with an asset sale (M5).
-            broke, merged = bool(hits["bankrupt"].any()), bool(hits["merger"].any())
+            broke = bool(hits["bankrupt"].any()) or permno in broke_any
+            merged = bool(hits["merger"].any())
             category = "bankruptcy" if broke else "merger" if merged else "delisted"
             group = "merger_or_exchange" if merged and not broke else "failure"
             known = pd.to_datetime(hits["available_at"], utc=True).max().tz_localize(None)

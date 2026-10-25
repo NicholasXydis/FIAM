@@ -1,4 +1,4 @@
-# The survivorship test (PDF p11) and cross-source agreement (PLAN §6.7).
+# The survivorship test (PDF p11) and source agreement (PLAN §6.7).
 
 import json
 from pathlib import Path
@@ -52,11 +52,6 @@ def coverage_sets() -> dict[str, set]:
     e = e.merge(p[["permno", "eom", "month"]], on="permno")
     ahead = (e["known_from"] <= e["eom"]) & (e["projected"] > e["eom"])
     sets["earnings_calendar"] = set(zip(e.loc[ahead, "permno"], e.loc[ahead, "month"]))
-    k = pd.read_parquet(CLEAN / "key_developments.parquet", columns=["permno", "first_close"])
-    k["month"] = pd.to_datetime(k["first_close"]).dt.to_period("M")
-    months = k.dropna().drop_duplicates(["permno", "month"])
-    window = {(r.permno, r.month + i) for r in months.itertuples() for i in range(12)}
-    sets["key_developments"] = window
     # Insiders: a Form 4 public in the 12 months up to the month (step 3b).
     path = CLEAN / "sec_insiders.parquet"
     if path.exists():
@@ -66,10 +61,31 @@ def coverage_sets() -> dict[str, set]:
         sets["sec_insiders"] = {
             (r.permno, r.month + i) for r in months.itertuples() for i in range(12)
         }
+    # Step 4 tables: 8-K items in 12 months, annual-report text in 15.
+    for name, months in (("events", 12), ("footprint", 15)):
+        path = CLEAN / f"{name}.parquet"
+        if path.exists():
+            sets[name] = within(pd.read_parquet(path, columns=["permno", "first_close"]), months)
+    folder = CLEAN / "sections"
+    if folder.exists():
+        cols = ["permno", "first_close", "item1a", "item7"]
+        parts = []
+        for part in sorted(folder.glob("part-*.parquet")):
+            s = pd.read_parquet(part, columns=cols)
+            parts.append(s.loc[s["item1a"].notna() | s["item7"].notna(), cols[:2]])
+        sets["sections"] = within(pd.concat(parts), 15)
     return sets
 
 
-# The leavers to resolve: the six named and 2017-2020 delistings of $500m+.
+# Months a stock is covered: a row of it public in the months before.
+def within(rows: pd.DataFrame, months: int) -> set:
+    rows = rows.dropna().reset_index(drop=True)
+    rows["month"] = pd.to_datetime(rows["first_close"]).dt.to_period("M")
+    seen = rows.drop_duplicates(["permno", "month"])
+    return {(r.permno, r.month + i) for r in seen.itertuples() for i in range(months)}
+
+
+# Leavers to resolve: the six named and 2017-2020 $500m+ delistings.
 def leavers() -> pd.DataFrame:
     p = pd.read_parquet(CLEAN / "panel.parquet", columns=["permno", "eom", "me", "company_name"])
     last = p.sort_values("eom").groupby("permno").tail(1)
@@ -116,8 +132,7 @@ def survivorship() -> dict:
         trade["covered"] = [(a, b) in have for a, b in zip(trade["permno"], trade["month"])]
         means = trade.groupby(["month", "covered"])["ret"].mean().unstack()
         gap = means.get(True, pd.Series(dtype=float)) - means.get(False, pd.Series(dtype=float))
-        # Robustness: coverage at m against the next month's return, any
-        # panel row, so a name leaving the universe still counts.
+        # Robustness: coverage at m vs next month's return, any panel row.
         ahead = trade[trade["month"] < TEST[1].to_period("M")]
         nxt = ahead.merge(
             p[["permno", "month", "ret"]].assign(month=p["month"] - 1),
@@ -142,6 +157,62 @@ def survivorship() -> dict:
     return report
 
 
+# The PDF test on 2000-2014 over CRSP's large common stocks (audit M4).
+def survivorship_early() -> dict:
+    cols = ["PERMNO", "MthCalDt", "MthCap", "MthRet", "ShareType", "SecurityType", "PrimaryExch"]
+    cols += ["USIncFlg", "IssuerType"]
+    m = pd.read_parquet(DATA / "v4" / "extracts" / "crsp_monthly.parquet", columns=cols)
+    m = m.assign(
+        permno=pd.to_numeric(m["PERMNO"], errors="coerce"), eom=pd.to_datetime(m["MthCalDt"])
+    )
+    m = m[
+        (m["ShareType"] == "NS")
+        & (m["SecurityType"] == "EQTY")
+        & m["PrimaryExch"].isin(["N", "A", "Q"])
+    ]
+    m = m[(m["eom"] >= "2000-01-01") & (m["eom"] <= "2014-12-31") & (m["MthCap"] >= 600_000)]
+    m = m.dropna(subset=["permno"]).astype({"permno": "int64"})
+    m["month"] = m["eom"].dt.to_period("M")
+    panel = set(pd.read_parquet(CLEAN / "panel.parquet", columns=["permno"])["permno"])
+    first = m.assign(leaver=~m["permno"].isin(panel))
+    # Main test: a panel-like universe, leavers are CRSP delistings (M2).
+    dl = pd.read_parquet(CLEAN / "crsp_delistings.parquet", columns=["permno", "delistingdt"])
+    dead = set(dl.loc[pd.to_datetime(dl["delistingdt"]) <= "2014-12-31", "permno"])
+    like = (m["USIncFlg"] == "Y") & (m["IssuerType"] == "CORP")
+    m = m[like].assign(leaver=lambda d: d["permno"].isin(dead))
+    lk = pd.read_parquet(DATA / "v4" / "links.parquet")
+    report = {"stock_months": len(m), "leaver_share": round(float(m["leaver"].mean()), 4)}
+    report["universe"] = "NS EQTY on N, A or Q, USIncFlg Y, IssuerType CORP, $600m or more"
+    for kind, start in (("gvkey", "2000-01-01"), ("cik", "2006-01-01")):
+        for name, base in ((kind, m), (f"{kind}_as_first_tested", first)):
+            rows = base[base["eom"] >= start]
+            have = link_table.value_at(lk, kind, rows["permno"], rows["eom"]).notna().to_numpy()
+            report[name] = early_gap(rows.assign(covered=have))
+    s = pd.read_parquet(CLEAN / "short_interest.parquet", columns=["permno", "settlement"])
+    seen = set(zip(s["permno"], s["settlement"].dt.to_period("M")))
+    rows = m[m["eom"] >= "2004-01-01"]
+    report["short_interest"] = early_gap(
+        rows.assign(covered=[(a, b) in seen for a, b in zip(rows["permno"], rows["month"])])
+    )
+    (OUT / "survivorship_2000_2014.json").write_text(json.dumps(report, indent=1, default=str))
+    return report
+
+
+# Leavers' coverage against survivors', and the covered-minus-rest gap.
+def early_gap(rows: pd.DataFrame) -> dict:
+    means = rows.groupby(["month", "covered"])["MthRet"].mean().unstack()
+    gap = means.get(True, pd.Series(dtype=float)) - means.get(False, pd.Series(dtype=float))
+    out = {
+        "covered": round(float(rows["covered"].mean()), 4),
+        "leavers_covered": round(float(rows.loc[rows["leaver"], "covered"].mean()), 4),
+        "survivors_covered": round(float(rows.loc[~rows["leaver"], "covered"].mean()), 4),
+        "gap_months": int(gap.notna().sum()),
+        "gap_nw_t": round(nw_t(gap), 2),
+    }
+    out["needs_written_control"] = bool(abs(out["gap_nw_t"]) > 2)
+    return out
+
+
 # Share of rows within a tolerance, the bar and the verdict.
 def share_within(diff: pd.Series, tolerance: float, bar: float) -> dict:
     ok = diff.dropna().abs() <= tolerance
@@ -149,7 +220,7 @@ def share_within(diff: pd.Series, tolerance: float, bar: float) -> dict:
     return {"rows": int(len(ok)), "share": round(share, 4), "bar": bar, "pass": share >= bar}
 
 
-# The cross-source agreement exhibit on 2015-2020 (protocol data section).
+# The cross-source agreement exhibit on 2015-2020 (protocol.md data).
 def agreement() -> dict:
     p = panel_months()
     m = pd.read_parquet(
@@ -222,4 +293,5 @@ if __name__ == "__main__":
     (OUT / "survivorship.json").write_text(json.dumps(s, indent=1, default=str))
     a = agreement()
     (OUT / "agreement.json").write_text(json.dumps(a, indent=1, default=str))
+    s |= {"early": survivorship_early()}
     print(json.dumps({"survivorship": s, "agreement": a}, indent=1, default=str))
