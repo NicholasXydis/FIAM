@@ -62,7 +62,9 @@ def test_country_cap_only_with_the_switch(month):
 
 
 # A foreign finals layout maps to ours: US PERMNOs kept, CAD converted.
-def test_world_bundle_from_a_foreign_layout(tmp_path):
+def test_world_bundle_from_a_foreign_layout(tmp_path, monkeypatch):
+    # The v1 reader unsealed, as v1-v3 runs read it (v4 seals it, M6).
+    monkeypatch.delenv("FIAM_BLIND", raising=False)
     months = pd.date_range("2024-01-31", periods=3, freq="ME")
     rows = []
     for i, eom in enumerate(months):

@@ -75,7 +75,10 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
             merged = bool(hits["merger"].any())
             category = "bankruptcy" if broke else "merger" if merged else "delisted"
             group = "merger_or_exchange" if merged and not broke else "failure"
-            known = pd.to_datetime(hits["available_at"], utc=True).max().tz_localize(None)
+            # Known from the first form on or after the last row (step 5 audit).
+            stamps = pd.to_datetime(hits["available_at"], utc=True).dt.tz_localize(None)
+            later = stamps[(hits["filing_date"] >= day).to_numpy()]
+            known = later.min() if len(later) else stamps.max()
             evidence = ";".join(sorted(hits["form"] + " " + hits["accession"]))
         rows.append((permno, day, category, group, known, evidence))
     cols = ["permno", "exit_date", "category", "group", "known", "evidence"]
@@ -116,3 +119,64 @@ def build(data: Path = DATA) -> tuple[pd.DataFrame, dict]:
         "compustat_deletion_dates_matched": int(table["compustat_dldte"].notna().sum()),
     }
     return table, report
+
+
+# A rebuilt table against an earlier build: rows, categories, dates.
+def diff(old: Path, new: Path = DATA / "v4" / "clean" / "exits.parquet") -> dict:
+    cols = ["permno", "exit_date", "category", "delret", "known", "source"]
+    a, b = pd.read_parquet(old, columns=cols), pd.read_parquet(new, columns=cols)
+    # A 2021+ delisting return is a return (§1.3): it is never compared.
+    for frame in (a, b):
+        frame.loc[frame["exit_date"] > clock.LAST_LABEL_DAY, "delret"] = float("nan")
+    both = a.merge(
+        b, on=["permno", "source"], how="outer", suffixes=("_old", "_new"), indicator=True
+    )
+    kept = both[both["_merge"] == "both"]
+    # Returns to 2020 are compared; 2021+ rows by key, date and category.
+    ret_changed = ~(
+        (kept["delret_old"] == kept["delret_new"])
+        | (kept["delret_old"].isna() & kept["delret_new"].isna())
+    )
+    late = kept["exit_date_new"] > clock.LAST_LABEL_DAY
+    moved = kept[
+        (kept["category_old"] != kept["category_new"])
+        | (kept["exit_date_old"] != kept["exit_date_new"])
+        | (kept["known_old"].fillna(pd.Timestamp(0)) != kept["known_new"].fillna(pd.Timestamp(0)))
+    ]
+    show = ["permno", "source", "exit_date_old", "exit_date_new", "category_old", "category_new"]
+    show += ["known_old", "known_new"]
+    import hashlib
+
+    # Which builds were compared, by path and SHA-256.
+    sha = {str(f): hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in (old, new)}
+    return {
+        "compared": sha,
+        "old_rows": len(a),
+        "new_rows": len(b),
+        "old_by_source_category": a.groupby(["source", "category"]).size().astype(int).to_dict(),
+        "new_by_source_category": b.groupby(["source", "category"]).size().astype(int).to_dict(),
+        "only_old": both.loc[both["_merge"] == "left_only", ["permno", "source"]].to_dict(
+            "records"
+        ),
+        "only_new": both.loc[both["_merge"] == "right_only", ["permno", "source"]].to_dict(
+            "records"
+        ),
+        "delret_changed_to_2020": int((ret_changed & ~late).sum()),
+        "changed_rows": moved[show].astype(str).to_dict("records"),
+    }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    if sys.argv[1:2] == ["diff"]:
+        out = diff(Path(sys.argv[2]))
+        out = {str(k): v for k, v in out.items()}
+        for key in ("old_by_source_category", "new_by_source_category"):
+            out[key] = {" ".join(k): v for k, v in out[key].items()}
+        target = ROOT / "out" / "v4" / "engine" / "exits_diff.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
+        print(json.dumps({k: v for k, v in out.items() if k != "changed_rows"}, indent=1))
+        print(len(out["changed_rows"]), "changed rows")

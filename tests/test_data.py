@@ -26,7 +26,9 @@ def bundle(tmp_path, monkeypatch):
 
 
 # Features never hold next month's return; the panel joins it on keys.
-def test_features_never_carry_the_label_and_panel_joins_it(bundle):
+def test_features_never_carry_the_label_and_panel_joins_it(bundle, monkeypatch):
+    # The v1 reader unsealed, as v1-v3 runs read it (v4 seals it, M6).
+    monkeypatch.delenv("FIAM_BLIND", raising=False)
     assert "ret_exc_lead1m" not in bundle.features(["prc"])
     panel = bundle.panel(["prc", "ret_exc_lead1m"])
     assert panel["ret_exc_lead1m"].tolist()[0] == pytest.approx(0.01)

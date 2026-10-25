@@ -265,6 +265,8 @@ def test_raw_text_tables_are_read_only_by_their_builders():
 def test_only_allowed_v4_modules_open_data_files():
     allowed = {"sources.py", "links.py", "exits.py", "agreement.py", "fallbacks.py"}
     allowed |= {"hand_checks.py", "kit.py", "text.py", "vintage.py", "fema.py"}
+    # The replay reads only v3's stored 2016-2020 check files (step 5).
+    allowed |= {"replay.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):

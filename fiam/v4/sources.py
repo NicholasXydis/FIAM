@@ -473,7 +473,8 @@ REGISTRY = {
             use="accounting",
             answers=four(
                 "2000 (CRSP) and 2026 (SEC forms)",
-                "CRSP: once the delisting return is known; 2026: the last form used",
+                "CRSP: once the delisting return is known; "
+                "2026: the first exit form on or after the last row",
                 "CRSP's record, its delisting return booked at the exit date by CRSP's "
                 "convention even when liquidation pays later (L1); SEC filings never change",
                 "every CRSP delisting; every stock whose daily rows stop in 2026, or on "
@@ -1173,8 +1174,15 @@ def convert(name: str, data: Path = DATA, cal: pd.Series | None = None) -> dict:
     return made
 
 
+# Blind mode lifts only by the hash-checked unseal (§13.3, step 10).
+def unsealed() -> bool:
+    return False
+
+
 # Reads a clean table under blind mode, bans and limits (§1.2, §1.3).
-def read(name: str, columns: list[str] | None = None, purpose: str | None = None) -> pd.DataFrame:
+def read(
+    name: str, columns: list[str] | None = None, purpose: str | None = None, where=None
+) -> pd.DataFrame:
     if name in NEVER:
         raise NotForBacktest(f"{name}: {NEVER[name]}")
     source = REGISTRY[name]
@@ -1182,19 +1190,21 @@ def read(name: str, columns: list[str] | None = None, purpose: str | None = None
     if source.use == "exhibit" and purpose not in {"exhibit", "live"}:
         raise NotForBacktest(f"{name}: exhibits and live context only")
     asked = None if columns is None else set(columns)
-    for col in (asked or set()) & set(source.banned):
+    # A row filter is a use of its columns: the same bans apply.
+    touched = (asked or set()) | set(where or {})
+    for col in touched & set(source.banned):
         raise BannedField(f"{name}.{col} is banned (§1.2)")
     for col, allowed in source.restricted.items():
-        if asked is not None and col in asked and purpose not in allowed:
+        if col in touched and purpose not in allowed:
             raise BannedField(f"{name}.{col} only for {sorted(allowed)} (§1.2)")
     path = CLEAN / name if name in FOLDERS else CLEAN / f"{name}.parquet"
     need = {"available_at", "first_close", "eom"} | set(source.key)
     if name in FOLDERS:
-        frame = read_unsealed(path, None if asked is None else sorted(asked | need))
-    elif asked is None:
+        frame = read_unsealed(path, None if asked is None else sorted(asked | need), where)
+    elif asked is None and not where:
         frame = pd.read_parquet(path)
     else:
-        frame = read_some(path, sorted(asked | need))
+        frame = read_some(path, None if asked is None else sorted(asked | need), where)
     if asked is None:
         hidden = [c for c, ok in source.restricted.items() if purpose not in ok]
         frame = frame.drop(columns=[c for c in hidden if c in frame.columns])
@@ -1206,22 +1216,57 @@ def read(name: str, columns: list[str] | None = None, purpose: str | None = None
 
 
 # A folder table's rows public by the seal, so sealed text never loads.
-def read_unsealed(path: Path, want: list[str] | None) -> pd.DataFrame:
+def read_unsealed(path: Path, want: list[str] | None, where=None) -> pd.DataFrame:
     import pyarrow as pa
     import pyarrow.dataset as ds
 
     table = ds.dataset(path)
     cols = None if want is None else [c for c in want if c in table.schema.names]
     seal = pa.scalar(SEAL.value, type=pa.timestamp("ns", tz="UTC"))
-    return table.to_table(columns=cols, filter=ds.field("available_at") <= seal).to_pandas()
+    expr = ds.field("available_at") <= seal
+    rows = row_filter(table.schema, where)
+    expr = expr if rows is None else expr & rows
+    return table.to_table(columns=cols, filter=expr).to_pandas()
 
 
 # Only the columns a table really has, so asking for eom never fails.
-def read_some(path: Path, want: list[str]) -> pd.DataFrame:
+def read_some(path: Path, want: list[str] | None, where=None) -> pd.DataFrame:
     import pyarrow.dataset as ds
 
-    have = set(ds.dataset(path).schema.names)
-    return pd.read_parquet(path, columns=[c for c in want if c in have])
+    table = ds.dataset(path)
+    have = set(table.schema.names)
+    cols = None if want is None else [c for c in want if c in have]
+    return table.to_table(columns=cols, filter=row_filter(table.schema, where)).to_pandas()
+
+
+# Rows kept by value: a set, or a closed (low, high) range, per column.
+def row_filter(schema, where):
+    import pyarrow as pa
+    import pyarrow.dataset as ds
+
+    if not where:
+        return None
+    expr = None
+    for col, rule in where.items():
+        kind = schema.field(col).type
+
+        # A bound becomes a scalar of the column's own type before compare.
+        def scalar(v):
+            if pa.types.is_timestamp(kind):
+                return pa.scalar(
+                    pd.Timestamp(v).as_unit("ns").value, type=pa.timestamp("ns", tz=kind.tz)
+                )
+            return pa.scalar(v, type=kind)
+
+        if isinstance(rule, tuple):
+            low, high = rule
+            parts = [ds.field(col) >= scalar(low)] if low is not None else []
+            parts += [ds.field(col) <= scalar(high)] if high is not None else []
+        else:
+            parts = [ds.field(col).isin(pa.array(sorted(rule), type=kind))]
+        for part in parts:
+            expr = part if expr is None else expr & part
+    return expr
 
 
 # Drops every row public after the seal, and labels that reach past it.

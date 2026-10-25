@@ -229,7 +229,8 @@ def agreement() -> dict:
     m["month"] = m["date"].dt.to_period("M")
     both = p.merge(m, on=["permno", "month"], suffixes=("", "_crsp"))
     report = {
-        "panel_ret_vs_crsp": share_within(both["ret"] - both["ret_crsp"], 1e-6, 0.99),
+        # Six-decimal rounding: one step apart, plus float slack, agrees.
+        "panel_ret_vs_crsp": share_within(both["ret"] - both["ret_crsp"], 1e-6 + 1e-9, 0.99),
         "panel_me_vs_crsp_cap": share_within(both["me"] / both["cap_musd"] - 1, 0.005, 0.99),
     }
     d = pd.read_parquet(CLEAN / "dsf.parquet", columns=["permno", "date", "ret"])
