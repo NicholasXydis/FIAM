@@ -1,4 +1,4 @@
-# The analyst agent: reads a stock-month's material filings and its ranks, returns a conviction.
+# Analyst agent: reads material filings and ranks, returns a conviction.
 
 from operator import itemgetter
 
@@ -13,7 +13,7 @@ from fiam.ml import crowd as C
 PROMPT = H.ROOT / "prompts" / "agents" / "analyst.md"
 OUT = paths.EXHIBITS / "analyst.json"
 CONVICTIONS = paths.EXHIBITS / "agents" / "analyst.parquet"
-# The scope: material filings among the 400 best and worst composite scores.
+# Scope: material filings among the 400 best and worst composite scores.
 TAILS, CALLS, SEED = 400, 20 if paths.SMOKE else 5_000, 42
 PROBES = 5 if paths.SMOKE else 500
 # The item codes the brief singles out as material events.
@@ -36,7 +36,7 @@ PROBE_SCHEMA = dict(
 )
 
 
-# Filings carrying at least one material item code, dated to the month they were filed in.
+# Filings with any material item code, dated to the month filed.
 def material() -> pd.DataFrame:
     filings = data.filings(["document_id", "permno", "filing_date", *MATERIAL])
     filings = filings[filings[MATERIAL].sum(axis=1) > 0]
@@ -45,10 +45,10 @@ def material() -> pd.DataFrame:
     )
 
 
-# The stock-months to read: a material filing, and a composite score in either tail of the month.
+# Stock-months to read: a material filing and a composite in a tail.
 def chosen() -> pd.DataFrame:
     filings = material()
-    # Every month from 2015, so the scorer can learn from the conviction and it can be judged early.
+    # From 2015, so the conviction can teach the scorer and be judged early.
     screened = P.screen(P.load_panel(), "2015-01-31", P.LAST_FORECAST)
     universe = P.build_signal(screened)[["permno", "eom", "composite"]]
     rank = universe.groupby("eom")["composite"].rank(method="first")
@@ -62,7 +62,7 @@ def chosen() -> pd.DataFrame:
     return keys.sort_values(data.KEYS, ignore_index=True)
 
 
-# The twelve months of ranks as a small table, months counted back from t, never dated.
+# Twelve months of ranks as a table, counted back from t, never dated.
 def history(cards: pd.DataFrame, permno: int, eom: pd.Timestamp) -> str:
     past = cards[(cards["permno"] == permno) & (cards["eom"] <= eom)].tail(12)
     lines = [" | ".join(["month", *C.CARD])]
@@ -78,7 +78,7 @@ def task(texts: pd.DataFrame, cards: pd.DataFrame, permno: int, eom: pd.Timestam
     return f"Filings this month:\n\n{filings}\n\nRanks:\n{history(cards, permno, eom)}"
 
 
-# Can the model name the company or the year from a masked filing? The hit rate is reported.
+# How often the model names the company or year from a masked filing.
 def probe(server: H.Server, texts: pd.DataFrame) -> dict:
     names = data.filings(["document_id", "ticker", "company_name", "filing_date"])
     sample = texts.iloc[np.random.default_rng(SEED + 1).choice(len(texts), PROBES, replace=False)]
@@ -101,6 +101,7 @@ def probe(server: H.Server, texts: pd.DataFrame) -> dict:
     )
 
 
+# Runs the local model on each chosen stock-month, then the leak probe.
 def main() -> None:
     texts = data.research("filing_text", ["document_id", *data.KEYS, "excerpt"])
     if texts is None:

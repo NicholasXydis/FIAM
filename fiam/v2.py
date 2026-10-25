@@ -1,4 +1,4 @@
-# v2: the shipped engine with five improvements, each a switch judged on what it fixes.
+# v2: the shipped engine plus five fixes, each a switch judged alone.
 
 import json
 import os
@@ -19,49 +19,49 @@ from fiam import data, layers, stats
 from fiam import mandate as M
 from fiam.freeze import FROZEN
 
-# The five v2 members and the switches reported beside them, never inside v2.
+# The five v2 members, and switches reported beside them, never inside.
 MEMBERS = ("costs", "persistence", "beta", "shorts", "liquidity")
-# `grinold` is `costs` with the cross-sectional IC (v2_amendment_1.md); never both at once.
+# `grinold` is `costs` on cross-sectional IC (amendment 1), never both.
 OTHERS = ("institutional", "aligned", "industry", "risk", "carbon", "grinold")
 COSTED = frozenset({"costs", "grinold"})
-# v3's parts (v2_amendment_2.md), each judged alone on v2-pass; v3 is `shorts` plus those passing.
+# v3 parts (v2_amendment_2.md), each alone; v3 is `shorts` plus passers.
 PARTS = ("size", "lowvol", "voltarget", "brake")
 # The gross a risk target may set; the brake cuts to the lower end.
 GROSS_RANGE = (1.0, 1.8)
-# Final v3 (v2_amendment_3.md): two rules always on, and two fixes judged on base = v3 + the rules.
+# Final v3 (v2_amendment_3.md): two rules always on, two fixes tested.
 RULES, TESTED = ("zerobeta", "target10"), ("riskcap", "adaptive")
 FINAL = RULES + TESTED
 STEERED = frozenset(PARTS) | frozenset(FINAL)
-# Exhibit switches (final_exhibits.md): final v3 run on the 500 largest stocks only.
+# Exhibit switch (final_exhibits.md): final v3 on the 500 largest only.
 EXHIBIT = ("top500",)
-# The finals' global book (finals_global.md): countries from a world bundle, each capped.
+# The finals' global book (finals_global.md), each country capped.
 WORLD = ("global",)
-# Final v3's hedge-beta band, its risk a year, and how fast its risk forecast forgets its error.
+# Final v3's beta band, risk a year, and its forecast error's decay.
 ZERO_BETA, TARGET_VOL, BIAS_DECAY = 0.005, 0.10, 0.5 ** (1 / 12)
-# What-ifs only (docs/protocols/crowd.md): the AI crowd's score as a 13th signal, either sign,
-# or alone. Never part of v1 or v2.
+# What-ifs only, never in v1 or v2: the AI crowd's score (crowd.md).
 CROWD = ("crowd_with", "crowd_against", "crowd_alone")
 CROWDS = ("retail", "copycat", "historical")
 RECORD = (P.FIRST_FORECAST, P.LAST_FORECAST)
 CHECK = ("2015-12-31", "2020-11-30")
-# The live crowds' months: after the models' training cutoff, 19 decisions.
+# Live crowd months, after the models' training cutoff: 19 decisions.
 CLEAN = ("2025-01-31", "2026-07-31")
 WINDOWS = {RECORD: "record", CHECK: "check", CLEAN: "clean"}
 CAPITALS = (1e6, 1e7, 1e8, 5e8, 1e9, 5e9)
 PARAMS = FROZEN / "v2_params.json"
 BETAS = FROZEN / "v2_beta.parquet"
 OUT = Path("out") / "v2"
-# Extra panel columns v2 reads: residual vol for the return scale, industries for industry ranks.
+# Extra columns: residual vol for return scale, ff49 for industry ranks.
 EXTRA = ("ivol_capm_252d", "ff49")
 
 
-# One run's choices: which switches are on, at what capital, under which rules.
+# One run's choices: switches on, capital, and the rules it runs under.
 @dataclass(frozen=True)
 class Settings:
     on: frozenset = frozenset()
     capital: float = C.DEFAULT.nav
     mandate: M.Mandate = field(default_factory=M.Mandate)
 
+    # The run's folder name: its switches (v2, v2a), capital and mandate.
     @property
     def name(self) -> str:
         label = "+".join(sorted(self.on)) or "v1"
@@ -78,12 +78,12 @@ V2 = frozenset(MEMBERS)
 V2A = (V2 - {"costs"}) | {"grinold"}
 
 
-# The numbers v2 fixed from data before 2021 (fiam.freeze); empty until they are frozen.
+# Numbers v2 fixed on pre-2021 data (fiam.freeze), empty until frozen.
 def params() -> dict:
     return json.loads(PARAMS.read_text(encoding="utf-8")) if PARAMS.exists() else {}
 
 
-# The twelve signals, each weighted by how long it persists when that switch is on.
+# The twelve signals, weighted by persistence when that switch is on.
 def signals(settings: Settings, fixed: dict) -> dict:
     if "persistence" not in settings.on:
         return P.SIGNALS
@@ -91,7 +91,7 @@ def signals(settings: Settings, fixed: dict) -> dict:
     return {col: sign * weights[col] for col, sign in P.SIGNALS.items()}
 
 
-# Each signal ranked within its ff49 industry instead of across the market.
+# Each signal ranked within its ff49 industry, not across the market.
 def industry_composite(df: pd.DataFrame, table: dict) -> pd.Series:
     groups = [df["eom"], df["ff49"].fillna(-1)]
     parts = []
@@ -102,7 +102,7 @@ def industry_composite(df: pd.DataFrame, table: dict) -> pd.Series:
     return pd.concat(parts, axis=1).mean(axis=1)
 
 
-# The score with beta, the volatility complex and size taken out, month by month.
+# The score with beta, the vol complex and size taken out, each month.
 def aligned(df: pd.DataFrame) -> pd.Series:
     out = pd.Series(np.nan, index=df.index)
     x_cols = ["hedge_beta", "risk_rank", "log_me"]
@@ -114,11 +114,11 @@ def aligned(df: pd.DataFrame) -> pd.Series:
     return out
 
 
-# 8-K items that keep a name from being newly shorted for 30 days (3.02 is not in our filings).
+# 8-K items barring a new short for 30 days (3.02 is not in our 8-Ks).
 EVENTS = ["item_101_contract", "item_201_acquisition", "item_801_other_event"]
 
 
-# Names that may not be newly shorted: tiny, costly to borrow, flagged by options, or mid-event.
+# No new shorts: tiny, costly to borrow, options-flagged or mid-event.
 def short_ban(df: pd.DataFrame) -> pd.Series:
     ban = df["size_grp"].isin(["micro", "nano"]) | (df["borrow"] >= 0.03)
     options = layers.load("options/summary", ["permno", "date", "Parity_VSpread"])
@@ -134,7 +134,7 @@ def short_ban(df: pd.DataFrame) -> pd.Series:
     return ban
 
 
-# The composite with the AI crowd's score as one more equal-weighted signal, either sign, or alone.
+# The composite plus the AI crowd's score, either sign, or it alone.
 def with_crowd(df: pd.DataFrame, settings: Settings) -> pd.Series:
     label = next((c for c in CROWDS if c in settings.on), "retail")
     votes = data.read(OUT / "crowd_consensus.parquet")
@@ -148,8 +148,7 @@ def with_crowd(df: pd.DataFrame, settings: Settings) -> pd.Series:
     return (n * df["composite"] + sign * z) / (n + 1)
 
 
-# Carbon Arc (carbon_arc.md): spend growth minus last sales growth as a 13th signal, used only
-# after its pre-registered test passed; names without spending data score zero.
+# Carbon Arc (carbon_arc.md): a 13th signal, only once its test passed.
 def with_carbon(df: pd.DataFrame) -> pd.Series:
     report = json.loads((OUT / "carbon_arc" / "report.json").read_text(encoding="utf-8"))
     if not report["test"]["passed"]:
@@ -164,7 +163,7 @@ def with_carbon(df: pd.DataFrame) -> pd.Series:
     return (n * df["composite"] + z.fillna(0.0)) / (n + 1)
 
 
-# The beta v2 hedges when its beta switch is on, chosen and frozen before 2021.
+# The beta v2 hedges with its beta switch on, frozen before 2021.
 def frozen_beta(df: pd.DataFrame) -> pd.Series:
     table = data.read(BETAS).set_index(data.KEYS)["beta"]
     found = table.reindex(pd.MultiIndex.from_frame(df[data.KEYS])).to_numpy()
@@ -172,8 +171,7 @@ def frozen_beta(df: pd.DataFrame) -> pd.Series:
     return pd.Series(found, index=df.index).fillna(fallback)
 
 
-# Each decision month's signal weights: half for a signal whose long-short return over its last 12
-# realized holding months (6 at least) sums below zero, else full. `paid` is keyed by holding month.
+# Half weight if a signal's last 12 realized months (6+) sum below 0.
 def halved(paid: pd.DataFrame, decisions: list) -> pd.DataFrame:
     rows = {}
     for eom in decisions:
@@ -183,7 +181,7 @@ def halved(paid: pd.DataFrame, decisions: list) -> pd.DataFrame:
     return pd.DataFrame.from_dict(rows, orient="index", columns=paid.columns)
 
 
-# The weights for every decision up to `last`, from each signal's paid return since 2015.
+# Weights for each decision to `last`, from paid returns since 2015.
 @cache
 def adaptive_weights(last: str) -> pd.DataFrame:
     from fiam.freeze import FIT
@@ -194,7 +192,7 @@ def adaptive_weights(last: str) -> pd.DataFrame:
     return halved(paid, sorted(history["eom"].unique()))
 
 
-# The composite with each signal at its month's weight; with every weight 1 it is v1's composite.
+# Composite at each month's signal weights; all weights 1 gives v1's.
 def adaptive_composite(df: pd.DataFrame, table: pd.DataFrame, last: str) -> pd.Series:
     weights = adaptive_weights(last).reindex(df["eom"]).fillna(1.0).to_numpy()
     z = table.to_numpy()
@@ -202,7 +200,7 @@ def adaptive_composite(df: pd.DataFrame, table: pd.DataFrame, last: str) -> pd.S
     return pd.Series(np.nansum(z * w, axis=1) / w.sum(axis=1), index=df.index)
 
 
-# The day's mandate on who may enter at all: a smallest market cap and sectors left out.
+# The mandate's entry rules: a smallest market cap and excluded sectors.
 def admitted(df: pd.DataFrame, m: M.Mandate) -> pd.DataFrame:
     keep = pd.Series(True, index=df.index)
     if m.min_market_cap is not None:
@@ -212,7 +210,7 @@ def admitted(df: pd.DataFrame, m: M.Mandate) -> pd.DataFrame:
     return df if keep.all() else df[keep].copy()
 
 
-# The cross-section v2 trades, built exactly as v1's unless a switch changes a step.
+# The cross-section v2 trades, built as v1's unless a switch changes it.
 def universe(window: tuple, settings: Settings, fixed: dict) -> pd.DataFrame:
     worldwide = "global" in settings.on
     if worldwide and "country" not in pq.read_schema(data.FEATURES).names:
@@ -223,17 +221,17 @@ def universe(window: tuple, settings: Settings, fixed: dict) -> pd.DataFrame:
     df = admitted(df, settings.mandate)
     if "institutional" in settings.on:
         df = df[df["me"] >= 1000.0].copy()
-    # The 500 largest by market value each month, our stand-in for the S&P 500.
+    # The 500 largest by market value each month, our S&P 500 stand-in.
     if "top500" in settings.on:
         df = df[df.groupby("eom")["me"].rank(ascending=False, method="first") <= 500].copy()
     screened = df
     df = P.build_signal(df, signals(settings, fixed))
-    # Before the learned hedge, whose join renumbers the rows; it neutralizes this composite.
+    # Ahead of the learned hedge, which renumbers rows and neutralizes this.
     if "adaptive" in settings.on:
         table = P.scores(screened, P.SIGNALS).set_axis(list(P.SIGNALS), axis=1)
         df["composite"] = adaptive_composite(df, table.loc[df.index], window[1])
         df["signal"] = P.neutralize(df, df["composite"])
-    # Record-era months carry the learned hedge and borrow, as v1's shipped book does.
+    # Record months carry the learned hedge and borrow, as v1's book does.
     if window[0] >= P.FIRST_FORECAST:
         df = P.shipped(df)
     if "industry" in settings.on:
@@ -255,14 +253,14 @@ def universe(window: tuple, settings: Settings, fixed: dict) -> pd.DataFrame:
         df["ban_short"] = short_ban(df).to_numpy()
     if "lowvol" in settings.on:
         df["low_vol"] = P.rank_z(df, "ivol_capm_252d").fillna(0.0)
-    # A name's cap shrinks with its specific volatility against the month's median, to a third.
+    # A name's cap shrinks with its specific vol over the median, to 1/3.
     if "riskcap" in settings.on:
         from fiam import vol as V
 
         spec = V.forecast(df)
         df["vol_scale"] = (spec.groupby(df["eom"]).transform("median") / spec).clip(1 / 3, 1.0)
         df["vol_scale"] = df["vol_scale"].fillna(1.0)
-    # Score units to monthly return units: IC times the month's median residual volatility.
+    # Score to monthly return: IC times the month's median residual vol.
     vol = df["ivol_capm_252d"] * np.sqrt(21)
     ic = fixed.get("ic_monthly" if "grinold" in settings.on else "ic", 0.0)
     df["scale"] = ic * vol.groupby(df["eom"]).transform("median")
@@ -273,7 +271,7 @@ def universe(window: tuple, settings: Settings, fixed: dict) -> pd.DataFrame:
         for name, col in risk.STYLES.items():
             df[name] = P.rank_z(df, col).fillna(0.0)
         df["spec_vol"] = V.forecast(df)
-        # Grinold (1994): each stock's alpha = IC x its residual vol x its score.
+        # Grinold (1994): a stock's alpha = IC x its residual vol x its score.
         df["risk_alpha"] = ic * vol.fillna(vol.median()) * df["signal"]
     return df.dropna(subset=["signal"])
 
@@ -286,8 +284,7 @@ def factor_returns() -> pd.DataFrame | None:
     return data.read(risk.FACTORS).set_index("eom") if risk.FACTORS.exists() else None
 
 
-# The pool's risk as loadings B (factor variance = |B'w|^2) and specific variances, from the
-# covariance known at its decision; None before the model has 24 months of factor returns.
+# The pool's risk as loadings B and specific variances, None before 24m.
 def risk_terms(pool: pd.DataFrame) -> tuple[np.ndarray, np.ndarray] | None:
     from fiam import risk
 
@@ -302,6 +299,7 @@ def risk_terms(pool: pd.DataFrame) -> tuple[np.ndarray, np.ndarray] | None:
     return loadings, spec
 
 
+# The book's variance for the solver, |B'w|^2 plus specific risk.
 def variance(w, terms: tuple[np.ndarray, np.ndarray]):
     loadings, spec = terms
     return cp.sum_squares(loadings.T @ w) + spec @ cp.square(w)
@@ -313,7 +311,7 @@ def predicted_vol(w: np.ndarray, terms: tuple[np.ndarray, np.ndarray]) -> float:
     return float(np.sqrt(((loadings.T @ w) ** 2).sum() + spec @ w**2))
 
 
-# Per-name cost coefficients in NAV per month: linear, sales only, square-root impact, borrow.
+# Per-name NAV costs a month: linear, sales, square-root impact, borrow.
 def cost_terms(pool: pd.DataFrame, nav: float) -> tuple[np.ndarray, ...]:
     quotes = pool[C.COLUMNS].copy()
     # A gap takes the pool's median, as v1's own cost lines do.
@@ -327,20 +325,20 @@ def cost_terms(pool: pd.DataFrame, nav: float) -> tuple[np.ndarray, ...]:
     return linear, selling, impact, quotes["borrow"].to_numpy() / 12
 
 
-# The convex cost of trading from prev to w: spread and commission, sale fees, impact.
+# The convex cost of trading prev to w: spread, fees and impact.
 def trading_cost(w, prev: np.ndarray, pool: pd.DataFrame, nav: float):
     linear, selling, impact, _ = cost_terms(pool, nav)
     trade = w - prev
     return linear @ cp.abs(trade) + selling @ cp.pos(-trade) + impact @ cp.power(cp.abs(trade), 1.5)
 
 
-# The convex part of every cost line for a move from prev to w; fee minimums are left out.
+# The convex part of every cost line from prev to w, minimums left out.
 def convex_cost(w, prev: np.ndarray, pool: pd.DataFrame, nav: float):
     borrow = cost_terms(pool, nav)[3]
     return trading_cost(w, prev, pool, nav) + borrow @ cp.pos(-w)
 
 
-# The pool with any held names added back, and their drifted weights in pool order.
+# The pool with held names added back, drifted weights in pool order.
 def with_held(month, pool, previous) -> tuple[pd.DataFrame, np.ndarray]:
     if previous is not None:
         held = month[month["permno"].isin(previous.index) & ~month["permno"].isin(pool["permno"])]
@@ -350,18 +348,17 @@ def with_held(month, pool, previous) -> tuple[pd.DataFrame, np.ndarray]:
     return pool, np.asarray(prev, dtype=float)
 
 
-# The hedge-beta band: the mandate's, or held at zero for final v3 (v2_amendment_3.md).
+# The hedge-beta band, the mandate's or zero in final v3 (amendment 3).
 def beta_band(settings: Settings) -> float:
     return ZERO_BETA if "zerobeta" in settings.on else settings.mandate.beta
 
 
-# Every rule except the gross target: neutrality, sides, caps, bans and the mandate's bands, with
-# the bounds on each weight. `relax` multiplies the size part's cost budget; None drops it.
+# Every rule but gross: neutrality, sides, caps, bans and bands.
 def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0) -> tuple:
     m = settings.mandate
     side = np.where(pool["signal"].to_numpy() >= 0, 1.0, -1.0)
     sized = "size" in settings.on
-    # Under the size part a held name keeps its side: it may stay or shrink, never grow against it.
+    # Under the size part a held name keeps its side and may not grow.
     turned = sized & (prev != 0) & (np.sign(prev) != side)
     side = np.where(turned, np.sign(prev), side)
     cap = np.full(len(pool), m.name_cap)
@@ -376,7 +373,7 @@ def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0
         banned = pool["ban_short"].to_numpy(dtype=bool)
         lower = np.where(banned, np.maximum(lower, np.minimum(prev, 0.0)), lower)
     upper = np.maximum(side, 0) * cap
-    # Under a turnover budget a held name may stay where it is rather than force a trade.
+    # Under a turnover budget a held name may stay rather than trade.
     if m.turnover is not None:
         lower, upper = np.minimum(lower, np.minimum(prev, 0)), np.maximum(upper, prev)
     constraints = [cp.sum(w) == m.net, w >= lower, w <= upper]
@@ -394,7 +391,7 @@ def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0
     if m.turnover is not None and prev.any():
         constraints.append(cp.sum(cp.abs(w - prev)) / 2 <= m.turnover)
         constraints[-1].rule = "turnover"
-    # Each country's gross at most its cap of the book's gross; both sides are linear in w.
+    # Each country's gross within its cap of book gross, linear in w.
     if "global" in settings.on and m.country_cap is not None:
         for country in pool["country"].dropna().unique():
             inside = side * pool["country"].eq(country).to_numpy()
@@ -404,11 +401,11 @@ def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0
     if terms is not None:
         constraints.append(variance(w, terms) <= m.vol_budget**2 / 12)
         constraints[-1].rule = "vol_budget"
-    # The long-horizon volatility style held as v1 holds its 21-day volatility complex.
+    # Long-horizon vol style held as v1 holds its 21-day volatility complex.
     if "lowvol" in settings.on:
         constraints.append(cp.abs(pool["low_vol"].to_numpy() @ w) <= P.LIMITS["risk"])
         constraints[-1].rule = "lowvol"
-    # The same share of NAV spent on trading every month at every size; the first build is exempt.
+    # One NAV share spent trading each month at any size, first build free.
     if sized and relax is not None and prev.any():
         budget = params()["cost_budget"] * relax
         constraints.append(trading_cost(w, prev, pool, settings.capital) <= budget)
@@ -416,7 +413,7 @@ def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0
     return constraints, side @ w, (lower, upper)
 
 
-# One pool solved at a fixed gross; with every switch off this is v1's solve, line for line.
+# One pool solved at a fixed gross, v1's solve line for line if all off.
 def solve(month, pool, previous, settings: Settings, gross: float, relax=1.0) -> pd.Series | None:
     pool, prev = with_held(month, pool, previous)
     w = cp.Variable(len(pool))
@@ -428,16 +425,13 @@ def solve(month, pool, previous, settings: Settings, gross: float, relax=1.0) ->
         penalty = params().get("risk_lambda", 0.0) * variance(w, terms)
         objective = (pool["risk_alpha"].to_numpy() @ w - penalty) / float(pool["scale"].iloc[0])
     if settings.on & COSTED:
-        # scale x score - cost, divided through by scale: the same optimum at a size solvers like.
+        # scale x score - cost, over scale: same optimum, solver-friendly.
         scale = float(pool["scale"].iloc[0])
         objective = objective - convex_cost(w, prev, pool, settings.capital) / scale
     problem = cp.Problem(cp.Maximize(objective), constraints)
-    # CLARABEL first, as v1; the cost term's power cones sometimes defeat it, and SCS then solves,
-    # last at a tight tolerance. An answer counts only if every rule holds to 1e-3: an inaccurate
-    # solve can hand back a book hundreds of times the allowed gross.
+    # CLARABEL, then SCS; an answer counts only if every rule holds to 1e-3.
     for solver, options in SOLVERS:
-        # When CLARABEL fails, SCS is tried only if the rules can be met at all: an infeasible pool
-        # (liquidity caps too tight for the gross) is v1's cue to search deeper, not to force it.
+        # SCS only if the rules are feasible, else v1 searches deeper.
         if solver is cp.SCS and not feasible(constraints):
             return None
         try:
@@ -447,7 +441,7 @@ def solve(month, pool, previous, settings: Settings, gross: float, relax=1.0) ->
         if w.value is None or problem.status not in ("optimal", "optimal_inaccurate"):
             continue
         if max(float(np.max(c.violation())) for c in problem.constraints) <= 1e-3:
-            # What each rule costs the objective at the optimum: its total shadow price.
+            # What each rule costs the objective at the optimum, its shadow price.
             LAST.clear()
             LAST["status"], LAST["solver"] = problem.status, solver
             for c in constraints:
@@ -460,7 +454,7 @@ def solve(month, pool, previous, settings: Settings, gross: float, relax=1.0) ->
     return None
 
 
-# The most gross the rules allow, for when liquidity caps cannot carry the mandate's gross.
+# The most gross the rules allow, when liquidity caps cannot carry it.
 def largest_gross(month, pool, previous, settings: Settings) -> float:
     pool, prev = with_held(month, pool, previous)
     w = cp.Variable(len(pool))
@@ -473,7 +467,7 @@ def largest_gross(month, pool, previous, settings: Settings) -> float:
     return float(problem.value) if problem.value is not None else 0.0
 
 
-# Too many names for the mandate: solved again on its largest positions, kept if the rules hold.
+# Too many names: re-solved on the largest, kept if the rules hold.
 def fewer(month, weights: pd.Series, previous, settings: Settings, gross: float, relax=1.0):
     m = settings.mandate
     if len(weights) <= m.names_max:
@@ -483,12 +477,11 @@ def fewer(month, weights: pd.Series, previous, settings: Settings, gross: float,
     return weights if smaller is None else smaller
 
 
-# The drawdown brake's record of the book's own path, kept by walk() as each month is earned.
+# The drawdown brake's record of the book's path, kept by walk().
 BRAKE: dict = {}
 
 
-# Engaged 5% below the peak; released once half the fall to the lowest point since is regained;
-# a new low engages it again, a new peak resets it (v2_amendment_2.md).
+# On 5% off peak, off at half regained, on at new lows, reset at peaks.
 def track(net: float) -> None:
     b = BRAKE
     b["nav"] = b.get("nav", 1.0) * (1 + net)
@@ -504,8 +497,7 @@ def track(net: float) -> None:
         b["on"] = False
 
 
-# The risk model's monthly volatility for the book the rules choose at the mandate's gross without
-# the size, risk-target and brake parts; None before the model has 24 months of factor returns.
+# Risk-model monthly vol of the book without size or risk parts.
 def book_vol(month: pd.DataFrame, previous, settings: Settings) -> float | None:
     plain = replace(settings, on=settings.on - {"size", "voltarget", "brake"})
     weights = search(month, previous, plain)
@@ -516,19 +508,18 @@ def book_vol(month: pd.DataFrame, previous, settings: Settings) -> float | None:
     return None if terms is None else predicted_vol(weights.to_numpy(), terms)
 
 
-# Final v3's risk forecast and how far it has been off, kept by walk() as each month ends.
+# Final v3's risk forecast and its error, kept by walk() as months end.
 RISK: dict = {}
 
 
-# The forecast's error starts from v2-pass's 2017-2020 books (v2_amendment_3.md).
+# The forecast error starts from v2-pass's 2017-2020 books.
 def reset() -> None:
     BRAKE.clear()
     RISK.clear()
     RISK["error"] = params().get("vol_bias", 1.0) ** 2
 
 
-# One more ended month for the forecast's error: realized gross return over the volatility
-# predicted for the book actually held, squared, weighted with a 12-month half-life.
+# Folds a month's squared vol miss into the error, 12-month half-life.
 def learn(gross_return: float, gross_exposure: float, settings: Settings) -> None:
     plain = RISK.pop("plain", None)
     if plain and gross_exposure:
@@ -537,15 +528,13 @@ def learn(gross_return: float, gross_exposure: float, settings: Settings) -> Non
         RISK["error"] = BIAS_DECAY * RISK["error"] + (1 - BIAS_DECAY) * miss
 
 
-# Everything a book's own path teaches it, after each month: the brake and the risk forecast.
+# What the book's path teaches it each month: brake and risk forecast.
 def observe(record: dict, settings: Settings) -> None:
     track(record["net"])
     learn(record["gross"], record["gross_exposure"], settings)
 
 
-# The month's gross: the mandate's, scaled to the risk target, cut to the floor while braking.
-# With `target10` the target is 10% a year realized, the forecast corrected by its own error, and
-# the ceiling the one that keeps every day under 200%.
+# Gross: the mandate's, risk-targeted, at the floor while braking.
 def target_gross(month: pd.DataFrame, previous, settings: Settings) -> float:
     gross = settings.mandate.gross
     if "voltarget" in settings.on:
@@ -563,8 +552,7 @@ def target_gross(month: pd.DataFrame, previous, settings: Settings) -> float:
     return gross
 
 
-# The (budget multiple, gross) pairs tried in turn. Under the size part a gross the budget cannot
-# reach moves halfway from last month's, then stays there, before the budget doubles, then goes.
+# The (budget multiple, gross) pairs tried, gross easing halfway first.
 def attempts(month: pd.DataFrame, previous, settings: Settings) -> list[tuple]:
     target = target_gross(month, previous, settings)
     if "size" not in settings.on:
@@ -576,12 +564,11 @@ def attempts(month: pd.DataFrame, previous, settings: Settings) -> list[tuple]:
     return [(relax, gross) for relax in (1.0, 2.0, None) for gross in grosses]
 
 
-# v1's search: the extremes first, deeper pools only if the rules cannot be met. Gross stays at
-# the mandate's unless liquidity caps make it impossible; then the largest gross they allow.
+# v1's search: extremes first, then deeper pools, then the most gross.
 def search(month: pd.DataFrame, previous, settings: Settings) -> pd.Series | None:
     month = month.sort_values("signal")
     m = settings.mandate
-    # A name limit cannot be a convex rule, so the candidate pool is cut to it instead.
+    # No convex rule can limit names, so the pool is cut to the limit.
     depth = min(m.pool, m.names_max if m.long_only else m.names_max // 2)
     for relax, gross in attempts(month, previous, settings):
         for size in (depth, 2 * depth, len(month)):
@@ -607,13 +594,12 @@ def search(month: pd.DataFrame, previous, settings: Settings) -> pd.Series | Non
     return None
 
 
-# v1's whole-share repair pulls a book back to zero net, so a book with a net target is rounded
-# here instead: the nearest whole share at the run's capital, nothing added back.
+# Net-target books round to whole shares here; v1's repair zeroes net.
 def optimize(month: pd.DataFrame, previous, settings: Settings) -> pd.Series | None:
     weights = search(month, previous, settings)
     budget = settings.mandate.turnover is not None
     if weights is None and (settings.on or budget) and previous is not None:
-        # No solver met the rules: v2 keeps last month's book rather than selling it all.
+        # No solver met the rules, so v2 holds last month's book, not cash.
         weights = previous[previous.index.isin(month["permno"])]
         LAST.clear()
         LAST["status"] = "held"
@@ -625,7 +611,7 @@ def optimize(month: pd.DataFrame, previous, settings: Settings) -> pd.Series | N
     return held[held.abs() > 1e-9]
 
 
-# Whether the rules alone can hold: a linear check without the cost term, fast and reliable.
+# Whether the rules alone can hold: a fast check without costs.
 def feasible(constraints: list) -> bool:
     check = cp.Problem(cp.Minimize(0), constraints)
     try:
@@ -643,12 +629,11 @@ SOLVERS = (
 )
 
 
-# The last solve's status and the shadow price of each rule, read by walk() for the month record.
+# The last solve's status and each rule's shadow price, read by walk().
 LAST: dict = {}
 
 
-# Every rule re-checked on the final whole-share book, outside the solver: the largest overshoot.
-# The gross is the month's own target when a risk target or the brake set it.
+# Each rule rechecked on the whole-share book: the largest overshoot.
 def breaches(
     weights: pd.Series, info: pd.DataFrame, settings: Settings, turnover=0.0, gross=None
 ) -> dict:
@@ -678,7 +663,7 @@ def breaches(
     )
 
 
-# Each month's record, plus what the protocol judges: leg returns, liquidity and the weights.
+# Each month's record plus legs, liquidity and weights for judging.
 def walk(df: pd.DataFrame, settings: Settings) -> tuple[pd.DataFrame, pd.DataFrame]:
     model = C.Model(nav=settings.capital, impact_y=C.IMPACT_Y)
     rows, held = [], []
@@ -704,7 +689,7 @@ def walk(df: pd.DataFrame, settings: Settings) -> tuple[pd.DataFrame, pd.DataFra
     return pd.DataFrame(rows).set_index("holding_month"), pd.concat(held, ignore_index=True)
 
 
-# The numbers each switch is judged on, the same way for every run and window.
+# The numbers each switch is judged on, alike for every run and window.
 def summary(book: pd.DataFrame, check: bool) -> dict:
     market = P.benchmarks().set_index("month")["mkt_rf_crsp" if check else "mkt_rf"]
     fit = P.regress(book["net"], market.reindex(book.index))
@@ -721,7 +706,7 @@ def summary(book: pd.DataFrame, check: bool) -> dict:
     )
     out |= {k: float(book[k].mean()) for k in book if k.startswith("dual_")}
     out |= {k: float(book[k].mean() * 12) for k in book if k.startswith("cost_")}
-    # The risk figures v3's parts are judged on (v2_amendment_2.md), for every run alike.
+    # The risk figures v3's parts are judged on (v2_amendment_2.md).
     net = book["net"]
     out |= dict(
         volatility=float(net.std() * np.sqrt(12)),
@@ -731,7 +716,7 @@ def summary(book: pd.DataFrame, check: bool) -> dict:
         gross_mean=float(book["gross_exposure"].mean()),
         gross_max=float(book["gross_exposure"].max()),
     )
-    # How steady: the longest run below an earlier peak, and the share of positive 12-month runs.
+    # Steadiness: longest time under a peak, share of 12-month gains.
     out["months_underwater_max"] = stats.underwater(net)
     rolling = net.rolling(12).sum().dropna()
     out["rolling_12m_positive"] = float((rolling > 0).mean()) if len(rolling) else float("nan")
@@ -753,7 +738,7 @@ def protocol(on: frozenset) -> str:
     return "v2_amendment_2" if on & set(PARTS) else "v2"
 
 
-# One configuration through one window, written under out/v2/ with a row in the trial ledger.
+# One configuration through one window, to out/v2/ and the trial ledger.
 def run(settings: Settings, window: tuple, fixed: dict | None = None) -> dict:
     fixed = params() if fixed is None else fixed
     started = time.time()
@@ -787,15 +772,14 @@ def read_verdicts() -> dict:
     return json.loads((OUT / "evidence.json").read_text(encoding="utf-8"))["verdicts"]
 
 
-# v2-pass (v2_amendment_1.md): the fixes that passed their own pre-2021 test, together.
+# v2-pass (v2_amendment_1.md): fixes that passed their pre-2021 test.
 def passing(verdicts: dict | None = None) -> frozenset:
     verdicts = read_verdicts() if verdicts is None else verdicts
     passed = {k for k in (*MEMBERS, "grinold") if verdicts.get(k, {}).get("passed")}
     return frozenset(passed - {"costs"} if "grinold" in passed else passed)
 
 
-# v3 (v2_amendment_2.md): v2-pass and every part that passed its own pre-2021 test; None until
-# the parts have verdicts.
+# v3 (v2_amendment_2.md): v2-pass plus passing parts, or None.
 def final(verdicts: dict | None = None) -> frozenset | None:
     verdicts = read_verdicts() if verdicts is None else verdicts
     if not set(PARTS) & set(verdicts):
@@ -803,13 +787,13 @@ def final(verdicts: dict | None = None) -> frozenset | None:
     return passing(verdicts) | {p for p in PARTS if verdicts.get(p, {}).get("passed")}
 
 
-# Final v3's base (v2_amendment_3.md): v3 and the two rules; None until v3 has its verdicts.
+# Final v3's base (v2_amendment_3.md): v3 and the two rules, or None.
 def base_three(verdicts: dict | None = None) -> frozenset | None:
     v3 = final(verdicts)
     return None if v3 is None else v3 | set(RULES)
 
 
-# Final v3: the base and every tested fix that passed; None until the fixes have verdicts.
+# Final v3: the base and each passing tested fix, None until verdicts.
 def final_three(verdicts: dict | None = None) -> frozenset | None:
     verdicts = read_verdicts() if verdicts is None else verdicts
     base = base_three(verdicts)
@@ -818,7 +802,7 @@ def final_three(verdicts: dict | None = None) -> frozenset | None:
     return base | {p for p in TESTED if verdicts.get(p, {}).get("passed")}
 
 
-# The protocol's runs: v1 and v2, each member alone, across capital; other switches at $10M.
+# The protocol's runs: v1, v2, members alone by capital; rest at $10M.
 def plan() -> list[Settings]:
     institutional = M.Mandate(name="institutional", pool=480)
     out = [Settings(frozenset(on), cap) for on in ((), V2) for cap in CAPITALS]
@@ -829,7 +813,7 @@ def plan() -> list[Settings]:
     return out
 
 
-# The protocol's first test: switches off and v1's own drifted book in, v2 must choose as v1 does.
+# First test: all off, v1's drifted book in, v2 must choose as v1 does.
 def prove(months=("2016-06", "2018-06", "2020-06", "2021-06", "2023-06", "2025-06")) -> float:
     rf = P.benchmarks().set_index("month")["rf"]
     worst = 0.0
@@ -847,8 +831,7 @@ def prove(months=("2016-06", "2018-06", "2020-06", "2021-06", "2023-06", "2025-0
     return worst
 
 
-# The crowd what-ifs at $10M on v1 and v2: the live crowds on the clean window, the historical
-# crowd on 2016-20, each with, against and alone, beside the plain book on the same months.
+# Crowd what-ifs at $10M on v1 and v2: with, against and alone.
 def what_if() -> None:
     fixed = params()
     for base in (frozenset(), V2):
@@ -860,7 +843,7 @@ def what_if() -> None:
             print(f"{settings.name:40s} {WINDOWS[window]:6s} IR {s['information_ratio']:+.2f}")
 
 
-# The decision months of a finals run: FIAM_WINDOW "FIRST,LAST" when the data covers other dates.
+# A finals run's months: FIAM_WINDOW "FIRST,LAST" for other dates.
 def finals_window() -> tuple:
     if not os.environ.get("FIAM_WINDOW"):
         return RECORD
@@ -868,7 +851,7 @@ def finals_window() -> tuple:
     return tuple(f"{x:%Y-%m-%d}" for x in ends)
 
 
-# A world book's own report: each month's country shares, and beta to the panel's own market.
+# A world book's report: country shares and beta to its own market.
 def world_report(settings: Settings, window: tuple) -> dict:
     from fiam import world as W
 
@@ -885,15 +868,14 @@ def world_report(settings: Settings, window: tuple) -> dict:
     )
 
 
-# The information ratio against the mandate's own hurdle over the T-bill.
+# The information ratio against the mandate's hurdle over the T-bill.
 def hurdle_ir(settings: Settings, window: tuple) -> float:
     folder = OUT / settings.name / WINDOWS.get(window, "finals")
     active = pd.read_csv(folder / "returns.csv")["net"] - settings.mandate.hurdle / 12
     return float(active.mean() / active.std() * np.sqrt(12)) if active.std() else 0.0
 
 
-# A finals mandate: refused with reasons if its rules cannot all hold, else v1's method and v2.
-# A bundle with countries (run.py --world) turns the global switch on for every book.
+# A finals mandate: refused if impossible, else run by v1 and v2.
 def finals(path: Path) -> dict:
     mandate = M.load(path)
     problems = M.check(mandate)
@@ -913,8 +895,7 @@ def finals(path: Path) -> dict:
     books = [("v1 method", frozenset()), ("v2", V2)]
     chosen = final_three() if (OUT / "evidence.json").exists() else None
     if chosen:
-        # Scaling gross to a risk target would move a directional book's net, so only a neutral
-        # mandate keeps the risk target and the brake.
+        # Risk targets move a directional net, so only neutral books keep them.
         steady = {"voltarget", "target10", "brake"}
         books.append(("final v3", chosen if mandate.net == 0 else chosen - steady))
     for label, on in books:
@@ -924,7 +905,7 @@ def finals(path: Path) -> dict:
             stats |= world_report(settings, window)
         if mandate.hurdle is not None:
             stats["information_ratio_hurdle"] = hurdle_ir(settings, window)
-        # Which data and rules, so a fake-country rehearsal is never shown as a result.
+        # Data and rules recorded, so a fake-country rehearsal is not a result.
         stats |= dict(data=data.DIR.name, window=list(window), mandate=M.record(mandate))
         out[label] = dict(run=settings.name, **stats)
         where = f" largest country {stats['country_share_max']:.0%}" if worldwide else ""
@@ -946,8 +927,7 @@ def finals(path: Path) -> dict:
     return out
 
 
-# uv run python -m fiam.v2 [prove | all | finals FILE | grid NAME... | NAME...]; v2 = all five,
-# pass = v2-pass, v3 = v2-pass and its passing parts (v2_amendment_2.md).
+# Usage: uv run -m fiam.v2 [prove|all|finals FILE|grid NAME...|NAME...]
 def main(args: list[str]) -> None:
     if args == ["prove"]:
         print(f"largest weight gap, v2 off vs v1: {prove():.2e}")
@@ -975,7 +955,7 @@ def main(args: list[str]) -> None:
     if unknown and args != ["all"]:
         raise SystemExit(f"unknown switches {sorted(unknown)}; known: v2 {MEMBERS + OTHERS}")
     capital = float(os.environ.get("FIAM_CAPITAL", C.DEFAULT.nav))
-    # The risk dial (v2_amendment_3.md): final v3 at another volatility a year, e.g. FIAM_VOL=0.06.
+    # The risk dial (v2_amendment_3.md): final v3 at FIAM_VOL a year.
     rules = M.Mandate()
     if "FIAM_VOL" in os.environ:
         vol = float(os.environ["FIAM_VOL"])

@@ -10,7 +10,7 @@ def test_county_matches_whole_words_only():
     assert not fema.names_county("Lakewood Parish for Public Assistance.", "Lake")
 
 
-# Statewide aid counts; the statewide hazard mitigation sentence does not.
+# Statewide aid counts, the statewide hazard mitigation line does not.
 def test_statewide_aid_counts_but_mitigation_does_not():
     aid = "All counties in the State of Iowa are eligible for Public Assistance."
     hm = (

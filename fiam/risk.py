@@ -1,4 +1,4 @@
-# A monthly factor risk model: sectors and five styles, specific risk from fiam.vol, used from 2017.
+# Factor risk model: sectors, five styles, fiam.vol specific, from 2017.
 
 import json
 import sys
@@ -18,7 +18,7 @@ FACTORS = FROZEN / "risk_factor_returns.parquet"
 REPORT = FROZEN / "risk_check.json"
 
 
-# The broad eligible panel with each style as a rank z within the month and the sector code.
+# The eligible panel with each style as a monthly rank z and the sector.
 def exposures(first: str = "2015-01-31", last: str = P.LAST_FORECAST) -> pd.DataFrame:
     extra = tuple(c for c in STYLES.values() if c not in ("market_equity", "be_me", "ret_12_1"))
     df = P.screen(P.load_panel((*extra, "ivol_capm_252d")), first, last)
@@ -33,7 +33,7 @@ def design(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([sectors, df[list(STYLES)]], axis=1)
 
 
-# Each decision month's factor returns from a cross-sectional regression weighted by sqrt(me).
+# Monthly factor returns from a cross-section regression on sqrt(me).
 def factor_returns(df: pd.DataFrame) -> pd.DataFrame:
     x = design(df)
     rows = {}
@@ -49,7 +49,7 @@ def factor_returns(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame.from_dict(rows, orient="index", columns=x.columns).sort_index()
 
 
-# The covariance known at a decision: only factor returns already realized, half-life 36 months.
+# A decision's covariance, realized returns only, half-life 36 months.
 def covariance(returns: pd.DataFrame, eom: pd.Timestamp) -> pd.DataFrame | None:
     known = returns[returns.index < eom].fillna(0.0)
     if len(known) < MIN_MONTHS:
@@ -60,7 +60,7 @@ def covariance(returns: pd.DataFrame, eom: pd.Timestamp) -> pd.DataFrame | None:
     return (centred * weights[:, None]).T @ centred
 
 
-# A book's predicted monthly volatility: factor part plus the specific part from fiam.vol.
+# A book's predicted monthly vol: factor part plus fiam.vol's specific.
 def predicted_vol(weights: pd.Series, month: pd.DataFrame, cov: pd.DataFrame) -> float:
     rows = month.set_index("permno").reindex(weights.index)
     x = design(rows.reset_index()).reindex(columns=cov.columns, fill_value=0.0).to_numpy()
@@ -70,7 +70,7 @@ def predicted_vol(weights: pd.Series, month: pd.DataFrame, cov: pd.DataFrame) ->
     return float(np.sqrt(factor + (w**2 * np.nan_to_num(specific)).sum()))
 
 
-# Bias statistic, VaR exceptions and the Kupiec and Christoffersen tests for one book.
+# Bias, VaR exceptions and Kupiec and Christoffersen tests for a book.
 def check(realized: pd.Series, predicted: pd.Series) -> dict:
     both = pd.concat([realized, predicted], axis=1, keys=["r", "p"]).dropna()
     z = both["r"] / both["p"]
@@ -92,6 +92,7 @@ def check(realized: pd.Series, predicted: pd.Series) -> dict:
         n0, n1 = sum(a == 0 for a, _ in pairs), sum(a == 1 for a, _ in pairs)
         pi0, pi1, pi = n01 / max(n0, 1), n11 / max(n1, 1), (n01 + n11) / max(n0 + n1, 1)
 
+        # Log-likelihood of k exceptions in m months, for Christoffersen's test.
         def ll(q, k, m):
             return k * np.log(q) + (m - k) * np.log(1 - q) if 0 < q < 1 else 0.0
 
@@ -105,7 +106,7 @@ def check(realized: pd.Series, predicted: pd.Series) -> dict:
     return out
 
 
-# Factor returns frozen once; predicted vs realized for v1 and v2 from their saved holdings.
+# Factor returns frozen once, then predicted vs realized for v1 and v2.
 def main() -> None:
     from fiam import v2
 

@@ -1,4 +1,4 @@
-# Each stock's volatility next month: LightGBM on the 147, judged against HAR first.
+# Each stock's volatility next month: LightGBM on the 147, versus HAR.
 
 import json
 import sys
@@ -15,13 +15,13 @@ CHECK_YEARS = range(2017, 2021)
 WINDOWS = (5, 21, 63)
 
 
-# Daily total returns as a wide table, dates by permno, from the bundle's daily file.
+# Daily total returns, dates by permno, from the bundle's daily file.
 def daily_returns() -> pd.DataFrame:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     return daily.pivot_table(index="date", columns="permno", values="total_return")
 
 
-# Each stock's realized volatility per calendar month, in monthly units, with 15 days or more.
+# Each stock's monthly realized volatility, needing 15 days or more.
 def monthly_realized(returns: pd.DataFrame) -> pd.Series:
     month = returns.index.to_period("M").to_timestamp()
     sd = returns.groupby(month).std()
@@ -32,7 +32,7 @@ def monthly_realized(returns: pd.DataFrame) -> pd.Series:
     return out.swaplevel().sort_index()
 
 
-# HAR inputs at each month end: log realized volatility over the last 5, 21 and 63 trading days.
+# HAR inputs at month end: log realized vol over 5, 21 and 63 days.
 def har_inputs(returns: pd.DataFrame, months: list) -> pd.DataFrame:
     rows = []
     for eom in months:
@@ -46,13 +46,13 @@ def har_inputs(returns: pd.DataFrame, months: list) -> pd.DataFrame:
     return out.replace([np.inf, -np.inf], np.nan)
 
 
-# Mean QLIKE on variances: realized^2 / forecast^2 - log(realized^2 / forecast^2) - 1.
+# QLIKE on variances: (real/fcst)^2 - log((real/fcst)^2) - 1.
 def qlike(realized: pd.Series, forecast: pd.Series) -> pd.Series:
     ratio = (realized / forecast) ** 2
     return ratio - np.log(ratio) - 1
 
 
-# Diebold-Mariano t on the monthly mean loss difference, Newey-West lag 3 (negative favours model).
+# Diebold-Mariano t, Newey-West lag 3 (negative favours the model).
 def diebold_mariano(diff: pd.Series, lags: int = 3) -> float:
     d = diff.dropna().to_numpy()
     n, mean = len(d), d.mean()
@@ -63,7 +63,7 @@ def diebold_mariano(diff: pd.Series, lags: int = 3) -> float:
     return float(mean / np.sqrt(var / n))
 
 
-# LightGBM and HAR, both walk-forward by year; scored before 2021, then frozen for every month.
+# LightGBM and HAR walk forward by year, scored before 2021, frozen.
 def main() -> None:
     from fiam.ml import teachers as T
 
@@ -121,7 +121,7 @@ def main() -> None:
     print(json.dumps(report, indent=1))
 
 
-# A stock's forecast volatility, from the frozen table, else its last 21 days scaled to a month.
+# Forecast vol from the frozen table, else last 21 days scaled up.
 def forecast(frame: pd.DataFrame) -> pd.Series:
     table = data.read(FORECAST).set_index(data.KEYS)["vol_hat"] if FORECAST.exists() else None
     found = pd.Series(np.nan, index=frame.index)

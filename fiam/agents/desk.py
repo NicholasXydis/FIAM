@@ -1,4 +1,4 @@
-# The research desk: a devil's advocate checked by code, and a PM memo that fails closed.
+# Research desk: a code-checked devil's advocate, a fail-closed PM memo.
 
 import json
 import re
@@ -13,11 +13,11 @@ from fiam.agents import harness as H
 
 OUT = v2.OUT / "desk.json"
 MEMO = v2.OUT / "pm_memo.md"
-# Final v3's desk (final_exhibits.md): the same agents on the book we present, written apart.
+# Final v3's desk (final_exhibits.md): same agents on our book, apart.
 FINAL_OUT, FINAL_MEMO = v2.OUT / "desk_final.json", v2.OUT / "pm_memo_final.md"
 
 
-# Where each test's number comes from: v1's submission, or final v3's pack and runs.
+# Each test's source: v1's submission, or final v3's pack and runs.
 def sources(book: str) -> dict:
     stress = json.loads((v2.OUT / "stress.json").read_text(encoding="utf-8"))
     crowd = json.loads((v2.OUT / "crowd_lab.json").read_text(encoding="utf-8"))
@@ -44,7 +44,7 @@ def sources(book: str) -> dict:
     )
 
 
-# The registry: each test reads one number our code already wrote, and says when it is a problem.
+# The registry: each test reads one number our code wrote, and its flag.
 def tests(book: str = "v1") -> dict:
     src = sources(book)
     metrics = src["metrics"]
@@ -149,7 +149,7 @@ def tests(book: str = "v1") -> dict:
     }
 
 
-# The critic picks the problems it expects from the descriptions alone; code then checks each.
+# The critic picks likely problems from descriptions alone; code checks.
 def advocate(server: H.Server, registry: dict) -> dict:
     listing = "\n".join(f"{k}: {v['text']}" for k, v in registry.items())
     system = (
@@ -179,13 +179,13 @@ def advocate(server: H.Server, registry: dict) -> dict:
         for p in picks
         if first.get(p.get("test")) is p
     ]
-    # Most checks flag something, so a random pick would confirm this many by chance.
+    # Most checks flag something, so a random pick confirms this many too.
     chance = sum(v["problem"] for v in registry.values()) / len(registry) * len(checked)
     confirmed = sum(c["confirmed"] for c in checked)
     return dict(critiques=checked, confirmed=confirmed, asked=len(checked), chance=chance)
 
 
-# The September memo from facts our code computed; any number not among them stops it being written.
+# The September memo from computed facts. Any other number blocks it.
 def memo(server: H.Server, facts: dict, path: Path = MEMO) -> dict:
     sheet = "\n".join(f"{k}: {v}" for k, v in facts.items())
     system = (
@@ -208,15 +208,14 @@ def memo(server: H.Server, facts: dict, path: Path = MEMO) -> dict:
     # List numbering is layout, not a claim, so it is left out of the check.
     claims = plain(re.sub(r"(?m)^\s*\d+[.)]\s", "", text))
     unsupported = [n for n in critic.numbers(claims) if not critic.supported(n, seen)]
-    # Fails closed: no memo, and no older memo left behind to be mistaken for this one.
+    # Fails closed: no memo, and no older memo left to be mistaken for it.
     path.unlink(missing_ok=True)
     if not unsupported:
         path.write_text(text + "\n", encoding="utf-8")
     return dict(written=not unsupported, unsupported_numbers=unsupported[:10])
 
 
-# The September v1 book's ten largest named positions, each explained from its own signal ranks
-# (crowd_amendment_1.md); a name whose text uses a number not in its facts is dropped and counted.
+# September v1's top ten from their ranks, unbacked numbers dropped.
 def september(server: H.Server, held: Path | None = None) -> dict:
     from fiam import book as P
     from fiam import data
@@ -254,8 +253,7 @@ def september(server: H.Server, held: Path | None = None) -> dict:
     return dict(explained=out, dropped=dropped)
 
 
-# What final v3 was betting on, told from its yearly style exposures; a number not in the table
-# stops the account being kept (final_exhibits.md).
+# Final v3's bets from yearly style exposures. Unbacked numbers drop it.
 def factor_story(server: H.Server, by_year: dict) -> dict:
     table = "\n".join(
         f"{year}: " + ", ".join(f"{style} {value:+.2f}" for style, value in row.items())
@@ -304,6 +302,7 @@ def final(part: str = "all") -> None:
     print(json.dumps({k: v for k, v in report.items() if k != "registry"}, indent=1, default=float))
 
 
+# Runs the desk parts for v1 and writes desk.json and the PM memo.
 def main(part: str = "all") -> None:
     registry = tests()
     report = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
@@ -311,7 +310,7 @@ def main(part: str = "all") -> None:
         with H.Server("gemma") as server:
             report["advocate"] = advocate(server, registry)
     if part in ("all", "memo"):
-        # Each fact as the check it measures and its value, so the writer knows what it means.
+        # Each fact as its check and value, so the writer knows what it means.
         facts = {
             f"{v['text']} ({'true' if v['problem'] else 'false'}; value)": round(v["value"], 4)
             for v in registry.values()
@@ -326,6 +325,6 @@ def main(part: str = "all") -> None:
     print(json.dumps({k: v for k, v in report.items() if k != "registry"}, indent=1, default=float))
 
 
-# uv run python -m fiam.agents.desk [all | advocate | memo | september] [final]
+# uv run -m fiam.agents.desk [all|advocate|memo|september] [final]
 if __name__ == "__main__":
     final(sys.argv[1]) if sys.argv[2:3] == ["final"] else main(*sys.argv[1:2])

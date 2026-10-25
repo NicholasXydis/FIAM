@@ -1,4 +1,4 @@
-# Every finals chart, drawn once into out/figures for both the report and the deck.
+# Every finals chart, drawn once into out/figures for report and deck.
 
 import json
 from pathlib import Path
@@ -16,7 +16,7 @@ from fiam import v2  # noqa: E402
 from fiam.paths import read_json as load  # noqa: E402
 from fiam.report.charts import ALT, BENCH, INK, MUTED, NEG, OURS  # noqa: E402
 
-# Slide-sized type in the deck's own font, so a chart reads from the back of the room.
+# Slide-sized type in the deck's font, so charts read from the back row.
 matplotlib.rcParams.update(
     {
         "font.family": ["Calibri", "DejaVu Sans"],
@@ -33,7 +33,7 @@ PAGES = v2.OUT
 CAPS = ["$1M", "$10M", "$100M", "$500M", "$1B", "$5B"]
 BOOKS = {"v1": OURS, "v2": ALT, "v2a": "#2E8B57", "v2-pass": "#B07D2B", "v3": "#8A7FB5"}
 BOOKS["final v3"] = INK
-# The books the finals charts show: the submitted book, the two benchmarks and the one we present.
+# Charted books: submitted, two benchmarks and the one we present.
 SHOWN = ("v1", "v2", "v2-pass", "final v3")
 # What each book is called on a slide.
 LABELS = {
@@ -45,13 +45,14 @@ LABELS = {
 FINAL = PAGES / "final_exhibits"
 
 
-# Saves a figure for the deck and the report, in one place and one resolution.
+# Saves a figure for deck and report in one place at one resolution.
 def save(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIGURES / f"{name}.png", dpi=200, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
 
+# The house look: no top or right spine, a left title, a muted y label.
 def tidy(ax, title: str = "", ylabel: str = "") -> None:
     ax.spines[["top", "right"]].set_visible(False)
     if title:
@@ -60,7 +61,7 @@ def tidy(ax, title: str = "", ylabel: str = "") -> None:
         ax.set_ylabel(ylabel, color=MUTED)
 
 
-# Fund size on a log axis; $500M sits too close to $1B to label, so only its point shows.
+# Log fund-size axis, $500M unlabelled as it sits too close to $1B.
 def log_capital(ax) -> None:
     ax.set_xscale("log")
     ax.set_xticks(list(v2.CAPITALS))
@@ -68,7 +69,7 @@ def log_capital(ax) -> None:
     ax.minorticks_off()
 
 
-# Dollars a year over cash and the information ratio against fund size, every book, 2021-2026.
+# Yearly dollars over cash and IR by fund size, every book, 2021-2026.
 def capacity() -> None:
     report = load(PAGES / "capacity.json").get("books", {})
     if not report:
@@ -93,8 +94,7 @@ def capacity() -> None:
     save(fig, "capacity")
 
 
-# v3 against its benchmarks at every fund size, 2021 to August 2026: the information ratio, the
-# beta the brief checks, the worst fall and the volatility (v2_amendment_2.md).
+# v3 vs benchmarks by size: IR, beta, drawdown, vol (v2_amendment_2.md).
 def final_book() -> None:
     scored = load(PAGES / "evidence.json").get("v3", {})
     sizes = [c for c in v2.CAPITALS if f"{c:.0e}".replace("+0", "") in scored]
@@ -126,7 +126,7 @@ def final_book() -> None:
     save(fig, "final_book")
 
 
-# Our long and short weight among the AI crowd's favourites, month by month.
+# Our long and short weight in the AI crowd's favourites, each month.
 def signature() -> None:
     from fiam.report.animation import our_run
 
@@ -145,7 +145,7 @@ def signature() -> None:
     save(fig, "crowd_signature")
 
 
-# The 30 retail agents' pick correlations, ordered by group: the crowd collapses into a few.
+# The 30 retail agents' pick correlations by group, showing a few herds.
 def network() -> None:
     net = load(PAGES / "crowd_insights.json").get("network")
     if not net:
@@ -164,7 +164,7 @@ def network() -> None:
     save(fig, "crowd_network")
 
 
-# The copycat test against the book the deck presents, else the submitted book's.
+# The copycat test on the book the deck shows, else the submitted one.
 def copycat_test() -> dict:
     from fiam.report.animation import our_run
 
@@ -172,7 +172,7 @@ def copycat_test() -> dict:
     return insights.get(f"book {our_run()}", insights).get("copycat_test", {})
 
 
-# How often each copycat group buys our longs and shorts our shorts, against chance.
+# How often copycat groups match our longs and shorts, against chance.
 def copycats() -> None:
     test = copycat_test()
     if not test:
@@ -228,7 +228,7 @@ def crises() -> None:
     save(fig, "crises")
 
 
-# Where machine learning earned its place, where it did not, and what we did about it.
+# Where machine learning earned its place, where not, and what we did.
 def ml_scoreboard() -> None:
     params, vol = load(Path("frozen") / "v2_params.json"), load(Path("frozen") / "vol_check.json")
     errors = params.get("beta_errors", {})
@@ -251,8 +251,7 @@ def ml_scoreboard() -> None:
     save(fig, "ml_scoreboard")
 
 
-# One saved AI decision rebuilt from the data: the card a copycat given our recipe saw, its answer,
-# the stocks behind the codes and whether the rebuilt prompt hashes to the one saved with it.
+# A saved copycat decision rebuilt from data, its prompt hash checked.
 def receipt() -> None:
     import hashlib
 
@@ -264,7 +263,7 @@ def receipt() -> None:
     from fiam.report.animation import our_run
 
     log = H.RUNS / "crowdlab_copycat.jsonl"
-    # The card is rebuilt from the data; without it the saved receipt stands.
+    # The card is rebuilt from data. Without it the saved receipt stands.
     if not log.exists() or not data.MANIFEST.exists():
         return
     rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines() if line]
@@ -283,6 +282,7 @@ def receipt() -> None:
     ours = held[pd.to_datetime(held["eom"]) == eom].set_index("permno")["weight"]
     manifest = load(H.RUNS / "crowdlab_copycat.manifest.json")
 
+    # One code's stock unmasked: ticker, name and how our book holds it.
     def reveal(permno: int, side: str) -> dict:
         weight = ours.get(permno, 0.0)
         label = known.loc[permno] if permno in known.index else {}
@@ -314,8 +314,7 @@ def receipt() -> None:
     (FIGURES / "receipt.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
 
 
-# Final v3's risk (final_exhibits.md): its forecast volatility each month, and in the latest month
-# each top name's share of risk against its share of the book.
+# Final v3 forecast vol and top names' risk share (final_exhibits.md).
 def final_risk() -> None:
     path = FINAL / "risk_months.csv"
     if not path.exists():
@@ -370,8 +369,7 @@ def final_exposures() -> None:
     save(fig, "final_exposures")
 
 
-# Could a monkey do it: 1,000 random large-cap books with final v3's legs, gross and holding time,
-# and where final v3 lands among them (final_exhibits.md section 1.1).
+# Final v3 among 1,000 random lookalike books (final_exhibits.md 1.1).
 def edge_null() -> None:
     path = FINAL / "null_irs.csv"
     report = load(FINAL / "report.json").get("null", {})
@@ -388,7 +386,7 @@ def edge_null() -> None:
     save(fig, "edge_null")
 
 
-# Every benchmark on one axis: what the same money would have made, from the market to final v3.
+# Every benchmark on one axis, what the money made, market to final v3.
 def ladder_rows() -> list[tuple]:
     report = load(FINAL / "report.json")
     if not report.get("null"):
@@ -426,6 +424,7 @@ def ladder_rows() -> list[tuple]:
     return [r for r in rows if r[1] is not None]
 
 
+# Draws the ladder rows as bars of IR over cash plus 4% at $10M.
 def edge_ladder() -> None:
     rows = ladder_rows()
     if not rows:
@@ -451,7 +450,7 @@ def edge_ladder() -> None:
     save(fig, "edge_ladder")
 
 
-# What the optimizer adds: final v3 against equal weights on our score and on its own names.
+# What the optimizer adds: final v3 vs equal weights on score and names.
 def naive() -> None:
     report = load(FINAL / "report.json").get("naive", {})
     if not report:
@@ -484,6 +483,7 @@ def naive() -> None:
     save(fig, "naive")
 
 
+# Draws every chart in order and lists the figure files that exist.
 def draw_all() -> list[str]:
     for chart in (
         capacity,

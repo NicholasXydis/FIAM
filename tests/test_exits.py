@@ -23,8 +23,7 @@ def test_crsp_actions_map_to_groups(tmp_path):
     assert got.loc[1, "known"] == pd.Timestamp("2019-05-20")
 
 
-# A 2026 stop is a merger with an 8-K item 2.01, delisted with only a
-# Form 25 or 15 near its last row, and a data gap with neither.
+# A 2026 stop is a merger (8-K 2.01), delisting (Form 25 or 15) or gap
 def test_2026_stops_are_classified_by_forms_near_the_last_row(tmp_path):
     folder = tmp_path / "v4" / "clean"
     folder.mkdir(parents=True)

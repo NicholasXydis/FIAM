@@ -1,4 +1,4 @@
-# What the AI crowds did: herding, the crowd model, crowding as risk, and AI vs short sellers.
+# AI crowds: herding, the crowd model, crowding risk, vs short sellers.
 
 import json
 import sys
@@ -20,7 +20,7 @@ HISTORICAL = paths.EXHIBITS / "agents" / "crowd_picks.parquet"
 CROWD_SIZES = (10e9, 50e9, 100e9)
 
 
-# Each crowd's picks as rows: agent, stock-month, picked (and shorted for the copycats).
+# Each crowd's picks by agent and stock-month, with shorts for copycats.
 def crowds() -> dict:
     out = {}
     for name in ("crowdlab_retail", "crowdlab_copycat"):
@@ -29,7 +29,7 @@ def crowds() -> dict:
     return out
 
 
-# LSV herding (Lakonishok, Shleifer and Vishny 1992) over stock-months seen by 3 or more agents.
+# LSV herding (Lakonishok et al. 1992) on stock-months 3+ agents saw.
 def lsv(picks: pd.DataFrame) -> dict:
     g = picks.groupby(["eom", "permno"])["picked"].agg(["sum", "count"])
     g = g[g["count"] >= 3]
@@ -45,7 +45,7 @@ def lsv(picks: pd.DataFrame) -> dict:
     )
 
 
-# Mean pairwise correlation of agents' picks on the stocks both saw, and effective voters.
+# Mean pairwise pick correlation on shared stocks, and effective voters.
 def agreement(picks: pd.DataFrame, agents: list | None = None) -> dict:
     wide = picks.pivot_table(
         index=["eom", "permno"], columns="agent", values="picked", aggfunc="max"
@@ -64,7 +64,7 @@ def agreement(picks: pd.DataFrame, agents: list | None = None) -> dict:
     )
 
 
-# Who drives herding: personas sharing an information set, or information sets sharing a persona.
+# Herding by shared information set versus by shared persona.
 def diversity(picks: pd.DataFrame) -> dict:
     meta = picks.drop_duplicates("agent").set_index("agent")
     by_set = [
@@ -79,25 +79,25 @@ def diversity(picks: pd.DataFrame) -> dict:
     )
 
 
-# Buy share per stock-month: how much of the crowd that saw a stock picked it.
+# Buy share per stock-month: share of those who saw it that picked it.
 def consensus(picks: pd.DataFrame) -> pd.DataFrame:
     vote = picks["picked"].astype(float) - picks.get("shorted", False)
     g = vote.groupby([picks["eom"], picks["permno"]]).mean().rename("consensus").reset_index()
     return g
 
 
-# The 147 as 0-1 ranks for the crowd model, every screened stock-month 2015-2026.
+# The 147 as 0-1 ranks for the crowd model, screened months 2015-2026.
 def ranks(first: str = "2015-01-31", last: str = "2026-07-31") -> pd.DataFrame:
     chars = P.characteristics()
     frame = P.screen(P.load_panel(tuple(c for c in chars if c not in P.SIGNALS)), first, last)
-    # Volatility and dollar volume are among the 147, so the sell-off keeps their raw values.
+    # Raw volatility and volume kept for the sell-off, as both get ranked.
     frame["vol_raw"], frame["dolvol_raw"] = frame["rvol_21d"], frame["dolvol_126d"]
     for col in chars:
         frame[col] = frame.groupby("eom")[col].rank(pct=True).fillna(0.5)
     return frame
 
 
-# Ridge of crowd consensus on the 147, penalty by year-block cross-validation; frozen as JSON.
+# Ridge of consensus on the 147, year-block CV penalty, frozen as JSON.
 def fit_emulator(frame: pd.DataFrame, targets: pd.DataFrame) -> dict:
     chars = P.characteristics()
     both = frame[[*data.KEYS, *chars]].merge(targets, on=data.KEYS)
@@ -107,8 +107,7 @@ def fit_emulator(frame: pd.DataFrame, targets: pd.DataFrame) -> dict:
     best = max(scores, key=lambda a: np.mean(scores[a]))
     model = ridge(x, y, best) | dict(alpha=best, columns=chars)
     model["r2_by_year_block"] = {str(y): float(r) for y, r in zip(np.unique(years), scores[best])}
-    # Canaries: the consensus shuffled within each month must explain nothing, and a firm-identity
-    # column must add nothing.
+    # Canaries: in-month shuffles and a firm-id column must explain nothing.
     rng = np.random.default_rng(42)
     shuffled = both.groupby("eom")["consensus"].transform(lambda s: rng.permutation(s.to_numpy()))
     identity = np.hstack([x, both[["permno"]].rank(pct=True).to_numpy()])
@@ -130,7 +129,7 @@ def blocked_r2(x: np.ndarray, y: np.ndarray, years: np.ndarray, alpha: float) ->
     return out
 
 
-# Ridge on centred inputs, closed form, as plain lists so it freezes to JSON.
+# Closed-form ridge on centred inputs, as lists so it freezes to JSON.
 def ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> dict:
     mu, ym = x.mean(axis=0), y.mean()
     xc = x - mu
@@ -138,17 +137,18 @@ def ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> dict:
     return dict(mean=mu.tolist(), intercept=float(ym), coef=coef.tolist())
 
 
+# Scores rows with a frozen ridge, centred on its saved means.
 def predict(model: dict, x: np.ndarray) -> np.ndarray:
     return model["intercept"] + (x - np.array(model["mean"])) @ np.array(model["coef"])
 
 
-# The crowd score for any frame with the 147 as 0-1 ranks: level 0, no GPU.
+# Crowd score for any frame with the 147 as 0-1 ranks: level 0, no GPU.
 def crowd_score(frame: pd.DataFrame) -> pd.Series:
     model = json.loads(EMULATOR.read_text(encoding="utf-8"))
     return pd.Series(predict(model, frame[model["columns"]].to_numpy()), index=frame.index)
 
 
-# A book's Crowding Index: its long-minus-short crowd score as a percentile of random books.
+# Crowding Index: long-short crowd score, percentile among random books.
 def crowding_index(held: pd.DataFrame, scored: pd.DataFrame, draws: int = 1000) -> float:
     rng = np.random.default_rng(42)
     out = []
@@ -167,7 +167,7 @@ def crowding_index(held: pd.DataFrame, scored: pd.DataFrame, draws: int = 1000) 
     return float(np.mean(out) * 100)
 
 
-# Monthly return of the crowd's favourites minus its least favourite, deciles, equal weight.
+# Monthly return of the crowd's top minus bottom decile, equal weight.
 def crowd_factor(scored: pd.DataFrame) -> pd.Series:
     rows = {}
     for eom, g in scored.dropna(subset=["ret_exc_lead1m"]).groupby("eom"):
@@ -186,7 +186,7 @@ def crowding_beta(net: pd.Series, factor: pd.Series) -> dict:
     return dict(beta=float(fit.params["f"]), t=float(fit.tvalues["f"]), months=len(both))
 
 
-# The crowd's favourites sold over 5 days at square-root impact; the cost to a book that holds them.
+# A book's loss if the crowd sells favourites over 5 days, sqrt impact.
 def sell_off(held_month: pd.Series, month: pd.DataFrame, crowd_size: float) -> float:
     top = month[month["crowd_score"] >= month["crowd_score"].quantile(0.9)].set_index("permno")
     sold = crowd_size / len(top) / 5
@@ -196,7 +196,7 @@ def sell_off(held_month: pd.Series, month: pd.DataFrame, crowd_size: float) -> f
     return float(-(held_month.reindex(drop.index).fillna(0.0) * drop).sum())
 
 
-# Each month: the share of our long and of our short weight in the AI crowd's top decile.
+# Monthly share of our long and short weight in the crowd's top decile.
 def signature(held: pd.DataFrame, scored: pd.DataFrame) -> dict:
     out = {}
     for eom, w in held.groupby("eom"):
@@ -212,7 +212,7 @@ def signature(held: pd.DataFrame, scored: pd.DataFrame) -> dict:
     return out
 
 
-# Each month: the crowd's consensus against short interest, published a month late.
+# Monthly crowd consensus vs short interest, published a month late.
 def versus_short_sellers(cons: pd.DataFrame) -> dict:
     ratio = C.short_ratio()
     if ratio is None:
@@ -236,9 +236,7 @@ def versus_short_sellers(cons: pd.DataFrame) -> dict:
     )
 
 
-# Every measure the protocol names, on whatever the crowds have answered so far.
-# The replay checks on a crowd's log: live reruns (should match) and perturbed cards (should
-# drift as the move grows). Agreement = shared picks over all picks of the two answers.
+# Replays: reruns should match, perturbed cards drift as the move grows.
 def replay_checks(log: str) -> dict:
     out = {}
     for kind, col in (("rerun", "cached"), ("perturbed", "original")):
@@ -256,15 +254,14 @@ def replay_checks(log: str) -> dict:
     return out
 
 
-# Same-side overlap of two books over all their months (Jaccard on month, name and side).
+# Same-side overlap of two books, Jaccard on month, name and side.
 def overlap(a: pd.DataFrame, b: pd.DataFrame) -> float:
     sa = set(zip(a["eom"], a["permno"], np.sign(a["weight"])))
     sb = set(zip(b["eom"], b["permno"], np.sign(b["weight"])))
     return len(sa & sb) / len(sa | sb) if sa | sb else float("nan")
 
 
-# The what-if books (crowd.md item 5) beside the plain book on the same months: IR, drawdown,
-# turnover and overlap with the plain book. Exploratory; no pass or fail.
+# What-if books (crowd.md item 5) vs the plain one, no pass or fail.
 def what_if() -> dict:
     out = {}
     for folder in sorted(v2.OUT.glob("*crowd_*@1e7/*")):
@@ -286,8 +283,7 @@ def what_if() -> dict:
     return out
 
 
-# Each saved run's exposure to the AI crowd: crowding beta and index, signature, and what a crowd
-# selling its favourites would cost the run's last book.
+# Each run's crowd exposure: beta, index, signature and sell-off cost.
 def exposures(names: tuple, scored: pd.DataFrame, factor: pd.Series) -> dict:
     out = {}
     for name in names:
@@ -312,7 +308,7 @@ def exposures(names: tuple, scored: pd.DataFrame, factor: pd.Series) -> dict:
     return out
 
 
-# Another run's exposure added to the report, from the frozen crowd model: nothing is refitted.
+# A run's exposure added from the frozen crowd model, nothing refitted.
 def book(name: str) -> None:
     frame = ranks()
     scored = frame[[*data.KEYS, "ret_exc_lead1m", "vol_raw", "dolvol_raw"]].copy()
@@ -323,6 +319,7 @@ def book(name: str) -> None:
     print(json.dumps({k: v for k, v in report.items() if k.startswith(name)}, default=float))
 
 
+# Every crowd.md measure on answers so far, and the crowd model frozen.
 def main() -> None:
     report = dict(protocol="docs/protocols/crowd.md")
     live = crowds()

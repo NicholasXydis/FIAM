@@ -1,4 +1,4 @@
-# Three tests that try to break the strategy. Writes exhibits/placebo_lab.json.
+# Three tests that try to break the strategy. Writes placebo_lab.json.
 
 from __future__ import annotations
 
@@ -13,17 +13,17 @@ from fiam import paths
 
 OUT = paths.EXHIBITS
 
-# 200 runs, which places our result to half a percent. Finer than we ever claim.
+# 200 runs place our result to half a percent, finer than we ever claim.
 DRAWS = 200
 
 # Fixed, so anyone re-running this gets the same 200 shuffles we did.
 RNG_SEED = 20260921
 
-# Each worker loads the universe once, so only the shuffled scores cross between processes.
+# Each worker loads the universe once; only shuffled scores cross over.
 WORKER_UNIVERSE: pd.DataFrame | None = None
 
 
-# One summary for any book, so the tests and the real thing are described the same way.
+# One summary for any book, so tests and the real thing read the same.
 def summarise(book: pd.DataFrame) -> dict:
     return dict(
         gross_annual=float(book["gross"].mean() * 12),
@@ -35,7 +35,7 @@ def summarise(book: pd.DataFrame) -> dict:
     )
 
 
-# Shuffles within sector and liquidity only, so the constraints keep something to act on.
+# Shuffles within sector and liquidity only, so constraints still bite.
 def permute(universe: pd.DataFrame, rng: np.random.Generator) -> pd.Series:
     buckets = universe.groupby("eom")["dolvol_126d"].transform(
         lambda s: pd.qcut(s.rank(method="first"), 5, labels=False, duplicates="drop")
@@ -46,19 +46,19 @@ def permute(universe: pd.DataFrame, rng: np.random.Generator) -> pd.Series:
     )
 
 
-# Loads the shared universe into a worker process before it takes any shuffle.
+# Loads the shared universe into a worker before it takes any shuffle.
 def start_worker() -> None:
     global WORKER_UNIVERSE
     WORKER_UNIVERSE = P.shipped(P.universe())
 
 
-# One shuffled book: net IR, gross a year, turnover. Gross is the fair test, costs still churn.
+# One shuffled book: net IR, gross, turnover. Gross is the fair test.
 def null_book(signal: np.ndarray) -> tuple[float, float, float]:
     book = P.backtest(WORKER_UNIVERSE.assign(signal=signal))
     return P.information_ratio(book["net"]), book["gross"].mean() * 12, book["turnover"].mean()
 
 
-# The permutation null, the inversion and stale scores, written to placebo_lab.json.
+# The permutation null, inversion and stale scores, to placebo_lab.json.
 def main() -> None:
     universe = P.shipped(P.universe())
     rng = np.random.default_rng(RNG_SEED)
@@ -67,24 +67,24 @@ def main() -> None:
     real = summarise(shipped_book)
     print(f"shipped book: net IR {real['net_ir']:+.3f}, net {real['net_annual'] * 100:+.1f}%/yr")
 
-    # Test 1, the shuffle. Drawn in order from one generator, then run in parallel.
+    # Test 1, shuffles drawn in order from one generator, run in parallel.
     shuffles = [permute(universe, rng).to_numpy() for _ in range(DRAWS)]
     workers = min(8, os.cpu_count() or 1)
     with ProcessPoolExecutor(workers, initializer=start_worker) as pool:
         results = list(pool.map(null_book, shuffles, chunksize=5))
     null, gross, null_turnover = (np.array(column, dtype=float) for column in zip(*results))
     print(f"  {DRAWS} shuffles: gross {gross.mean():+.2%}/yr, net IR {null.mean():+.3f}")
-    # Where our result lands among the 200. Not near the top would be a finding.
+    # Where our result lands among the 200. Not near the top is a finding.
     percentile = float((null < real["net_ir"]).mean() * 100)
 
-    # Test 2, flip the sign. Should lose about what we make, not land near zero.
+    # Test 2, sign flipped. Should lose about what we make, not near zero.
     inverted = summarise(P.backtest(universe.assign(signal=-universe["signal"])))
     print(
         f"inverted: gross {inverted['gross_annual'] * 100:+.1f}%/yr, "
         f"net IR {inverted['net_ir']:+.2f}"
     )
 
-    # Test 3, last month's ranking traded this month. Shifted on the calendar, not by row.
+    # Test 3, last month's ranking traded now. Shifted by calendar, not row.
     lagged = universe.copy()
     lagged["prev_eom"] = lagged["eom"] - pd.offsets.MonthEnd(1)
     stale_scores = lagged[["permno", "eom", "signal"]].rename(
@@ -134,7 +134,7 @@ def main() -> None:
         stale_scores=dict(
             expectation="degraded, not necessarily zero",
             baseline_net_ir=real["net_ir"],
-            # No prior score in month one, so this is 67 months and so is the baseline.
+            # No prior score in month one, so this and the baseline are 67 months.
             baseline_net_ir_matched=P.information_ratio(shipped_book["net"].iloc[1:]),
             **stale,
         ),

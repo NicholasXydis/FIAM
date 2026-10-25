@@ -1,4 +1,4 @@
-# OpenMP for LightGBM on a fresh machine: the kit's copy, loaded first (B9).
+# OpenMP for LightGBM on a fresh machine, kit copy loaded first (B9).
 
 import ctypes
 import ctypes.util

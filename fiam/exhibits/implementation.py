@@ -1,4 +1,4 @@
-# What running the book for real would take: cost sensitivities, capacity and liquidity.
+# Running the book for real: cost sensitivities, capacity and liquidity.
 
 
 import numpy as np
@@ -10,13 +10,13 @@ from fiam import paths
 
 OUT = paths.EXHIBITS / "implementation.json"
 
-# Capital levels a committee asks about; the book's weights stay, only what trading costs changes.
+# Capital a committee asks about; weights stay, only trading costs move.
 CAPITAL = (10e6, 100e6, 500e6, 1e9)
-# The share of a day's dollar volume a position may take when it is sold.
+# The share of a day's dollar volume a position may take when sold.
 PARTICIPATION = 0.20
 
 
-# The shipped book rerun under one cost model: its IR and what it costs a year.
+# The shipped book rerun under one cost model: its IR and yearly cost.
 def rerun(model: C.Model) -> dict:
     book = P.backtest(P.shipped(P.universe()), model=model)
     return dict(
@@ -26,7 +26,7 @@ def rerun(model: C.Model) -> dict:
     )
 
 
-# Days to sell each position at the participation cap, weighted by position size.
+# Days to sell each position at the participation cap, size-weighted.
 def liquidity(holdings: pd.DataFrame, nav: float) -> dict:
     universe = P.universe()[["permno", "eom", "dolvol_126d"]]
     held = holdings.assign(eom=holdings["Date"] - pd.offsets.MonthEnd(1)).astype(
@@ -42,6 +42,7 @@ def liquidity(holdings: pd.DataFrame, nav: float) -> dict:
     )
 
 
+# Charges the shipped trades under other cost models and capital levels.
 def main() -> None:
     holdings = paths.holdings()
     sensitivities = dict(

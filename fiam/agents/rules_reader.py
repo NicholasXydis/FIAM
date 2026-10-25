@@ -1,4 +1,4 @@
-# The rules reader: a finals PDF's text in, a draft mandate out, every rule tied to a checked quote.
+# Rules reader: rules PDF in, draft mandate out, every quote checked.
 
 import json
 import os
@@ -49,7 +49,7 @@ def schema() -> dict:
     return dict(type="object", properties=props, required=list(props))
 
 
-# Long rules in pieces the model can read whole, cut on paragraph breaks.
+# Long rules in pieces the model reads whole, cut at paragraph breaks.
 def chunks(text: str, size: int = 12_000) -> list[str]:
     out, current = [], ""
     for para in text.split("\n\n"):
@@ -60,7 +60,7 @@ def chunks(text: str, size: int = 12_000) -> list[str]:
     return [*out, current] if current else out
 
 
-# A rule survives only if its quote is in the rules word for word (spaces normalised).
+# A rule stays only if its quote is in the rules verbatim, spaces aside.
 def verified(answer: dict, text: str) -> dict:
     flat = " ".join(text.split())
     out = {}
@@ -73,21 +73,20 @@ def verified(answer: dict, text: str) -> dict:
     return out
 
 
-# The mandate the verified rules set. Our sector, beta and risk limits are a neutral book's, so a
-# net-long or net-short mandate turns them off unless its rules set them, as the references do.
+# The rules' mandate, our neutral-book limits off if net long or short.
 def drafted(found: dict, name: str) -> dict:
     known = {f.name for f in fields(M.Mandate)}
     draft = {"name": name} | {k: v["value"] for k, v in found.items() if k in known}
     if abs(draft.get("net") or 0.0) > 0.1:
         draft = {"name": name, "sector": None, "beta": None, "risk": None} | draft
-    # The panel's own spelling of the United States, however the rules write it.
+    # The panel's spelling of the United States, however the rules write it.
     usa = {"us", "u.s.", "usa", "u.s.a.", "united states", "united states of america"}
     if draft.get("countries"):
         draft["countries"] = [("USA" if c.lower() in usa else c) for c in draft["countries"]]
     return draft
 
 
-# The rules as text: a PDF's pages in order (kept beside the drafts as text), or the file itself.
+# The rules as text: a PDF's pages in order, or the file itself.
 def text_of(source: str) -> str:
     path = Path(source)
     if path.suffix.lower() != ".pdf":
@@ -99,7 +98,7 @@ def text_of(source: str) -> str:
     return text
 
 
-# Reads every chunk, keeps verified rules, writes a draft for a human to approve before any run.
+# Reads each chunk and drafts its verified rules for a human to approve.
 def main(source: str, name: str) -> dict:
     text = text_of(source)
     found = {}
@@ -118,7 +117,7 @@ def main(source: str, name: str) -> dict:
     )
     problems = M.check(M.load(target))
     report = dict(draft=draft, problems=problems, approve="a human must approve before use")
-    # The protocol's acceptance: every numeric limit of the hand-made reference found and equal.
+    # Accepted when each numeric limit of the hand-made reference matches.
     reference = M.TEMPLATES / f"{name}.json"
     if reference.exists():
         truth = json.loads(reference.read_text(encoding="utf-8"))
@@ -130,8 +129,7 @@ def main(source: str, name: str) -> dict:
     return report
 
 
-# The finals drill (crowd_amendment_1.md, finals.md): rules text -> draft mandate -> v1's method
-# and v2 under it, timed end to end, one entry per rules file. A human still approves the mandate.
+# Finals drill (finals.md): rules, draft mandate, v1 and v2, all timed.
 def drill(source: str) -> None:
     from fiam import v2
 

@@ -1,4 +1,4 @@
-# Fits ElasticNet, LightGBM and NN3 on the prescribed folds, then scores each through the book.
+# Fits ElasticNet, LightGBM and NN3 on the given folds, then books each.
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ from fiam.ml import dataset as D
 
 PREDS = P.CACHE / "preds"
 
-# A coarser lambda grid than the template. The rank target is already well scaled.
+# A coarser lambda grid than the template; rank targets are well scaled.
 ENET_ALPHAS, ENET_L1 = [10.0**i for i in range(-6, 1)], 0.5
 
-# Heavy regularization on purpose. 147 noisy predictors memorize the training window.
+# Heavy regularization on purpose. 147 noisy predictors memorize fast.
 LGBM = dict(
     objective="regression",
     metric="l2",
@@ -42,15 +42,15 @@ ROUNDS, EARLY = 2000, 50
 
 # Fixed so a judge rerunning this gets our numbers.
 SEED = 42
-# Three narrowing layers, the depth Gu-Kelly-Xiu found best. Deeper measured no better.
+# Three narrowing layers, Gu-Kelly-Xiu's best. Deeper did no better.
 HIDDEN = (32, 16, 8)
-# Stop as soon as the validation loss stalls. Left alone the net fits the training window.
+# Stop when validation loss stalls, or the net fits the training window.
 EPOCHS, BATCH, PATIENCE = 60, 8192, 5
-# Weight decay and dropout both fight the same thing: 147 noisy inputs and a faint signal.
+# Weight decay and dropout fight 147 noisy inputs and a faint signal.
 LR, WEIGHT_DECAY, DROPOUT = 1e-3, 1e-4, 0.2
 
 
-# One fold's test-year predictions. Every name is scored, even with no target.
+# One fold's test-year predictions; names with no target are scored too.
 def predictions(fold: dict, pred: np.ndarray) -> pd.DataFrame:
     test = fold["test"]
     return pd.DataFrame(
@@ -64,7 +64,7 @@ def predictions(fold: dict, pred: np.ndarray) -> pd.DataFrame:
     )
 
 
-# Mean monthly rank IC on validation years; a month with no view counts zero, never as missing.
+# Mean monthly validation rank IC; a month with no view counts as zero.
 def validation_ic(scored: pd.DataFrame) -> float:
     # One month's rank IC, zero when every score ties.
     def month(g: pd.DataFrame) -> float:
@@ -74,7 +74,7 @@ def validation_ic(scored: pd.DataFrame) -> float:
     return float(by_month.apply(month, include_groups=False).mean())
 
 
-# Lambda picked on validation rank IC, never the test fold: the book trades ranks, not levels.
+# Lambda by validation rank IC, never test: the book trades ranks.
 def fit_enet(fold: dict, cols: list[str]) -> pd.DataFrame:
     train, validate = D.labelled(fold["train"]), D.labelled(fold["validate"])
     x_train, y_train = train[cols].to_numpy(), D.rank_target(train)
@@ -89,7 +89,7 @@ def fit_enet(fold: dict, cols: list[str]) -> pd.DataFrame:
     return predictions(fold, best.predict(fold["test"][cols].to_numpy()))
 
 
-# Early stopping on the validation fold decides how many rounds are kept.
+# Early stopping on the validation fold decides how many rounds stay.
 def fit_lgbm(fold: dict, cols: list[str]) -> pd.DataFrame:
     train, validate = D.labelled(fold["train"]), D.labelled(fold["validate"])
     model = lgb.train(
@@ -102,7 +102,7 @@ def fit_lgbm(fold: dict, cols: list[str]) -> pd.DataFrame:
     return predictions(fold, model.predict(fold["test"][cols].to_numpy()))
 
 
-# Same architecture every fold. Batch-norm and dropout because 147 noisy inputs overfit fast.
+# Same net each fold, with batch-norm and dropout as 147 inputs overfit.
 def network(n_features: int) -> nn.Module:
     layers, prev = [], n_features
     for width in HIDDEN:
@@ -111,7 +111,7 @@ def network(n_features: int) -> nn.Module:
     return nn.Sequential(*layers, nn.Linear(prev, 1))
 
 
-# Trains one fold with early stopping and keeps the best validation epoch, not the last.
+# Trains one fold, early stopping, keeping the best epoch, not the last.
 def fit_nn3(fold: dict, cols: list[str], seed: int = SEED) -> pd.DataFrame:
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -144,7 +144,7 @@ def fit_nn3(fold: dict, cols: list[str], seed: int = SEED) -> pd.DataFrame:
             if stale >= PATIENCE:
                 break
 
-    # Back to the best epoch, and out of training mode so dropout is off when scoring.
+    # Back to the best epoch, and eval mode so dropout is off when scoring.
     model.load_state_dict(best_state)
     model.eval()
     with torch.no_grad():
@@ -157,7 +157,7 @@ def fit_nn3(fold: dict, cols: list[str], seed: int = SEED) -> pd.DataFrame:
 FIT = dict(enet=fit_enet, lgbm=fit_lgbm, nn3=fit_nn3)
 
 
-# What every fit depends on. The book's code is not in it, so a book change never refits.
+# Each fit's inputs, without the book's code, so book edits never refit.
 def fit_inputs(cols: list[str]) -> list:
     versions = (lgb.__version__, torch.__version__, sklearn.__version__, np.__version__)
     return [
@@ -169,7 +169,7 @@ def fit_inputs(cols: list[str]) -> list:
     ]
 
 
-# Every fold of one model, checked to cover exactly the book's months. Cached across runs.
+# Every fold of one model, checked to match the book's months. Cached.
 def fit_all(fit, folds: pd.DataFrame, cols: list[str], **kwargs) -> pd.DataFrame:
     name = f"{fit.__name__}_{kwargs.get('seed', SEED)}"
 
@@ -187,7 +187,7 @@ def fit_all(fit, folds: pd.DataFrame, cols: list[str], **kwargs) -> pd.DataFrame
     return preds
 
 
-# A model's predictions through the shipped optimizer and costs, held to the same limits.
+# A model's predictions through the shipped optimizer, costs and limits.
 def score_book(preds: pd.DataFrame) -> pd.DataFrame:
     book = P.backtest(P.swap_score(P.universe(), preds))
     P.assert_limits(book)
@@ -202,7 +202,7 @@ def main() -> None:
         preds = fit_all(fit, folds, cols)
         preds.to_parquet(PREDS / f"{name}.parquet", index=False)
         ic = P.information_coefficient(preds)
-        # A month where every stock scores alike has no IC. Counted, never dropped.
+        # A month where all score alike has no IC. Counted, never dropped.
         months = int(preds["holding_month"].nunique())
         stats = dict(
             ic_mean=ic["ic_mean"],
@@ -218,7 +218,7 @@ def main() -> None:
             model=name,
             **P.book_stats(book),
             months_with_no_position=int(book.attrs.get("months_with_no_position", 0)),
-            # The rules' floor, already enforced above, recorded so the table can show it.
+            # The rules' floor, enforced above, recorded so the table can show it.
             months_below_100_positions=int((book["n"] < 100).sum()),
         )
         paths.write_json(PREDS / f"{name}_portfolio.json", portfolio, rounded=False)

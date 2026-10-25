@@ -1,8 +1,4 @@
-# The finals deck's films, from the same results as its charts: how a stock earns its place (every
-# stock of one real month as a dot), growth of $1, beta over time, 1,000 random books raining into
-# a pile beside the final book, IR by fund size, and our longs among the AI crowd's favourites.
-# Each opens empty and ends on the finished picture, which stays on screen.
-# uv run python -m fiam.report.clips [name...]: the missing ones, or the named ones again.
+# Finals deck films from its charts' results, each ending on the still.
 
 import json
 import shutil
@@ -50,18 +46,20 @@ plt.rcParams.update(
 )
 
 
+# Smoothstep easing, so every move starts and stops gently.
 def ease(x):
     x = np.clip(x, 0.0, 1.0)
     return x * x * (3 - 2 * x)
 
 
+# The house axis style: no top or right spine, light gridlines behind.
 def tidy(ax) -> None:
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(axis="y", color="#E6EAEE", lw=0.8)
     ax.set_axisbelow(True)
 
 
-# Writes the frames of draw(t) for t in [0, seconds], and the first frame as the poster.
+# Films draw(t) for t in [0, seconds], the first frame as the poster.
 def film(name: str, figsize, seconds: float, draw, face: str = "white", dpi: int = DPI) -> None:
     CLIPS.mkdir(parents=True, exist_ok=True)
     fig = plt.figure(figsize=figsize, dpi=dpi, facecolor=face)
@@ -79,7 +77,7 @@ def film(name: str, figsize, seconds: float, draw, face: str = "white", dpi: int
     print(f"wrote {target} ({seconds:.1f} s, {target.stat().st_size / 1e6:.1f} MB)")
 
 
-# The part of a line drawn by progress p in [0, 1], the last step interpolated so it glides.
+# A line drawn to progress p in [0, 1], the tip interpolated to glide.
 def partial(x: np.ndarray, y: np.ndarray, p: float) -> tuple[np.ndarray, np.ndarray]:
     k = p * (len(x) - 1)
     n = int(np.floor(k))
@@ -91,21 +89,20 @@ def partial(x: np.ndarray, y: np.ndarray, p: float) -> tuple[np.ndarray, np.ndar
     return np.append(x[: n + 1], tip_x), np.append(y[: n + 1], tip_y)
 
 
-# Seat k of n in a sunflower around a centre, so a group of dots packs evenly.
+# Seats n dots in a sunflower around a centre, so a group packs evenly.
 def seats(n: int, centre: tuple, gap: float) -> np.ndarray:
     k = np.arange(n)
     r, spin = gap * np.sqrt(k + 0.5), k * 2.39996
     return np.column_stack([centre[0] + r * np.cos(spin), centre[1] + r * np.sin(spin)])
 
 
-# Moves points from a to b as progress p goes 0 to 1, each with its own small delay.
+# Moves points from a to b over time t, each with its own small delay.
 def glide(a: np.ndarray, b: np.ndarray, t: float, start: float, delay: np.ndarray) -> np.ndarray:
     p = ease((t - start - delay) / 1.1)[:, None]
     return a + (b - a) * p
 
 
-# How a stock earns its place, in one real month: every stock a dot, the ones we can trade kept,
-# each lit by its score, ranked, then the final book's own longs and shorts, and a level beam.
+# How a stock earns its place: a real month kept, scored, ranked, held.
 def journey() -> None:
     from fiam import data
 
@@ -125,7 +122,7 @@ def journey() -> None:
     kept = score.notna().to_numpy()
     rank = score.rank(pct=True).fillna(0.5).to_numpy()
     band = np.column_stack([1.3 + 13.4 * rank, 4.1 + rng.uniform(-0.45, 0.45, n)])
-    # Stocks we cannot trade stay where they faded instead of joining the ranking.
+    # Stocks we cannot trade stay where they faded, out of the ranking.
     band[~kept] = cloud[~kept]
     weight = every["permno"].map(book).fillna(0.0).to_numpy()
     longs, shorts = np.flatnonzero(weight > 0), np.flatnonzero(weight < 0)
@@ -149,6 +146,7 @@ def journey() -> None:
         (8.9, "Zero net bet", "On the market and on every sector"),
     ]
 
+    # Frame at t: dots fade in, rank, the book gathers, then the level beam.
     def draw(fig, t):
         ax = fig.add_axes((0, 0, 1, 1), facecolor=NAVY)
         ax.set_xlim(0, 16)
@@ -195,11 +193,12 @@ def journey() -> None:
     (CLIPS / "journey.json").write_text(json.dumps(told, indent=1) + "\n", encoding="utf-8")
 
 
+# The final book's submission folder at $10M, where the films read from.
 def final_pack() -> Path:
     return Path("out") / "finals" / v2.Settings(v2.final_three(), 1e7).name / "submission"
 
 
-# Growth of $1: the final book against cash plus 4% and the S&P 500, after every cost.
+# Growth of $1 after costs: final book vs cash plus 4% and the S&P 500.
 def growth() -> None:
     book = pd.read_csv(final_pack() / "returns.csv", parse_dates=["holding_month"])
     marks = P.benchmarks().set_index("month").reindex(book["holding_month"])
@@ -211,6 +210,7 @@ def growth() -> None:
     x = book["holding_month"].map(pd.Timestamp.toordinal).to_numpy(dtype=float)
     top = max(float(np.nanmax(np.asarray(v))) for _, v, *_ in lines)
 
+    # Frame at t: each line draws in, then its end value is labelled.
     def draw(fig, t):
         ax = fig.add_axes((0.09, 0.1, 0.72, 0.85))
         tidy(ax)
@@ -241,7 +241,7 @@ def growth() -> None:
     film("growth", (8.3, 5.2), 5.6, draw)
 
 
-# Beta to the S&P 500 over rolling 12 months, inside the range a truly zero-beta book would show.
+# Rolling 12-month S&P 500 beta inside a true zero-beta book's range.
 def beta() -> None:
     book = pd.read_csv(final_pack() / "returns.csv", parse_dates=["holding_month"])
     market = P.benchmarks().set_index("month")["mkt_rf"].reindex(book["holding_month"]).to_numpy()
@@ -254,6 +254,7 @@ def beta() -> None:
         rows.append((book["holding_month"].iloc[end - 1].toordinal(), slope, band))
     x, b, band = (np.array(c, dtype=float) for c in zip(*rows))
 
+    # Frame at t: the zero-beta band shades in, then the beta line draws.
     def draw(fig, t):
         ax = fig.add_axes((0.1, 0.1, 0.86, 0.85))
         tidy(ax)
@@ -282,7 +283,7 @@ def beta() -> None:
     film("beta", (8.3, 5.2), 5.0, draw)
 
 
-# 1,000 random large-cap books rise into place, then the final book lands far to their right.
+# 1,000 random large-cap books pile up; the final book lands far right.
 def null() -> None:
     folder = Path("out") / "v2" / "final_exhibits"
     irs = pd.read_csv(folder / "null_irs.csv")["ir"].to_numpy()
@@ -299,6 +300,7 @@ def null() -> None:
     tallest = height.max() + 0.5
     lo, hi = float(irs.min()) - 0.3, max(ours, 0.0) + 0.6
 
+    # Frame at t: random books fall into their pile, then ours lands.
     def draw(fig, t):
         ax = fig.add_axes((0.06, 0.15, 0.9, 0.8))
         tidy(ax)
@@ -365,7 +367,7 @@ def null() -> None:
     film("null", (8.3, 4.9), 5.6, draw)
 
 
-# Dollars a year and IR by fund size: each book's line runs from $1M to $5B.
+# Dollars a year and IR by fund size, each book's line from $1M to $5B.
 def capacity() -> None:
     books = load(v2.OUT / "capacity.json").get("books", {})
     lines = []
@@ -379,6 +381,7 @@ def capacity() -> None:
     sizes = ["$1M", "$10M", "$100M", "", "$1B", "$5B"]
     ticks = np.log10(v2.CAPITALS)
 
+    # Frame at t: dollars on the left and IR on the right draw in together.
     def draw(fig, t):
         left, right = fig.add_axes((0.06, 0.16, 0.4, 0.74)), fig.add_axes((0.56, 0.16, 0.4, 0.74))
         p = ease(t / 3.4)
@@ -418,8 +421,7 @@ def capacity() -> None:
     film("capacity", (12.1, 3.6), 5.0, draw)
 
 
-# Our longs as a hundred dots: the share chance would make AI crowd favourites, ringed, then
-# the share that were, in gold, over the AI crowd's 19 months.
+# Our longs as 100 dots: chance ringed, real crowd favourites in gold.
 def overlap() -> None:
     run = v2.Settings(v2.final_three(), 1e7).name
     share = load(v2.OUT / "crowd_insights.json")[f"book {run}"]["overlap"]["retail"]
@@ -431,6 +433,7 @@ def overlap() -> None:
     xy = np.column_stack([col * 0.56, (4 - row) * 0.56])
     delay = rng.uniform(0, 0.8, 100)
 
+    # Frame at t: dots appear, chance is ringed, then favourites turn gold.
     def draw(fig, t):
         ax = fig.add_axes((0.02, 0.06, 0.96, 0.88))
         ax.set_xlim(-0.5, 18.2)
@@ -484,8 +487,7 @@ def overlap() -> None:
     film("overlap", (12.1, 3.4), 5.0, draw)
 
 
-# Six AI colleagues around the portfolio manager: each flies out to its place, its line draws,
-# then what it finds flows back to the centre. None of them trades.
+# Six AI colleagues around the PM fly out and report back; none trades.
 def desk() -> None:
     roles = [
         ("Rules reader", "Quotes every limit"),
@@ -499,6 +501,7 @@ def desk() -> None:
     angle = np.pi / 2 + np.arange(6) * np.pi / 3 + np.pi / 6
     home = np.column_stack([8 + 5.6 * np.cos(angle), 3.0 + 2.05 * np.sin(angle)])
 
+    # Frame at t: colleagues fly out, are named, then send findings back.
     def draw(fig, t):
         ax = fig.add_axes((0, 0, 1, 1))
         ax.set_xlim(0, 16)
@@ -555,7 +558,7 @@ def desk() -> None:
     film("desk", (12.1, 4.6), 6.0, draw)
 
 
-# Every benchmark on the same money: each bar grows in turn, the final book last.
+# Every benchmark on the same money, each bar in turn, final book last.
 def ladder() -> None:
     from fiam.report.figures import ladder_rows
 
@@ -563,6 +566,7 @@ def ladder() -> None:
     lo = min(0.0, min(r[1] for r in rows)) - 0.35
     hi = max(r[1] for r in rows) + 0.35
 
+    # Frame at t: each benchmark's label and bar grow in, one after another.
     def draw(fig, t):
         ax = fig.add_axes((0.37, 0.12, 0.6, 0.84))
         ax.spines[["top", "right", "left"]].set_visible(False)
@@ -602,8 +606,7 @@ def ladder() -> None:
     film("ladder", (8.4, 4.4), 4.6, draw)
 
 
-# How often AI copycats buy our longs and short our shorts, against chance: the chance line
-# first, then each recipe's two bars rise.
+# AI copycats buying our longs, shorting our shorts, vs the chance line.
 def copycats() -> None:
     from fiam.report.figures import copycat_test
 
@@ -612,6 +615,7 @@ def copycats() -> None:
     keys = list(test)
     top = max(t[k] for t in test.values() for k in ("buys_our_longs", "shorts_our_shorts"))
 
+    # Frame at t: the chance line draws, then each recipe's two bars rise.
     def draw(fig, t):
         ax = fig.add_axes((0.09, 0.1, 0.88, 0.78))
         tidy(ax)
@@ -646,6 +650,7 @@ def copycats() -> None:
     film("copycats", (7.6, 5.2), 4.6, draw)
 
 
+# Makes missing or named films; without ffmpeg the deck shows stills.
 def main(names: list[str]) -> None:
     if not shutil.which("ffmpeg"):
         print("clips skipped: ffmpeg is not installed, so the deck shows the still charts")
@@ -653,7 +658,7 @@ def main(names: list[str]) -> None:
     from fiam import data
 
     films = [growth, beta, null, capacity, overlap, desk, ladder, copycats]
-    # The journey reads the stock panel itself; without the data the saved film stands.
+    # The journey needs the stock panel; with no data its saved film stays.
     films += [journey] if data.MANIFEST.exists() else []
     for clip in films:
         missing = not (CLIPS / f"{clip.__name__}.mp4").exists()

@@ -1,4 +1,4 @@
-# The research charts. Reads submission/exhibits/, writes submission/figures/ after charts.py.
+# Research charts from submission/exhibits/ to figures/ after charts.py.
 
 import textwrap
 
@@ -29,7 +29,7 @@ EXHIBITS = paths.EXHIBITS
 # A line break inside a caption.
 BR = chr(10)
 
-# One look per model in every chart: colour, width, dash and the name a reader sees.
+# One look per model in every chart: colour, width, dash and name.
 MODELS = {
     "composite": (OURS, 2.4, "-", "12-signal composite"),
     "nn3": (MARKET, 1.4, "--", "Neural net (NN3)"),
@@ -45,10 +45,10 @@ def decile_curves() -> None:
     book = paths.read_json(paths.METRICS)
     deciles = [c for c in table.columns if c.startswith("d")]
 
-    # Only the four shipped models. The seed runs belong in their own exhibit.
+    # Only the four shipped models. Seed runs belong in their own exhibit.
     table = table.loc[[name for name in MODELS if name in table.index]]
 
-    # Curves show each model can rank. The scatter shows ranking well is not earning well.
+    # Curves show each model ranks, the scatter that ranking is not earning.
     fig, (left, right) = plt.subplots(1, 2, figsize=(10.5, 4.3), width_ratios=[1.35, 1])
 
     for name, row in table.iterrows():
@@ -102,7 +102,7 @@ def decile_curves() -> None:
     save(fig, "decile_curves")
 
 
-# Where the money goes. Panel A: gross to net by cost line. Panel B: the same costs by year.
+# Where the money goes. A: gross to net by cost line. B: costs by year.
 def costs() -> None:
     pack = paths.read_json(EXHIBITS / "pack.json")
     parts, even = pack["costs"]["components"], pack["costs"]["break_even"]
@@ -127,7 +127,7 @@ def costs() -> None:
     left.set_xticklabels(labels, fontsize=8, rotation=20, ha="right")
     style(left, "A. From gross to net, one cost at a time", "% a year")
 
-    # Gross up, cost down, net as a marker. Stacking them read as one quantity.
+    # Gross up, cost down, net a marker. Stacked, they read as one quantity.
     by_year = split["by_year"]
     years = sorted(by_year, key=int)
     year_gross = [by_year[y]["gross"] * 100 for y in years]
@@ -158,7 +158,7 @@ def costs() -> None:
     save(fig, "costs")
 
 
-# Panel A: variance the factors explain. Panel B: every unconstrained loading, with its t.
+# A: variance the factors explain. B: each free loading, with its t.
 def factor_attribution() -> None:
     risk = paths.read_json(EXHIBITS / "pack.json")["risk"]
     d, e = risk["attribution"], risk["five_factor_momentum"]
@@ -186,7 +186,7 @@ def factor_attribution() -> None:
     style(left, "A. Share of variance, six factors", "")
     xlabel(left, "Share of monthly return variance (%)")
 
-    # No red here. These are exposures, not losses, and red is only for losses.
+    # No red here. These are exposures, not losses, and red means losses.
     betas = [e["betas"][k] for k in names]
     right.barh(list(names.values()), betas, color=BENCH, height=0.55)
     for y, key in enumerate(names):
@@ -218,7 +218,7 @@ def factor_attribution() -> None:
     save(fig, "factor_attribution")
 
 
-# Two panels, because the null is only zero before costs. Net IR alone would mislead.
+# Two panels, as the null is only zero before costs. Net IR misleads.
 def placebo_lab() -> None:
     d = paths.read_json(EXHIBITS / "placebo_lab.json")
     null = d["permutation_null"]
@@ -249,7 +249,7 @@ def placebo_lab() -> None:
         weight="bold",
         color=OURS,
     )
-    # Above the tallest bar rather than beside the line, which overlapped the distribution.
+    # Above the tallest bar, as beside the line overlapped the distribution.
     left.annotate(
         f"Shuffled {null['gross_annual_mean']:+.2%}",
         xy=(null["gross_annual_mean"] * 100, 1.02),
@@ -263,7 +263,7 @@ def placebo_lab() -> None:
     style(left, "A. Before costs, a shuffled score earns nothing", "")
     xlabel(left, "Gross return, % a year")
 
-    # Panel B, net IR. The null is far below zero, and that distance is the cost of churn.
+    # B: net IR. The null sits far below zero, the cost of churn.
     right.hist(null["all_irs"], bins=22, color=BENCH, alpha=0.6, edgecolor="white", linewidth=0.6)
     right.axvline(shipped["net_ir"], color=OURS, linewidth=2.8)
     right.annotate(
@@ -299,7 +299,7 @@ def placebo_lab() -> None:
     save(fig, "placebo_lab")
 
 
-# Which signals earned the gross return, and how much the twelve leave unexplained.
+# Which signals earned the gross return, and what the twelve leave out.
 def signal_attribution() -> None:
     d = paths.read_json(EXHIBITS / "pack.json")["attribution"]
     full = d["full"]
@@ -310,7 +310,7 @@ def signal_attribution() -> None:
     values = [full[k]["contribution_annual"] * 100 for k in names]
 
     fig, ax = plt.subplots(figsize=(8, 5.0))
-    # Losses red, gains ours, the residual grey, because it belongs to no signal.
+    # Losses red, gains ours, the residual grey since it is no signal's.
     ax.barh(names, values, color=[NEG if v < 0 else OURS for v in values], height=0.6)
     residual = full["residual"]["contribution_annual"] * 100
     ax.barh(["not explained by the twelve"], [residual], color=BENCH, height=0.6)
@@ -336,7 +336,7 @@ def signal_attribution() -> None:
     save(fig, "signal_attribution")
 
 
-# Draws every research chart, skipping any whose exhibit has not been built yet.
+# Draws every research chart, skipping any whose exhibit is not built.
 def main() -> None:
     print("research charts:")
     for draw in (
@@ -349,10 +349,10 @@ def main() -> None:
         try:
             draw()
         except FileNotFoundError as exc:
-            # That script has not run yet, which is no reason to lose the other charts.
+            # That script has not run yet, no reason to lose the other charts.
             print(f"  skipped {draw.__name__}, {exc.filename} not built yet")
         except KeyError as exc:
-            # An artifact with a model this chart does not know. Say so, do not fail.
+            # An artifact with a model this chart does not know. Say so, not fail.
             print(f"  skipped {draw.__name__}, no entry for {exc}")
 
 

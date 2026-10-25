@@ -1,4 +1,4 @@
-# The monthly book, weights fixed, marked every trading day of 2021-2025. Writes daily_risk.json.
+# The monthly book marked each trading day of 2021-2025, weights fixed.
 
 
 import numpy as np
@@ -10,10 +10,10 @@ from fiam import data, paths
 
 OUT = paths.EXHIBITS / "daily_risk.json"
 
-# CRSP daily prices stop at the end of 2025, so 2026 is measured monthly only.
+# CRSP daily prices end in 2025, so 2026 is measured monthly only.
 FIRST, LAST = pd.Timestamp("2021-01-01"), pd.Timestamp("2025-12-31")
 
-# Shares short above this share of shares outstanding: crowded, and plausibly costly to borrow.
+# Short over this share of shares out: crowded, likely dear to borrow.
 CROWDED = 0.10
 
 # The stress windows, by calendar day.
@@ -26,9 +26,9 @@ STRESS = {
 }
 
 
-# One holding month, day by day: each position grows with its own return, fees paid on day one.
+# A month by day: each position grows by its return, fees on day one.
 def month_path(weights: pd.Series, daily: pd.DataFrame, cost: float, rf: float) -> pd.DataFrame:
-    # A name with no daily return, one that has left, is held flat as the monthly book holds it.
+    # A name that left has no daily return, so it is held flat as monthly.
     growth = (1 + daily.reindex(columns=weights.index).fillna(0.0)).cumprod()
     value = growth * weights
     elapsed = np.arange(1, len(growth) + 1) / len(growth)
@@ -38,7 +38,7 @@ def month_path(weights: pd.Series, daily: pd.DataFrame, cost: float, rf: float) 
     )
 
 
-# Every month of 2021-2025 marked daily, chained into one path of net asset value.
+# Every month of 2021-2025 marked daily and chained into one NAV path.
 def paths_by_day(book: pd.DataFrame, returns: pd.DataFrame, daily: pd.DataFrame) -> pd.DataFrame:
     parts, level = [], 1.0
     for month, group in book.groupby("Date"):
@@ -54,7 +54,7 @@ def paths_by_day(book: pd.DataFrame, returns: pd.DataFrame, daily: pd.DataFrame)
     return out
 
 
-# Beta on the S&P 500 day by day, which pins neutrality far tighter than 60 monthly points.
+# Daily beta on the S&P 500, far tighter on neutrality than 60 months.
 def daily_beta(path: pd.DataFrame) -> dict:
     close = pd.read_csv(B.pinned("SP500.csv"), parse_dates=["observation_date"]).dropna()
     market = close.set_index("observation_date")["SP500"].pct_change().reindex(path.index)
@@ -118,7 +118,7 @@ def risk(path: pd.DataFrame, returns: pd.DataFrame) -> dict:
     )
 
 
-# The daily path compounded back to months, against returns.csv. CRSP daily against the panel.
+# The daily path compounded to months vs returns.csv, CRSP vs the panel.
 def reconcile(path: pd.DataFrame, returns: pd.DataFrame) -> dict:
     compounded = path.groupby("month")["nav"].last() - 1
     monthly = returns.loc[compounded.index, "portfolio_total_return"]
@@ -133,7 +133,7 @@ def reconcile(path: pd.DataFrame, returns: pd.DataFrame) -> dict:
     )
 
 
-# The short book against reported short interest at each decision month. Descriptive, not a signal.
+# The short book's reported short interest by month. Descriptive only.
 def short_interest(book: pd.DataFrame) -> dict | None:
     short = data.research(
         "short_interest_monthly_research_only", ["permno", "eom", "short_interest_adjusted"]
@@ -160,7 +160,7 @@ def short_interest(book: pd.DataFrame) -> dict | None:
     )
 
 
-# Daily total returns for a set of names over a span of days, one column per name.
+# Daily total returns for some names over a span, one column per name.
 def daily_returns(permnos, first, last) -> pd.DataFrame | None:
     filters = [("permno", "in", sorted(set(permnos))), ("date", ">=", pd.Timestamp(first))]
     filters.append(("date", "<=", pd.Timestamp(last)))
@@ -170,7 +170,7 @@ def daily_returns(permnos, first, last) -> pd.DataFrame | None:
     return daily.pivot_table(index="date", columns="permno", values="total_return")
 
 
-# The same code's book through early 2020, marked daily, since the record starts in 2021.
+# Same code's book through early 2020 by day, as the record starts 2021.
 def path_2020() -> pd.DataFrame:
     universe = P.build_signal(P.screen(P.load_panel(), "2015-12-31", "2020-05-31"))
     rf = B.benchmarks().set_index("month")["rf"]
@@ -187,7 +187,7 @@ def path_2020() -> pd.DataFrame:
     return paths_by_day(book, returns, daily)
 
 
-# Each stress window on the daily path: return, the S&P 500 beside it, and the deepest fall.
+# Each stress window by day: return, S&P 500 beside it, deepest fall.
 def stress(path: pd.DataFrame) -> dict:
     close = pd.read_csv(B.pinned("SP500.csv"), parse_dates=["observation_date"]).dropna()
     market = close.set_index("observation_date")["SP500"]
@@ -197,7 +197,7 @@ def stress(path: pd.DataFrame) -> dict:
         if part.empty:
             continue
         level = (1 + part).cumprod()
-        # From the close before the window, so the S&P 500 counts its first day as the book does.
+        # From the prior close, so the S&P 500 counts day one as the book does.
         index = market.loc[:last]
         start = index.loc[: pd.Timestamp(first) - pd.Timedelta(days=1)]
         out[name] = dict(
@@ -209,7 +209,7 @@ def stress(path: pd.DataFrame) -> dict:
     return out
 
 
-# Trading a day late: the old book earns the first day, the new one only after it.
+# Trading a day late: the old book earns day one, the new one after it.
 def delay(book: pd.DataFrame, returns: pd.DataFrame, daily: pd.DataFrame) -> dict:
     shift, previous = {}, None
     for month, group in book.groupby("Date"):
@@ -233,7 +233,7 @@ def delay(book: pd.DataFrame, returns: pd.DataFrame, daily: pd.DataFrame) -> dic
     )
 
 
-# Marks the book every trading day of 2021-2025 and writes daily_risk.json.
+# Marks the book daily over 2021-2025 and writes daily_risk.json.
 def main() -> None:
     returns = paths.returns()
     book = paths.holdings()

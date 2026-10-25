@@ -1,6 +1,4 @@
-# PowerPoint motion written straight into slide XML, since python-pptx has no animation API:
-# Morph between slides, entrance effects that play on their own as a slide opens, and a film
-# that starts by itself. Checked in PowerPoint: every effect loads and plays in order.
+# PowerPoint motion as raw slide XML, since python-pptx cannot animate.
 
 import itertools
 
@@ -16,7 +14,7 @@ MORPH = (
     f'</mc:Choice><mc:Fallback><p:transition xmlns:p="{P}" spd="slow"><p:fade/></p:transition>'
     "</mc:Fallback></mc:AlternateContent>"
 )
-# Entrance effects as PowerPoint names them (preset, subtype) and how long each takes, in ms.
+# Entrance effects as PowerPoint's (preset, subtype) and duration in ms.
 EFFECTS = dict(fade=(10, 0, 600), wipe=(22, 8, 1000), zoom=(53, 16, 600), rise=(42, 0, 700))
 MOVES = dict(
     zoom=[("ppt_w", "0", "#ppt_w"), ("ppt_h", "0", "#ppt_h")],
@@ -24,7 +22,7 @@ MOVES = dict(
 )
 
 
-# One entrance effect's behaviours: shown, faded or wiped in, and grown or lifted into place.
+# One effect's behaviours: shown, faded or wiped in, grown or lifted in.
 def behaviours(effect: str, spid: int, ids) -> str:
     target = f'<p:tgtEl><p:spTgt spid="{spid}"/></p:tgtEl>'
     duration = EFFECTS[effect][2]
@@ -46,11 +44,11 @@ def behaviours(effect: str, spid: int, ids) -> str:
     return out
 
 
-# The slide's timeline: each (shape, effect, start in ms) plays on its own as the slide opens,
-# and a film, if any, starts playing by itself.
+# The timeline: steps (shape, effect, start ms) and a film all autoplay.
 def timeline(steps, film=None) -> str:
     ids, pars, builds = itertools.count(4), [], []
 
+    # Wraps one effect's body in the outer and inner time nodes at start ms.
     def par(attrs: str, start: int, body) -> str:
         outer, inner = next(ids), next(ids)
         return (
@@ -71,6 +69,7 @@ def timeline(steps, film=None) -> str:
     if film is not None:
         target = f'<p:tgtEl><p:spTgt spid="{film.shape_id}"/></p:tgtEl>'
 
+        # The call that plays the film from its start, as a timed body for par.
         def play() -> str:
             return (
                 f'<p:cmd type="call" cmd="playFrom(0.0)"><p:cBhvr><p:cTn id="{next(ids)}" '
@@ -99,7 +98,7 @@ def timeline(steps, film=None) -> str:
     )
 
 
-# Morph into this slide, play its timeline, and what to say over it in the speaker notes.
+# Morph into the slide, play its timeline, and the notes to say over it.
 def finish(page, notes: str = "", steps=(), film=None) -> None:
     sld = page._element
     after = sld.find(f"{{{P}}}clrMapOvr")
@@ -119,7 +118,7 @@ def stagger(items, effect: str, start: int = 0, gap: int = 150) -> list:
     return [(item, effect, start + gap * i) for i, item in enumerate(items)]
 
 
-# Every shape a call adds to the slide, so a table drawn elsewhere can be animated as it lands.
+# Shapes a call adds, so a table drawn elsewhere animates as it lands.
 def added(page, draw, *args) -> list:
     before = len(page.shapes)
     draw(page, *args)

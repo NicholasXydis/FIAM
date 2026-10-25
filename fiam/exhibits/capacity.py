@@ -1,5 +1,4 @@
-# Capacity (docs/protocols/capacity.md): dollars earned and break-even size per book, each book's
-# gap to v1 at scale, and the two cost stress runs. Exhibits only.
+# Capacity exhibits (protocols/capacity.md): break-even, gaps, stress.
 
 import json
 import sys
@@ -17,7 +16,7 @@ TAGS = {c: f"{c:.0e}".replace("+0", "") for c in v2.CAPITALS}
 STRESS = ("impact_half", "taq_spreads")
 
 
-# The books compared, by run-name prefix; v2-pass and v3 once their verdicts exist.
+# Books by run-name prefix, adding v2-pass and v3 once verdicts exist.
 def books() -> dict:
     out = {"v1": "v1", "v2": "v2", "v2a": "v2a"}
     if (v2.OUT / "evidence.json").exists():
@@ -34,7 +33,7 @@ def books() -> dict:
     return out
 
 
-# One book across capital: IR, net a year, cost a year and dollars over the T-bill a year.
+# A book by capital: IR, yearly net, cost and dollars over the T-bill.
 def curve(prefix: str, window: str) -> list[dict]:
     rows = []
     for cap, tag in TAGS.items():
@@ -53,7 +52,7 @@ def curve(prefix: str, window: str) -> list[dict]:
     return rows
 
 
-# Where IR against T-bill + 4% crosses zero, linear in log capital; a bound when it never does.
+# Where IR over T-bill + 4% crosses zero, in log capital, or a bound.
 def break_even(rows: list[dict]) -> float | str:
     for a, b in zip(rows, rows[1:]):
         if a["information_ratio"] > 0 >= b["information_ratio"]:
@@ -65,7 +64,7 @@ def break_even(rows: list[dict]) -> float | str:
     return "above $5B"
 
 
-# A book minus v1 at $1B and $5B, monthly net over 2021-2026: the stationary bootstrap.
+# Book minus v1 at $1B and $5B, net 2021-2026, by stationary bootstrap.
 def gaps(prefix: str) -> dict:
     out = {}
     for cap in (1e9, 5e9):
@@ -76,8 +75,7 @@ def gaps(prefix: str) -> dict:
     return out
 
 
-# Each size group's median of half the TAQ effective spread over our modelled half spread,
-# on holding months 2016-2020 only.
+# Median TAQ effective half spread over our model's, by size, 2016-2020.
 def taq_ratios() -> dict:
     taq = layers.load("trading/spreads_monthly")
     taq = taq.assign(eom=pd.to_datetime(taq["eom"]), permno=taq["permno"].astype(int))
@@ -89,7 +87,7 @@ def taq_ratios() -> dict:
     return {str(k): float(v) for k, v in both.groupby("size_grp")["ratio"].median().items()}
 
 
-# One stress scenario, set in this process only: v1's method and v2 at every capital, 2021-2026.
+# One stress scenario, this process only: v1's method and v2, 2021-2026.
 def stress(scenario: str) -> None:
     if scenario == "impact_half":
         C.IMPACT_Y = 0.5
@@ -104,6 +102,7 @@ def stress(scenario: str) -> None:
             print(f"{scenario} {'v2' if on else 'v1'} {TAGS[cap]} IR {s['information_ratio']:+.2f}")
 
 
+# Writes the capacity report, or runs one stress scenario when asked.
 def main(args: list[str]) -> None:
     if args[:1] == ["stress"]:
         stress(args[1])

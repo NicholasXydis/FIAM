@@ -1,4 +1,4 @@
-# The deck the brief asks for, built from the run's own results: uv run tools/build_deck.py
+# The brief's deck from the run's results: uv run tools/build_deck.py
 
 import re
 import sys
@@ -11,12 +11,12 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
 ROOT = Path(__file__).resolve().parents[1]
-# The repo root goes on the path, so fiam imports from wherever this is run.
+# The repo root on the path, so fiam imports wherever this is run from.
 sys.path.insert(0, str(ROOT))
 OUT = ROOT / "deck" / "FIAM.pptx"
 FIGURES = ROOT / "submission" / "figures"
 
-# One palette, the charts' own: navy ink, one petrol accent, greys, and orange for losses only.
+# One palette: navy ink, a petrol accent, greys, orange for losses only.
 INK, ACCENT, MUTED = (
     RGBColor(0x0B, 0x1F, 0x33),
     RGBColor(0x0F, 0x5C, 0x7A),
@@ -28,7 +28,7 @@ TINT, PANEL, BAND = (
     RGBColor(0xF7, 0xF9, 0xFA),
 )
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-# A font every copy of PowerPoint has, so the deck looks the same on the judges' machines.
+# A font every PowerPoint has, so the deck looks alike for the judges.
 FONT = "Calibri"
 WIDE, TALL = Inches(13.333), Inches(7.5)
 LEFT, WIDTH = Inches(0.6), Inches(12.13)
@@ -36,13 +36,13 @@ HALF, RIGHT = Inches(5.9), Inches(6.83)
 PERIOD = "January 2021 to August 2026, after all modelled costs"
 
 
-# A markdown cell as plain text: no bold, no code marks, no italic underscores around it.
+# A markdown cell as plain text, without bold, code or italic marks.
 def plain(cell: str) -> str:
     cell = re.sub(r"\*\*|`", "", cell).strip()
     return cell[1:-1] if len(cell) > 1 and cell[0] == cell[-1] == "_" else cell
 
 
-# Each markdown table in a docs block as rows of plain cells, with the note printed under it.
+# Each markdown table in a docs block as plain-cell rows, note beneath.
 def parse(markdown: str) -> list[tuple[list[list[str]], str]]:
     blocks, rows, note = [], [], []
     for line in markdown.strip().splitlines() + [""]:
@@ -64,20 +64,20 @@ def parse(markdown: str) -> list[tuple[list[list[str]], str]]:
     return blocks
 
 
-# Words a heading leaves in lower case unless they open it, and short forms written our way.
+# Words kept lower case in headings unless first, and our short forms.
 SMALL = {"a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on", "or", "per", "the"}
 SMALL |= {"to", "vs", "with", "against", "over"}
 FORMS = {"se": "SE", "t": "t", "ic": "IC"}
 
 
-# Slide text without semicolons or dashes: a dash between numbers is a hyphen, any other a comma.
+# No semicolons or dashes on slides: hyphens in ranges, else commas.
 def tidy(text: str) -> str:
     text = re.sub(r"(?<=\d)[–—](?=\d)", "-", text)
     text = re.sub(r"\s*[–—]\s*", ", ", text)
     return text.replace("; ", ", ").replace(";", ",")
 
 
-# A heading in title case, leaving acronyms, numbers and short joining words alone.
+# A heading in title case, sparing acronyms, numbers and joining words.
 def heading(text: str) -> str:
     words = []
     for i, word in enumerate(text.split(" ")):
@@ -98,7 +98,7 @@ def run(para, text: str, size: float, color: RGBColor, bold: bool = False) -> No
     piece.font.color.rgb = color
 
 
-# An empty text frame at a place on the slide, wrapping, with no inner margins.
+# An empty wrapping text frame at a slide position, with no margins.
 def frame(page, left, top, width, height):
     box = page.shapes.add_textbox(left, top, width, height).text_frame
     box.word_wrap = True
@@ -106,7 +106,7 @@ def frame(page, left, top, width, height):
     return box
 
 
-# Paragraphs in a box. An item is plain text, or (lead, rest) with the lead in bold.
+# Paragraphs in a box. An item is text or (lead, rest) with a bold lead.
 def text(page, items, left, top, width, height, size=14, color=INK, gap=8) -> None:
     box = frame(page, left, top, width, height)
     for i, item in enumerate(items):
@@ -118,7 +118,7 @@ def text(page, items, left, top, width, height, size=14, color=INK, gap=8) -> No
         run(para, rest, size, color)
 
 
-# A slide: a short accent bar, an optional section label, the title, the line under it, a footer.
+# A slide: accent bar, optional section label, title, rule and footer.
 def slide(deck, title: str, subtitle: str = "", section: str = ""):
     page = deck.slides.add_slide(deck.slide_layouts[6])
     flat(
@@ -141,26 +141,26 @@ def slide(deck, title: str, subtitle: str = "", section: str = ""):
     return page
 
 
-# A number that should read as one: a sign, digits, a percent or a unit, and few words after.
+# A cell that reads as one number: sign, digits, % or unit, few words.
 def numeric(cell: str) -> bool:
     words = re.sub(r"\(.*?\)|[^A-Za-z]", "", cell)
     return bool(re.match(r"^[-+−$]?\d[\d.,]*(%|bn|m)?([ ,/]|$)", cell)) and len(words) <= 12
 
 
-# How many lines a cell's text takes in a column, at a font size, roughly.
+# Roughly how many lines a cell's text takes in a column at a size.
 def lines(value: str, width: float, size: float) -> int:
     per_line = max(int(width / (size * 0.0062)), 1)
     return max(1, -(-len(value) // per_line))
 
 
-# Every table in a docs block as clean slide tables: navy header, light bands, numbers right.
+# Every docs table as a slide table: navy header, bands, numbers right.
 def table(page, markdown: str, left, top, width, size=10.5, row=0.3):
     for rows, note in parse(markdown) or [([], "")]:
         top = draw(page, rows, note, left, top, width, size, row) + Inches(0.12)
     return top - Inches(0.12)
 
 
-# One table on the slide; returns where it ends, rows grown to fit their wrapped text.
+# One table on the slide, rows grown to fit. Returns where it ends.
 def draw(page, rows, note, left, top, width, size, row):
     header = bool(rows) and any(rows[0])
     rows = rows if header else rows[1:]
@@ -177,13 +177,13 @@ def draw(page, rows, note, left, top, width, size, row):
     style = props.find("{http://schemas.openxmlformats.org/drawingml/2006/main}tableStyleId")
     if style is not None:
         style.text = "{2D5ABB26-0587-4C30-8999-92F81FD0307C}"
-    # Wider columns for longer text, so a sentence column does not squeeze the numbers.
+    # Wider columns for longer text, so sentences do not squeeze numbers.
     lengths = [min(max(len(r[c]) if c < len(r) else 0 for r in rows), 70) for c in range(cols)]
     lengths = [max(n, 11) for n in lengths]
     widths = [width * n / sum(lengths) for n in lengths]
     for c, w in enumerate(widths):
         grid.columns[c].width = Emu(int(w))
-    # A column reads as numbers, right-aligned, when most of its filled cells are numbers.
+    # A column right-aligns as numbers when most filled cells are numbers.
     body = rows[1:] if header else rows
     filled = [[r[c] for r in body if c < len(r) and r[c]] for c in range(cols)]
     figures = [bool(f) and sum(map(numeric, f)) * 2 > len(f) for f in filled]
@@ -206,7 +206,7 @@ def draw(page, rows, note, left, top, width, size, row):
             box = cell.text_frame
             box.word_wrap = True
             para = box.paragraphs[0]
-            # Sized even when empty, or an empty cell falls back to 18 pt and stretches its row.
+            # Sized even when empty, or an empty cell falls back to 18 pt and grows.
             para.font.size = Pt(size)
             para.alignment = PP_ALIGN.RIGHT if (c and figures[c]) else PP_ALIGN.LEFT
             if dark:
@@ -222,7 +222,7 @@ def draw(page, rows, note, left, top, width, size, row):
     return below
 
 
-# A chart from submission/figures, fitted inside a box with its proportions kept.
+# A chart from submission/figures, fitted in a box at its proportions.
 def chart(page, name: str, left, top, width, height=None) -> None:
     path = FIGURES / f"{name}.png"
     if not path.exists():
@@ -234,7 +234,7 @@ def chart(page, name: str, left, top, width, height=None) -> None:
         picture.height, picture.width = int(height), int(picture.width * ratio)
 
 
-# A flat shape: no theme shadow, outline or glow, only the fill we give it.
+# A flat shape: no theme shadow, outline or glow, only our fill.
 def flat(shape, fill: RGBColor):
     shape.fill.solid()
     shape.fill.fore_color.rgb = fill
@@ -286,7 +286,7 @@ WORDS = dict(
     gp_at="gross profitability",
 )
 
-# The pipeline, left to right: the book's path on top, the research that feeds it below.
+# The pipeline left to right: the book's path above, its research below.
 BOOK_PATH = [
     "Organizer stock panel and 8-K filings, plus daily prices, dated to the month",
     "Twelve published signals, ranked each month and averaged into one score",
@@ -301,7 +301,7 @@ RESEARCH_PATH = [
 ]
 
 
-# A row of labelled boxes joined by arrows, across the slide at one height.
+# A row of labelled boxes joined by arrows across the slide at a height.
 def boxes(page, labels: list[str], top, height, fill: RGBColor) -> None:
     gap = Inches(0.32)
     each = (WIDTH - gap * (len(labels) - 1)) / len(labels)
@@ -324,10 +324,10 @@ def boxes(page, labels: list[str], top, height, fill: RGBColor) -> None:
             flat(arrow, MUTED)
 
 
-# The two signals that most put a name on its side of the book, from the explainer's facts.
+# The two signals that most put a name on its side, from its facts.
 def reasons(facts: dict, long: bool) -> str:
     pct, ways = facts["signal_percentiles"], facts["signal_directions"]
-    # How strongly each signal argued for this side: 100 is the strongest case.
+    # How strongly each signal argued for this side, 100 the strongest.
     case = {k: v if (ways[k] == "higher is better") == long else 100 - v for k, v in pct.items()}
     from fiam.agents import explainer
 
@@ -341,7 +341,7 @@ def reasons(facts: dict, long: bool) -> str:
     return " and ".join(out)
 
 
-# The best long, the best short and the worst name, each with why the book held it.
+# The best long, the best short and the worst name, each with its why.
 def standouts() -> str:
     from fiam.report import docs as R
 
@@ -365,7 +365,7 @@ def standouts() -> str:
     return ". ".join(s[:1].upper() + s[1:] for s in parts) + "."
 
 
-# A name with the one it had before, when the company changed it during the period.
+# A name with its earlier one, if the company changed it in the period.
 def known_as(ticker: str, name: str) -> str:
     import pandas as pd
 
@@ -384,14 +384,14 @@ def known_as(ticker: str, name: str) -> str:
 VERBATIM: set[str] = set()
 
 
-# Every "TICKER, Name" cell in a table, with the company's earlier name where it changed.
+# Every "TICKER, Name" cell in a table, with any earlier company name.
 def renamed(body: str) -> str:
     for ticker, name in re.findall(r"\| ([A-Z.]+), ([^|]+?) \|", body):
         body = body.replace(f"{ticker}, {name} |", f"{ticker}, {known_as(ticker, name)} |")
     return body
 
 
-# Page 8 from the results: how the book did, what drove it, what the AI found, what is next.
+# Page 8 from results: how it did, why, what the AI found, what is next.
 def discussion(R, m: dict) -> list[str]:
     years = {row[0]: row for row in parse(R.years(m))[0][0][1:]}
     pack = R.load("exhibits/pack.json")
@@ -440,7 +440,7 @@ def discussion(R, m: dict) -> list[str]:
     return lines
 
 
-# The information ratio if the fund's cash had earned nothing, from the submitted returns.
+# The IR had the fund's cash earned nothing, from the submitted returns.
 def no_interest() -> str:
     import numpy as np
     import pandas as pd
@@ -454,7 +454,7 @@ def no_interest() -> str:
     )
 
 
-# The daily beta over the years with daily prices, as the neutrality appendix reports it.
+# The daily beta over the daily-price years, as the neutrality appendix.
 def daily_beta(R, m: dict) -> str:
     found = re.search(r"\| 2021-2025, [\d,]+ days \| ([+-]?\d\.\d\d)", R.drift(m))
     return found[1] if found else "n/a"
@@ -485,7 +485,7 @@ def against(side: dict, rows: list[tuple[str, str, str]]) -> str:
     return "\n".join(lines)
 
 
-# Page 1's table: the strategy against its hurdle and the market, and the facts behind it.
+# Page 1's table: the strategy against hurdle and market, with facts.
 def glance(side: dict, perf: dict, cost: dict, comp: dict) -> str:
     body = against(
         side,
@@ -504,10 +504,10 @@ def glance(side: dict, perf: dict, cost: dict, comp: dict) -> str:
     )
 
 
-# Page 4's return table for all three, with how a month's total return is put together.
+# Page 4's return table for all three, and how a month's total is built.
 def returns(side: dict, R) -> str:
     monthly = {k: dict(v, monthly=v["annual_arithmetic"] / 12) for k, v in side.items()}
-    # Every row here is a total return, the T-bill included, as the hurdle is.
+    # Every row is a total return, the T-bill included, as the hurdle is.
     body = against(
         monthly,
         [
@@ -529,12 +529,13 @@ def returns(side: dict, R) -> str:
     )
 
 
-# Page 4's second table: the risk-adjusted numbers, the exposures and the costs.
+# Page 4's second table: risk-adjusted numbers, exposures and costs.
 def risk(R, m: dict) -> str:
     perf, cost, comp = m["performance"], m["costs"], m["compliance"]
     c = R.load("exhibits/pack.json")["completeness"]
     r = c["ranges"]
 
+    # A range as mean (min to max), with no negative zero shown.
     def spread(key: str, fmt: str) -> str:
         x = r[key]
         out = f"{x['mean']:{fmt}} ({x['min']:{fmt}} to {x['max']:{fmt}})"
@@ -581,7 +582,7 @@ def risk(R, m: dict) -> str:
     return body + "\n\nt-stats use Newey-West standard errors (6 lags)."
 
 
-# Page 3's agent table: what each could see, its tools and steps, its model, what it found.
+# Page 3's agent table: what each saw, tools, steps, model and findings.
 def architecture() -> str:
     from fiam.report import docs as R
 
@@ -639,7 +640,7 @@ def architecture() -> str:
     return head + "\n".join("| " + " | ".join(r) + " |" for r in rows)
 
 
-# How look-ahead on the model side is ruled out, with the probe's numbers.
+# How model-side look-ahead is ruled out, with the probe's numbers.
 def recall() -> str:
     from fiam.report import docs as R
 
@@ -671,7 +672,7 @@ def prompts() -> tuple[list, list]:
     )
     titles = dict(crowd="AI crowd", critic="Devil's advocate")
 
-    # One prompt as paragraphs: wrapped lines joined, list items kept on their own lines.
+    # A prompt as paragraphs: wrapped lines joined, list items kept apart.
     def items(name: str) -> list:
         body = found[name].replace("`", "").strip()
         lines = re.sub(r"\n(?!\s*(?:- |\d+\. |\n))", " ", body).split("\n")
@@ -683,7 +684,7 @@ def prompts() -> tuple[list, list]:
     return items("triage") + items("analyst") + items("crowd"), items("critic") + items("explainer")
 
 
-# The explainer slips in its own words; said plainly beside them rather than edited away.
+# The explainer's own slips, stated plainly beside them, not edited out.
 def slips() -> str:
     from fiam.report import docs as R
 
@@ -702,6 +703,7 @@ def slips() -> str:
     )
 
 
+# Builds every slide from the run's results and saves the deck.
 def main() -> None:
     from fiam import paths
     from fiam.report import docs as R

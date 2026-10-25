@@ -1,4 +1,4 @@
-# Honesty tests: does the model read the filing, or recall the company? (docs/protocols/honesty*.md)
+# Does the model read the filing or recall the company? (honesty*.md)
 
 import hashlib
 import json
@@ -42,7 +42,7 @@ SCHEMA = dict(
 PICK = "Which company filed this? Choose one of the names given."
 
 
-# Earnings 8-Ks whose excerpt has a number and a direction word, 250 each side of the cutoff.
+# Earnings 8-Ks with a number and direction word, 250 each side.
 def sample() -> pd.DataFrame:
     filings = data.filings(
         ["document_id", "permno", "filing_date", "company_name", "item_202_earnings"]
@@ -71,18 +71,19 @@ def sample() -> pd.DataFrame:
             take = min(len(pool), int(frac * PER_SIDE))
             taken.append(pool.iloc[rng.choice(len(pool), take, replace=False)])
         chosen = pd.concat(taken)
-        # Rounding down leaves a few places; they are filled from the rest at random.
+        # Rounding down leaves a few places, filled from the rest at random.
         rest = part.drop(chosen.index)
         extra = rest.iloc[rng.choice(len(rest), PER_SIDE - len(chosen), replace=False)]
         out.append(pd.concat([chosen, extra]).assign(side=side))
     return pd.concat(out, ignore_index=True).sort_values("document_id", ignore_index=True)
 
 
-# The protocol's four texts for one filing; the fifth condition repeats the masked one.
+# The protocol's four texts, the fifth condition repeats the masked.
 def conditions(row: pd.Series) -> dict:
     masked = row["excerpt"]
     later = (row["filing_date"] + pd.DateOffset(years=1)).strftime("%B %d, %Y")
 
+    # Swaps a direction word for its opposite, keeping its capital.
     def flip(match: re.Match) -> str:
         word = match.group(0)
         swap = OPPOSITES[word.lower()]
@@ -103,7 +104,7 @@ def conditions(row: pd.Series) -> dict:
     )
 
 
-# Five candidate names: the filer and four others of its size, drawn with the seed.
+# Five names: the filer and four others its size, drawn with the seed.
 def candidates(row: pd.Series, names: pd.DataFrame) -> list[str]:
     stream = int(hashlib.sha256(str(row["document_id"]).encode()).hexdigest()[:8], 16)
     rng = np.random.default_rng([SEED, stream])
@@ -111,7 +112,7 @@ def candidates(row: pd.Series, names: pd.DataFrame) -> list[str]:
         (names["permno"] != row["permno"]) & (names["company_name"] != row["company_name"])
     ]
     others = rest[rest["size_grp"] == row["size_grp"]]
-    # A filer with no size group, or too few peers in it, draws from everyone else.
+    # A filer with no size group or too few peers draws from everyone.
     others = others if len(others) >= 4 else rest
     picked = others.iloc[rng.choice(len(others), 4, replace=False)]
     choice = [str(row["company_name"]), *picked["company_name"].astype(str)]
@@ -119,7 +120,7 @@ def candidates(row: pd.Series, names: pd.DataFrame) -> list[str]:
     return choice
 
 
-# Every call, saved as it comes; the abnormal-return check is done later by fiam.exhibits.honesty.
+# Saves every call as it comes, fiam.exhibits.honesty checks returns.
 def main(minutes: float | None = None) -> None:
     chosen = sample()
     names = chosen.drop_duplicates("permno")[["permno", "company_name", "size_grp"]]

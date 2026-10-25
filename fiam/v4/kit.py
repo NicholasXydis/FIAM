@@ -179,6 +179,7 @@ def hf_home() -> Path:
 
 # Each part's sources and destinations; specific parts come first.
 def parts() -> dict[str, list[tuple[Path, str]]]:
+    # Repository files kept at the same path in the kit.
     def here(*names: str) -> list[tuple[Path, str]]:
         return [(ROOT / n, n) for n in names]
 
@@ -205,7 +206,8 @@ def parts() -> dict[str, list[tuple[Path, str]]]:
         "media-film": here("out/ad"),
         "weights-gemma": here(f"models/{GEMMA}", f"models/{GEMMA}.sha256.json"),
         "weights": here("models") + models,
-        "docs": here("docs/PLAN.md", "docs/TEAM.md", "CLAUDE.md"),
+        # The two plans and every note at the repo root, local ones too.
+        "docs": here("docs/PLAN.md", "docs/TEAM.md", *sorted(p.name for p in ROOT.glob("*.md"))),
     }
 
 
@@ -260,8 +262,7 @@ def digest(path: Path, known: dict | None = None) -> str:
     return sha.hexdigest()
 
 
-# Small text files compare without line endings, so a Windows checkout
-# with CRLF still matches the kit's LF copy.
+# Text compares without line endings, so a CRLF checkout still matches.
 TEXT = {".json", ".sha256", ".csv", ".md", ".txt", ".py", ".toml", ".yml", ".yaml"}
 TEXT_LIMIT = 50 << 20
 

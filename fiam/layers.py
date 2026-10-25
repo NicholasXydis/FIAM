@@ -1,4 +1,4 @@
-# Extra datasets joined to the monthly panel only as they were known at each decision.
+# Extra datasets joined to the panel only as known at each decision.
 
 from pathlib import Path
 
@@ -9,13 +9,13 @@ from fiam import data
 ROOT = Path("data/fiam_v1/layers")
 
 
-# One layer file, or None on a machine without the bundle, so callers skip cleanly.
+# One layer file, or None without the bundle, so callers skip cleanly.
 def load(name: str, columns: list[str] | None = None) -> pd.DataFrame | None:
     path = ROOT / f"{name}.parquet"
     return data.read(path, columns) if path.exists() else None
 
 
-# Each stock's latest value known by each month end, never older than ttl days.
+# Each stock's latest value known at month end, at most ttl days old.
 def as_of(
     frame: pd.DataFrame, layer: pd.DataFrame, known: str, columns: list[str], ttl: int
 ) -> pd.DataFrame:

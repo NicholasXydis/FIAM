@@ -1,4 +1,4 @@
-# Builds MAIN.py, the one file the brief asks for: uv run tools/build_main.py [--with-edgar].
+# Builds MAIN.py, the brief's one file: build_main.py [--with-edgar].
 
 import base64
 import re
@@ -20,11 +20,11 @@ LEAVE_OUT = (
     "docs/PLAN.md",
     "docs/TEAM.md",
 )
-# The finals decks' builders, so run.py --finals-pack works from MAIN.py alone.
+# Deck builders, so run.py --finals-pack works from MAIN.py alone.
 CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
-# Packages published after this are ignored, so a later release never changes a judge's run.
+# Ignores later packages, so a new release never changes a judge's run.
 EXCLUDE_NEWER = "2026-10-14T00:00:00Z"
 
 LAUNCHER = """
@@ -83,7 +83,7 @@ def main() -> int:
 """
 
 
-# The header uv reads to install Python and the packages, taken from pyproject.toml.
+# uv's script header for Python and the packages, from pyproject.toml.
 def script_header() -> str:
     toml = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     requires = re.search(r'requires-python = "([^"]+)"', toml).group(1)
@@ -142,8 +142,7 @@ def description() -> str:
     )
 
 
-# Every file git tracks, as text or base64: never a local or scratch file nobody committed.
-# --with-new adds files not yet committed and not ignored: the next commit, MAIN.py beside it.
+# Tracked files as text or base64. --with-new adds unignored new ones.
 def carried(with_edgar: bool, with_new: bool = False) -> dict[str, tuple[str, str]]:
     names = subprocess.run(
         [

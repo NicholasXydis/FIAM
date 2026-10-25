@@ -1,4 +1,4 @@
-# Re-checks the look-ahead list against code and output. Each check is necessary, not sufficient.
+# Re-checks the look-ahead list on code and output. Needed, not enough.
 
 import json
 import os
@@ -22,7 +22,7 @@ FOLDS = Path("cache/folds/folds.parquet")
 # A rank or fill is safe when grouped by one of these.
 GROUPERS = ('groupby("eom")', 'groupby("holding_month")')
 
-# Columns built after the fact. As features they split the test period perfectly.
+# Columns built after the fact. As features they split the test cleanly.
 PROVENANCE = {
     "ticker_name_status",
     "source_crsp",
@@ -32,14 +32,14 @@ PROVENANCE = {
     "title_ai",
 }
 
-# What a check returns when the step it reads has not run yet, or ran only on a smoke slice.
+# A check's answer when its step has not run, or ran on a smoke slice.
 SKIPPED = (True, "not built yet, skipped")
 REHEARSAL = (True, "a smoke rehearsal runs the models on a slice, skipped")
 
 CHECKS = []
 
 
-# Registers a check under the name the report prints. Each returns (passed, detail).
+# Registers a check by its report name. Each returns (passed, detail).
 def check(name: str):
     # Adds the check to the list and leaves the function as it was.
     def register(function):
@@ -49,7 +49,7 @@ def check(name: str):
     return register
 
 
-# The names in the SIGNALS block, read from source, the only place a feature enters the book.
+# SIGNALS names from source, the only place a feature enters the book.
 def signal_names() -> set[str]:
     source = (PACKAGE / "book.py").read_text(encoding="utf-8")
     block = re.search(r"SIGNALS = \{(.*?)\}", source, re.S)
@@ -62,13 +62,14 @@ def folds() -> list[dict]:
     return list(D.folds(D.load_folds())) if FOLDS.exists() else []
 
 
+# A provenance column as a signal reads the answer, so none may be one.
 @check("no provenance column is a feature")
 def no_provenance_features():
     leaked = sorted(signal_names() & PROVENANCE)
     return not leaked, f"leaked: {leaked}" if leaked else "clean"
 
 
-# ret and ret_exc are same-month returns, so only the lead column may be the target.
+# ret and ret_exc are same-month, so only the lead may be the target.
 @check("target is ret_exc_lead1m, never re-shifted")
 def target_not_reshifted():
     source = (PACKAGE / "book.py").read_text(encoding="utf-8")
@@ -76,7 +77,7 @@ def target_not_reshifted():
     return not bad, f"found {bad}" if bad else "clean"
 
 
-# The rules name the 147 predictors. "All numeric columns" is the easiest way to leak.
+# The rules name 147 predictors. "All numeric columns" is the easy leak.
 @check("every signal is in factor_char_list.csv")
 def predictors_are_listed():
     used = signal_names()
@@ -84,7 +85,7 @@ def predictors_are_listed():
     return not outside, f"outside: {outside}" if outside else f"{len(used)} signals, all listed"
 
 
-# 68 months, 2021-01 to 2026-08. A miscount here means the whole submission is wrong.
+# 68 months, 2021-01 to 2026-08. A miscount breaks the submission.
 @check("68 holding months, 2021-01 to 2026-08")
 def holding_months():
     months = pd.read_csv(paths.RETURNS, parse_dates=["holding_month"])["holding_month"]
@@ -92,7 +93,7 @@ def holding_months():
     return ok, f"{len(months)} months from {months.min().date()}"
 
 
-# Screening on having a return drops the failures, and the short book flatters itself.
+# Screening on a return drops failures and flatters the short book.
 @check("names with no next-month return are still held")
 def universe_not_filtered_on_target():
     panel = data.panel(["ret_exc_lead1m"])
@@ -102,7 +103,7 @@ def universe_not_filtered_on_target():
     return kept > 0, f"{kept} such names in the book"
 
 
-# Confirms missing returns are still held at zero, not that zero is right. CRSP settles that.
+# Confirms missing returns are held at zero, not that zero is right.
 @check("missing returns are kept, not dropped")
 def missing_returns_booked_flat():
     df = pd.read_csv(paths.RETURNS)
@@ -110,7 +111,7 @@ def missing_returns_booked_flat():
     return weight > 0, f"{weight:.4f} weight-months booked flat, a stated assumption"
 
 
-# A ticker repaired from a later month is look-ahead in the holdings file itself.
+# A ticker fixed from a later month is look-ahead in the holdings file.
 @check("labels come from the decision month or earlier")
 def labels_are_backward_only():
     book = paths.holdings()
@@ -122,18 +123,18 @@ def labels_are_backward_only():
     return ahead == 0, f"{ahead} from the future"
 
 
-# Carry-in feeds last month's book back in. Assign it early and we choose with the future.
+# Carry-in feeds last month's book back. Assigned early, it sees ahead.
 @check("carry-in sees last month's book, never this one")
 def carry_in_uses_prior_month():
     lines = (PACKAGE / "book.py").read_text(encoding="utf-8").splitlines()
     call = next((i for i, x in enumerate(lines) if "step = rebalance(" in x), -1)
     update = "previous, previous_quotes ="
-    # The update that follows the call, not the reset before the loop starts.
+    # The update after the call, not the reset before the loop starts.
     assign = next((i for i, x in enumerate(lines) if i > call and x.strip().startswith(update)), -1)
     return 0 < call < assign, f"called at line {call + 1}, updated at line {assign + 1}"
 
 
-# Train must end before validation, validation before test. Overlap trains on the answer.
+# Train ends before validation, validation before test, or we cheat.
 @check("model folds are strictly ordered in time")
 def ml_folds_do_not_overlap():
     if not folds():
@@ -152,7 +153,7 @@ def ml_folds_do_not_overlap():
     return not bad, f"overlapping: {bad}" if bad else f"{len(folds())} folds, no overlap"
 
 
-# A rank or fill over the whole sample carries later months into earlier ones.
+# A rank or fill over the whole sample leaks later months into earlier.
 @check("model features are ranked within the month only")
 def ml_transform_is_within_month():
     lines = (PACKAGE / "ml" / "dataset.py").read_text(encoding="utf-8").splitlines()
@@ -167,7 +168,7 @@ def ml_transform_is_within_month():
     return not ungrouped, detail
 
 
-# Test blocks run January to December. An offset gives February folds and breaks everything.
+# Test blocks run January to December. An offset gives February folds.
 @check("model test folds are calendar years")
 def ml_folds_are_calendar_years():
     if not folds():
@@ -177,14 +178,14 @@ def ml_folds_are_calendar_years():
         months = f["test"]["holding_month"]
         if not len(months):
             continue
-        # The last fold is a partial year, so only the January start is required there.
+        # The last fold is a partial year, so only its January start counts.
         late = f["test_year"] < D.LAST_TEST_YEAR and months.max().month != 12
         if months.min().month != 1 or late:
             bad.append(f"{f['test_year']}:{months.min():%Y-%m}..{months.max():%Y-%m}")
     return not bad, f"misaligned: {bad}" if bad else "every test block starts in January"
 
 
-# Model tables and the portfolio must count the same months, or 69 meets 68 unnoticed.
+# Model tables and the book must count the same months, or 69 meets 68.
 @check("model predictions cover the book's 68 months")
 def ml_months_match_the_book():
     preds = sorted((P.CACHE / "preds").glob("*.parquet"))
@@ -198,7 +199,7 @@ def ml_months_match_the_book():
     return not bad, f"mismatched: {bad}" if bad else f"all {len(preds)} models cover {book} months"
 
 
-# Tested on gross, not net. Only gross can be zero under a null, since churn still costs.
+# Tested on gross. Only gross is zero under a null, since churn costs.
 @check("shuffled scores earn nothing before costs")
 def permutation_null_earns_nothing_gross():
     placebo = paths.exhibit("placebo_lab.json")
@@ -206,13 +207,13 @@ def permutation_null_earns_nothing_gross():
         return SKIPPED
     null = placebo["permutation_null"]
     mean, draws = null["gross_annual_mean"], null["draws"]
-    # Three standard errors, plus a 1%/yr floor so the check does not trip on noise alone.
+    # Three standard errors, floored at 1%/yr so noise alone cannot trip it.
     tolerance = max(3 * null["gross_annual_std"] / draws**0.5, 0.01)
     detail = f"null gross {mean:+.2%}/yr over {draws} draws, tolerance {tolerance:.2%}"
     return abs(mean) < tolerance, detail
 
 
-# A clock time in a result makes two identical runs differ, so no result file may carry one.
+# A clock time makes identical runs differ, so no result may carry one.
 @check("no result carries a clock time")
 def results_have_no_timestamps():
     if paths.SMOKE:
@@ -224,7 +225,7 @@ def results_have_no_timestamps():
     return not dated, detail
 
 
-# A hash that no longer matches means the file was edited or half-rewritten after its run.
+# A hash that no longer matches means the file changed after its run.
 @check("every artifact matches the run that wrote it")
 def artifacts_match_their_run():
     manifest = paths.exhibit("run_manifest.json")
@@ -235,7 +236,7 @@ def artifacts_match_their_run():
     return not bad, f"changed since their run: {bad}" if bad else "all hashes match"
 
 
-# The model exhibits are slow, so they are rebuilt only with --ml. Stale code means stale numbers.
+# Model exhibits rebuild only with --ml. Stale code means stale numbers.
 @check("model exhibits were built from the current code")
 def model_exhibits_are_current():
     ml = (paths.exhibit("run_manifest.json") or {}).get("ml")
@@ -245,7 +246,7 @@ def model_exhibits_are_current():
     return ok, "current" if ok else "code changed since, rerun uv run run.py --official --ml"
 
 
-# Every model book must span the same 68 months as ours, flat months included.
+# Every model book spans our 68 months, flat months included.
 @check("every model book covers all 68 months")
 def model_books_cover_68_months():
     found = (P.CACHE / "preds").glob("*_portfolio.json")
@@ -256,14 +257,14 @@ def model_books_cover_68_months():
     return not short, f"short: {short}" if short else f"{len(books)} books, all 68"
 
 
-# The organizer publishes a SHA-256 for each file. The bundle must be built from exactly those.
+# The organizer publishes each file's SHA-256; the bundle uses those.
 @check("data bundle was built from the organizer's published files")
 def data_matches_the_readme():
     bad = data.checksum_mismatches()
     return not bad, f"mismatch: {bad}" if bad else "both SHA-256 match the organizer's readme"
 
 
-# An exhibit no script in run.py writes cannot be regenerated, so it cannot be trusted.
+# An exhibit no run.py step writes cannot be regenerated, or trusted.
 @check("every exhibit is written by a step in run.py")
 def every_exhibit_has_a_writer():
     modules = set(re.findall(r'"(fiam\.[\w.]+)', Path("run.py").read_text(encoding="utf-8")))
@@ -281,7 +282,7 @@ def market_is_the_sp500():
     return ok, f"{notes['market_series']}, {notes['regression_months']} months"
 
 
-# The cost total is the five lines added up, so the breakdown can never be reverse-engineered.
+# The cost total is its five lines added up, so the breakdown is exact.
 @check("costs reconcile to their five lines every month")
 def costs_reconcile():
     df = pd.read_csv(paths.RETURNS)
@@ -289,7 +290,7 @@ def costs_reconcile():
     return gap < 1e-12, f"largest gap {gap:.1e}"
 
 
-# Turnover rebuilt from the published holdings, each month traded from last month's drifted book.
+# Turnover rebuilt from published holdings, trading from drifted books.
 @check("turnover recomputes from the holdings with drift")
 def turnover_recomputes():
     book = paths.holdings()
@@ -307,11 +308,11 @@ def turnover_recomputes():
         costs = returns.loc[month].filter(like="cost_").to_dict()
         info = earned.to_frame("ret_exc_lead1m")
         previous = P.drift(weights, info, costs, returns.loc[month, "rf"])
-    # Weights are published to six decimals of a percent, so a few millionths is rounding.
+    # Weights publish to six decimals of a percent; millionths are rounding.
     return max(gaps) < 1e-5, f"largest monthly gap {max(gaps):.1e} over {len(gaps)} months"
 
 
-# The book side is rebuilt on every run, so its artifacts must come from the code as it stands.
+# The book rebuilds every run, so its artifacts must match current code.
 @check("book artifacts were built from the current code")
 def book_is_current():
     manifest = paths.exhibit("run_manifest.json")
@@ -321,7 +322,7 @@ def book_is_current():
     return ok, "current" if ok else "code changed since, rerun uv run run.py --official"
 
 
-# Every benchmark file is the one its recorded source says it is, byte for byte.
+# Every benchmark file matches its recorded source, byte for byte.
 @check("benchmark files match their recorded sources")
 def benchmarks_are_pinned():
     sources = json.loads(B.SOURCES.read_text(encoding="utf-8")) if B.SOURCES.exists() else {}
@@ -331,7 +332,7 @@ def benchmarks_are_pinned():
     return ok, f"changed: {bad}, unrecorded: {missing}" if not ok else f"{len(sources)} files match"
 
 
-# Final only with WRDS exits applied, no delisted name held, and the report-date rule passed.
+# Final only with WRDS exits applied, no delisted name, dates respected.
 @check("WRDS exits applied, no delisted name held, report dates respected")
 def wrds_exits_applied():
     table = P.exits()
@@ -350,7 +351,7 @@ def wrds_exits_applied():
     return ok, f"{len(table):,} exits, {dead} delisted names held, worst early update {early:.2%}"
 
 
-# Runs every check, writes the report, and exits non-zero so it can gate a build.
+# Runs every check, writes the report, exits non-zero to gate a build.
 def main() -> int:
     results = [(name, *function()) for name, function in CHECKS]
     OUT.mkdir(parents=True, exist_ok=True)

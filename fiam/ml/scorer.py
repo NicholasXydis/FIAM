@@ -1,4 +1,4 @@
-# The scorer: learning-to-rank what a neutral book earns, one model per tail, averaged over seeds.
+# Ranks what a neutral book earns, one model per tail, seeds averaged.
 
 
 import lightgbm as lgb
@@ -14,17 +14,16 @@ from fiam.ml import text as T
 OUT = paths.EXHIBITS / "scorer.json"
 CACHE = P.CACHE / "scores.parquet"
 CROWD = P.CACHE / "crowd.parquet"
-# What the triage and analyst agents made of each stock-month's filings, as small models learned
-# them from pre-2021 answers; the analyst's own verdicts never enter.
+# Agent reads via models fit on pre-2021 answers, never raw verdicts.
 TRIAGE, ANALYST = P.CACHE / "triage.parquet", P.CACHE / "analyst.parquet"
 PREDS = P.CACHE / "preds" / "scorer.parquet"
 
-# Two years before the rules' first test year, so its forecasts can be scaled on earlier years.
+# Starts two years before testing, so forecasts scale on earlier years.
 FIRST_YEAR = 2025 if paths.SMOKE else 2019
 SEEDS = (42,) if paths.SMOKE else (42, 43, 44, 45, 46)
 ROUNDS, PATIENCE = (20, 5) if paths.SMOKE else (1000, 50)
 
-# LambdaRank on month groups. Fixed settings; only the number of rounds is read off validation.
+# LambdaRank by month. Fixed settings; validation picks only the rounds.
 PARAMS = dict(
     objective="lambdarank",
     metric="ndcg",
@@ -44,7 +43,7 @@ PARAMS = dict(
 )
 
 
-# Characteristics, 8-K counts, teacher outputs and, once the crowd agent has run, its score.
+# Characteristics, 8-K counts, teachers and the crowd score once run.
 def inputs() -> tuple[pd.DataFrame, list[str]]:
     frame, cols = TE.inputs()
     sectors = data.features(["gics"])
@@ -58,11 +57,11 @@ def inputs() -> tuple[pd.DataFrame, list[str]]:
     return frame.sort_values(["holding_month", "permno"], ignore_index=True), cols
 
 
-# The exposures a stock picker's return must be free of: beta and the five style characteristics.
+# What a stock picker's return must be free of: beta and five styles.
 STYLE = ["beta_60m", *P.FACTORS]
 
 
-# Next month's return less its sector's mean and its beta and style, by least squares each month.
+# Next return less sector mean, beta and style, by OLS each month.
 def residual(frame: pd.DataFrame) -> pd.Series:
     month = frame["holding_month"]
     target = frame[D.TARGET] - frame.groupby([month, frame["sector"]])[D.TARGET].transform("mean")
@@ -84,7 +83,7 @@ def deciles(frame: pd.DataFrame) -> np.ndarray:
     return np.minimum((pct * 10).astype(int), 9).to_numpy()
 
 
-# One ranker for one tail: labels as they are for the top, reversed for the bottom.
+# One tail's ranker: labels as is for the top, reversed for the bottom.
 def ranker(train: pd.DataFrame, validate: pd.DataFrame, cols: list[str], top: bool, seed: int):
     # One month per group, labelled for this tail.
     def dataset(part: pd.DataFrame) -> lgb.Dataset:
@@ -136,7 +135,7 @@ def main() -> None:
     scored = pd.concat([fit_year(frame, cols, y, text) for y in years], ignore_index=True)
     scored[[*data.KEYS, "holding_month", "score"]].to_parquet(CACHE, index=False)
 
-    # The rules' years in the shape the OOS R-squared step reads, every model the same way.
+    # The rules' years shaped for the OOS R-squared step, as every model is.
     book_years = scored[scored["holding_month"].dt.year >= D.FIRST_TEST_YEAR]
     preds = book_years.rename(columns={"score": "pred", D.TARGET: "actual"})
     PREDS.parent.mkdir(parents=True, exist_ok=True)

@@ -203,8 +203,7 @@ def noaa() -> dict:
             lambda a, b: (a - b).abs() <= CLIMATE_STEP + 1e-9,
         )
         series[kind] = shares_by_age([frame.dropna()])
-    # A missing age takes the next older age's share; past a series' oldest
-    # value nothing is left to check, so that age passes for it.
+    # A missing age takes the next older share; past the oldest, a pass.
     table = pd.DataFrame(series).sort_index().bfill().fillna(1.0)
     holds = (table >= NOAA_BAR).all(axis=1)
     lag_months = smallest_age(holds)

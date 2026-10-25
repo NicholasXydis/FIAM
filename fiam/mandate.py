@@ -1,4 +1,4 @@
-# A rule set as a file: v1's limits by default, a finals mandate when one is given, checked first.
+# Rules as a file: v1's by default, or a finals mandate, checked first.
 
 import json
 from dataclasses import asdict, dataclass, fields
@@ -7,7 +7,7 @@ from pathlib import Path
 from fiam import book as P
 
 TEMPLATES = Path("mandates")
-# GICS sectors by their two-digit code, so a mandate may name a sector either way.
+# GICS sectors by two-digit code, so a mandate may name one either way.
 SECTORS = {
     "energy": "10", "materials": "15", "industrials": "20", "consumer discretionary": "25",
     "consumer staples": "30", "health care": "35", "financials": "40",
@@ -16,7 +16,7 @@ SECTORS = {
 }  # fmt: skip
 
 
-# Every rule the optimizer reads. None turns a band off: a long-only book is never beta neutral.
+# Every optimizer rule. None turns a band off: long-only is not neutral.
 @dataclass(frozen=True)
 class Mandate:
     name: str = "v1"
@@ -34,15 +34,15 @@ class Mandate:
     countries: tuple = ("USA",)
     country_cap: float | None = None
     vol_budget: float | None = None
-    # Final v3's realized volatility a year (v2_amendment_3.md); None keeps its 10%.
+    # Final v3's realized annual vol (v2_amendment_3.md); None keeps 10%.
     vol_target: float | None = None
-    # The widest net exposure the rules allow either way; the book still targets net above.
+    # Widest net the rules allow either way; the book still targets `net`.
     net_band: float | None = None
-    # The most one-way turnover a month, as a share of NAV; the first month's build is exempt.
+    # Max one-way monthly turnover over NAV; the first build is exempt.
     turnover: float | None = None
-    # The yearly spread over the T-bill the book is judged against; None keeps the brief's 4%.
+    # Yearly hurdle over the T-bill the book is judged on; None keeps 4%.
     hurdle: float | None = None
-    # Who may enter at all: the smallest market cap in $ millions, and GICS sectors left out.
+    # Who may enter: minimum market cap in $m, and GICS sectors left out.
     min_market_cap: float | None = None
     exclude_sectors: tuple = ()
     strategy_text: str = ""
@@ -56,7 +56,7 @@ class Mandate:
 V1 = Mandate()
 
 
-# A mandate file; a key the optimizer does not know stops the run instead of being ignored.
+# A mandate file; an unknown key stops the run instead of being ignored.
 def load(path: str | Path) -> Mandate:
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
     unknown = sorted(set(raw) - {f.name for f in fields(Mandate)})
@@ -72,7 +72,7 @@ def load(path: str | Path) -> Mandate:
     return Mandate(**raw)
 
 
-# Rules that cannot all hold, in words, before any solver is asked to try.
+# Rules that cannot all hold, in words, before any solver tries.
 def check(m: Mandate) -> list[str]:
     long, short = m.sides
     problems = []
@@ -92,7 +92,7 @@ def check(m: Mandate) -> list[str]:
         problems.append(
             f"{len(m.countries)} countries at {m.country_cap:.0%} each cannot hold it all"
         )
-    # Sector nets add up to the book's net, and there are eleven GICS sectors.
+    # Sector nets add up to the book's net, and GICS has eleven sectors.
     if m.sector is not None and abs(m.net) > 11 * m.sector:
         problems.append(f"net {m.net:.0%} cannot fit eleven sectors capped at {m.sector:.0%} each")
     if m.net_band is not None and abs(m.net) > m.net_band:

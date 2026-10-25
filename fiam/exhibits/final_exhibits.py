@@ -1,7 +1,4 @@
-# Final v3's exhibits (docs/protocols/final_exhibits.md): is its edge real (random large-cap books,
-# our rule on large caps, our favourite names held still, equal weights), what we expect live, the
-# monthly risk table, factor exposures and the dendrogram of its largest September positions.
-# uv run python -m fiam.exhibits.final_exhibits [null large naive projection risk ...]
+# Final v3's exhibits (docs/protocols/final_exhibits.md): edge and risk.
 
 import json
 import sys
@@ -21,7 +18,7 @@ from fiam.exhibits import september as S
 
 OUT = v2.OUT / "final_exhibits"
 NAIVE = ("naive_equal_model", "naive_equal_holdings", "favourites_held")
-# Random books (section 1.1): draws, seed, how many of the largest stocks, monthly replacement.
+# Random books (section 1.1): draws, seed, top-N stocks, monthly swaps.
 DRAWS, SEED, LARGEST, REPLACE = 1000, 42, 500, 0.1
 # Published haircuts on a backtested information ratio (section 2).
 HAIRCUTS = dict(mclean_pontiff_2016=0.26, harvey_liu_2015=0.50)
@@ -32,12 +29,12 @@ def final_name(capital: float = 1e7) -> str:
     return v2.Settings(v2.final_three(), capital).name
 
 
-# The record window's cross-section with the risk model's styles and specific risk on it.
+# The record's cross-section with risk-model styles and specific risk.
 def frame() -> pd.DataFrame:
     return v2.universe(v2.RECORD, v2.Settings(frozenset({"voltarget"})), v2.params())
 
 
-# Each month's held names in risk-model order with their weights, and the model's terms.
+# Each month's held names in risk-model order, weights and model terms.
 def months(held: pd.DataFrame, df: pd.DataFrame):
     for eom, w in held.groupby("eom"):
         pool = df[(df["eom"] == eom) & df["permno"].isin(w["permno"])].reset_index(drop=True)
@@ -47,7 +44,7 @@ def months(held: pd.DataFrame, df: pd.DataFrame):
             yield eom, pool, weights, terms
 
 
-# The panel's 2026 months carry no ticker or name, so each name takes the last it had by then.
+# 2026 panel months lack ticker and name, so each keeps its last known.
 def labelled(table: pd.DataFrame) -> pd.DataFrame:
     known = data.features(["permno", "eom", "ticker", "company_name"]).dropna(subset=["ticker"])
     known = known.rename(columns={"ticker": "last_ticker", "company_name": "last_name"})
@@ -57,9 +54,7 @@ def labelled(table: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["eom", "permno"], ignore_index=True)
 
 
-# Per holding: MCTR = (Sigma w)_i / sigma, CTR = w_i MCTR_i, PCTR = CTR_i / sigma, and mismatch =
-# PCTR_i minus its share of gross; per month: predicted volatility raw and corrected, normal VaR and
-# CVaR, and how much of the risk is factor rather than stock-specific.
+# Per-holding MCTR, CTR, PCTR and mismatch, plus monthly vol, VaR, CVaR.
 def risk_table(name: str) -> dict:
     held = data.read(v2.OUT / name / "record" / "holdings.parquet")
     correction = v2.params().get("vol_bias", 1.0)
@@ -122,8 +117,7 @@ def risk_table(name: str) -> dict:
     )
 
 
-# Each month's exposure per unit of gross to the risk model's five styles, and rolling 24-month
-# loadings of the book's monthly net return on FF5 + momentum.
+# Monthly style exposures per unit gross, and 24-month FF5 + UMD betas.
 def exposures(name: str) -> dict:
     held = data.read(v2.OUT / name / "record" / "holdings.parquet")
     rows = []
@@ -154,9 +148,7 @@ def exposures(name: str) -> dict:
     )
 
 
-# The two naive books at one capital level: the same universe, signal, costs and monthly gross as
-# final v3, with equal weights on the top and bottom of our score (as many names per side as final
-# v3 held) or on final v3's own names. Written as runs, each a trial in the ledger.
+# Equal-weight naive books like final v3, each a trial in the ledger.
 def naive(kind: str, capital: float) -> dict:
     tag = f"{capital:.0e}".replace("+0", "")
     final = data.read(v2.OUT / final_name(capital) / "record" / "holdings.parquet")
@@ -164,7 +156,7 @@ def naive(kind: str, capital: float) -> dict:
     favoured = favourites(final) if kind == "favourites_held" else None
     started = time.time()
 
-    # The month's names by kind, sized equally within each side to final v3's gross that month.
+    # The month's names by kind, equal within each side to final v3's gross.
     def optimize(month: pd.DataFrame, previous) -> pd.Series | None:
         target = targets.get(month["eom"].iloc[0])
         if target is None or not len(target):
@@ -224,8 +216,7 @@ def naive(kind: str, capital: float) -> dict:
     return out
 
 
-# Final v3's most-held names (section 1.3): each name's summed |weight| over the record, the top
-# net longs and net shorts, as many as final v3 held on average.
+# Final v3's most-held names (section 1.3): top net longs and shorts.
 def favourites(held: pd.DataFrame) -> tuple[list, list]:
     months = held.groupby("eom")
     n_long = round(float(months["weight"].apply(lambda w: (w > 0).sum()).mean()))
@@ -236,9 +227,7 @@ def favourites(held: pd.DataFrame) -> tuple[list, list]:
     return longs, shorts
 
 
-# Section 1.1: random long-short books of the 500 largest stocks, final v3's legs and gross each
-# month, names kept while among the 500 and replaced with probability 0.1 a month, each paying final
-# v3's cost per unit of turnover that month on its own turnover.
+# Section 1.1: random books of the 500 largest, paying final v3's costs.
 def null(name: str) -> dict:
     held = data.read(v2.OUT / name / "record" / "holdings.parquet")
     book = pd.read_csv(v2.OUT / name / "record" / "returns.csv", parse_dates=["forecast_eom"])
@@ -305,7 +294,7 @@ def null(name: str) -> dict:
     )
 
 
-# Section 1.2: final v3 run unchanged on the 500 largest stocks each month.
+# Section 1.2: final v3 run unchanged on the 500 largest stocks a month.
 def large() -> dict:
     out = {}
     for cap in (1e7, 1e9):
@@ -314,7 +303,7 @@ def large() -> dict:
     return out
 
 
-# Section 2: what we expect live, final v3's IR at each size after two published haircuts.
+# Section 2: final v3's live IR at each size after published haircuts.
 def projection() -> dict:
     scored = json.loads((v2.OUT / "evidence.json").read_text(encoding="utf-8"))["v3"]
     out = {}
@@ -325,8 +314,7 @@ def projection() -> dict:
     return out
 
 
-# The 30 largest September positions, clustered by how alike their 147 characteristic ranks are
-# (1 - Spearman correlation, average linkage), labelled with names known by August 2026.
+# The 30 largest September names, clustered by 1 - Spearman rank match.
 def dendrogram() -> dict:
     book = pd.read_csv(S.FINAL)
     top = book.loc[book["weight"].abs().sort_values(ascending=False).index].head(30)
@@ -347,6 +335,7 @@ def dendrogram() -> dict:
     return dict(labels=names, weights=top["weight"].tolist(), linkage=merges.tolist())
 
 
+# Runs the chosen exhibit parts, all by default, into report.json.
 def main(parts: list[str]) -> None:
     path = OUT / "report.json"
     report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

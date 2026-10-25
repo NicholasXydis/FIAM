@@ -1,4 +1,4 @@
-# The protocol's verdicts: each v2 member on its own test, and v2 against v1, from out/v2/.
+# The protocol's verdicts: each v2 member's test and v2 against v1.
 
 import json
 from functools import cache
@@ -16,7 +16,7 @@ from fiam import mandate as M
 
 OUT = v2.OUT / "evidence.json"
 EXP = Path("research") / "exp" / "results"
-# Andrew's provider trials 2 to 5 and his gates rerun; none left a return series here.
+# Andrew's trials 2 to 5 and his gate reruns, none with saved returns.
 ANDREW_TRIALS = 5
 WINDOWS = {"check": v2.CHECK, "record": v2.RECORD}
 PARTS = ("cost_commission", "cost_spread", "cost_impact", "cost_borrow", "cost_financing")
@@ -41,7 +41,7 @@ def load(name: str, window: str) -> tuple[pd.DataFrame, pd.DataFrame, dict] | No
     return book.set_index("holding_month"), held, json.loads((folder / "stats.json").read_text())
 
 
-# The monthly market excess return each window's statistics use, by holding month.
+# The monthly market excess return each window's stats use, by month.
 def market(window: str) -> pd.Series:
     bm = B.benchmarks().set_index("month")
     return bm["mkt_rf_crsp" if window == "check" else "mkt_rf"]
@@ -53,7 +53,7 @@ def frame(window: str, on: frozenset) -> pd.DataFrame:
     return v2.universe(WINDOWS[window], v2.Settings(on, 1e7, M.V1), v2.params())
 
 
-# Mean monthly correlation of two books' weights over the names either holds.
+# Mean monthly weight correlation of two books over names either holds.
 def weight_correlation(a: pd.DataFrame, b: pd.DataFrame) -> float:
     out = []
     for eom, wa in a.groupby("eom"):
@@ -66,13 +66,13 @@ def weight_correlation(a: pd.DataFrame, b: pd.DataFrame) -> float:
     return float(np.mean(out)) if out else float("nan")
 
 
-# The protocol's test for each member, at the capital levels it names (docs/protocols/v2.md).
+# Each member's test at the capital levels docs/protocols/v2.md names.
 def verdicts() -> dict:
     caps = {c: f"{c:.0e}".replace("+0", "") for c in v2.CAPITALS}
     base = {c: load(f"v1@{tag}", "check") for c, tag in caps.items()}
     out = {}
 
-    # The cost-aware member's test; `grinold` (v2_amendment_1.md) takes the same one.
+    # The cost-aware member's test, shared by grinold (v2_amendment_1.md).
     for member in ("costs", "grinold"):
         runs = {c: load(f"{member}@{tag}", "check") for c, tag in caps.items()}
         if not all(runs.values()):
@@ -110,8 +110,7 @@ def verdicts() -> dict:
     cheaper = all(liq[c][2]["cost_annual"] < base[c][2]["cost_annual"] for c in (1e9, 5e9))
     out["liquidity"] = dict(cap_binds=binds, cheaper_at_1b_and_5b=cheaper, passed=binds and cheaper)
 
-    # Risk sizing, 2017-2020 (the risk model starts 2017-01): realized volatility of the gross
-    # return per unit of gross exposure, against v1's.
+    # Risk sizing 2017-20 (model from 2017-01): vol per unit gross vs v1's.
     def vol(run: tuple) -> float:
         b = run[0][run[0]["forecast_eom"] >= "2016-12-31"]
         return float(b["gross"].std() * np.sqrt(12) / b["gross_exposure"].mean())
@@ -139,11 +138,12 @@ def verdicts() -> dict:
     return out
 
 
+# Annualized Sharpe ratio of a monthly net return series.
 def sharpe(net: pd.Series) -> float:
     return float(net.mean() / net.std() * np.sqrt(12))
 
 
-# Each of v3's parts alone on v2-pass, against v2-pass, on its own test (v2_amendment_2.md).
+# Each v3 part alone on v2-pass against v2-pass (v2_amendment_2.md).
 def parts(members: dict) -> dict:
     base = v2.passing(members)
     ref = {c: load(v2.Settings(base, c).name, "check") for c in v2.CAPITALS}
@@ -167,7 +167,7 @@ def parts(members: dict) -> dict:
         out["lowvol"] = dict(beta=betas[0], v2_pass_beta=betas[1], vol=vols[0], v2_pass_vol=vols[1])
         out["lowvol"]["passed"] = abs(betas[0]) < abs(betas[1]) and vols[0] < vols[1]
 
-    # The risk model starts 2017-01, so the risk target is judged on holding months from 2017-02.
+    # Risk model starts 2017-01, so holding months from 2017-02 judge it.
     def steadiness(run: tuple) -> dict:
         net = run[0].loc["2017-02-01":, "net"]
         yearly = net.groupby(net.index.year).std() * np.sqrt(12)
@@ -193,8 +193,7 @@ def parts(members: dict) -> dict:
     return out
 
 
-# One book's figures as the submission states them (book.performance), 2021-2026, with its
-# 2016-2020 information ratio beside.
+# A book's submission figures, 2021-2026, with its 2016-2020 IR beside.
 def scorecard(record: pd.DataFrame, check: dict) -> dict:
     full = P.performance(record)
     perf, costs = full["performance"], full["costs"]
@@ -215,8 +214,7 @@ def scorecard(record: pd.DataFrame, check: dict) -> dict:
     return out
 
 
-# Final v3's two tested fixes, each alone on base = v3 + the two rules, against base at $10M on
-# 2016-2020 (v2_amendment_3.md).
+# Final v3's two fixes, each alone on its base at $10M (v2_amendment_3).
 def final_parts(verdicts: dict) -> dict:
     base = v2.base_three(verdicts)
     ref = load(v2.Settings(base, 1e7).name, "check") if base else None
@@ -224,6 +222,7 @@ def final_parts(verdicts: dict) -> dict:
         return {}
     rising = market("check") > 0.03
 
+    # A run's worst short-leg month and short-leg sum in 3%+ market months.
     def shorts(run: tuple) -> tuple[float, float]:
         leg = run[0]["short_leg"]
         return float(leg.min()), float(leg[rising.reindex(leg.index).fillna(False)].sum())
@@ -245,8 +244,7 @@ def final_parts(verdicts: dict) -> dict:
     return out
 
 
-# Final v3's daily path at $10M, 2021-2025 (daily data ends there): the risk dashboard, and each
-# day's gross against the brief's 200%, held "throughout".
+# Final v3's daily path at $10M, 2021-25: risk and gross against 200%.
 def final_daily(chosen: frozenset | None) -> dict:
     run = load(v2.Settings(chosen, 1e7).name, "record") if chosen else None
     if run is None:
@@ -266,9 +264,7 @@ def final_daily(chosen: frozenset | None) -> dict:
     )
 
 
-# v3 against v1 and against v2-pass at every capital level, 2021-2026: the stationary bootstrap of
-# the monthly net difference, the deflated Sharpe of each book at both trial counts, and each
-# book's scorecard.
+# v3 vs v1 and v2-pass at each capital, 2021-26: bootstrap, DSR, scores.
 def final_book(verdicts: dict, counts: dict) -> dict:
     final = v2.final(verdicts)
     if final is None:
@@ -311,8 +307,7 @@ def final_book(verdicts: dict, counts: dict) -> dict:
     return out
 
 
-# Trials: every configuration once (capital levels are one). Effective: saved monthly returns
-# grouped where they correlate above 0.9; a trial without a saved series counts as its own.
+# Full counts each config once. Effective merges series with corr > 0.9.
 def trial_counts() -> dict:
     series = {f"exp/{p.stem}": p for p in sorted(EXP.glob("*.csv"))}
     configs = pd.read_csv(v2.OUT / "trials.csv")["name"].str.split("@").str[0].unique()
@@ -337,7 +332,7 @@ def trial_counts() -> dict:
     )
 
 
-# Each month's residual IC: Spearman of the signal with the sector- and beta-neutral return.
+# Each month's Spearman IC with the sector- and beta-neutral return.
 @cache
 def monthly_ic(on: frozenset) -> pd.Series:
     parts = []
@@ -352,7 +347,7 @@ def monthly_ic(on: frozenset) -> pd.Series:
     return pd.concat(parts)
 
 
-# Break-even IC, pooled 2016-2026: gross = a + b x IC + c x market, IC* = (cost + hurdle - a)/b.
+# Break-even IC, gross = a + bIC + c mkt: IC* = (cost + hurdle - a)/b.
 def break_even(name: str, on: frozenset) -> dict:
     ic, rows = monthly_ic(on), []
     for window in WINDOWS:
@@ -380,7 +375,7 @@ def break_even(name: str, on: frozenset) -> dict:
     )
 
 
-# Canary: the signal shuffled within each month must show no IC (|t| < 2).
+# Canary: a signal shuffled within months must show no IC (|t| < 2).
 def shuffled_ic(seed: int = 42) -> dict:
     rng, ics = np.random.default_rng(seed), []
     for window in WINDOWS:
@@ -394,13 +389,14 @@ def shuffled_ic(seed: int = 42) -> dict:
     return dict(mean=float(ics.mean()), t=float(t), passed=bool(abs(t) < 2))
 
 
-# v2 minus v1 at $10M: stationary bootstrap of the monthly net and cost gaps and the beta gap.
+# v2 minus v1 at $10M: bootstrapped monthly net, cost and beta gaps.
 def versus(window: str) -> dict:
     a, b = load("v1@1e7", window)[0], load("v2@1e7", window)[0]
     f = pd.DataFrame(
         dict(d=b["net"] - a["net"], c=b["cost"] - a["cost"], a=a["net"], b=b["net"])
     ).assign(m=market(window).reindex(a.index))
 
+    # v2's market beta minus v1's, both fitted on the same months.
     def beta_gap(g: pd.DataFrame) -> float:
         x = np.column_stack([np.ones(len(g)), g["m"]])
         fit = np.linalg.lstsq(x, g[["b", "a"]].to_numpy(), rcond=None)[0]
@@ -413,7 +409,7 @@ def versus(window: str) -> dict:
     )
 
 
-# The monthly dashboard and every neutrality test for v1 and v2 at $10M, both windows.
+# Monthly dashboard and neutrality tests, v1 and v2 at $10M, by window.
 def comparison() -> dict:
     out = {}
     for window in WINDOWS:
@@ -429,7 +425,7 @@ def comparison() -> dict:
     return out
 
 
-# v1's and v2's books at $10M with the daily stock returns they need and the daily market.
+# v1 and v2 books at $10M with their daily stock returns and the market.
 @cache
 def daily_inputs() -> tuple[dict, pd.DataFrame, pd.Series]:
     held = {(n, w): load(f"{n}@1e7", w)[1] for n in ("v1", "v2") for w in WINDOWS}
@@ -441,18 +437,17 @@ def daily_inputs() -> tuple[dict, pd.DataFrame, pd.Series]:
     return held, returns, f.set_index(pd.to_datetime(f["date"]))["mktrf"]
 
 
-# The daily dashboard: Dimson beta, VaR and CVaR, concentration, for v1 and v2 at $10M.
+# Daily risk at $10M, v1 and v2: Dimson beta, VaR, CVaR, concentration.
 def daily() -> dict:
     held, returns, mkt = daily_inputs()
     return {f"{n} {w}": stats.daily_risk(h, returns, mkt) for (n, w), h in held.items()}
 
 
-# Risk warning signs (risk.md section 4; an exhibit, never applied): the month-ends each would have
-# fired, as soon as it was known, and the book's net over the next three months then and on average.
+# Warning signs (risk.md 4, exhibit only): when each fired, next 3m net.
 def warning_signs(name: str) -> dict:
     held, returns, mkt = daily_inputs()
     book = pd.concat([load(f"{name}@1e7", w)[0] for w in WINDOWS]).sort_index()
-    # Keyed by decision month-end: the net of the three holding months that follow it.
+    # Keyed by decision month-end: the net of the next three holding months.
     ahead = pd.Series(
         book["net"][::-1].rolling(3).sum()[::-1].to_numpy(), index=book["forecast_eom"]
     )
@@ -485,7 +480,7 @@ def warning_signs(name: str) -> dict:
     return out
 
 
-# 2016-20: realized beta x market each month against the rest, each with a bootstrap interval.
+# 2016-20: beta x market each month against the rest, bootstrapped.
 def beta_drag(name: str) -> dict:
     book = load(f"{name}@1e7", "check")[0]
     mkt = market("check").reindex(book.index)
@@ -495,8 +490,7 @@ def beta_drag(name: str) -> dict:
     return dict(beta=beta, drag=stats.bootstrap_mean(drag), rest=stats.bootstrap_mean(rest))
 
 
-# Losing months of 2023-26 split by theme: the book's exposure to each theme times that
-# month's payoff (all themes in one cross-sectional regression); the rest is stock-specific.
+# Losing 2023-26 months split by theme exposure x payoff; rest is stock.
 def themes(name: str, on: frozenset) -> dict:
     df = frame("record", on)
     scores = P.scores(df, P.SIGNALS).set_axis(list(P.SIGNALS), axis=1)
@@ -518,8 +512,7 @@ def themes(name: str, on: frozenset) -> dict:
     return dict(months=len(losing), loss=loss, themes=total, rest=loss - sum(total.values()))
 
 
-# Months classed by the VIX at decision time against its 2000-2020 75th percentile and by the
-# market's sign; cells with fewer than 12 months are hidden.
+# Months by VIX vs its 2000-20 p75 and market sign. Cells under 12 hide.
 def regimes(name: str) -> dict:
     vix = layers.load("market/vix_daily")
     month_end = vix.set_index(pd.to_datetime(vix["date"]))["vix"].resample("ME").last()
@@ -548,7 +541,7 @@ def regimes(name: str) -> dict:
     return out
 
 
-# Annual cost by component, v1 against v2, at every capital level and in both windows.
+# Annual cost by component, v1 against v2, each capital and window.
 def waterfall() -> dict:
     out = {}
     for c in v2.CAPITALS:
@@ -560,7 +553,7 @@ def waterfall() -> dict:
     return out
 
 
-# Our modelled half spread against half of TAQ's effective spread, by size group, 2016-2024.
+# Our half spread vs half of TAQ's effective spread, by size, 2016-2024.
 def spreads() -> dict:
     taq = layers.load("trading/spreads_monthly")
     taq = taq.assign(eom=pd.to_datetime(taq["eom"]), permno=taq["permno"].astype(int))
@@ -581,11 +574,12 @@ def spreads() -> dict:
     }
 
 
+# Builds every v2 verdict and exhibit into out/v2/evidence.json.
 def main() -> None:
     report = dict(protocol="docs/protocols/v2.md, evidence.md", verdicts=verdicts())
     counts = trial_counts()
     report["trials"] = counts
-    # Over the T-bill as the protocol and the submitted metric define it; over T-bill + 4% beside.
+    # Over the T-bill as protocol and metric define it, +4% hurdle beside.
     report["deflated_sharpe"] = {
         f"{name} {kind}{tag}": P.deflated_sharpe(
             load(f"{name}@1e7", "record")[0]["net"] - hurdle, counts[kind]

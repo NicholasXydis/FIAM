@@ -12,29 +12,29 @@ from fiam import data, paths
 MODELS = paths.SUBMISSION / "models"
 SPREADS, BORROW = MODELS / "spreads.json", MODELS / "borrow.parquet"
 
-# IBKR Pro fixed, US stocks: interactivebrokers.com/en/pricing/commissions-stocks.php, 2026-09-30.
+# IBKR Pro fixed, US stocks, interactivebrokers.com pricing, 2026-09-30.
 COMMISSION_PER_SHARE, COMMISSION_MIN, COMMISSION_MAX = 0.005, 1.00, 0.01
-# SEC Section 31 on sales at its highest rate in 2021-2026, $27.80 a million from May 2024.
+# SEC Section 31 on sales, 2021-26 high, $27.80/million from May 2024.
 SEC_RATE = 27.80e-6
-# FINRA Trading Activity Fee on shares sold at its 2026 high, capped per trade.
+# FINRA TAF on shares sold at its 2026 high, capped per trade.
 TAF_PER_SHARE, TAF_MAX = 0.000195, 9.79
 # FINRA Consolidated Audit Trail fee on every share bought or sold.
 CAT_PER_SHARE = 0.000003
-# Square-root impact coefficient (Toth et al. 2011); 0.5 is reported as the sensitivity.
+# Square-root impact coefficient (Toth et al. 2011); 0.5 as sensitivity.
 IMPACT_Y = 1.0
-# Borrow a year by short interest over shares out (D'Avolio 2002; Drechsler & Drechsler 2016).
+# Borrow by short ratio (D'Avolio 2002; Drechsler & Drechsler 2016).
 TIERS = ((0.05, 0.0030), (0.10, 0.0100), (0.20, 0.0300), (np.inf, 0.0800))
 MICRO_FLOOR = 0.0100
-# Cash and short proceeds earn the benchmark less this (IBKR Pro pays benchmark minus 0.5%).
+# Cash and short proceeds earn benchmark less 0.5%, as IBKR Pro pays.
 FINANCING_SPREAD = 0.005
-# The spread calibration's years: daily quotes before the record, so the record never shapes it.
+# Spreads calibrate on years before the record, which never shapes them.
 CALIBRATION = ("2015-01-01", "2020-12-31")
 
 # The columns a month's costs read, per stock.
 COLUMNS = ["prc", "bidaskhl_21d", "size_grp", "rvol_21d", "dolvol_126d", "borrow"]
 
 
-# The cost model's dials: capital, impact coefficient, and a multiple on every line.
+# Cost model dials: capital, impact, and a multiple on every line.
 @dataclass(frozen=True)
 class Model:
     nav: float = 10_000_000.0
@@ -45,7 +45,7 @@ class Model:
 DEFAULT = Model()
 
 
-# Half the closing quoted spread over the high-low estimate, median within each size group.
+# Half closing spread over high-low estimate, median within size group.
 def calibrate_spreads() -> dict | None:
     first, last = (pd.Timestamp(d) for d in CALIBRATION)
     daily = data.research(
@@ -65,7 +65,7 @@ def calibrate_spreads() -> dict | None:
     return {str(k): float(v) for k, v in ratio.items()}
 
 
-# The calibrated ratios: the committed file, built from the daily quotes the first time.
+# Calibrated ratios: the committed file, first built from daily quotes.
 @cache
 def spread_ratios() -> dict:
     if not SPREADS.exists():
@@ -84,14 +84,14 @@ def write_spreads(ratios: dict) -> None:
     paths.write_json(SPREADS, body, rounded=False, end="\n")
 
 
-# Each stock's half-spread as a fraction of price, from its high-low estimate and size group.
+# Each stock's half-spread over price, from its high-low and size group.
 def half_spread(quotes: pd.DataFrame) -> pd.Series:
     ratios = spread_ratios()
     ratio = quotes["size_grp"].map(ratios).fillna(max(ratios.values()))
     return quotes["bidaskhl_21d"] * ratio
 
 
-# Short interest over shares outstanding a month late, as it is published. None without WRDS.
+# Short ratio a month late, as published. None on a run without WRDS.
 @cache
 def short_ratio() -> pd.Series | None:
     short = data.research(
@@ -105,14 +105,14 @@ def short_ratio() -> pd.Series | None:
     return both.set_index(data.KEYS)["ratio"]
 
 
-# A borrow rate a year for each short-interest ratio; a name with no report pays the cheapest tier.
+# Yearly borrow per short ratio; unreported names pay the cheapest tier.
 def tier(ratio: pd.Series) -> pd.Series:
     bounds, rates = zip(*TIERS)
     at = np.searchsorted(bounds, ratio.fillna(0.0).to_numpy(), side="right")
     return pd.Series(np.array(rates)[at], index=ratio.index)
 
 
-# Each row's borrow a year: reported ratio, else its crowding percentile in the last reported month.
+# Each row's borrow: its ratio, else crowding percentile at last report.
 def borrow_rate(frame: pd.DataFrame) -> pd.Series:
     ratios = short_ratio()
     if ratios is None:
@@ -136,7 +136,7 @@ def borrow_rate(frame: pd.DataFrame) -> pd.Series:
     return rate.where(~frame["size_grp"].eq("micro"), np.maximum(rate, MICRO_FLOOR))
 
 
-# One month's cost lines as fractions of NAV, from each name's trade and the book after it.
+# A month's cost lines over NAV, from each trade and the book after it.
 def month_costs(
     traded: pd.Series, weights: pd.Series, quotes: pd.DataFrame, model: Model = DEFAULT
 ) -> dict:
@@ -163,7 +163,7 @@ def month_costs(
     return {k: float(v) * model.multiple for k, v in parts.items()}
 
 
-# Writes both calibrations into submission/models, so a run without WRDS charges the same.
+# Writes both calibrations to submission/models, so no-WRDS runs match.
 def main() -> None:
     from fiam import book as P
 

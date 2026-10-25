@@ -1,4 +1,4 @@
-# The global switch and its bundle (finals_global.md) on small synthetic data. No organizer data.
+# The global switch and its bundle (finals_global.md) on synthetic data.
 
 import json
 
@@ -24,7 +24,7 @@ GLOBAL = M.Mandate(
 )
 
 
-# A thousand names, one in ten Canadian, so a 75% cap on the US has to bind.
+# 1000 names, one in ten Canadian, so a 75% cap on the US has to bind.
 @pytest.fixture
 def month():
     rng = np.random.default_rng(0)
@@ -40,13 +40,14 @@ def month():
     )
 
 
+# Each country's share of the book's gross weight, to test the cap.
 def shares(weights: pd.Series, month: pd.DataFrame) -> pd.Series:
     where = month.set_index("permno")["country"].reindex(weights.index)
     gross = weights.abs().groupby(where).sum()
     return gross / gross.sum()
 
 
-# Off, the country column changes nothing; on, no country holds more than its cap of the gross.
+# Off, the country column changes nothing; on, no country tops its cap.
 def test_country_cap_only_with_the_switch(month):
     off = v2.optimize(month, None, v2.Settings(frozenset(), 1e7, GLOBAL))
     same = v2.optimize(month.drop(columns="country"), None, v2.Settings(frozenset(), 1e7, GLOBAL))
@@ -60,8 +61,7 @@ def test_country_cap_only_with_the_switch(month):
     assert gaps["breach_max"] == 0.0
 
 
-# A finals panel in another layout: US PERMNOs kept, other ids above them, Canadian dollars
-# converted, every column of our layout present, and the market and country shares computed.
+# A foreign finals layout maps to ours: US PERMNOs kept, CAD converted.
 def test_world_bundle_from_a_foreign_layout(tmp_path):
     months = pd.date_range("2024-01-31", periods=3, freq="ME")
     rows = []
@@ -108,7 +108,7 @@ def test_world_bundle_from_a_foreign_layout(tmp_path):
     )
 
 
-# The day-of options: a hurdle is checked, and a window comes from FIAM_WINDOW as month ends.
+# Day-of options: a hurdle is checked, a window read from FIAM_WINDOW.
 def test_hurdle_and_window(monkeypatch):
     assert "hurdle" in " ".join(M.check(M.Mandate(hurdle=0.9)))
     assert M.check(M.Mandate(hurdle=0.05)) == []
@@ -118,7 +118,7 @@ def test_hurdle_and_window(monkeypatch):
     assert v2.finals_window() == v2.RECORD
 
 
-# The entry rules: sectors by name or code, an unknown one refused, and nothing changed by default.
+# Entry rules: sector name or code, unknown refused, a no-op by default.
 def test_entry_rules(tmp_path, month):
     path = tmp_path / "m.json"
     path.write_text(json.dumps(dict(exclude_sectors=["Energy", "45"], min_market_cap=500)))
@@ -131,7 +131,7 @@ def test_entry_rules(tmp_path, month):
     assert v2.admitted(frame, M.Mandate()) is frame
 
 
-# The pinned Federal Reserve rates cover every currency the switch knows, through September 2026.
+# Pinned Fed rates cover every switch currency through September 2026.
 def test_pinned_exchange_rates():
     months = pd.DatetimeIndex(["2015-01-31", "2026-09-30"])
     rates = world.usd_per_unit({}, sorted(world.FED), months)

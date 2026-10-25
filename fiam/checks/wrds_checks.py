@@ -1,4 +1,4 @@
-# The book against CRSP and Compustat: exits, returns, market, report dates. Writes wrds.json.
+# The book on CRSP and Compustat, exits to report dates, into wrds.json.
 
 import sys
 
@@ -11,21 +11,21 @@ from fiam import data, paths
 
 OUT = paths.EXHIBITS / "wrds.json"
 
-# Signals that only move on a report. Book value stands in for be_me, which also moves with price.
+# Signals only reports move. book replaces be_me, which moves on price.
 ACCOUNTING = ["at_gr1", "niq_su", "ope_be", "o_score", "gp_at", "noa_gr1a", "eqnetis_at", "book"]
 
-# Declared in the plan before the check ran: above this share of early updates, lag and rebuild.
+# Declared in the plan first: above this early share, lag and rebuild.
 EARLY_LIMIT = 0.01
 
 PERIODS = {"2016_2020": (2016, 2020), "2021_2025": (2021, 2025), "2026": (2026, 2026)}
 
 
-# The panel's gvkey is a float, Compustat's a zero-padded string, so both meet as the string.
+# The panel's float gvkey and Compustat's padded string meet as text.
 def gvkey(series: pd.Series) -> pd.Series:
     return series.astype("Int64").astype("string").str.zfill(6)
 
 
-# How every dated exit happened, and what the screen and the payouts did to the book.
+# How each dated exit happened, and what screen and payouts did to it.
 def exit_record(table: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame) -> dict:
     held = book.join(table, on="PERMNO", how="inner")
     during = held[held["final_month"] == held["Date"]].copy()
@@ -33,8 +33,7 @@ def exit_record(table: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame)
     during["payout"] = during["w"] * (during["final_return"] - during["Date"].map(rf))
     months = book["Date"].nunique()
 
-    # Closing a name that left is a trade the backtest already charged, priced here on its own.
-    # Borrow is not part of closing a name, so it is left at zero here.
+    # Closing an exited name, already charged, priced alone, zero borrow.
     quotes = universe.assign(borrow=0.0).set_index(["eom", "permno"])[C.COLUMNS]
     closing = 0.0
     for date, group in during.groupby("Date"):
@@ -65,12 +64,12 @@ def exit_record(table: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame)
     )
 
 
-# The panel's next-month return against CRSP's, over the years CRSP covers.
+# The panel's next-month return against CRSP's, over CRSP's years.
 def returns_match(crsp: pd.DataFrame) -> dict:
     panel = data.panel(["ret_exc_lead1m"])
     panel["month"] = panel["eom"] + pd.offsets.MonthBegin(1)
     panel = panel[panel["month"].between("2021-01-01", "2025-12-01")]
-    # The panel is in excess of the Ken French cash rate, so the same rate is added back.
+    # The panel is in excess of the French cash rate, so it is added back.
     rf = B.french("ff_factors.zip", ["mkt_rf", "smb", "hml", "rf"])["rf"]
     panel["ret"] = panel["ret_exc_lead1m"] + panel["month"].map(rf)
     crsp = crsp.assign(month=pd.to_datetime(crsp["YYYYMM"].astype(str), format="%Y%m"))
@@ -95,7 +94,7 @@ def returns_match(crsp: pd.DataFrame) -> dict:
     )
 
 
-# The book's beta on the S&P 500 with dividends, beside the price-only index the headline uses.
+# The book's beta on the S&P 500 with dividends, beside the price index.
 def total_return_market(index: pd.DataFrame) -> dict:
     df = paths.returns()
     index = index.assign(month=pd.to_datetime(index["YYYYMM"].astype(str), format="%Y%m"))
@@ -118,7 +117,7 @@ def total_return_market(index: pd.DataFrame) -> dict:
     return out
 
 
-# Did any accounting signal change before a report that could have caused it was public?
+# Did any accounting signal change before its report was public?
 def release_timing(reports: pd.DataFrame) -> dict:
     columns = ["permno", "gvkey", "eom", "be_me", "me_company", *ACCOUNTING[:-1]]
     panel = data.features(columns)[columns]
@@ -136,7 +135,7 @@ def release_timing(reports: pd.DataFrame) -> dict:
     out = {}
     for signal in ACCOUNTING:
         before = panel.groupby("permno")[signal].shift()
-        # Book value is a product of two floats, so a change is anything past rounding.
+        # Book value is a product of two floats, so a change is past rounding.
         moved = (
             (panel[signal] / before - 1).abs() > 1e-6
             if signal == "book"
@@ -160,7 +159,7 @@ def release_timing(reports: pd.DataFrame) -> dict:
             for name, (a, b) in PERIODS.items()
             if (part := year.between(a, b)).any()
         }
-    # How often a random firm-month has a release in it, so the matches above are not luck.
+    # How often a random firm-month has a release, so matches are not luck.
     months = panel[panel["eom"] >= "2016-01-01"]
     chance = float(pd.MultiIndex.from_frame(months[["gvkey", "eom"]]).isin(released).mean())
     worst = max(p["early_share"] for s in out.values() for p in s.values())
@@ -176,7 +175,7 @@ def release_timing(reports: pd.DataFrame) -> dict:
     )
 
 
-# The book again with every update from a report dated on the decision day held back a month.
+# The book again, decision-day report updates held back a month.
 def release_day_sensitivity(reports: pd.DataFrame) -> dict:
     panel = P.load_panel(extra=("gvkey", "me_company")).sort_values(["permno", "eom"])
     release = pd.to_datetime(reports["rdq"])
@@ -202,7 +201,7 @@ def release_day_sensitivity(reports: pd.DataFrame) -> dict:
     )
 
 
-# The same code on the organizer's data alone, which is what a judge without WRDS rebuilds.
+# The same code on organizer data alone, what a judge without WRDS gets.
 def without_wrds() -> dict:
     book = P.backtest(P.shipped(P.build_signal(P.screen(P.load_panel(), wrds=False))))
     stats = P.performance(book)["performance"]

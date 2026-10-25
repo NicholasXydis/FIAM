@@ -1,4 +1,4 @@
-# An independent accounting check: NautilusTrader replays each month of a book in whole shares.
+# Accounting check: NautilusTrader replays each month in whole shares.
 
 import json
 import sys
@@ -29,7 +29,7 @@ from fiam import data, v2
 VENUE = Venue("REPLAY")
 CLOCK = InstrumentId.from_str("CLOCK.REPLAY")
 PRECISION, NAV = 6, 10_000_000.0
-# Windows' build caps a quantity near 1.8e10, so bar volume stays well below it.
+# Windows' build caps quantities near 1.8e10, so bar volume stays below.
 VOLUME = Quantity(10**10, 0)
 FIRST, LAST = "2020-12-31", "2025-12-31"
 OUT = v2.OUT / "nautilus"
@@ -51,19 +51,21 @@ def equity(instrument_id: InstrumentId) -> Equity:
     )
 
 
-# Costs reach the account as cash on the trade day, so no fill pays a fee of its own.
+# Costs reach the account as trade-day cash, so no fill pays a fee too.
 class NoFees(FeeModel):
+    # Zero commission on every fill, as Costs books the month's cost.
     def get_commission(self, order, fill_qty, fill_px, instrument):
         return Money(0, USD)
 
 
-# Each month's modelled costs as a share of the NAV it traded at, debited the next trading day,
-# inside the holding month as the ledger books them.
+# Monthly costs as a share of traded NAV, debited the next trading day.
 class Costs(SimulationModule):
+    # Holds the cost schedule and the strategy whose traded NAV it reads.
     def __init__(self, schedule: dict, strategy):
         super().__init__(SimulationModuleConfig())
         self.schedule, self.strategy, self.seen = schedule, strategy, set()
 
+    # Debits a scheduled cost once, scaled by the NAV the month traded at.
     def process(self, ts_now):
         if ts_now in self.schedule and ts_now not in self.seen:
             share, traded_at = self.schedule[ts_now]
@@ -71,30 +73,36 @@ class Costs(SimulationModule):
             self.exchange.adjust_account(Money(-share * nav, USD))
             self.seen.add(ts_now)
 
+    # Nautilus asks for diagnostics, and this module has none to log.
     def log_diagnostics(self, logger):
         pass
 
+    # Clears the debited stamps so a reset engine charges costs again.
     def reset(self):
         self.seen.clear()
 
 
-# Trades to each month's target weights at the decision close, and samples NAV every month end.
+# Trades to target weights at decision close, samples NAV at month ends.
 class Rebalance(Strategy):
+    # Keeps the targets and bar feeds, with empty marks and NAV records.
     def __init__(self, targets: dict, bar_types: list, month_ends: set):
         super().__init__()
         self.targets, self.bar_types, self.month_ends = targets, bar_types, month_ends
         self.marks, self.navs, self.traded_nav = {}, {}, {}
 
+    # Subscribes to every stock's bars and the replay clock.
     def on_start(self):
         for bar_type in self.bar_types:
             self.subscribe_bars(bar_type)
 
+    # Account cash plus open positions marked at the latest closes.
     def nav(self) -> float:
         account = self.portfolio.account(VENUE)
         open_ = self.cache.positions_open()
         pnl = sum(p.unrealized_pnl(self.marks[p.instrument_id]).as_double() for p in open_)
         return account.balance_total(USD).as_double() + pnl
 
+    # Stock bars update marks; clock bars sample NAV and trade on targets.
     def on_bar(self, bar):
         instrument = bar.bar_type.instrument_id
         if instrument != CLOCK:
@@ -107,6 +115,7 @@ class Rebalance(Strategy):
             self.traded_nav[stamp] = self.nav()
             self.trade(self.targets[stamp], self.traded_nav[stamp])
 
+    # Sends whole-share market orders to move each holding to its target.
     def trade(self, weights: dict, nav: float) -> None:
         held = {p.instrument_id: int(p.signed_qty) for p in self.cache.positions_open()}
         for instrument in sorted(set(held) | set(weights), key=str):
@@ -121,7 +130,7 @@ class Rebalance(Strategy):
                 self.submit_order(order)
 
 
-# A synthetic total-return price per stock: dividends and splits are inside, never added again.
+# Synthetic total-return prices: dividends and splits already inside.
 def prices(permnos: list) -> pd.DataFrame:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     daily = daily[daily["permno"].isin(permnos) & daily["date"].between(FIRST, LAST)]
@@ -129,7 +138,7 @@ def prices(permnos: list) -> pd.DataFrame:
     return 100 * (1 + wide.fillna(0.0)).cumprod()
 
 
-# One book's monthly replay against its own ledger; the protocol's tolerances decide the check.
+# One book's monthly replay against its ledger, by protocol tolerances.
 def replay(name: str) -> dict:
     folder = v2.OUT / name / "record"
     held = data.read(folder / "holdings.parquet")
@@ -219,7 +228,7 @@ def replay(name: str) -> dict:
     )
 
 
-# Replays the named runs (v1 and v2 at $10M by default), kept beside earlier replays.
+# Replays named runs (v1 and v2 at $10M by default) beside earlier ones.
 def main(names: list[str]) -> None:
     path = OUT / "check.json"
     report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

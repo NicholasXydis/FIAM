@@ -1,4 +1,4 @@
-# The AI Crowd Lab: 30 retail investors and 30 copycat funds pick from anonymous cards, 2025-26.
+# AI Crowd Lab: 30 retail investors, 30 copycat funds, 2025-26 cards.
 
 import hashlib
 import json
@@ -21,15 +21,15 @@ SETS = FROZEN / "crowd_info_sets.json"
 PROMPT = H.ROOT / "prompts" / "agents" / "crowd_lab.md"
 COPYCAT = H.ROOT / "prompts" / "agents" / "crowd_lab_copycat.md"
 JKP = Path("research/jkp/factor_details.csv")
-# Decisions after Gemma's January 2025 cutoff: holding months 2025-02 to 2026-08.
+# After Gemma's January 2025 cutoff: holding months 2025-02 to 2026-08.
 FIRST, LAST = "2025-01-31", "2026-07-31"
 STOCKS, PICKS, COLUMNS, N_SETS, SEED = 40, 8, 40, 5, 42
-# 13 cards an agent-month timed at ~32 GPU hours (7.8 s a call); the protocol cuts evenly to fit 24.
+# 13 cards a month took ~32 GPU hours at 7.8 s a call, so 9 fit in 24.
 CARDS = 9
 PERSONAS = ("attention", "lottery", "momentum", "contrarian", "income", "familiar")
 
 
-# Plain names for the 147 characteristics, from the JKP factor details, frozen for any machine.
+# Plain names for the 147 characteristics from JKP details, frozen.
 def labels() -> dict:
     if LABELS.exists():
         return json.loads(LABELS.read_text(encoding="utf-8"))
@@ -43,7 +43,7 @@ def labels() -> dict:
     return out
 
 
-# Five draws of 40 of the 147, seed 42, drawn once and frozen so every rerun shows the same.
+# Five draws of 40 of the 147, seed 42, frozen so every rerun matches.
 def info_sets() -> list[list[str]]:
     if SETS.exists():
         return json.loads(SETS.read_text(encoding="utf-8"))
@@ -54,7 +54,7 @@ def info_sets() -> list[list[str]]:
     return sets
 
 
-# v1's eligible stocks each month with every characteristic as a 0-100 percentile.
+# v1's eligible stocks each month, every characteristic a 0-100 rank.
 def universe() -> pd.DataFrame:
     chars = P.characteristics()
     frame = P.screen(P.load_panel(tuple(c for c in chars if c not in P.SIGNALS)), FIRST, LAST)
@@ -64,7 +64,7 @@ def universe() -> pd.DataFrame:
     return frame[[*data.KEYS, *chars]].reset_index(drop=True)
 
 
-# The system prompt for one persona, with the shared instructions around it.
+# The system prompt for one persona, wrapped in the shared instructions.
 def persona_prompt(persona: str) -> str:
     text = PROMPT.read_text(encoding="utf-8")
     head, *sections = text.split("\n## ")
@@ -72,7 +72,7 @@ def persona_prompt(persona: str) -> str:
     return head.strip().format(persona=found[persona], picks=PICKS)
 
 
-# This agent's cards this month: a fixed random draw of 40-stock cards, never the same twice.
+# This agent's cards this month: a fixed random draw, never repeated.
 def cards(month_rows: pd.DataFrame, agent: int, month: pd.Timestamp) -> list[pd.DataFrame]:
     rng = np.random.default_rng([SEED, agent, month.year, month.month])
     size = min(CARDS * STOCKS, len(month_rows))
@@ -80,7 +80,7 @@ def cards(month_rows: pd.DataFrame, agent: int, month: pd.Timestamp) -> list[pd.
     return [drawn.iloc[i : i + STOCKS] for i in range(0, size, STOCKS)]
 
 
-# One card as compact CSV: codes and percentiles only, a quarter fewer tokens than a piped table.
+# One card as compact CSV: codes and ranks, a quarter fewer tokens.
 def table(card: pd.DataFrame, columns: list[str], names: dict) -> tuple[str, list[str]]:
     codes = [f"S{i + 1:02d}" for i in range(len(card))]
     header = ",".join(["code", *(names[c].replace(",", " ") for c in columns)])
@@ -90,7 +90,7 @@ def table(card: pd.DataFrame, columns: list[str], names: dict) -> tuple[str, lis
     return "\n".join([header, *rows]), codes
 
 
-# The JSON shape every answer must take: exactly the asked number of codes from this card.
+# The JSON every answer takes: exactly the asked codes from the card.
 def schema(codes: list[str], short: bool = False) -> dict:
     items = dict(
         type="array", items=dict(type="string", enum=codes), minItems=PICKS, maxItems=PICKS
@@ -99,7 +99,7 @@ def schema(codes: list[str], short: bool = False) -> dict:
     return dict(type="object", properties=sides, required=list(sides))
 
 
-# The 30 retail investors: 6 personas x 5 information sets, card draws seeded by agent 0-29.
+# The 30 retail investors: 6 personas x 5 info sets, seeds 0 to 29.
 def retail_agents() -> list[dict]:
     sets = info_sets()
     out = []
@@ -111,7 +111,7 @@ def retail_agents() -> list[dict]:
     return out
 
 
-# The 30 copycat funds: 10 per strategy text, each seeing the measures its text names plus a fill.
+# The 30 copycat funds: 10 per strategy, its named measures plus a fill.
 def copycat_agents() -> list[dict]:
     from fiam import mandate as M
 
@@ -133,7 +133,7 @@ def copycat_agents() -> list[dict]:
     return out
 
 
-# One crowd, month by month so a stopped run leaves whole months; resumes from its own log.
+# One crowd by month, so a stopped run keeps whole months and resumes.
 def run_crowd(
     log: str, agents: list[dict], minutes: float | None = None, months: int | None = None
 ) -> None:
@@ -171,8 +171,7 @@ def ask(server, agent: dict, card: pd.DataFrame, number: int, month, names: dict
     return row
 
 
-# The always-on replay check (honesty.md): 2% of a crowd's saved answers, drawn with the seed,
-# asked again live; agreement with the cached answer is reported apart from the replays.
+# Replay check (honesty.md): 2% of saved answers re-asked live, by seed.
 def rerun(log: str, agents: list[dict], share: float = 0.02) -> None:
     frame, names = universe(), labels()
     saved = [json.loads(x) for x in (H.RUNS / f"{log}.jsonl").read_text("utf-8").splitlines()]
@@ -195,18 +194,17 @@ def rerun(log: str, agents: list[dict], share: float = 0.02) -> None:
     print(f"{log}: {len(rows)} live reruns, {same:.0%} identical to the cached answer")
 
 
-# The two live crowds; the retail log keeps its name so a stopped run resumes.
+# The live retail crowd. Its log name stays so a stopped run resumes.
 def retail(minutes: float | None = None) -> None:
     run_crowd("crowdlab_retail", retail_agents(), minutes)
 
 
+# The live copycat crowd, logged apart from the retail one.
 def copycat(minutes: float | None = None) -> None:
     run_crowd("crowdlab_copycat", copycat_agents(), minutes)
 
 
-# Memorization check (crowd.md measure 3): 10% of saved cards asked again with every percentile
-# moved at random by up to a card's own size of move (1 to 10 points); an agent that reads the card
-# should change its picks more as the move grows.
+# Memorization check (crowd.md 3): 10% of cards re-asked, ranks moved.
 def perturbed(log: str, agents: list[dict], share: float = 0.10) -> None:
     frame, names = universe(), labels()
     saved = [json.loads(x) for x in (H.RUNS / f"{log}.jsonl").read_text("utf-8").splitlines()]
@@ -230,7 +228,7 @@ def perturbed(log: str, agents: list[dict], share: float = 0.10) -> None:
             save(row | dict(original=old["picked"], move=size))
 
 
-# Every shown stock as a row: who saw it, when, and whether they picked it.
+# Every shown stock as a row: who saw it, when, and if they picked it.
 def picks(name: str = "crowdlab_retail") -> pd.DataFrame:
     log = H.RUNS / f"{name}.jsonl"
     rows = []
@@ -251,7 +249,7 @@ if __name__ == "__main__":
     if task == "perturbed":
         perturbed("crowdlab_retail", retail_agents())
     elif task == "quick":
-        # Finals day (crowd.md, level 1): a few retail agents on the newest months, in a budget.
+        # Finals day (crowd.md level 1): a few retail agents, newest months.
         env, everyone = os.environ, retail_agents()
         n = int(env.get("FIAM_AGENTS", 6))
         agents = everyone[:: max(1, len(everyone) // n)][:n]

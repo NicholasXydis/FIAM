@@ -1,4 +1,4 @@
-# The inputs, the pass marks and the hash of every artifact, in one run_manifest.json.
+# Inputs, pass marks and each artifact's hash, in one run_manifest.json.
 
 import hashlib
 import json
@@ -11,7 +11,7 @@ from fiam import paths
 EXHIBITS = paths.EXHIBITS
 MANIFEST = EXHIBITS / "run_manifest.json"
 
-# One pass mark per exhibit, written here instead of decided once we saw the answer.
+# One pass mark per exhibit, set here, not after we saw the answer.
 ACCEPTANCE = {
     "permutation_null": "Shipped result above the null's 95th percentile, null gross near zero.",
     "inversion": "Gross lands near minus the baseline gross, not near zero.",
@@ -19,7 +19,7 @@ ACCEPTANCE = {
     "confirmation": "Reported whatever it says. The signals were designed without 2016-2020.",
 }
 
-# Rules we got wrong. Kept, because swapping one after a failed result is the sin here.
+# Rules we got wrong, kept, as swapping one after a failure is the sin.
 PASS_MARKS_CHANGED = {
     "permutation_null": {
         "original": "The null's net IR should centre near zero.",
@@ -29,7 +29,7 @@ PASS_MARKS_CHANGED = {
     },
 }
 
-# Built by the slow --ml steps. Everything else in submission/ is rebuilt on every run.
+# Built by the slow --ml steps. The rest of submission/ rebuilds always.
 ML_ARTIFACTS = [
     (paths.EXHIBITS / name).as_posix()
     for name in (
@@ -44,7 +44,7 @@ ML_ARTIFACTS = [
     )
 ] + [(paths.SUBMISSION / "models" / "book_inputs.parquet").as_posix()]
 
-# The code those artifacts depend on. Editing a chart does not make a model result stale.
+# The code those artifacts depend on. A chart edit never stales a model.
 ML_CODE = [
     "fiam/book.py",
     "fiam/costs.py",
@@ -54,11 +54,11 @@ ML_CODE = [
     "requirements.txt",
 ]
 
-# Written after the manifest or by it, so they can never match a hash taken here.
+# Written after or by the manifest, so never matching a hash taken here.
 SKIP = {"run_manifest.json", "reproducibility.json"}
 
 
-# One hash over files and folders, in a fixed order so it is stable across machines.
+# One hash over files and folders, in fixed order so machines all agree.
 def fingerprint(entries: list[str]) -> str:
     files = []
     for entry in entries:
@@ -72,7 +72,7 @@ def fingerprint(entries: list[str]) -> str:
     return digest.hexdigest()[:16]
 
 
-# What the book was built from, by SHA-256: the organizer's files, the WRDS exports, benchmarks.
+# The book's inputs by SHA-256: organizer files, WRDS, benchmarks.
 def inputs() -> dict:
     exports = D.WRDS / "sources.json"
     wrds = json.loads(exports.read_text(encoding="utf-8")) if exports.exists() else {}
@@ -84,13 +84,13 @@ def inputs() -> dict:
     )
 
 
-# This run's command and what each step did, as run.py recorded it; None when run on its own.
+# This run's command and steps from run.py, or None when run on its own.
 def this_run() -> dict | None:
     path = Path("cache/this_run.json")
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-# Which model wrote each agent transcript, by name and SHA-256, so a rehearsal is never mistaken.
+# Each transcript's model and SHA-256, so a rehearsal is never mistaken.
 def agents() -> dict:
     out = {}
     for path in sorted((EXHIBITS / "agents").glob("*.jsonl")):
@@ -102,12 +102,12 @@ def agents() -> dict:
     return out
 
 
-# One run's record: which code, and the hash of every file it left behind.
+# One run's record: which code, and the hash of every file it left.
 def section(files: list[str], code: str) -> dict:
     return dict(code=code, files={f: paths.sha256(Path(f)) for f in files if Path(f).exists()})
 
 
-# Writes run_manifest.json: inputs, run flags, and the hash of every artifact.
+# Writes run_manifest.json: inputs, run flags and every artifact's hash.
 def main() -> None:
     # Found rather than listed, so no book-side artifact is missed.
     found = sorted(paths.SUBMISSION.glob("*.csv")) + sorted(paths.SUBMISSION.glob("*.json"))
@@ -124,7 +124,7 @@ def main() -> None:
         acceptance_rules=ACCEPTANCE,
         pass_marks_changed=PASS_MARKS_CHANGED,
         book=section(book, fingerprint(["fiam", "run.py", "requirements.txt"])),
-        # A book-only run keeps the last model section, so its age stays visible to the audit.
+        # A book-only run keeps the last ML section, so the audit sees its age.
         ml=dict(
             **section(ML_ARTIFACTS, fingerprint(ML_CODE)), command=(this_run() or {}).get("command")
         )

@@ -1,4 +1,4 @@
-# The crowd score: where AI agents picking for retail clients would buy, learned from their picks.
+# The crowd score: where AI agents picking for retail clients would buy.
 
 
 import lightgbm as lgb
@@ -11,7 +11,7 @@ PICKS = paths.EXHIBITS / "agents" / "crowd_picks.parquet"
 CACHE = P.CACHE / "crowd.parquet"
 OUT = paths.EXHIBITS / "crowd.json"
 
-# What an agent sees of each stock: plain labels over percentiles, never a name or a date.
+# What an agent sees: plain labels over percentiles, no name or date.
 CARD = {
     "1-year momentum": "ret_12_1",
     "last month": "ret_1_0",
@@ -48,7 +48,7 @@ PARAMS = dict(
 )
 
 
-# Every screened stock-month as a card: percentiles from 0 to 100, and that month's 8-K events.
+# Every screened stock-month as a card: 0-100 percentiles and 8-Ks.
 def cards(first: str = "2015-01-31", last: str = "2026-07-31") -> pd.DataFrame:
     frame = data.features([*CARD.values(), *EVENTS.values(), "prc", "me"])
     frame = frame[frame["eom"].between(first, last)]
@@ -61,7 +61,7 @@ def cards(first: str = "2015-01-31", last: str = "2026-07-31") -> pd.DataFrame:
     return frame[[*data.KEYS, *CARD, *EVENTS]].reset_index(drop=True)
 
 
-# Each month's information coefficient of a score against the next month's return.
+# Each month's information coefficient of a score on next return.
 def ic_by_year(frame: pd.DataFrame, score: str) -> dict:
     ic = (
         frame.dropna(subset=["ret_exc_lead1m"])
@@ -72,7 +72,7 @@ def ic_by_year(frame: pd.DataFrame, score: str) -> dict:
     return {str(y): float(v.mean()) for y, v in monthly.groupby(monthly.index.year)}
 
 
-# Learns what the agents buy, scores every month, and measures betting against it.
+# Learns what agents buy, scores each month, tests betting against it.
 def main() -> None:
     if not PICKS.exists():
         print("skipped: the crowd agent has not run yet, so there is no crowd score")
@@ -88,7 +88,7 @@ def main() -> None:
     model = lgb.train(PARAMS, lgb.Dataset(train[cols], label=train["rate"]), 200)
     table["crowd_score"] = model.predict(table[cols], num_threads=PARAMS["num_threads"])
     table[[*data.KEYS, "crowd_score"]].to_parquet(CACHE, index=False)
-    # Beside the book's inputs, so its crowding is measured on any machine without retraining.
+    # Beside the book's inputs, so crowding is measured without retraining.
     if P.INPUTS.exists():
         book = data.read(P.INPUTS).drop(columns="crowd_score", errors="ignore")
         book = book.merge(table[[*data.KEYS, "crowd_score"]], on=data.KEYS, how="left")

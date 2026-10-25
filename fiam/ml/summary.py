@@ -1,4 +1,4 @@
-# Decile tables for every model and every ML number, in one file, ml_metrics.json.
+# Decile tables for every model and every ML number, in ml_metrics.json.
 
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ from fiam import paths
 PREDS = P.CACHE / "preds"
 EXHIBITS = paths.EXHIBITS
 
-# Named, not globbed, so a stray file in the cache can never become a row in the exhibit.
+# Named, not globbed, so a stray cache file can never become a row.
 MODELS = ("enet", "lgbm", "nn3")
 
 
-# Next-month excess return by decile of the score, annualized. How a signal earns its place.
+# Annualized next-month excess return by score decile, a signal's proof.
 def deciles(frame: pd.DataFrame, score: str, n: int = 10) -> pd.Series:
     scored = frame.dropna(subset=[score, "actual"]).copy()
-    # Rank inside each month, so a decile means the same thing in every cross-section.
+    # Ranked within each month, so a decile means the same in every month.
     scored["bucket"] = scored.groupby("holding_month")[score].transform(
         lambda s: pd.qcut(s.rank(method="first"), n, labels=False, duplicates="drop")
     )
@@ -45,7 +45,7 @@ def main() -> None:
     EXHIBITS.mkdir(parents=True, exist_ok=True)
     print((table * 100).round(1).to_string())
 
-    # Models are scored raw, so the composite's raw IC is the like-for-like comparison.
+    # Models are scored raw, so compare them with the composite's raw IC.
     ic = P.information_coefficient(universe, "signal", "ret_exc_lead1m", "eom")
     raw = P.information_coefficient(universe, "composite", "ret_exc_lead1m", "eom")
     out = {
@@ -54,7 +54,7 @@ def main() -> None:
             "regenerate": "uv run run.py --official --ml",
             "note": "IR is after sector, beta and vol neutralization, the optimizer and costs.",
         },
-        # The composite's IR lives in metrics.json, so it is left blank rather than duplicated.
+        # The composite's IR is in metrics.json, so it is blank, not duplicated.
         "composite": dict(
             ic_mean=ic["ic_mean"],
             ic_t=ic["ic_t"],

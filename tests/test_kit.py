@@ -16,7 +16,7 @@ FILES = {
     "data/v4/extracts/t.parquet": bytes(range(256)) * 400,
     "models/tiny.gguf": b"weights" * 100,
     "docs/PLAN.md": b"plan",
-    "CLAUDE.md": b"rules",
+    "NOTES.md": b"rules",
     "frozen/x.json": b"{}",
 }
 
@@ -225,6 +225,7 @@ def test_doctor_names_the_openmp_fix(monkeypatch):
 
     real = builtins.__import__
 
+    # Fails the lightgbm import the way a missing libgomp does.
     def broken(name, *args, **kwargs):
         if name == "lightgbm":
             raise OSError("libgomp.so.1: cannot open shared object file")
@@ -236,7 +237,7 @@ def test_doctor_names_the_openmp_fix(monkeypatch):
     assert "lightgbm cannot load" in problem[0] and problem[1]
 
 
-# A Windows CRLF checkout of a small text file still matches its kit entry.
+# A Windows CRLF checkout of a small text file matches its kit entry.
 def test_crlf_text_matches_its_lf_kit_entry(tmp_path):
     lf = b'{\n "a": 1\n}\n'
     path = tmp_path / "x.json"
@@ -247,7 +248,7 @@ def test_crlf_text_matches_its_lf_kit_entry(tmp_path):
     assert not kit.matches(path, entry, deep=True)
 
 
-# A data folder no part holds is named, so export never drops it quietly.
+# A data folder no part holds is named, never dropped quietly.
 def test_left_out_names_data_no_part_holds(tmp_path):
     (tmp_path / "data" / "kept").mkdir(parents=True)
     (tmp_path / "data" / "kept" / "a.csv").write_text("1")

@@ -1,4 +1,4 @@
-# The triage agent's labels learned from FinBERT vectors, then applied to every filing.
+# The triage agent's labels learned from FinBERT, then put on every 8-K.
 
 
 import lightgbm as lgb
@@ -29,7 +29,7 @@ PARAMS = dict(
 ROUNDS, FOLDS = 20 if paths.SMOKE else 300, 5
 
 
-# A classifier on the labelled vectors, and its accuracy on the folds it never saw.
+# A classifier on the labelled vectors and its out-of-fold accuracy.
 def learn(x: np.ndarray, y: np.ndarray) -> tuple[lgb.Booster, float]:
     fold = np.random.default_rng(42).permutation(len(y)) % FOLDS
     hits = []
@@ -39,6 +39,7 @@ def learn(x: np.ndarray, y: np.ndarray) -> tuple[lgb.Booster, float]:
     return lgb.train(PARAMS, lgb.Dataset(x, label=y), ROUNDS), float(np.concatenate(hits).mean())
 
 
+# Learns from the agent's sample, labels all 8-Ks, saves monthly counts.
 def main() -> None:
     vectors = T.saved_vectors()
     if not LABELS.exists() or vectors is None:

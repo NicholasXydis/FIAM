@@ -1,4 +1,4 @@
-# Crash tests on the fixed September books: 17 crises, named scenarios, reverse stress, liquidity.
+# Crash tests on the September books: 17 crises, scenarios, liquidity.
 
 import json
 import sys
@@ -19,7 +19,7 @@ OUT = Path("out") / "v2" / "stress.json"
 FACTORS = ["mktrf", "smb", "hml", "rmw", "cma", "umd"]
 CAPITALS = (1e7, 1e8, 1e9, 5e9)
 
-# Seventeen crises chosen from market events, and the named scenarios (docs/protocols/stress.md).
+# Seventeen crises from market events, and the scenarios (stress.md).
 CRISES = {
     "Dot-com peak crash": ("2000-03-10", "2000-04-14"),
     "September 11": ("2001-09-10", "2001-09-21"),
@@ -106,7 +106,7 @@ def factor_daily() -> pd.DataFrame:
     return table.assign(date=pd.to_datetime(table["date"])).set_index("date")[FACTORS]
 
 
-# A book's factor loadings on its hypothetical daily returns over the last 252 days of data.
+# A book's factor loadings on its daily returns over the last 252 days.
 def loadings(weights: pd.Series, factors: pd.DataFrame) -> pd.Series:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     wide = daily.pivot_table(index="date", columns="permno", values="total_return").tail(252)
@@ -116,7 +116,7 @@ def loadings(weights: pd.Series, factors: pd.DataFrame) -> pd.Series:
     return fit.params[FACTORS]
 
 
-# Today's names through an episode; a name not trading then takes its industry-and-size peers.
+# Today's names through an episode, one not trading then uses its peers.
 def replay(
     weights: pd.Series, panel: pd.DataFrame, first: str, last: str, info: pd.DataFrame
 ) -> dict:
@@ -135,7 +135,7 @@ def replay(
     own = total.reindex(weights.index)
     covered = own.notna()
     sic2 = (info["sic"].reindex(weights.index) // 100).astype("Int64")
-    # Our names are all above $300M, the upper-middle of CRSP by size: the fourth quintile.
+    # Our names are all above $300M, the fourth CRSP size quintile.
     size = pd.Series(3, index=weights.index)
     fill = [peers.get((s, z), np.nan) for s, z in zip(sic2, size)]
     filled = own.fillna(pd.Series(fill, index=weights.index)).fillna(0.0)
@@ -145,7 +145,7 @@ def replay(
     )
 
 
-# Two factors set to their episode moves, the rest to their conditional expectation.
+# Two factors set to their episode moves, the rest to their expectation.
 def conditional_shock(b: pd.Series, factors: pd.DataFrame, first: str, last: str) -> float:
     move = factors.loc[first:last].sum()
     base = factors.loc[:"2020-12-31"]
@@ -157,7 +157,7 @@ def conditional_shock(b: pd.Series, factors: pd.DataFrame, first: str, last: str
     return float(b @ full)
 
 
-# The likeliest factor move that costs 10% of NAV in a month, and the closest real month.
+# The likeliest factor move costing 10% of NAV, and the closest month.
 def reverse_stress(b: pd.Series) -> dict:
     monthly = extract("ff_monthly")
     monthly = monthly.assign(month=pd.to_datetime(monthly["dateff"])).set_index("month")[FACTORS]
@@ -172,7 +172,7 @@ def reverse_stress(b: pd.Series) -> dict:
     )
 
 
-# Days to sell each name at 10% of its daily dollar volume, and the book's path if forced out.
+# Days to sell each name at 10% of daily dollar volume, and forced path.
 def liquidity(weights: pd.Series, info: pd.DataFrame, beta: pd.Series) -> dict:
     adv = info["dolvol_126d"].reindex(weights.index)
     adv = adv.fillna(adv.median())
@@ -205,6 +205,7 @@ def liquidity(weights: pd.Series, info: pd.DataFrame, beta: pd.Series) -> dict:
     return out
 
 
+# Runs every test on each book and writes out/v2/stress.json.
 def main() -> None:
     panel = episode_returns()
     factors = factor_daily()
@@ -242,7 +243,7 @@ def main() -> None:
             )
             entry["financials_during_2008_short_ban"] = ban
         entry["reverse_stress"] = reverse_stress(b)
-        # The hedge beta the September book was built with: learned, then 60-month, then 1.
+        # The September book's hedge beta: learned, then 60-month, then 1.
         rows = info.reindex(weights.index).reset_index()
         hedge = freeze.learned(rows).fillna(rows["beta_60m"]).fillna(1.0)
         beta = pd.Series(hedge.to_numpy(), index=weights.index)

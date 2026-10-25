@@ -1,4 +1,4 @@
-# The results kit: what the long and GPU runs made, zipped with a SHA-256 per file for any machine.
+# The results kit: long and GPU run outputs, zipped with a SHA-256 each.
 
 import json
 import zipfile
@@ -8,10 +8,7 @@ from fiam import paths
 
 NAME = "fiam_results.zip"
 MANIFEST = "kit_manifest.json"
-# The research runs the trial count reads, agent answers and transcripts, v2's runs and verdicts,
-# the crisis cache, the frozen inputs, the committee packs the finals deck presents, the film
-# (ffmpeg to render again), the receipt rebuilt from the data, and the rules reader's drafts, which
-# git ignores.
+# Git-ignored outputs: research runs, agent cache, v2, film, drafts.
 PARTS = (
     "research",
     "cache/agents",
@@ -58,7 +55,7 @@ def is_kit(source: Path) -> bool:
         return MANIFEST in zf.namelist()
 
 
-# Unpacks a kit into the repo and checks every file against its recorded hash.
+# Unpacks a kit into the repo and checks every file against its hash.
 def restore(source: Path, root: Path = Path(".")) -> int:
     paths.safe_unzip(source, root)
     manifest = json.loads((root / MANIFEST).read_text(encoding="utf-8"))

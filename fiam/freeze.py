@@ -1,4 +1,4 @@
-# Everything v2 learns from data up to 2020, fitted once and saved under frozen/ for any machine.
+# All v2 learns from data up to 2020, fitted once and saved in frozen/.
 
 import json
 import sys
@@ -11,12 +11,12 @@ from fiam import book as P
 from fiam import costs as C
 from fiam import data
 
-# Small, so it lives in git and MAIN.py carries it; relative like cache/ and submission/.
+# Small, so git holds it and MAIN.py carries it. Relative like cache/.
 FROZEN = Path("frozen")
 BETA = FROZEN / "beta_pre2021.parquet"
 
 
-# The teacher's learned beta for every month, from its own code run unchanged on the cached folds.
+# The teacher's beta for each month, its own code rerun on cached folds.
 def learned_beta() -> pd.DataFrame:
     from fiam.ml import teachers as T
 
@@ -27,7 +27,7 @@ def learned_beta() -> pd.DataFrame:
     return out.dropna(subset=["beta_hat"]).sort_values(data.KEYS, ignore_index=True)
 
 
-# The rerun must equal the committed 2021+ betas, or the pre-2021 ones are not the same model's.
+# The rerun must match the shipped 2021+ betas, or it is another model.
 def check_against_shipped(betas: pd.DataFrame) -> float:
     shipped = data.read(P.INPUTS, ["permno", "eom", "beta_hat"]).dropna()
     both = shipped.merge(betas, on=data.KEYS, suffixes=("_shipped", "_rerun"))
@@ -36,7 +36,7 @@ def check_against_shipped(betas: pd.DataFrame) -> float:
     return float((both["beta_hat_shipped"] - both["beta_hat_rerun"]).abs().max())
 
 
-# Writes the decisions before 2021 only; the shipped file stays the source for 2021 onward.
+# Writes pre-2021 decisions only. The shipped file still covers 2021 on.
 def freeze_beta() -> None:
     betas = learned_beta()
     gap = check_against_shipped(betas)
@@ -49,7 +49,7 @@ def freeze_beta() -> None:
     print(f"pre-2021 betas: {len(early):,} rows, {span.min()} to {span.max()}; 2021+ gap {gap:.0e}")
 
 
-# The learned beta for any month: frozen before 2021, shipped after, missing where neither has it.
+# Learned beta by month: frozen pre-2021, shipped after, else missing.
 def learned(universe: pd.DataFrame) -> pd.Series:
     parts = [data.read(BETA)] if BETA.exists() else []
     parts.append(data.read(P.INPUTS, ["permno", "eom", "beta_hat"]))
@@ -58,22 +58,22 @@ def learned(universe: pd.DataFrame) -> pd.Series:
     return pd.Series(table["beta_hat"].reindex(key).to_numpy(), index=universe.index)
 
 
-# Decisions whose holding months are 2015-02 to 2020-12: every v2 number is fitted on these.
+# Decisions held 2015-02 to 2020-12: every v2 number is fitted on these.
 FIT = ("2015-01-31", "2020-11-30")
 
 
-# v1's cross-section over the fitting years, with residual volatility for the return scale.
+# v1's cross-section in the fitting years, residual vol as return scale.
 def fit_universe() -> pd.DataFrame:
     return P.build_signal(P.screen(P.load_panel(("ivol_capm_252d",)), *FIT))
 
 
-# Pooled rank correlation of v1's score with next month's sector- and beta-neutral return.
+# Pooled rank correlation of v1's score and next month's neutral return.
 def information_coefficient(df: pd.DataFrame) -> float:
     both = pd.DataFrame(dict(score=df["signal"], residual=P.neutralize(df, df["ret_exc_lead1m"])))
     return float(both.dropna().corr(method="spearman").iloc[0, 1])
 
 
-# How much of each signal's rank survives a month, averaged over the fitting years.
+# How much of each signal's rank lasts a month, over the fitting years.
 def autocorrelation(df: pd.DataFrame) -> dict:
     table = P.scores(df, P.SIGNALS).set_axis(list(P.SIGNALS), axis=1)
     table[data.KEYS] = df[data.KEYS].to_numpy()
@@ -85,7 +85,7 @@ def autocorrelation(df: pd.DataFrame) -> dict:
     return out
 
 
-# lambda of a quadratic fit, cost = lambda x trade^2, to v1's own trades over the fitting years.
+# lambda in cost = lambda x trade^2, fitted to v1's fitting-year trades.
 def quadratic_cost(df: pd.DataFrame) -> float:
     from fiam import v2
 
@@ -110,7 +110,7 @@ def quadratic_cost(df: pd.DataFrame) -> float:
     return num / den
 
 
-# Garleanu-Pedersen weights 1/(1 + phi a/gamma), scaled to average one so only the mix changes.
+# Garleanu-Pedersen 1/(1 + phi a/gamma), mean one so only the mix moves.
 def persistence(df: pd.DataFrame, ic: float) -> dict:
     phi = {col: 1.0 - rho for col, rho in autocorrelation(df).items()}
     vol = df["ivol_capm_252d"] * np.sqrt(21)
@@ -123,7 +123,7 @@ def persistence(df: pd.DataFrame, ic: float) -> dict:
     return dict(phi=phi, lambda_=lam, gamma=gamma, a_over_gamma=ratio, persistence_weights=weights)
 
 
-# IC and persistence weights from the fitting years, written once for every later run.
+# Fitting-year IC and persistence weights, written once for later runs.
 def freeze_params() -> None:
     from fiam import v2
 
@@ -138,8 +138,7 @@ def freeze_params() -> None:
     )
 
 
-# The cross-sectional IC (v2_amendment_1.md): each fitting month's Spearman correlation of the
-# signal with the neutral next-month return, averaged over months.
+# IC per v2_amendment_1.md: monthly Spearman, signal vs neutral return.
 def freeze_ic_monthly() -> None:
     from fiam import v2
 
@@ -153,7 +152,7 @@ def freeze_ic_monthly() -> None:
     print(f"cross-sectional IC {monthly.mean():.4f} over {len(monthly)} months")
 
 
-# Daily S&P 500 returns, as v1's daily beta uses them (FRED, from 2016-09-26).
+# Daily S&P 500 returns for v1's daily beta (FRED, from 2016-09-26).
 def market_daily() -> pd.Series:
     from fiam import benchmarks as B
 
@@ -161,7 +160,7 @@ def market_daily() -> pd.Series:
     return close.set_index("observation_date")["SP500"].pct_change().dropna()
 
 
-# Welch (2019): 252 days, each return clipped to [-2, 4] times the market's, half-life 126 days.
+# Welch (2019): 252 days, clip to [-2, 4] x market, 126-day half-life.
 def welch(months: list) -> pd.DataFrame:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     returns = daily.pivot_table(index="date", columns="permno", values="total_return")
@@ -171,7 +170,7 @@ def welch(months: list) -> pd.DataFrame:
     rows = []
     for eom in months:
         window = returns.index[returns.index <= eom][-252:]
-        # A month past the daily data has no window of its own; the fallback covers it.
+        # A month past the daily data has no window; the fallback covers it.
         if len(window) < 252 or (eom - window[-1]).days > 7:
             continue
         x = market.loc[window].to_numpy()
@@ -201,8 +200,7 @@ def realized(df: pd.DataFrame) -> pd.Series:
     return pd.Series(target.reindex(key).to_numpy(), index=df.index)
 
 
-# Calibrated learned beta vs Welch, scored on next-month beta by side and size; the better one
-# becomes v2's hedge beta for every month, with 60-month and Dimson betas where it is missing.
+# v2's hedge beta: learned or Welch, whichever better fits next month.
 def freeze_beta_fix() -> None:
     from fiam import v2
 
@@ -237,8 +235,7 @@ def freeze_beta_fix() -> None:
     print(f"beta errors {errors}; chosen {choice}; calibration {a:+.3f} + {b:.3f} x learned")
 
 
-# Risk sizing's penalty, fixed on 2017: lambda x w'Sigma w equals v1's ridge penalty in return
-# units (s_t x 0.5 x ridge x sum w^2), averaged over v1's own 2017 books (risk.md, v2.md).
+# Risk lambda set on 2017 to match v1's ridge penalty (risk.md, v2.md).
 def freeze_risk_lambda() -> None:
     from fiam import v2
 
@@ -258,9 +255,7 @@ def freeze_risk_lambda() -> None:
     print(f"risk lambda {penalty / model:.4f} from {held['eom'].nunique()} months of 2017")
 
 
-# v3's two numbers (v2_amendment_2.md), from v2-pass's saved 2016-2020 run at $10M: the mean
-# monthly trading cost after the first build, and the median risk-model volatility of its
-# 2017-2020 books.
+# v3's cost and vol numbers from v2-pass at $10M (v2_amendment_2.md).
 def freeze_v3() -> None:
     from fiam import v2
 
@@ -288,9 +283,7 @@ def freeze_v3() -> None:
     print(f"cost budget {trading.mean():.5f} a month; volatility target {np.median(vols):.4f}")
 
 
-# Final v3's two numbers (v2_amendment_3.md), from v2-pass's saved 2016-2020 run at $10M: the risk
-# forecast's starting error (decisions 2017-01..2020-11) and the gross ceiling that keeps every
-# trading day under 200%.
+# Final v3's risk error and gross cap from v2-pass (v2_amendment_3.md).
 def freeze_final() -> None:
     from fiam import stats, v2
 

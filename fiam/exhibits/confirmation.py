@@ -1,4 +1,4 @@
-# The frozen book on 2016-2020, years the signals were not designed on. Writes confirmation.json.
+# The frozen book on 2016-2020, years not designed on. Writes the JSON.
 
 
 import numpy as np
@@ -10,11 +10,11 @@ from fiam import paths
 
 OUT = paths.EXHIBITS
 
-# Decisions from December 2015, so the first holding month is January 2016.
+# Decisions from December 2015, so the first holding month is Jan 2016.
 FIRST, LAST = "2015-12-31", "2020-11-30"
 
 
-# The statistics we quote for the real record, computed the same way for any window.
+# The stats quoted for the real record, computed alike for any window.
 def summarise(book: pd.DataFrame, market: pd.Series) -> dict:
     net = book["net"]
     growth = (1 + net).cumprod()
@@ -39,10 +39,10 @@ def summarise(book: pd.DataFrame, market: pd.Series) -> dict:
 def main() -> None:
     universe = P.build_signal(P.screen(P.load_panel(), FIRST, LAST))
     book = P.backtest(universe)
-    # The same limits the shipped book must clear, or the comparison is not like for like.
+    # The limits the shipped book must clear, so the test is like for like.
     P.assert_limits(book)
 
-    # FRED's S&P 500 starts in September 2016, so both windows use the CRSP market here.
+    # FRED's S&P 500 starts Sep 2016, so both windows use the CRSP market.
     market = B.benchmarks().set_index("month")["mkt_rf_crsp"]
     shipped = paths.returns()
 

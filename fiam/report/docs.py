@@ -1,4 +1,4 @@
-# Fills every generated table and every number in the prose of RESULTS.md.
+# Fills every generated table and every prose number in RESULTS.md.
 
 import json
 import re
@@ -10,20 +10,20 @@ from fiam.book import MARKET_NAME, display_name
 SUBMISSION = paths.SUBMISSION
 RESULTS = paths.RESULTS
 
-# Prose uses a real minus sign, so a negative number has to match either form.
+# Prose uses a real minus sign, so a negative must match either form.
 MINUS = "−"
 
-# A number in the prose: <!--N:metrics.json:performance.information_ratio:.2f-->0.85<!--/N-->.
+# A prose number: <!--N:file.json:group.key:.2f-->0.85<!--/N-->.
 NUMBER = re.compile(r"<!--N:([^:]+):([^:]+):([^>]*)-->.*?<!--/N-->")
 
 
-# An output under submission/, or nothing if its step has not run, so the rest still builds.
+# A submission/ output, or {} before its step runs, so the rest builds.
 def load(name: str) -> dict:
     path = SUBMISSION / name
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-# A markdown table, first column left; the rest right-aligned when every cell is a short figure.
+# A markdown table, columns after the first right-aligned if all short.
 def table(header: list[str], rows: list[list[str]]) -> str:
     rule = "---:|" if all(len(str(c)) <= 24 for row in rows for c in row[1:]) else "---|"
     lines = ["| " + " | ".join(header) + " |", "|---|" + rule * (len(header) - 1)]
@@ -35,7 +35,7 @@ def pairs(rows: list[tuple[str, str]]) -> str:
     return table(["", ""], [list(r) for r in rows])
 
 
-# The results table in RESULTS.md. Rounded hard on purpose, the figures are good to a tenth.
+# The RESULTS.md table, rounded hard since the figures hold to a tenth.
 def headline(m: dict) -> str:
     perf, cost, comp, run = m["performance"], m["costs"], m["compliance"], m["run"]
     body = pairs(
@@ -70,7 +70,7 @@ def headline(m: dict) -> str:
     return f"{body}\n\n_From code `{run['code_sha256']}`._"
 
 
-# The same book on 2016-2020 beside the record, both on the CRSP market. Seen, so not a clean test.
+# 2016-2020 beside the record, both on CRSP; seen, so not a clean test.
 def clean(m: dict) -> str:
     c = load("exhibits/confirmation.json")
     old, new = c["confirmation_2016_2020"], c["shipped_2021_2026"]
@@ -143,7 +143,7 @@ def drift(m: dict) -> str:
     return table(["period", "beta", "standard error", "t-stat"], rows) + note
 
 
-# The five cost lines as the backtest recorded them, and how far they can rise.
+# The five cost lines as backtested, and how far they can rise.
 def costs(m: dict) -> str:
     c = load("exhibits/pack.json")["costs"]
     parts, even = c["components"], c["break_even"]
@@ -165,7 +165,7 @@ def costs(m: dict) -> str:
     return table(["", "% of NAV a year"], [list(r) for r in rows])
 
 
-# The book's trades under other cost models and capital levels, and how fast it could be sold.
+# Trades under other cost models and sizes, and how fast the book sells.
 def implementation(m: dict) -> str:
     d = load("exhibits/implementation.json")
     if not d:
@@ -203,7 +203,7 @@ def implementation(m: dict) -> str:
     return table(header, rows)
 
 
-# The daily path through each stress window, and the cost of trading a day late.
+# Each stress window's daily path, and the cost of trading a day late.
 def stress(m: dict) -> str:
     d = load("exhibits/daily_risk.json")
     windows, late = d.get("stress"), d.get("execution_delay")
@@ -228,7 +228,7 @@ def stress(m: dict) -> str:
     return table(["window", "strategy", "S&P 500", "worst drop within"], rows) + note
 
 
-# The analyst behind the firewall: what taught the small model, and the recall test.
+# Analyst behind the firewall: what taught the small model, recall test.
 def firewall(m: dict) -> str:
     d = load("exhibits/analyst_learned.json")
     if not d:
@@ -252,6 +252,7 @@ def firewall(m: dict) -> str:
         )
     test = d["recall_test"]
 
+    # A period's recall-test IC and t-stat, for the analyst or its copy.
     def cell(period: str, who: str) -> str:
         x = test[period][who]
         return f"{x['rank_correlation']:+.3f} (t-stat {x['t']:.1f})"
@@ -266,7 +267,7 @@ def firewall(m: dict) -> str:
     return f"{pairs(rows)}\n\n{recall}\n\n{reading}"
 
 
-# The brief's limits and our own, measured after rounding to whole shares.
+# The brief's limits and our own, measured after whole-share rounding.
 def compliance(m: dict) -> str:
     c, perf = m["compliance"], m["performance"]
     n = load("exhibits/pack.json")["completeness"]["ranges"]["positions"]
@@ -334,7 +335,7 @@ def scorer(m: dict) -> str:
     return table(["year", "stock-picking model IC"], rows)
 
 
-# Our book against the three models, all through the same optimizer and costs.
+# Our book vs the three models, through the same optimizer and costs.
 def models(m: dict) -> str:
     ml = load("exhibits/ml_metrics.json")
     if not ml:
@@ -442,7 +443,7 @@ def factors(m: dict) -> str:
     return table(["", "exposure", "t-stat"], rows) + note
 
 
-# Each year split into what the market and five styles paid and what stock selection added.
+# Each year's market and five-style returns, and what selection added.
 def styles(m: dict) -> str:
     years = load("exhibits/pack.json").get("risk", {}).get("style_by_year")
     if not years:
@@ -483,7 +484,7 @@ def attribution(m: dict) -> str:
     return table(["signal", "added to gross return a year", "t-stat"], rows)
 
 
-# Three controls that should make the result disappear, and what each did.
+# Three controls that should make the result vanish, and what each did.
 def placebo(m: dict) -> str:
     p = load("exhibits/placebo_lab.json")
     null, inv, stale = p["permutation_null"], p["inversion"], p["stale_scores"]
@@ -511,7 +512,7 @@ def placebo(m: dict) -> str:
     )
 
 
-# The explainer's three largest winners and losers, each with its reason in the agent's words.
+# The three largest winners and losers, with the explainer's reasons.
 def explained(m: dict) -> str:
     e = load("exhibits/explainer.json")
     names = sorted(e.get("positions", []), key=lambda p: -p["facts"].get("realized_pnl_pct", 0))
@@ -531,7 +532,7 @@ def explained(m: dict) -> str:
     return table(header, rows)
 
 
-# The deflated-Sharpe probability at both attempt counts, with the Sharpe luck alone produces.
+# Deflated-Sharpe probability per attempt count, and luck's own Sharpe.
 def deflation(m: dict) -> str:
     r = m["robustness"]
     rows = [
@@ -555,7 +556,7 @@ def deflation(m: dict) -> str:
     return table(["", "Sharpe luck alone produces", "deflated-Sharpe probability"], rows)
 
 
-# The statistics the rules list for the committee pack that the headline does not carry.
+# Committee-pack statistics the rules list that the headline lacks.
 def committee(m: dict) -> str:
     c, perf = load("exhibits/pack.json")["completeness"], m["performance"]
     r = c["ranges"]
@@ -641,7 +642,7 @@ def daily(m: dict) -> str:
     )
 
 
-# Calendar years for the strategy, the benchmark and the S&P 500, compounded.
+# Compounded calendar years for the strategy, benchmark and S&P 500.
 def years(m: dict) -> str:
     rows = [
         [
@@ -657,7 +658,7 @@ def years(m: dict) -> str:
     return table(header + ["strategy minus hurdle"], rows)
 
 
-# The long and the short leg separately, and what the short book is made of.
+# The long and short legs apart, and what the short book is made of.
 def legs(m: dict) -> str:
     g = load("exhibits/pack.json")["completeness"]["legs"]
     rows = [
@@ -693,7 +694,7 @@ def legs(m: dict) -> str:
     return table(header, rows) + note
 
 
-# The ten largest longs and shorts by average weight over every month, by ticker and full name.
+# The ten largest longs and shorts by average weight, ticker and name.
 def top(m: dict) -> str:
     t = load("exhibits/pack.json")["completeness"]["top_positions"]
     rows = [
@@ -709,7 +710,7 @@ def top(m: dict) -> str:
     return table(["", "long", "weight", "short", "weight"], rows)
 
 
-# Every family of ideas we tried, how many attempts each took, and what came of it.
+# Every idea family we tried, its attempt count, and what came of it.
 def tried(m: dict) -> str:
     from fiam.exhibits import config_log
 
@@ -812,7 +813,7 @@ TABLES = dict(
 )
 
 
-# Replaces what sits between each pair of markers, building only the tables the file holds.
+# Refills each marker pair, building only the tables the file holds.
 def fill(target: Path, tables: dict, m: dict) -> None:
     text = target.read_text(encoding="utf-8")
     for marker, build in tables.items():
@@ -823,14 +824,14 @@ def fill(target: Path, tables: dict, m: dict) -> None:
     target.write_text(numbers(text), encoding="utf-8", newline="\n")
 
 
-# "performance.sharpe_ratio" means that group, then that key. A number steps into a list.
+# "performance.sharpe_ratio" is group then key; a number indexes a list.
 def dig(data, path: str):
     for key in path.split("."):
         data = data[int(key)] if isinstance(data, list) else data[key]
     return data
 
 
-# Each inline number, read from the exhibit it names in the format it names.
+# Each inline number, read from its named exhibit in its named format.
 def numbers(text: str) -> str:
     # One marker refilled from its exhibit.
     def value(match: re.Match) -> str:

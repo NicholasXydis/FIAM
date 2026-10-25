@@ -1,6 +1,4 @@
-# The AI Crowd Lab as a film: the harness, 60 AI investors, one real month of votes, the herd, our
-# book among their favourites, the copycats and the replay checks. Every frame comes from saved
-# answers and our own results (docs/protocols/crowd_amendment_1.md item 8); nothing is re-asked.
+# AI Crowd Lab film, saved answers only (crowd_amendment_1.md item 8).
 
 from pathlib import Path
 
@@ -34,25 +32,25 @@ ROLES = [
     "Explainer",
     "AI crowd",
 ]
-# Scene starts in seconds: harness, crowd, votes, herd, our book, copycats, trust, close.
+# Each scene's start in seconds, in the order the film plays them.
 SCENES = dict(harness=5, crowd=13, votes=22, herd=36, book=46, copy=56, trust=64, close=72)
-# The talk's cut, about 40 seconds: copycats and trust have slides of their own after the film;
-# the set-up runs at double speed, the herd and our book a little slower so every caption reads.
-# (film start, film end, speed)
+# The 40 s talk cut, (start, end, speed). Copycats and trust are slides.
 CUT = ((0, 13, 2.0), (13, 36, 1.7), (36, 56, 1.4), (72, 80, 1.2))
 SHORT = OUT.with_name("ai_crowd_short.mp4")
 
 
+# Smoothstep easing on 0 to 1, so every fade starts and stops gently.
 def ease(x):
     x = np.clip(x, 0.0, 1.0)
     return x * x * (3 - 2 * x)
 
 
+# An eased 0 to 1 level for something appearing at start over length.
 def fade(t: float, start: float, length: float = 0.8) -> float:
     return float(ease((t - start) / length))
 
 
-# The book the film shows: final v3 at $10M once it has its crowd results, else v1.
+# The film's book: final v3 at $10M once it has crowd results, else v1.
 def our_run() -> str:
     final = load(v2.OUT / "evidence.json").get("v3", {}).get("final", {}).get("name")
     run = f"{final}@1e7" if final else ""
@@ -60,7 +58,7 @@ def our_run() -> str:
     return run if run and f"book {run}" in insights else "v1@1e7"
 
 
-# Everything the film shows, from saved answers and results: one month, its votes, our book.
+# All the film shows from saved answers: one month, its votes, our book.
 def gather() -> dict:
     retail, copy = L.picks("crowdlab_retail"), L.picks("crowdlab_copycat")
     month = max(set(retail["eom"]) & set(copy["eom"]))
@@ -88,7 +86,7 @@ def gather() -> dict:
     )
 
 
-# Where each agent and each shown stock sits on a 16 x 9 canvas; agents keyed by crowd and id.
+# Each agent and shown stock on a 16 x 9 canvas, agents by crowd and id.
 def layout(g: dict) -> dict:
     agents, personas = {}, sorted(g["retail"]["persona"].dropna().unique())
     for a, row in g["retail"].drop_duplicates("agent").set_index("agent").iterrows():
@@ -103,7 +101,7 @@ def layout(g: dict) -> dict:
     return dict(agents=agents, personas=personas, field=field, where=dict(zip(g["stocks"], i)))
 
 
-# Every vote as a particle from its agent to its stock, launched across the votes scene.
+# Every vote as a particle from agent to stock, across the votes scene.
 def votes(g: dict, lay: dict) -> dict:
     rows = []
     for crowd, frame, col in (
@@ -127,7 +125,7 @@ def votes(g: dict, lay: dict) -> dict:
     )
 
 
-# The agents' positions at time t: the retail crowd drifts into its herding groups.
+# Agents' positions at time t, the retail crowd drifting into its herds.
 def positions(t: float, g: dict, lay: dict) -> np.ndarray:
     herd = fade(t, SCENES["herd"] + 1, 2.5)
     k = max(g["groups"].values()) if g["groups"] else 1
@@ -149,6 +147,7 @@ def draw(ax, t: float, g: dict, lay: dict, vot: dict) -> None:
     ax.set_ylim(0, 9)
     ax.axis("off")
 
+    # Writes a caption on the frame, skipped while it is still invisible.
     def say(x, y, text, size=20, color=WHITE, alpha=1.0, weight="normal", ha="center"):
         if alpha > 0.01:
             ax.text(
@@ -209,7 +208,7 @@ def draw(ax, t: float, g: dict, lay: dict, vot: dict) -> None:
         )
         return
 
-    # The 60 agents: gold copycats alone stay bright while the copycats scene runs.
+    # The 60 agents, only the gold copycats bright in the copycats scene.
     pts = positions(t, g, lay)
     colours = to_rgba_array([c for _, _, c in lay["agents"].values()])
     if SCENES["copy"] <= t < SCENES["trust"]:
@@ -228,7 +227,7 @@ def draw(ax, t: float, g: dict, lay: dict, vot: dict) -> None:
         say(8, 1.4, "3 strategy recipes × 10 funds", 18, LIGHT, fade(t, SCENES["crowd"] + 3))
         return
 
-    # The stock field: each stock brightens as votes land on it; gold marks the crowd's favourites.
+    # Stocks brighten as votes land, gold for the crowd's favourites.
     landed = vot["start"] + FLIGHT <= t
     count = np.bincount(vot["stock"][landed & ~vot["short"]], minlength=len(lay["field"]))
     glow = count / max(count.max(), 1)
@@ -404,7 +403,7 @@ def cut() -> np.ndarray:
     return np.concatenate([np.arange(a, b, speed / FPS) for a, b, speed in CUT])
 
 
-# The full film, the talk's cut and the poster, from one gathering of the saved answers.
+# Full film, talk cut and poster from one gathering of saved answers.
 def main(seconds: float = SECONDS) -> None:
     plt.rcParams["font.family"] = ["Calibri", "DejaVu Sans"]
     g = gather()
@@ -414,7 +413,7 @@ def main(seconds: float = SECONDS) -> None:
     ax = fig.add_axes((0, 0, 1, 1), facecolor=NAVY)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     for target, times in ((OUT, np.arange(int(FPS * seconds)) / FPS), (SHORT, cut())):
-        # Quality-led H.264 that any laptop's PowerPoint plays smoothly, and starts at once.
+        # Quality-led H.264 any laptop's PowerPoint plays smoothly and at once.
         quality = [
             "-pix_fmt",
             "yuv420p",

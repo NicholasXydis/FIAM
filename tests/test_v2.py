@@ -1,4 +1,4 @@
-# v2 and finals mechanics on small synthetic data. No organizer data, no model, no network.
+# v2 and finals mechanics on synthetic data. No data, model or network.
 
 import json
 from pathlib import Path
@@ -13,7 +13,7 @@ from fiam import stats, v2
 from fiam.agents import honesty, rules_reader
 
 
-# A thousand names with v1's inputs and a price, as the optimizer test in test_mechanics builds.
+# A thousand names with v1's inputs and a price, as test_mechanics does.
 @pytest.fixture
 def month():
     rng = np.random.default_rng(0)
@@ -38,7 +38,7 @@ def test_v2_off_is_v1(month):
     assert np.abs(mine.to_numpy() - theirs.to_numpy()).max() < 1e-9
 
 
-# A long-only mandate holds no more names than it allows, fully invested.
+# A long-only mandate holds no more names than allowed, fully invested.
 def test_long_only_keeps_its_name_limit(month):
     rules = M.Mandate(
         name="t",
@@ -57,7 +57,7 @@ def test_long_only_keeps_its_name_limit(month):
     assert (weights >= 0).all() and weights.sum() == pytest.approx(1.0, abs=0.005)
 
 
-# A book with a net target keeps it after whole shares; v1's repair would pull it to zero.
+# A net target survives whole shares; v1's repair pulls it to zero.
 def test_net_target_survives_whole_shares(month):
     rules = M.Mandate(
         name="t",
@@ -74,6 +74,7 @@ def test_net_target_survives_whole_shares(month):
     assert weights.abs().sum() == pytest.approx(2.0, abs=0.01)
 
 
+# Impossible mandates are named, and an unknown rule field is refused.
 def test_mandate_check_names_impossible_rules(tmp_path):
     assert M.check(M.Mandate()) == []
     bad = M.Mandate(long_only=True, net=1.6, gross=1.6, names_max=10, name_cap=0.05)
@@ -85,7 +86,7 @@ def test_mandate_check_names_impossible_rules(tmp_path):
         M.load(path)
 
 
-# A turnover cap holds from the second month on, and a net band is checked before any run.
+# A turnover cap holds from month two, a net band is checked up front.
 def test_turnover_cap_and_net_band(month):
     rules = M.Mandate(name="t", turnover=0.1)
     first = v2.optimize(month, None, v2.Settings(frozenset(), 1e7, rules))
@@ -97,7 +98,7 @@ def test_turnover_cap_and_net_band(month):
     assert "outside the band" in " ".join(M.check(M.Mandate(net=0.6, gross=2.0, net_band=0.5)))
 
 
-# The month with the quotes the cost model reads and the long-horizon volatility rank.
+# The month with the quotes the cost model reads and long-run vol rank.
 @pytest.fixture
 def quoted(month):
     rng = np.random.default_rng(1)
@@ -111,8 +112,7 @@ def quoted(month):
     )
 
 
-# v3's size part: the second month spends at most the budget, keeps every liquidity cap, and a
-# held name whose score turned never grows; the low-volatility band holds.
+# v3 sizing keeps the budget and caps, held names never grow on a flip.
 def test_size_part_keeps_budget_caps_and_held_sides(quoted, monkeypatch):
     monkeypatch.setattr(v2, "params", lambda: dict(cost_budget=0.002))
     settings = v2.Settings(frozenset({"size", "lowvol"}), 1e8)
@@ -134,7 +134,7 @@ def test_size_part_keeps_budget_caps_and_held_sides(quoted, monkeypatch):
     assert abs(low @ second.to_numpy()) <= 0.02 + 1e-3
 
 
-# The risk target scales gross inside its range; the brake cuts it to the floor.
+# The risk target scales gross in range; the brake cuts it to the floor.
 def test_vol_target_and_brake_set_gross(month, monkeypatch):
     monkeypatch.setattr(v2, "params", lambda: dict(vol_target=0.02))
     settings = v2.Settings(frozenset({"voltarget", "brake"}))
@@ -147,8 +147,7 @@ def test_vol_target_and_brake_set_gross(month, monkeypatch):
     v2.BRAKE.clear()
 
 
-# The brake engages 5% below the peak, releases once half the fall is regained, engages again on a
-# new low, and resets at a new peak.
+# The brake engages 5% off peak, releases at half regained, then resets.
 def test_brake_path():
     v2.BRAKE.clear()
     states = []
@@ -159,7 +158,7 @@ def test_brake_path():
     v2.BRAKE.clear()
 
 
-# Final v3's rules: hedge beta within +/-0.005, and each name's cap shrunk by its volatility.
+# Final v3: hedge beta within +/-0.005, name caps shrunk by volatility.
 def test_zero_beta_and_risk_caps(quoted):
     month = quoted.assign(vol_scale=np.where(np.arange(1000) % 2 == 0, 1 / 3, 1.0))
     weights = v2.optimize(month, None, v2.Settings(frozenset({"zerobeta", "riskcap"})))
@@ -168,8 +167,7 @@ def test_zero_beta_and_risk_caps(quoted):
     assert (weights.abs() <= 0.015 * info["vol_scale"] + 1e-6).all()
 
 
-# A signal whose last 12 realized holding months sum below zero counts half; fewer than 6 months,
-# or months not yet realized at the decision, never halve it.
+# A signal whose last 12 realized months sum below zero counts half.
 def test_adaptive_weights_use_only_realized_months():
     months = pd.date_range("2020-01-01", periods=13, freq="MS")
     paid = pd.DataFrame(dict(good=0.01, bad=-0.01), index=months)
@@ -180,8 +178,7 @@ def test_adaptive_weights_use_only_realized_months():
     assert weights.loc[early].tolist() == [1.0, 1.0]
 
 
-# The risk forecast's error learns from ended months only, and the 10% target sets gross inside
-# the daily-safe ceiling.
+# Risk error learns from ended months, the 10% target sets safe gross.
 def test_risk_forecast_learns_and_targets_ten_percent(month, monkeypatch):
     monkeypatch.setattr(v2, "params", lambda: dict(vol_bias=1.2, gross_ceiling=1.7))
     settings = v2.Settings(frozenset({"voltarget", "target10"}))
@@ -199,8 +196,7 @@ def test_risk_forecast_learns_and_targets_ten_percent(month, monkeypatch):
     v2.reset()
 
 
-# Benchmark 2's favourites: names ranked by summed |weight| (weight x months held) on their net
-# side, as many per side as the book held on average.
+# Benchmark 2 favourites: ranked by summed |weight| on their net side.
 def test_favourites_rank_by_weight_and_time():
     from fiam.exhibits import final_exhibits as F
 
@@ -223,7 +219,7 @@ def test_rules_reader_keeps_only_verbatim_quotes():
     assert list(rules_reader.verified(answer, text)) == ["gross"]
 
 
-# A 150/50 draft drops our neutral book's sector and beta limits; a neutral draft keeps them.
+# A 150/50 draft drops neutral sector and beta limits; neutral keeps.
 def test_directional_draft_drops_neutral_limits():
     rules = dict(gross=dict(value=2.0, quote="q"), net=dict(value=1.0, quote="q"))
     draft = rules_reader.drafted(rules, "t")
@@ -232,6 +228,7 @@ def test_directional_draft_drops_neutral_limits():
     assert "sector" not in rules_reader.drafted(dict(gross=dict(value=2.0, quote="q")), "t")
 
 
+# The reversed text swaps direction words and flips percent signs.
 def test_honesty_reversal_flips_words_and_signs():
     row = pd.Series(
         dict(
@@ -245,6 +242,7 @@ def test_honesty_reversal_flips_words_and_signs():
     assert texts["named"].startswith("Acme said")
 
 
+# On independent noise Patton's quadrant is near a quarter, CI covers.
 def test_patton_and_bootstrap_on_independent_noise():
     rng = np.random.default_rng(1)
     a, b = pd.Series(rng.normal(size=240)), pd.Series(rng.normal(size=240))
@@ -254,7 +252,7 @@ def test_patton_and_bootstrap_on_independent_noise():
     assert boot["ci95"][0] < boot["mean"] < boot["ci95"][1]
 
 
-# Break-even size: interpolated in log capital where IR crosses zero; a bound when it never does.
+# Break-even size: log-capital IR zero crossing, else a bound.
 def test_capacity_break_even():
     from fiam.exhibits import capacity
 
@@ -264,7 +262,7 @@ def test_capacity_break_even():
     assert capacity.break_even([dict(capital=1e6, information_ratio=-0.3)]) == "below $1M"
 
 
-# Our longs among a crowd's favourites: one favourite of two longs is a half.
+# Our longs among a crowd's favourites: one of two longs is a half.
 def test_crowd_overlap_counts_our_longs_among_favourites():
     from fiam.exhibits import crowd_insights
 
@@ -279,7 +277,7 @@ def test_crowd_overlap_counts_our_longs_among_favourites():
     assert out["shorts_in_favourites"] == pytest.approx(0.0)
 
 
-# v2a names itself, and v2-pass is read from the verdicts: a passing grinold replaces costs.
+# v2a names itself; v2-pass reads the verdicts, grinold replacing costs.
 def test_v2a_and_v2_pass(tmp_path, monkeypatch):
     assert v2.Settings(v2.V2A).name == "v2a@1e7"
     verdicts = dict(shorts=dict(passed=True), grinold=dict(passed=True), costs=dict(passed=True))
@@ -288,8 +286,7 @@ def test_v2a_and_v2_pass(tmp_path, monkeypatch):
     assert v2.passing() == frozenset({"shorts", "grinold"})
 
 
-# The film's easing stays in bounds, and the deck's Morph and timelines are well-formed XML: one
-# entrance per shape, plus the film's own start.
+# The film's easing stays in bounds; the deck's Morph XML is valid.
 def test_film_easing_and_deck_motion():
     import sys
     from types import SimpleNamespace

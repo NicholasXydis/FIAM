@@ -1,4 +1,4 @@
-# Out-of-sample R-squared for every method, rules p.14. Rank scores are mapped to returns first.
+# Out-of-sample R-squared per method, rules p.14. Ranks map to returns.
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from fiam.ml import train as T
 PREDS = P.CACHE / "preds"
 OUT = paths.EXHIBITS
 
-# The template's lambda grids, stepped at 0.5 rather than 0.1 so a fold fits in minutes.
+# The template's lambda grids, in 0.5 steps not 0.1 so a fold is quick.
 ENET_GRID = [10.0**e for e in np.arange(-4, 4.01, 0.5)]
 RIDGE_GRID = [0.5 * 10.0**e for e in np.arange(-1, 8.01, 0.5)]
 SEEDS = (43, 44, 45, 46)
@@ -28,7 +28,7 @@ def r2_zero(actual: np.ndarray, forecast: np.ndarray) -> float:
     return float(1 - np.sum((actual - forecast) ** 2) / np.sum(actual**2))
 
 
-# Both forms for one set of forecasts. The cross-sectional one ignores the market's own move.
+# Both forms for one forecast set. Cross-section drops the market move.
 def score(frame: pd.DataFrame, forecast: str) -> dict:
     s = frame.dropna(subset=["actual", forecast])
     month = s["holding_month"]
@@ -42,7 +42,7 @@ def score(frame: pd.DataFrame, forecast: str) -> dict:
     )
 
 
-# The template, adapted: standardize on train, demean the target, pick lambda on validation.
+# Template adapted: standardize, demean target, lambda on validation.
 def template_fold(fold: dict, cols: list[str]) -> pd.DataFrame:
     train, validate = D.labelled(fold["train"]), D.labelled(fold["validate"])
     scaler = StandardScaler().fit(train[cols])
@@ -75,7 +75,7 @@ def template_fold(fold: dict, cols: list[str]) -> pd.DataFrame:
     return out
 
 
-# Return per unit of predicted rank, from the years before the test year only.
+# Return per unit of predicted rank, from years before the test year.
 def rank_slope(history: pd.DataFrame) -> float:
     h = D.labelled(history)
     rank = h.groupby("holding_month")[D.TARGET].rank(pct=True) - 0.5
@@ -95,7 +95,7 @@ def calibrated(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(frames)
 
 
-# The composite's score mapped to returns, with a slope from earlier years only.
+# The composite's score mapped to returns, slope from earlier years.
 def composite_forecasts() -> pd.DataFrame:
     panel = P.load_panel()
     universe = P.build_signal(P.screen(panel, "2015-01-31", P.LAST_FORECAST))
@@ -117,8 +117,7 @@ def composite_forecasts() -> pd.DataFrame:
     return pd.concat(frames)
 
 
-# The stock picker's ranks mapped to returns by a slope fitted on its own earlier scored years,
-# 2019-2020 first. Its ranks span the whole month, so the perfect-rank slope would overstate it.
+# Picker ranks to returns by its own earlier slope, not the perfect one.
 def scorer_forecasts(df: pd.DataFrame) -> pd.DataFrame | None:
     cache = P.CACHE / "scores.parquet"
     if not cache.exists():
@@ -154,7 +153,7 @@ def main() -> None:
         methods={},
     )
 
-    # The template refits only when the folds or this file change, never for a book change.
+    # The template refits only when the folds or this file change.
     inputs = [*T.fit_inputs(cols), Path(__file__).read_bytes()]
     frames = P.cached(
         "template_linear", inputs, lambda: [template_fold(f, cols) for f in D.folds(df)]

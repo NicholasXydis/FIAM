@@ -17,7 +17,7 @@ CDN = "https://cdn.finra.org/equity"
 USAGE = "uv run run.py --data finra shortint | volume | build | verify"
 # Exchange-listed names join FINRA's short interest files in June 2021.
 SHORT_FROM = pd.Timestamp("2021-06-01")
-# The consolidated daily file starts 2018-08-01; venue files come before.
+# The consolidated daily file starts 2018-08-01, venue files before it.
 CONSOLIDATED_FROM = pd.Timestamp("2018-08-01")
 VENUES = ("FNYX", "FNSQ", "FNRA")
 # The 2015-2020 check, and 2026 with its six-month lead-in (PLAN §6.5).

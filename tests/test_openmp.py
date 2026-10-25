@@ -1,4 +1,4 @@
-# The OpenMP preload picks the kit's copy only when the system lacks one.
+# The OpenMP preload picks the kit's copy only if the system lacks one.
 
 from fiam import openmp
 
@@ -10,7 +10,7 @@ def test_system_runtime_means_no_preload(monkeypatch, tmp_path):
     assert openmp.preload(tmp_path) == "system"
 
 
-# Without the system runtime the kit's copy is loaded, or reported missing.
+# Without the system runtime the kit's copy loads, or is reported gone.
 def test_kit_copy_loads_when_the_system_lacks_one(monkeypatch, tmp_path):
     loaded = []
     monkeypatch.setattr(openmp, "machine", lambda: "linux-x64")

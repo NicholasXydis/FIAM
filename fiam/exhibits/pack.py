@@ -1,4 +1,4 @@
-# Sub-periods, costs, the rules' statistics, risk and signal attribution. Writes exhibits/pack.json.
+# exhibits/pack.json: sub-periods, costs, statistics, risk and signals.
 
 
 import numpy as np
@@ -12,11 +12,11 @@ OUT = paths.EXHIBITS
 
 HURDLE = 0.04 / 12
 
-# The two halves the rest of the write-up uses, so the attribution reads alongside them.
+# The write-up's two halves, so the attribution reads alongside them.
 HALVES = {"2021_2022": ("2021-01-01", "2022-12-01"), "2023_2026": ("2023-01-01", "2026-08-01")}
 
 
-# What a series of monthly returns actually earned. Compounded, never summed.
+# What monthly returns actually earned, compounded, never summed.
 def compound(monthly: pd.Series) -> float:
     return float((1 + monthly.dropna()).prod() - 1)
 
@@ -34,12 +34,12 @@ def cost_components(df: pd.DataFrame) -> dict:
     return {name: float(df[column].mean() * 12) for name, column in names.items()}
 
 
-# How far costs can rise before active return hits zero. A level, not a multiple.
+# Costs' room before active return hits zero; a level, not a multiple.
 def break_even(df: pd.DataFrame) -> dict:
     gross, cost = df["gross"].mean() * 12, df["cost"].mean() * 12
     multiple = (gross - 0.04) / cost
     ladder = {}
-    # Run past break-even so the chart crosses zero instead of stopping short.
+    # Runs past break-even so the chart crosses zero, not stopping short.
     for m in (1.0, 1.5, 2.0, 2.5, 3.0, multiple, multiple * 1.15):
         active = df["gross"] - df["cost"] * m - HURDLE
         ladder[f"x{m:.2f}"] = dict(
@@ -55,7 +55,7 @@ def break_even(df: pd.DataFrame) -> dict:
     )
 
 
-# A 6-month block bootstrap, since 68 months cannot support a point estimate.
+# A 6-month block bootstrap, as 68 months cannot back a point estimate.
 def ir_interval(active: pd.Series, draws: int = 5000, block: int = 6) -> tuple[float, float]:
     rng = np.random.default_rng(42)
     values = active.to_numpy()
@@ -70,7 +70,7 @@ def ir_interval(active: pd.Series, draws: int = 5000, block: int = 6) -> tuple[f
     return float(np.percentile(out, 2.5)), float(np.percentile(out, 97.5))
 
 
-# Gross, cost and net for one era. Mean monthly rates times 12, not compounded.
+# One era's gross, cost and net: mean monthly times 12, not compounded.
 def period(part: pd.DataFrame) -> dict:
     gross, cost = part["gross"].mean() * 12, part["cost"].mean() * 12
     low, high = ir_interval(part["net"] - HURDLE)
@@ -86,7 +86,7 @@ def period(part: pd.DataFrame) -> dict:
     )
 
 
-# The record split in time, because a judge will and we would rather go first.
+# The record split in time, as a judge would, and we'd rather go first.
 def subperiods(df: pd.DataFrame) -> dict:
     year = df.index.year
     masks = {
@@ -94,7 +94,7 @@ def subperiods(df: pd.DataFrame) -> dict:
         "first_half_2021_2022": year <= 2022,
         "second_half_2023_2026": year >= 2023,
         "excluding_2021": year >= 2022,
-        # Returns come from CRSP through 2025 and from Compustat in 2026, so CRSP is shown alone.
+        # CRSP returns to 2025 and Compustat in 2026, so CRSP is shown alone.
         "crsp_era_2021_2025": year <= 2025,
     }
     out = {name: period(df[mask]) for name, mask in masks.items()}
@@ -110,7 +110,7 @@ def subperiods(df: pd.DataFrame) -> dict:
     return out
 
 
-# Strategy, benchmark and market by calendar year, which the rules ask for explicitly.
+# Strategy, benchmark and market by calendar year, as the rules ask.
 def by_year(df: pd.DataFrame) -> dict:
     market = B.benchmarks().set_index("month")["mkt_rf"]
     out = {}
@@ -129,9 +129,9 @@ def by_year(df: pd.DataFrame) -> dict:
     return out
 
 
-# The universe year by year, so a break in how 2026 was assembled would show against CRSP years.
+# The universe by year, so a break in how 2026 was built shows vs CRSP.
 def data_by_year(universe: pd.DataFrame) -> dict:
-    # Keyed on the holding month's year, since that is the year the return belongs to.
+    # Keyed on the holding month's year, the year the return belongs to.
     year = universe["eom"].dt.year + (universe["eom"].dt.month == 12)
     return {
         int(y): dict(
@@ -145,7 +145,7 @@ def data_by_year(universe: pd.DataFrame) -> dict:
     }
 
 
-# What the long and short legs each contributed, since a market-neutral book is two books.
+# What each leg contributed, since a market-neutral book is two books.
 def legs(book: pd.DataFrame, universe: pd.DataFrame) -> dict:
     cols = ["permno", "holding_month", "ret_exc_lead1m", "me", "dolvol_126d", "size_grp"]
     universe = universe.assign(
@@ -170,7 +170,7 @@ def legs(book: pd.DataFrame, universe: pd.DataFrame) -> dict:
             median_market_cap_musd=float(part["me"].median()),
             mean_dollar_volume=float(part["dolvol_126d"].mean()),
             median_dollar_volume=float(part["dolvol_126d"].median()),
-            # NYSE size groups: micro and nano are below the 20th percentile, small below the 50th.
+            # NYSE size groups: micro and nano below the 20th pct, small below 50th.
             share_micro=float(size[part["size_grp"].isin(["micro", "nano"])].sum() / size.sum()),
             share_small_or_micro=float(
                 size[part["size_grp"].isin(["small", "micro", "nano"])].sum() / size.sum()
@@ -183,7 +183,7 @@ def legs(book: pd.DataFrame, universe: pd.DataFrame) -> dict:
     return out
 
 
-# The ten largest longs and shorts by average weight over every month, with full names.
+# The ten largest longs and shorts by average weight, with full names.
 def top_positions(book: pd.DataFrame) -> dict:
     average = book.groupby("PERMNO")["w"].sum() / book["Date"].nunique()
     label = book.sort_values("Date").groupby("PERMNO")[["TICKER", "COMPANY NAME"]].last()
@@ -203,7 +203,7 @@ def top_positions(book: pd.DataFrame) -> dict:
     }
 
 
-# The rules' return and risk statistics for the strategy, the benchmark and the S&P 500 alike.
+# The rules' statistics for the strategy, benchmark and S&P 500 alike.
 def comparison(df: pd.DataFrame) -> dict:
     market = B.benchmarks().set_index("month")["mkt_rf"].reindex(df.index) + df["rf"]
     series = dict(strategy=df["portfolio_total_return"], benchmark=df["rf"] + HURDLE, sp500=market)
@@ -211,7 +211,7 @@ def comparison(df: pd.DataFrame) -> dict:
     for name, monthly in series.items():
         excess = monthly - df["rf"]
         growth = (1 + monthly).cumprod()
-        # The benchmark's excess return is a constant 4%, so it has no Sharpe ratio.
+        # The benchmark's excess return is a constant 4%, so it has no Sharpe.
         sharpe = excess.mean() / excess.std() * np.sqrt(12) if excess.std() > 1e-9 else None
         out[name] = dict(
             annual_arithmetic=float(monthly.mean() * 12),
@@ -226,7 +226,7 @@ def comparison(df: pd.DataFrame) -> dict:
     return out
 
 
-# The statistics the rules list that the headline table does not already carry.
+# The statistics the rules list that the headline table does not carry.
 def completeness(df: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame) -> dict:
     monthly = df["portfolio_total_return"]
     per_month = book.groupby("Date")["WEIGHT"]
@@ -252,12 +252,12 @@ def completeness(df: pd.DataFrame, book: pd.DataFrame, universe: pd.DataFrame) -
     )
 
 
-# Regress on the factors. The intercept is what none of them explain, and what we earn.
+# Factor regression; the intercept is what none explain, what we earn.
 def factor_fit(excess: pd.Series, factors: pd.DataFrame) -> dict:
     names = list(factors.columns)
     both = pd.concat([excess.rename("r"), factors], axis=1, sort=True).dropna()
     fit = P.regress(both["r"], both[names])
-    # Each factor's squared-beta share. They do not sum, the factors are correlated.
+    # Each factor's squared-beta share, not summing as factors correlate.
     individual = {n: float((fit.params[n] ** 2) * both[n].var() / both["r"].var()) for n in names}
     fitted_share = float(np.var(fit.fittedvalues, ddof=1) / both["r"].var())
     return dict(
@@ -274,8 +274,7 @@ def factor_fit(excess: pd.Series, factors: pd.DataFrame) -> dict:
     )
 
 
-# Each year's excess return split at the full-period loadings: the part the market and five styles
-# paid, and the rest, stock selection. Monthly sums, so the two parts add up to the total.
+# Each year's excess at full-period loadings: style part plus selection.
 def style_by_year(excess: pd.Series, factors: pd.DataFrame) -> dict:
     names = list(factors.columns)
     both = pd.concat([excess.rename("r"), factors], axis=1, sort=True).dropna()
@@ -292,7 +291,7 @@ def style_by_year(excess: pd.Series, factors: pd.DataFrame) -> dict:
     }
 
 
-# Realized beta by era and in rolling years, since a full-period beta can hide a drift.
+# Beta by era and rolling year, since a full-period beta can hide drift.
 def beta_drift(df: pd.DataFrame) -> dict:
     market = B.benchmarks().set_index("month")["mkt_rf"].reindex(df.index)
     excess = df["portfolio_total_return"] - df["rf"]
@@ -309,7 +308,7 @@ def beta_drift(df: pd.DataFrame) -> dict:
     band = P.REALIZED_BETA_LIMIT
     out["rolling_12m_outside_band"] = float((rolling.abs() > band).mean())
     out["rolling_12m_windows"] = int(len(rolling))
-    # Where a zero-beta book with our residual risk would wander over 12 months, 95% of the time.
+    # The 95% 12-month band for a zero-beta book with our residual risk.
     residual = P.regress(excess, market).resid.std()
     spread = market.rolling(12).std() * np.sqrt(11)
     noise = (1.96 * residual / spread).reindex(rolling.index)
@@ -321,7 +320,7 @@ def beta_drift(df: pd.DataFrame) -> dict:
     return out
 
 
-# How much of each leg sits where the AI crowd would buy: 50 is the market's middle, 100 the top.
+# Each leg's AI crowd score percentile: 50 is the middle, 100 the top.
 def crowding(book: pd.DataFrame) -> dict | None:
     path = P.MODELS / "book_inputs.parquet"
     inputs = data.read(path) if path.exists() else pd.DataFrame()
@@ -350,7 +349,7 @@ def crowding(book: pd.DataFrame) -> dict | None:
     }
 
 
-# Three factors, then five plus momentum: our signals include value, profitability and momentum.
+# FF3, then FF5 plus momentum, as our signals hold value and momentum.
 def risk(df: pd.DataFrame) -> dict:
     excess = df["portfolio_total_return"] - df["rf"]
     active = (df["net"] - HURDLE).sort_values()
@@ -363,7 +362,7 @@ def risk(df: pd.DataFrame) -> dict:
         attribution=factor_fit(excess, three),
         five_factor_momentum=factor_fit(excess, extended),
         style_by_year=style_by_year(excess, extended),
-        # Twelve monthly points cannot pin six loadings, so the split is by window, not by year.
+        # Twelve months cannot pin six loadings, so split by window, not year.
         five_factor_momentum_by_window={
             k: factor_fit(excess.loc[a:b], extended) for k, (a, b) in HALVES.items()
         },
@@ -376,7 +375,7 @@ def risk(df: pd.DataFrame) -> dict:
             )
             for leg in ("gross", "net")
         },
-        # Tail risk, which monthly volatility hides. A committee asks for these by name.
+        # Tail risk that monthly volatility hides; a committee asks by name.
         tails=dict(
             var_95_monthly=float(np.percentile(active, 5)),
             cvar_95_monthly=float(active.iloc[: int(np.ceil(len(active) * 0.05))].mean()),
@@ -384,7 +383,7 @@ def risk(df: pd.DataFrame) -> dict:
             excess_kurtosis=float(active.kurtosis()),
             worst_three_months=[float(x) for x in active.iloc[:3]],
         ),
-        # Rolling 12-month IR. How often it is under water says more than its average.
+        # Rolling 12-month IR; time under water says more than its average.
         consistency=dict(
             windows=int(len(ratio)),
             share_negative=float((ratio < 0).mean()),
@@ -395,7 +394,7 @@ def risk(df: pd.DataFrame) -> dict:
     )
 
 
-# One month's pure signal returns. Joint, so a signal is not credited for its neighbours.
+# A month's pure signal returns, joint so none gets neighbours' credit.
 def pure_returns(month: pd.DataFrame, cols: list[str]) -> pd.Series:
     month = month.dropna(subset=["ret_exc_lead1m"])
     y = (month["ret_exc_lead1m"] - month["ret_exc_lead1m"].mean()).to_numpy()
@@ -403,7 +402,7 @@ def pure_returns(month: pd.DataFrame, cols: list[str]) -> pd.Series:
     return pd.Series(np.linalg.lstsq(x, y, rcond=None)[0][1:], index=cols)
 
 
-# Annualized mean and its t, because a contribution that flips sign every month is noise.
+# Annualized mean and t, as a sign that flips monthly is noise.
 def contribution_summary(frame: pd.DataFrame, cols: list[str]) -> dict:
     out = {}
     for c in cols:
@@ -419,10 +418,10 @@ def contribution_summary(frame: pd.DataFrame, cols: list[str]) -> dict:
     return out
 
 
-# Which of the twelve signals earned the gross return: exposure times each signal's pure return.
+# Which of twelve signals earned the gross: exposure times pure return.
 def attribution(book: pd.DataFrame, universe: pd.DataFrame, gross: pd.Series) -> dict:
     cols = list(P.SIGNALS)
-    # Scored the way the composite scores them: ranked, signed, gaps at zero.
+    # Scored as the composite scores them: ranked, signed, gaps at zero.
     for col, sign in P.SIGNALS.items():
         universe[col] = (P.rank_z(universe, col) * sign).fillna(0.0)
     held = book.assign(eom=book["Date"] - pd.offsets.MonthEnd(1)).merge(
@@ -460,7 +459,7 @@ def attribution(book: pd.DataFrame, universe: pd.DataFrame, gross: pd.Series) ->
     )
 
 
-# The ten worst months split by leg, sector and signal, so a loss can be traced to its source.
+# The ten worst months by leg, sector and signal, to trace each loss.
 def worst_months(held: pd.DataFrame, table: pd.DataFrame, gross: pd.Series, cols: list) -> list:
     held = held.assign(earned=held["w"] * held["ret_exc_lead1m"].fillna(0.0))
     out = []

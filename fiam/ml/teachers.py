@@ -1,4 +1,4 @@
-# Teachers: models that learn what 2025-only data would say, from inputs that reach 2026.
+# Teachers learn what 2025-only data says, from inputs that reach 2026.
 
 
 import lightgbm as lgb
@@ -21,7 +21,7 @@ EVENTS += ["item_201_acquisition", "item_202_earnings", "item_205_impairment", "
 EVENTS += ["item_401_auditor_change", "item_402_nonreliance", "item_502_management_change"]
 EVENTS += ["item_701_regfd", "item_801_other_event"]
 
-# Fixed settings, never tuned on a test year. Four threads on every machine, so runs repeat.
+# Fixed, never tuned on a test year, four threads so every run repeats.
 PARAMS = dict(
     objective="regression",
     learning_rate=0.05,
@@ -41,7 +41,7 @@ ROUNDS = 20 if paths.SMOKE else 300
 YEARS = range(2024 if paths.SMOKE else 2017, 2027)
 
 
-# The 147 characteristics ranked within each month, plus that month's 8-K counts.
+# The 147 characteristics ranked by month, plus the month's 8-K counts.
 def inputs() -> tuple[pd.DataFrame, list[str]]:
     frame = D.load_folds()
     events = data.features(EVENTS)
@@ -49,7 +49,7 @@ def inputs() -> tuple[pd.DataFrame, list[str]]:
     return frame, [*P.characteristics(), *EVENTS]
 
 
-# Each stock's beta to the S&P 500 inside each calendar month, from its daily returns.
+# Each stock's S&P 500 beta per calendar month, from its daily returns.
 def monthly_beta() -> pd.Series | None:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     if daily is None:
@@ -68,7 +68,7 @@ def monthly_beta() -> pd.Series | None:
     return beta.clip(-1.0, 4.0).rename("target")
 
 
-# Shares sold short as a share of shares outstanding, at each month's end.
+# Shares short as a share of shares outstanding, at each month's end.
 def monthly_crowding() -> pd.Series | None:
     short = data.research(
         "short_interest_monthly_research_only", [*data.KEYS, "short_interest_adjusted"]
@@ -82,7 +82,7 @@ def monthly_crowding() -> pd.Series | None:
     return pd.Series(ratio.to_numpy(), index=pd.MultiIndex.from_arrays([both["permno"], month]))
 
 
-# Net analyst price-target revisions in each month, up minus down over the number of analysts.
+# Monthly net price-target revisions, up minus down over analyst count.
 def monthly_revisions() -> pd.Series | None:
     cols = ["ibes_pt_numup1m", "ibes_pt_numdown1m", "ibes_pt_numest"]
     ibes = data.research("ibes_monthly_research_only", [*data.KEYS, *cols])
@@ -93,8 +93,7 @@ def monthly_revisions() -> pd.Series | None:
     return pd.Series(net.to_numpy(), index=pd.MultiIndex.from_arrays([ibes["permno"], month]))
 
 
-# Next quarter's surprise: niq_su a month after the next report (rdq), if due within four months,
-# with the month-end it is first known, so training can drop labels known inside the test year.
+# Next quarter's niq_su if due in four months, dated when first known.
 def monthly_surprise() -> pd.DataFrame | None:
     quarters = data.wrds("compustat_quarterly", ["gvkey", "rdq"])
     if quarters is None:
@@ -123,14 +122,14 @@ def monthly_surprise() -> pd.DataFrame | None:
     return pd.DataFrame(dated, index=index)
 
 
-# Each row's target: what the layer shows in the holding month, the month after the decision.
+# Each row's target: the layer's value in the month after the decision.
 def attach(frame: pd.DataFrame, target: pd.Series, rank: bool) -> pd.Series:
     key = pd.MultiIndex.from_arrays([frame["permno"], frame["holding_month"]])
     values = pd.Series(target.reindex(key).to_numpy(), index=frame.index)
     return values.groupby(frame["holding_month"]).rank(pct=True) - 0.5 if rank else values
 
 
-# Year by year, trained only on holding months before that year. Never sees its own year.
+# Year by year, trained only on holding months before that year.
 def walk_forward(
     frame: pd.DataFrame, cols: list[str], target: pd.Series, text=None, known=None
 ) -> pd.Series:
@@ -138,14 +137,14 @@ def walk_forward(
     year = frame["holding_month"].dt.year
     for test_year in YEARS:
         train = (year < test_year) & target.notna()
-        # A label first known inside the test year stays out, as the brief requires.
+        # A label first known in the test year stays out, as the brief requires.
         if known is not None:
             train &= ~(known >= pd.Timestamp(year=test_year, month=1, day=1))
         test = year == test_year
         if train.sum() < 10_000 or not test.any():
             continue
         x = frame[cols]
-        # Text components fitted on the training years alone, so the test year never shapes them.
+        # Text components fitted on training years only, never the test year.
         if text is not None:
             parts = T.components(text, (year < test_year).to_numpy())
             x = pd.concat([x, pd.DataFrame(parts, index=frame.index, columns=T.NAMES)], axis=1)
@@ -154,7 +153,7 @@ def walk_forward(
     return out
 
 
-# How well each teacher's year-ahead prediction matched what happened, year by year.
+# How well each teacher's year-ahead prediction matched, year by year.
 def accuracy(frame: pd.DataFrame, pred: pd.Series, target: pd.Series, name: str) -> dict:
     both = pd.DataFrame(dict(p=pred, t=target, y=frame["holding_month"].dt.year)).dropna()
     by_year = {str(y): float(g["p"].corr(g["t"], method="spearman")) for y, g in both.groupby("y")}
@@ -193,8 +192,7 @@ def main() -> None:
         print(f"  {name}: {report[name]['rank_correlation_by_year']}")
     CACHE.parent.mkdir(exist_ok=True)
     out.to_parquet(CACHE, index=False)
-    # The book's inputs, committed so anyone rebuilds it untrained: the learned beta it hedges
-    # and the crowding that sets borrow once short-interest reports stop.
+    # Beta and crowding committed, so anyone rebuilds the book untrained.
     book = out.filter([*data.KEYS, "beta_hat", "crowding_hat"])
     book = book[book["eom"] >= P.FIRST_FORECAST].sort_values(data.KEYS, ignore_index=True)
     P.INPUTS.parent.mkdir(parents=True, exist_ok=True)

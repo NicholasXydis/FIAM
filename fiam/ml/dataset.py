@@ -1,4 +1,4 @@
-# Builds the train/validate/test folds the rules prescribe. Caches them to cache/folds/.
+# Builds the train, validate and test folds the rules prescribe, cached.
 
 from __future__ import annotations
 
@@ -15,30 +15,30 @@ CACHE = Path("cache/folds")
 
 TARGET = "ret_exc_lead1m"
 
-# Same screen as the book, so the ML comparison is against the universe we actually trade.
+# The book's screen, so ML is compared on the universe we really trade.
 MIN_PRICE, MIN_ME = 5.0, 300.0
 
-# Expanding train, 2-year validation, annual refit. Test blocks are calendar years.
+# Expanding train, 2-year validation, annual refit, test calendar years.
 VAL_YEARS = 2
 FIRST_TARGET = "2015-02-01"
 FIRST_TEST_YEAR, LAST_TEST_YEAR = 2021, 2026
 
-# Ends at August 2026, the same 68 months the book holds. Otherwise the last fold is 69.
+# Ends August 2026, the book's 68 months. Else the last fold makes 69.
 LAST_HOLDING_MONTH = "2026-08-01"
 N_HOLDING_MONTHS = 68
 
 
-# Loads the panel and attaches the holding month, which is what every split keys on.
+# Loads the panel with the holding month, which every split keys on.
 def load() -> pd.DataFrame:
     cols = P.characteristics() + ["permno", "eom", "prc", "me", TARGET]
     panel = data.panel(cols)
-    # eom is when we decide, the target lands the month after. Carry both, always.
+    # eom is when we decide, the target lands a month later. Carry both.
     panel["holding_month"] = (panel["eom"] + pd.offsets.MonthBegin(1)).dt.normalize()
     keep = (panel["prc"].abs() >= MIN_PRICE) & (panel["me"] >= MIN_ME)
     return panel[keep].copy()
 
 
-# Ranks each predictor into [-1, 1] within its month. Gaps filled with that month's median.
+# Ranks predictors into [-1, 1] per month, gaps get the month median.
 def rank_transform(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     out = df.copy()
     for col in cols:
@@ -46,17 +46,17 @@ def rank_transform(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         out[col] = out[col].fillna(g.transform("median"))
         r = out.groupby("eom")[col].rank(method="dense") - 1
         mx = r.groupby(out["eom"]).transform("max")
-        # A month where every value is missing ranks flat. Zero is the neutral score.
+        # A month with every value missing ranks flat, zero being neutral.
         out[col] = np.where(mx > 0, (r / mx.replace(0, np.nan)) * 2 - 1, 0.0)
     return out
 
 
-# Yields one (train, validate, test) split per test year, expanding the training window.
+# One (train, validate, test) split per test year, train expanding.
 def folds(df: pd.DataFrame):
     start = pd.Timestamp(FIRST_TARGET)
     m = df["holding_month"]
     for test_year in range(FIRST_TEST_YEAR, LAST_TEST_YEAR + 1):
-        # Work back from the test year, so the block is Jan to Dec, then validation.
+        # Back from the test year, so the block is Jan to Dec, then validation.
         test_start = pd.Timestamp(year=test_year, month=1, day=1)
         test_end = pd.Timestamp(year=test_year + 1, month=1, day=1)
         val_start = test_start - pd.DateOffset(years=VAL_YEARS)
@@ -69,18 +69,18 @@ def folds(df: pd.DataFrame):
         )
 
 
-# Models fit the rank, not the return. Raw returns let a few 300% months own the loss.
+# Models fit the rank, not the return, or 300% months own the loss.
 def rank_target(frame: pd.DataFrame) -> np.ndarray:
     r = frame.groupby("holding_month")[TARGET].rank(pct=True)
     return (r - 0.5).to_numpy()
 
 
-# Drops rows with no target, train and validation only. Filtering the test month is bias.
+# Drops targetless rows, train and validation only. Test filters bias.
 def labelled(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[frame[TARGET].notna()]
 
 
-# What the cached folds depend on. Any change here has to invalidate them.
+# What the cached folds depend on. Any change here must void them.
 def fingerprint() -> str:
     parts = [
         data.signature(),
@@ -97,12 +97,12 @@ def fingerprint() -> str:
     return hashlib.sha256("|".join(str(p) for p in parts).encode()).hexdigest()[:16]
 
 
-# Builds the folds once and caches them, so every model script reads the same splits.
+# Builds the folds once and caches them, so all models share splits.
 def build(refresh: bool = False) -> Path:
     CACHE.mkdir(parents=True, exist_ok=True)
     marker = CACHE / "folds.parquet"
     stamp = CACHE / "fingerprint.txt"
-    # Rebuild if the panel, predictors, screen or schedule change. Stale caches ship bugs.
+    # Rebuild if panel, predictors, screen or schedule change, or bugs ship.
     current = fingerprint()
     if (
         marker.exists()
@@ -118,7 +118,7 @@ def build(refresh: bool = False) -> Path:
     return marker
 
 
-# Stops a run whose predictions miss the book's months. A silent 69th breaks every table.
+# Stops a run missing the book's months. A silent 69th breaks tables.
 def assert_holding_months(preds: pd.DataFrame) -> None:
     months = preds["holding_month"].nunique()
     assert months == N_HOLDING_MONTHS, f"expected {N_HOLDING_MONTHS} holding months, got {months}"

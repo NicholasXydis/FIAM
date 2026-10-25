@@ -123,5 +123,7 @@ Desktop.ini
 /site/dist/
 /site/.wrangler/
 
-# The assistant rules stay local; PLAN.md and TEAM.md are tracked.
-/CLAUDE.md
+# Root notes stay local except README.md and RESULTS.md; plans are in docs.
+/*.md
+!/README.md
+!/RESULTS.md

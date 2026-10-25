@@ -33,6 +33,7 @@ def patience(seconds: int = 120) -> None:
 
     send = requests.Session.request
 
+    # The original request, given a timeout unless the caller set one.
     def limited(self, *args, **kwargs):
         kwargs.setdefault("timeout", seconds)
         return send(self, *args, **kwargs)

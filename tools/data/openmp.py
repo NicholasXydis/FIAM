@@ -85,7 +85,7 @@ def extract(blob: bytes, library: str) -> bytes:
         return archive.extractfile(member).read()
 
 
-# A Mac library renamed @rpath/libomp.dylib and signed, so a preload counts.
+# Mac library renamed @rpath/libomp.dylib and signed, so preloads count.
 def prepare_mac(path) -> None:
     subprocess.run(["install_name_tool", "-id", "@rpath/libomp.dylib", str(path)], check=True)
     subprocess.run(["codesign", "-f", "-s", "-", str(path)], check=True, capture_output=True)

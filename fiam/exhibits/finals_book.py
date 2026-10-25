@@ -1,6 +1,4 @@
-# Any v2 run as the brief's committee pack (finals.md): holdings with ticker and company name,
-# monthly returns and every statistic, then v1's own pack and charts, all under out/finals/<run>/
-# so the submission's files are never touched. uv run python -m fiam.exhibits.finals_book RUN
+# Any v2 run as the committee pack in out/finals/<run>/ (finals.md).
 
 import os
 import shutil
@@ -16,12 +14,12 @@ from fiam import paths
 ROOT = Path("out") / "finals"
 
 
-# The run's files in the submission's shape, and the folder that holds them.
+# The run's files in the submission's shape, returning their folder.
 def write(run: Path) -> Path:
     target = ROOT / run.parent.name
     folder = target / "submission"
     (folder / "exhibits").mkdir(parents=True, exist_ok=True)
-    # The pack's steps read the committed cost and hedge files from the pack's own submission/.
+    # The pack reads the committed cost and hedge files in its submission/.
     (folder / "models").mkdir(exist_ok=True)
     for name in ("book_inputs.parquet", "borrow.parquet", "spreads.json"):
         if not (folder / "models" / name).exists():
@@ -50,7 +48,7 @@ def write(run: Path) -> Path:
     return target
 
 
-# The pack and the performance charts, run exactly as for v1 but pointed at the finals folder.
+# The pack and performance charts as for v1, but in the finals folder.
 def main(run: str) -> None:
     target = write(Path(run))
     env = os.environ | {"FIAM_OUT": str(target)}

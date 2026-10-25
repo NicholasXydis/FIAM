@@ -1,4 +1,4 @@
-# The September 2026 book: the shipped code walked one month past the record, from August's data.
+# The September 2026 book, the shipped code one month past the record.
 
 import hashlib
 import sys
@@ -18,15 +18,14 @@ V3 = FROZEN / "september_v3.csv"
 FINAL = FROZEN / "september_final.csv"
 
 
-# The shipped universe with one more decision month, built exactly as the record's months are.
+# The shipped universe plus one decision month, built like the record's.
 def universe() -> pd.DataFrame:
     return P.shipped(
         P.build_signal(P.screen(P.load_panel(), P.FIRST_FORECAST, str(DECISION.date())))
     )
 
 
-# Walks every month, so August drifts into September as it really would; keeps every book.
-# `track` hears each month's record as it is earned, for a book whose rules read its own path.
+# Walks each month so August drifts into September; keeps every book.
 def walk_to_september(
     universe: pd.DataFrame, optimize=P.optimize_month, model=C.DEFAULT, track=None
 ) -> dict:
@@ -39,7 +38,7 @@ def walk_to_september(
     return books
 
 
-# One book as a table a trader can read: name, ticker and weight, largest positions first.
+# A book as a trader reads it: name, ticker, weight, largest first.
 def table(weights: pd.Series, info: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(
         dict(
@@ -52,7 +51,7 @@ def table(weights: pd.Series, info: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("weight", key=abs, ascending=False, ignore_index=True)
 
 
-# August must come out as submitted (published in percent), or September is not its next month.
+# August must match the submission (in percent) for September to follow.
 def check_august(books: dict) -> float:
     holdings = pd.read_csv(paths.HOLDINGS).query("Date == '2026-08-01'")
     shipped = holdings.set_index("PERMNO")["WEIGHT"] / 100
@@ -61,7 +60,7 @@ def check_august(books: dict) -> float:
     return float((both.iloc[:, 0] - both.iloc[:, 1]).abs().max())
 
 
-# A book frozen as CSV with its SHA-256 beside it, so any later change is visible.
+# A book frozen as CSV with its SHA-256, so any later change is visible.
 def write(book: pd.DataFrame, path) -> str:
     FROZEN.mkdir(exist_ok=True)
     book.to_csv(path, index=False, lineterminator="\n")
@@ -70,8 +69,7 @@ def write(book: pd.DataFrame, path) -> str:
     return digest
 
 
-# August's book drifted through August, against September's: the trades, in whole shares at
-# $10M, with each trade's share of daily dollar volume and days to finish at 10% of it.
+# Drifted August to September trades at $10M, days to fill at 10% ADV.
 def trade_list(books: dict, crowd: pd.Series | None = None) -> pd.DataFrame:
     august = DECISION - pd.offsets.MonthEnd(1)
     w_aug, info_aug, parts_aug = books[august]
@@ -97,7 +95,7 @@ def trade_list(books: dict, crowd: pd.Series | None = None) -> pd.DataFrame:
     )
     if crowd is not None:
         out["crowd_score"] = crowd.reindex(idx)
-    # A name the month's row leaves blank takes its latest known ticker and company name.
+    # A blank name or ticker takes the latest known one for that stock.
     labels = data.features(["ticker", "company_name"]).dropna().sort_values("eom")
     latest = labels.drop_duplicates("permno", keep="last").set_index("permno")
     for col in ("ticker", "company_name"):
@@ -106,7 +104,7 @@ def trade_list(books: dict, crowd: pd.Series | None = None) -> pd.DataFrame:
     return out.sort_values("trade_weight", key=abs, ascending=False, ignore_index=True)
 
 
-# Each September stock's AI crowd score, from the frozen crowd model (level 0, no GPU).
+# September's AI crowd scores from the frozen model (level 0, no GPU).
 def crowd_scores() -> pd.Series | None:
     from fiam.exhibits import crowd_lab as X
 
@@ -116,8 +114,7 @@ def crowd_scores() -> pd.Series | None:
     return pd.Series(X.crowd_score(month).to_numpy(), index=month["permno"])
 
 
-# v1 from the shipped code (checked against the submitted August), or v2, v3 (v2_amendment_2.md)
-# or final v3 (v2_amendment_3.md) from fiam.v2's optimizer.
+# v1 from shipped code, checked on August; v2, v3 or final from fiam.v2.
 def main(which: str = "v1") -> None:
     if which in ("v2", "v3", "final"):
         from functools import partial

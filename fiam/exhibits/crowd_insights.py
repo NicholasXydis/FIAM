@@ -1,5 +1,4 @@
-# AI Crowd Lab, amendment 1 (docs/protocols/crowd_amendment_1.md): what the crowds' saved answers
-# still tell us. Exploratory; nothing here enters v1 or v2.
+# AI Crowd Lab amendment 1, exploratory; nothing here enters v1 or v2.
 
 import json
 import sys
@@ -24,19 +23,19 @@ FLOWS = (1e9, 10e9, 50e9)
 DRAWS, SEED = 10_000, 42
 
 
-# v1's book in the crowds' months: weight and side by decision month and name.
+# v1's book in the crowds' months: weight and side by month and name.
 def our_book(capital: str = "1e7") -> pd.DataFrame:
     held = E.load(f"v1@{capital}", "record")[1]
     return held.assign(side=np.sign(held["weight"]))
 
 
-# The frame the crowds' months need: v1's signal and the cost model's volatility and volume.
+# Crowd months: v1's signal and the cost model's volatility and volume.
 def market() -> pd.DataFrame:
     df = E.frame("record", frozenset())
     return df[df["eom"] >= L.FIRST][["eom", "permno", "signal", "rvol_21d", "dolvol_126d"]]
 
 
-# 1. How often each copycat group buys v1's longs and shorts v1's shorts, over the base rate.
+# 1. Copycats buying v1's longs and shorting its shorts, over base rate.
 def copycat_test(picks: pd.DataFrame, book: pd.DataFrame, frame: pd.DataFrame) -> dict:
     df = picks.merge(book[["eom", "permno", "side"]], on=["eom", "permno"], how="left")
     df["side"] = df["side"].fillna(0.0)
@@ -51,6 +50,7 @@ def copycat_test(picks: pd.DataFrame, book: pd.DataFrame, frame: pd.DataFrame) -
     for text, g in df.groupby("strategy"):
         months = g.groupby("eom")[cols].sum().assign(shown=g.groupby("eom").size())
 
+        # Buy and short hit rates over base rates, pooled over the given months.
         def ratios(m: pd.DataFrame) -> tuple[float, float]:
             buy = (m["buy_hit"].sum() / m["picked"].sum()) / (m["long"].sum() / m["shown"].sum())
             sell = (m["short_hit"].sum() / m["shorted"].sum()) / (
@@ -78,8 +78,7 @@ def copycat_test(picks: pd.DataFrame, book: pd.DataFrame, frame: pd.DataFrame) -
     return out
 
 
-# 2. The cost to v1 if AI copycat money followed the v1-text copycats: square-root impact on
-# every name where v1 trades the same way, in basis points a month.
+# 2. v1's cost if copycat money follows: square-root impact, bp a month.
 def capacity_tax(picks: pd.DataFrame, frame: pd.DataFrame) -> dict:
     g = picks[picks["strategy"] == "v1"]
     votes = g.groupby(["eom", "permno"])[["picked", "shorted"]].mean()
@@ -103,7 +102,7 @@ def capacity_tax(picks: pd.DataFrame, frame: pd.DataFrame) -> dict:
     return out
 
 
-# 3. The crowd model's ten strongest likes and dislikes, named, and its agreement with our signal.
+# 3. Crowd model's top ten likes and dislikes, and fit with our signal.
 def what_it_buys(frame: pd.DataFrame) -> dict:
     model = json.loads((FROZEN / "crowd_emulator.json").read_text(encoding="utf-8"))
     names = json.loads((FROZEN / "characteristic_labels.json").read_text(encoding="utf-8"))
@@ -131,7 +130,7 @@ def herding_and_fear(crowds: dict) -> dict:
         lsv = {m: X.lsv(g)["lsv"] for m, g in picks.groupby("eom")}
         series = pd.Series(lsv).sort_index()
         fear = month_end.reindex(series.index)
-        # Only months with a VIX reading count; the VIX layer can end before the crowd's votes.
+        # Only months with a VIX reading count; VIX can end before the votes do.
         seen = fear.notna()
         rho, p = st.spearmanr(series[seen], fear[seen])
         out[name] = dict(
@@ -168,8 +167,7 @@ def before_costs() -> dict:
     return out
 
 
-# 7. The retail agents' pick correlations, grouped by average linkage into as many groups as the
-# crowd's effective number of voters.
+# 7. Retail pick correlations grouped into the crowd's effective voters.
 def network(retail: pd.DataFrame) -> dict:
     wide = retail.pivot_table(
         index=["eom", "permno"], columns="agent", values="picked", aggfunc="max"
@@ -194,8 +192,7 @@ def network(retail: pd.DataFrame) -> dict:
     )
 
 
-# crowd.md item 6: how often our longs and shorts are among each crowd's favourites (its top
-# tenth by buy share, stocks seen at least 3 times), over all 19 months; chance is 10%.
+# crowd.md item 6: our names in each crowd's top tenth; chance is 10%.
 def overlap(crowds: dict, book: pd.DataFrame) -> dict:
     out = {}
     for name, picks in crowds.items():
@@ -213,8 +210,7 @@ def overlap(crowds: dict, book: pd.DataFrame) -> dict:
     return out
 
 
-# Another run's book against the crowds (final_exhibits.md): the overlap with their favourites and
-# the copycat test, added to the report under the run's name.
+# A run's overlap and copycat test vs the crowds (final_exhibits.md).
 def book(name: str) -> None:
     crowds, frame = X.crowds(), market()
     held = E.load(name, "record")[1]
@@ -227,6 +223,7 @@ def book(name: str) -> None:
     print(json.dumps(report[f"book {name}"], default=float)[:1500])
 
 
+# Every amendment 1 exhibit in one report, printed short for the log.
 def main() -> None:
     crowds = X.crowds()
     frame, book = market(), our_book()

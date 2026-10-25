@@ -1,5 +1,4 @@
-# Scores the honesty tests (docs/protocols/honesty.md, amendment 1): accuracy, flip rates, the
-# memorization difference-in-differences and re-identification, from the saved calls only.
+# Scores the docs/protocols/honesty.md tests from the saved calls only.
 
 import json
 from pathlib import Path
@@ -14,12 +13,11 @@ from fiam.agents import honesty as A
 
 OUT = Path("out") / "v2" / "honesty.json"
 REPS, SEED = 10_000, 42
-# Stated before any result: the smallest accuracy gap 250 per side detects at 80% power.
+# Fixed before any result: the gap 250 per side detects at 80% power.
 MDE = 0.125
 
 
-# Each filing's 2-day abnormal return: the stock's total return less the S&P 500 over the first
-# trading day on or after the filing date and the next.
+# Each filing's 2-day return less the S&P 500, from its first trade day.
 def abnormal(chosen: pd.DataFrame) -> pd.Series:
     daily = data.research("daily_market", ["permno", "date", "total_return"])
     daily = daily[daily["permno"].isin(chosen["permno"])].astype({"total_return": float})
@@ -39,7 +37,7 @@ def abnormal(chosen: pd.DataFrame) -> pd.Series:
     return pd.Series(out, name="abnormal")
 
 
-# One row per filing: each condition's call, whether it was right, and the re-identification.
+# One row per filing: each condition's call, its hit and re-ID.
 def table() -> pd.DataFrame:
     chosen = A.sample()
     calls = pd.read_json(H.RUNS / "honesty.jsonl", lines=True)
@@ -54,7 +52,7 @@ def table() -> pd.DataFrame:
     return df[df["abnormal"].notna()]
 
 
-# Bootstrap of a statistic over filings, resampled within each side: estimate and 95% interval.
+# Within-side bootstrap over filings: the estimate and its 95% interval.
 def interval(df: pd.DataFrame, statistic) -> dict:
     rng, sides = np.random.default_rng(SEED), [g for _, g in df.groupby("side")]
     draws = [
@@ -65,15 +63,18 @@ def interval(df: pd.DataFrame, statistic) -> dict:
     return dict(estimate=float(statistic(df)), ci95=[float(low), float(high)])
 
 
+# Memorization DiD: named minus masked accuracy, before minus after.
 def did(df: pd.DataFrame) -> float:
     gap = (df["named_right"].astype(float) - df["masked_right"]).groupby(df["side"]).mean()
     return float(gap["before"] - gap["after"])
 
 
+# How much more often reversing flips a call than a plain repeat does.
 def flip_gap(df: pd.DataFrame) -> float:
     return float((df["reversed"] != df["masked"]).mean() - (df["repeat"] != df["masked"]).mean())
 
 
+# Scores every test and writes out/v2/honesty.json.
 def main() -> None:
     df = table()
     out = dict(filings=df["side"].value_counts().to_dict(), minimum_detectable_gap=MDE)

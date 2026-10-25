@@ -86,13 +86,16 @@ def test_order_ids_and_row_counts_are_read_from_any_shape():
 
 # A stand-in for the SDK explorer: card panel filters and fixed prices.
 class Explorer:
+    # Quotes by insight id, and a list of every order placed, to assert on.
     def __init__(self, prices=None):
         self.prices, self.orders = prices or {}, []
 
+    # A framework dict in the SDK's shape, so request() reads it as real.
     def build_framework(self, entities, insight, filters, aggregate=None):
         base = {"entities": entities, "insight": {"insight_id": insight}}
         return base | {"filters": filters, "aggregate": aggregate}
 
+    # A card panel's filter offers, from which request() picks its choices.
     def collect_framework_filters(self, framework):
         span = {"start_date": "2021-10-19T00:00:00Z", "end_date": "2026-10-18T00:00:00Z"}
         return {
@@ -109,38 +112,47 @@ class Explorer:
             ]
         }  # fmt: skip
 
+    # The quote for an insight, 0.0 when none is set, as the SDK replies.
     def check_framework_price(self, framework):
         return self.prices.get(framework["insight"]["insight_id"], 0.0)
 
+    # Records the order and charges the wallet the insight's quote.
     def buy_frameworks(self, order):
         self.orders.append(order)
         self.wallet.spend(self.prices[order[0]["insight"]["insight_id"]])
         return {"order_id": "o", "frameworks": [f"f{len(self.orders)}"]}
 
+    # One row of data, so a saved receipt counts a single row.
     def get_framework_data(self, fid, fetch_all=True):
         return {"data": [{"date": "2026-01-01", "value": 1}]}
 
+    # Bare metadata naming the framework, kept in the receipt.
     def get_framework_metadata(self, fid):
         return {"id": fid}
 
 
 # A stand-in wallet whose balance falls by whatever is bought.
 class Wallet:
+    # The opening balance, which each purchase then lowers.
     def __init__(self, balance):
         self.balance = balance
 
+    # Takes a purchase off, rounded so float sums match the asserts.
     def spend(self, amount):
         self.balance = round(self.balance - amount, 6)
 
+    # The balance in the SDK's reply shape, read before and after buying.
     def get_balance(self):
         return {"total_balance": self.balance}
 
+    # An empty order history, which a buy saves to orders.json at the end.
     def get_order_history(self):
         return {"total": 0}
 
 
 # A stand-in client joining the fake explorer and wallet.
 class Client:
+    # Joins the fake wallet to the explorer so buying lowers its balance.
     def __init__(self, prices, balance=480.04):
         self.explorer, self.client = Explorer(prices), Wallet(balance)
         self.explorer.wallet = self.client

@@ -1,4 +1,4 @@
-# Converts WRDS exports and derives dated exits into the bundle's wrds/ folder, never committed.
+# Converts WRDS exports and dated exits into wrds/, never committed.
 
 import json
 import sys
@@ -13,10 +13,10 @@ from fiam import data, paths
 
 OUT = data.WRDS
 
-# Real delisting actions. Securities without one carry the end of the data, never an event date.
+# Real delisting actions. Others carry the data's end, not an exit date.
 DELISTED = {"MER", "GDR", "GLI", "GEX"}
 
-# Each export is recognised by a column only it has, and only the columns we use are kept.
+# Each export is known by a column only it has. Only used columns kept.
 TABLES = {
     "crsp_monthly": (
         "MthRet",
@@ -54,7 +54,7 @@ def kind(path: Path) -> str:
     return matches[0]
 
 
-# Dated exits by PERMNO: CRSP delistings to 2025, Compustat deletions after, with final returns.
+# Exits by PERMNO: CRSP delists to 2025, then Compustat, final returns.
 def exits() -> pd.DataFrame:
     crsp = pd.read_parquet(OUT / "crsp_monthly.parquet")
     crsp["SecurityEndDt"] = pd.to_datetime(crsp["SecurityEndDt"])
@@ -64,13 +64,13 @@ def exits() -> pd.DataFrame:
         action=("DelActionType", "last"),
         payment=("DelPaymentType", "last"),
     )
-    # The last CRSP month of a delisted security includes its delisting payment in MthRet.
+    # A delisted stock's last CRSP MthRet includes its delisting payment.
     final = crsp.sort_values("YYYYMM").groupby("PERMNO").tail(1).set_index("PERMNO")
     events = events.join(final[["YYYYMM", "MthRet"]].rename(columns={"MthRet": "final_return"}))
     events["final_month"] = pd.to_datetime(events.pop("YYYYMM").astype(str), format="%Y%m")
     events["source"] = "CRSP delisting " + events["action"] + " " + events["payment"].fillna("")
 
-    # 2026 has no CRSP, so Compustat's deletion date marks the exit and the payout stays unknown.
+    # 2026 has no CRSP: Compustat dates the exit, the payout stays unknown.
     comp = pd.read_parquet(OUT / "compustat_quarterly.parquet").dropna(subset=["dldte", "dlrsn"])
     comp["dldte"] = pd.to_datetime(comp["dldte"])
     deleted = comp.groupby("gvkey").agg(exit_date=("dldte", "max"), reason=("dlrsn", "last"))
@@ -95,7 +95,7 @@ def main(exports: list[str]) -> None:
     for path in map(Path, exports):
         name = kind(path)
         columns = TABLES[name][1]
-        # Codes and identifiers stay text, so a leading zero in a gvkey or CUSIP survives.
+        # Codes and identifiers stay text so a gvkey or CUSIP keeps its zeros.
         text = {c: "string" for c in columns if c in {"gvkey", "cik", "tic", "Ticker", "dlrsn"}}
         table = pv.read_csv(
             path, convert_options=pv.ConvertOptions(include_columns=columns, column_types=text)

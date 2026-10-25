@@ -1,4 +1,4 @@
-# Compares a run under out/ with the committed official results, number by number.
+# Compares an out/ run with the committed official results, per number.
 
 import json
 import sys
@@ -14,7 +14,7 @@ OFFICIAL = Path("submission")
 # Keys that name the code behind a result rather than the result itself.
 RUN_DETAILS = {"run", "code", "code_sha256"}
 
-# Rewritten by every run, or only by the agents, so never a result to compare.
+# Rewritten each run or only by agents, so never a result to compare.
 SKIP = {"run_manifest.json", "reproducibility.json"}
 
 
@@ -33,7 +33,7 @@ def numbers(data, prefix: str = "") -> dict[str, float]:
     return out
 
 
-# The largest gap between two arrays. Missing on both sides agrees; missing on one side does not.
+# Largest array gap. Missing on both sides agrees; on one, it does not.
 def gap(a: np.ndarray, b: np.ndarray) -> float:
     if (np.isnan(a) != np.isnan(b)).any():
         return float("inf")
@@ -41,7 +41,7 @@ def gap(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.abs(a[both] - b[both]).max(initial=0.0))
 
 
-# The largest difference between two files and where it is, or None if they cannot be compared.
+# Two files' largest gap and where it is, or None if not comparable.
 def difference(ours: Path, theirs: Path) -> tuple[float, str] | None:
     if ours.suffix == ".json":
         a = numbers(json.loads(ours.read_text(encoding="utf-8")))
@@ -91,7 +91,7 @@ def verdict(gap: float) -> str:
     return "differs"
 
 
-# The headline side by side, then every result file compared with the official one.
+# The headline side by side, then each result file against the official.
 def main() -> int:
     if paths.OUT_ROOT.resolve() == Path(".").resolve():
         print("Official run: nothing to compare with.")

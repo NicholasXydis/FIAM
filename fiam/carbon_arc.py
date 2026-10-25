@@ -1,4 +1,4 @@
-# Carbon Arc spending data: match companies, build the signal and test it (protocols/carbon_arc.md).
+# Carbon Arc spend data: match names, build and test the signal.
 
 import difflib
 import json
@@ -13,12 +13,12 @@ from fiam import data
 from fiam.exhibits.labels import normalise
 
 OUT = Path("out") / "v2" / "carbon_arc"
-# Carbon Arc states no publication lag in our notes, so the protocol's 30 days applies.
+# Our notes give Carbon Arc no publication lag, so the 30 days applies.
 LAG_DAYS = 30
 SURE, MAYBE = 0.95, 0.80
 
 
-# Any spend table, its columns named on the command line, as (entity, date, spend).
+# Any spend table, columns named on the command line, as entity-date.
 def load(path: str, name: str, date: str, value: str) -> pd.DataFrame:
     raw = pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
     out = raw[[name, date, value]].set_axis(["entity", "date", "spend"], axis=1)
@@ -26,14 +26,14 @@ def load(path: str, name: str, date: str, value: str) -> pd.DataFrame:
     return out.dropna()
 
 
-# Our universe's names at their latest known month, normalised as the label checks do.
+# Our names at their latest month, normalised as the label checks do.
 def our_names() -> pd.DataFrame:
     names = data.features(["company_name", "ticker"]).dropna(subset=["company_name"])
     latest = names.sort_values("eom").drop_duplicates("permno", keep="last")
     return latest.assign(key=latest["company_name"].map(normalise))
 
 
-# Each entity's best three candidates by similarity: sure, maybe (an LLM says yes or no), or none.
+# Each entity's top three matches: sure, maybe (LLM decides) or none.
 def match(entities: pd.Series, ours: pd.DataFrame) -> pd.DataFrame:
     keys = ours["key"].tolist()
     by_key = ours.drop_duplicates("key").set_index("key")
@@ -49,8 +49,7 @@ def match(entities: pd.Series, ours: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# The close calls (0.80 to 0.95) put to the local model as yes or no; without a model they are
-# dropped, and the report says so.
+# Close calls (0.80 to 0.95) go to the local model, else are dropped.
 def confirm(matches: pd.DataFrame, ours: pd.DataFrame) -> pd.DataFrame:
     from fiam.agents import harness as H
 
@@ -76,7 +75,7 @@ def confirm(matches: pd.DataFrame, ours: pd.DataFrame) -> pd.DataFrame:
     return matches
 
 
-# Spending growth over the last three months against a year before, known 30 days after month end.
+# Spend growth, last three months on a year before, known 30 days on.
 def signal(spend: pd.DataFrame, matches: pd.DataFrame) -> pd.DataFrame:
     kept = matches[matches["verdict"].isin(["sure", "llm yes"])][["entity", "permno"]]
     monthly = spend.merge(kept, on="entity")
@@ -88,12 +87,12 @@ def signal(spend: pd.DataFrame, matches: pd.DataFrame) -> pd.DataFrame:
     return growth.drop(columns="month")
 
 
-# The protocol's test: spend growth minus last sales growth against the next sales surprise.
+# The protocol's test: spend minus sales growth on next sales surprise.
 def test(growth: pd.DataFrame) -> dict:
     panel = data.features(["saleq_gr1", "saleq_su"])
     frame = growth.merge(panel, on=data.KEYS)
     frame["signal"] = frame["spend_growth"] - frame["saleq_gr1"]
-    # The next report's surprise: the first change in saleq_su within four months.
+    # The next report's surprise, the first saleq_su change in four months.
     future = panel.set_index(data.KEYS)["saleq_su"].unstack("permno").sort_index()
     ahead = future.shift(-3).stack().rename("next_surprise").reset_index()
     frame = frame.merge(ahead, on=data.KEYS).dropna(subset=["signal", "next_surprise"])
@@ -114,7 +113,7 @@ def test(growth: pd.DataFrame) -> dict:
     )
 
 
-# A fake file in the likely shape: our own names lightly misspelt, monthly spend, two years.
+# A fake file in the likely shape: our names misspelt, two years' spend.
 def fake(path: Path, names: int = 300, seed: int = 42) -> None:
     rng = np.random.default_rng(seed)
     ours = our_names().sample(names, random_state=seed)
@@ -127,6 +126,7 @@ def fake(path: Path, names: int = 300, seed: int = 42) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
+# Matches, builds and tests the signal, or rehearses on a fake file.
 def main(args: list[str]) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     if args[:1] == ["dry-run"]:

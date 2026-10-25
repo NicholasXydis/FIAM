@@ -1,4 +1,4 @@
-# The devil's-advocate agent on a second vendor's model. Writes critic.json; --repeat checks it.
+# The devil's-advocate agent on a second vendor's model, to critic.json.
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ ROOT = H.ROOT
 EXHIBITS = ROOT / paths.EXHIBITS
 PROMPT = ROOT / "prompts" / "agents" / "critic.md"
 
-# Ten each side. Fewer misses the book's character, more is a reading list nobody works through.
+# Ten each side. Fewer misses the book's character, more goes unread.
 TOP_N = 10
 
 TASK = (
@@ -43,13 +43,12 @@ def load(name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-# The ten largest longs and shorts, averaged over every month so one-month bets never outrank.
-# by="pnl" takes the ten largest winners and losers instead, the names behind the result.
+# Top ten longs and shorts by mean weight, or by="pnl" winners, losers.
 def positions(by: str = "weight") -> list[dict]:
     book = paths.holdings()
     book["w"] = book["WEIGHT"] / 100
     months = book["Date"].nunique()
-    # Grouped on PERMNO alone, or a ticker change splits one security into two.
+    # Grouped on PERMNO alone, or a ticker change splits one security.
     held = book.groupby("PERMNO", as_index=False).agg(
         weight_while_held=("w", "mean"), months_held=("w", "size"), as_of=("Date", "max")
     )
@@ -66,7 +65,7 @@ def positions(by: str = "weight") -> list[dict]:
     held["pnl"] = held["PERMNO"].map(pnl).fillna(0.0)
     key = "pnl" if by == "pnl" else "mean_weight"
     names = pd.concat([held.nlargest(TOP_N, key), held.nsmallest(TOP_N, key)])
-    # Characteristics as of the last decision month. A later row would add facts nobody had.
+    # Traits as of the last decision month. Later rows add unknown facts.
     names["eom"] = (names["as_of"] - pd.offsets.MonthEnd(1)).astype("datetime64[ns]")
     facts = pd.merge_asof(
         names.sort_values("eom"),
@@ -80,7 +79,7 @@ def positions(by: str = "weight") -> list[dict]:
 
     out = []
     for row in names.itertuples():
-        # A list lookup always returns a frame, so one row comes back even for a repeated name.
+        # A list lookup returns a frame, so a repeated name still gives one row.
         c = facts.loc[[row.PERMNO]].iloc[0]
         out.append(
             dict(
@@ -101,7 +100,7 @@ def positions(by: str = "weight") -> list[dict]:
     return out
 
 
-# Item codes filed on or before each name's decision month. Later ones nobody had at the time.
+# Item codes filed by each name's decision month, none filed later.
 def filing_items(cutoff: dict) -> dict[int, list[str]]:
     table = data.filings(["permno", "filing_date", "items"])
     table = table[table["permno"].isin(cutoff)]
@@ -112,18 +111,18 @@ def filing_items(cutoff: dict) -> dict[int, list[str]]:
     }
 
 
-# The facts the critic may use, all from exhibits the pipeline already wrote.
+# The facts the critic may use, all from exhibits already written.
 class Evidence:
-    # Starts with nothing shown, so every number the critic quotes can be traced.
+    # Starts with nothing shown, so every number quoted can be traced.
     def __init__(self):
         self.seen: list[str] = []
 
-    # Built on first use, so serving the tools costs nothing until one is called.
+    # Built on first use, so the tools cost nothing until one is called.
     @cached_property
     def pack(self) -> list[dict]:
         return positions()
 
-    # Every result is kept, so the final claims can be checked against what was actually shown.
+    # Every result is kept, so final claims are checked against the shown.
     def show(self, result: object) -> object:
         self.seen.append(json.dumps(result, default=str))
         return result
@@ -138,26 +137,26 @@ class Evidence:
         match = [p for p in self.pack if p["ticker"].upper() == ticker.upper()]
         return self.show(match[0] if match else {"error": f"{ticker} is not one of the twenty"})
 
-    # What a risk committee asks first: factor loadings, borrow, and the clean test.
+    # A risk committee's first asks: factor loadings, borrow, clean test.
     def book_risk(self) -> dict:
         metrics = paths.read_json(paths.METRICS)
         pack = load("pack.json")
         return self.show(
             dict(
                 five_factor_momentum=pack.get("risk", {}).get("five_factor_momentum"),
-                # Each year's return split into what the six factors paid and stock selection.
+                # Each year's return split into six-factor pay and stock selection.
                 style_or_selection_by_year=pack.get("risk", {}).get("style_by_year"),
                 hard_to_borrow_share_of_short_book=metrics["costs"][
                     "hard_to_borrow_share_of_short_book"
                 ],
-                # Where our longs and shorts sit among what the AI crowd agents would buy.
+                # Where our longs and shorts sit among what AI crowd agents would buy.
                 crowd_percentile_of_our_book=pack.get("crowding"),
                 realized_beta=metrics["performance"]["beta_realized"],
                 frozen_book_on_2016_2020=load("confirmation.json").get("confirmation_2016_2020"),
             )
         )
 
-    # Every variant we tried with its result, beside the book shipped, and the recall test.
+    # Every variant tried with its result, the shipped book, recall test.
     def what_we_tried(self) -> dict:
         from fiam.exhibits import config_log
 
@@ -172,31 +171,31 @@ class Evidence:
             )
         )
 
-    # Which signals earned the return, so "the alpha is just one factor" can be tested.
+    # Which signals earned the return, to test "the alpha is one factor".
     def signal_attribution(self) -> dict:
         full = load("pack.json").get("attribution", {}).get("full", {})
         return self.show({k: v.get("contribution_annual") for k, v in full.items()})
 
 
-# Numbers in a piece of text, with thousands separators removed so "19,169,939" is one number.
+# Numbers in text, thousands commas dropped so "19,169,939" is one.
 def numbers(text: str) -> list[str]:
     return re.findall(r"-?\d+\.?\d*", re.sub(r"(?<=\d),(?=\d{3})", "", text))
 
 
-# A number in a claim is supported if some tool result showed it, at the claim's own precision.
+# A claim's number is supported if a tool showed it, at its precision.
 def supported(claim: str, seen: list[str]) -> bool:
     shown = [float(x) for x in numbers(" ".join(seen))]
     for token in numbers(claim):
         value = float(token)
         decimals = len(token.split(".")[1]) if "." in token else 0
-        # Claims often quote a share as a percent, so allow the factor of 100 as well.
+        # Claims often quote a share as a percent, so allow a factor of 100.
         candidates = [round(v, decimals) for v in shown] + [round(v * 100, decimals) for v in shown]
         if value not in candidates and abs(value) > 1:
             return False
     return True
 
 
-# Five read-only tools and the answer. The critic cannot reach the panel or any weight.
+# Five read-only tools and the answer. No panel or weight is reachable.
 def tools(evidence: Evidence) -> list[H.Tool]:
     empty = dict(type="object", properties={})
     critique = dict(
@@ -251,7 +250,7 @@ def tools(evidence: Evidence) -> list[H.Tool]:
     ]
 
 
-# One critic run. The tag names the transcript, so a repeat never overwrites the original.
+# One critic run. The tag names the transcript, so repeats never clash.
 def critique(server: H.Server, tag: str = "") -> dict:
     system = PROMPT.read_text(encoding="utf-8")
     budget = 6 if paths.SMOKE else 30
@@ -259,7 +258,7 @@ def critique(server: H.Server, tag: str = "") -> dict:
     return H.run_agent(server, run, tools(Evidence()))
 
 
-# The same inputs a second time, compared call by call. Identical proves repeatable, never right.
+# The same inputs again, call by call. Same is repeatable, not right.
 def repeat() -> None:
     first = H.TRANSCRIPTS / "critic.jsonl"
     with H.Server("gemma") as server:

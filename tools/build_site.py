@@ -1,7 +1,4 @@
-# The showcase site's data: final v3's pack and exhibits, cut down to what the site draws, in one
-# JSON file the site bundles, and the replayed crises the ad shows in another. Read only; nothing
-# here runs or changes a book.
-# uv run tools/build_site.py [pack folder]   (default: final v3 at $10M, as the deck presents)
+# The site's data and the ad's crises, from final v3's pack. Read only.
 
 import csv
 import json
@@ -9,7 +6,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# The repo root goes on the path, so the crisis windows import from fiam when run from anywhere.
+# The repo root on the path, so crisis windows import fiam from any cwd.
 sys.path.insert(0, str(ROOT))
 BOOK = "brake+shorts+size+target10+voltarget+zerobeta@1e7"
 PACK = ROOT / "out" / "finals" / BOOK / "submission"
@@ -19,7 +16,7 @@ OUT = ROOT / "site" / "src" / "data" / "fiam.json"
 CRASHES = ROOT / "site" / "src" / "data" / "crashes.json"
 CACHE = ROOT / "cache" / "stress_daily.parquet"
 MODELS = {"gemma": "Gemma 4 26B-A4B", "qwen": "Qwen3.8-27B"}
-# The twelve measures in fiam/book.py, grouped by the question each one asks of a stock.
+# The twelve measures in fiam/book.py, grouped by the question asked.
 SIGNALS = [
     ("be_me", +1, "cheap", "Book-to-market"),
     ("qmj", +1, "profitable", "Quality minus junk"),
@@ -44,15 +41,18 @@ FAMILIES = {
 CAPACITY = {"v1": "First book", "v2": "Built for size", "v2-pass": "Short rule only"}
 
 
+# A JSON file from the pack or out/v2, as a dict.
 def load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+# A CSV file as one dict per row, as the pack's returns are read.
 def rows(path: Path) -> list[dict]:
     with path.open(encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
 
+# Rounds a number for the site file, so the bundle stays small.
 def r(x: float, digits: int = 4) -> float:
     return round(float(x), digits)
 
@@ -63,7 +63,7 @@ def before(month: str) -> str:
     return f"{year - 1}-12" if m == 0 else f"{year}-{m:02d}"
 
 
-# Growth of $1 for the book, the hurdle (T-bill + 4%) and the S&P 500 price index, month by month.
+# Growth of $1 for the book, hurdle (T-bill + 4%) and S&P 500 by month.
 def race(returns: list[dict], months: list[str]) -> dict:
     close = {}
     for row in rows(ROOT / "data" / "benchmarks" / "SP500.csv"):
@@ -87,7 +87,7 @@ def race(returns: list[dict], months: list[str]) -> dict:
     )
 
 
-# Every stock the book held, and each month's book as [stock, weight in thousandths of a percent].
+# Every held stock, and each month as [stock, weight in 0.001% units].
 def holdings(pack: Path, months: list[str]) -> dict:
     names, held = {}, {m: [] for m in months}
     for row in rows(pack / "holdings.csv"):
@@ -109,8 +109,7 @@ def holdings(pack: Path, months: list[str]) -> dict:
     )
 
 
-# The September 2026 book (fiam/exhibits/september.py), made one month past the record. A name the
-# frozen file leaves blank is taken from the same stock's latest month in the record, if it has one.
+# The September 2026 book, blank names filled from the record's latest.
 def september(pack: Path) -> dict:
     known = {}
     for row in rows(pack / "holdings.csv"):
@@ -125,6 +124,7 @@ def september(pack: Path) -> dict:
     return dict(decision="2026-08-31", book=book)
 
 
+# Gross and net return, the cost parts and the break-even ladder.
 def costs(pack: dict, metrics: dict) -> dict:
     parts = pack["costs"]["components"]
     even = pack["costs"]["break_even"]
@@ -147,7 +147,7 @@ def costs(pack: dict, metrics: dict) -> dict:
     )
 
 
-# The 1,000 random large-cap books and every benchmark on the same money (final_exhibits.md).
+# The 1,000 random large-cap books and benchmarks on the same money.
 def edge(report: dict) -> dict:
     null = report["null"]
     irs = [round(float(x["ir"]), 3) for x in rows(V2 / "final_exhibits" / "null_irs.csv")]
@@ -186,7 +186,7 @@ def edge(report: dict) -> dict:
     )
 
 
-# Information ratio and dollars a year by fund size, for the final book and the three it beat.
+# IR and dollars a year by fund size, for our book and three it beat.
 def capacity() -> dict:
     books = load(V2 / "capacity.json")["books"]
     out = []
@@ -212,7 +212,7 @@ def capacity() -> dict:
     return dict(books=out)
 
 
-# Each retail persona and what its prompt tells the agent about its client (prompts/agents).
+# Each retail persona and its client brief, from prompts/agents.
 def personas() -> list[dict]:
     text = (ROOT / "prompts" / "agents" / "crowd_lab.md").read_text(encoding="utf-8")
     parts = text.split("\n## ")[1:]
@@ -222,6 +222,7 @@ def personas() -> list[dict]:
     ]
 
 
+# The AI Crowd Lab's agreement, diversity and overlap with our book.
 def crowd() -> dict:
     lab = load(V2 / "crowd_lab.json")
     insights = load(V2 / "crowd_insights.json")[f"book {BOOK}"]
@@ -327,7 +328,7 @@ def agents(desk: dict) -> list[dict]:
     ]
 
 
-# Every attempt by family, from the ledger RESULTS.md prints, and what survived.
+# Every attempt by family from the RESULTS.md ledger, and what survived.
 def honesty(metrics: dict, pack: dict, desk: dict) -> dict:
     robust = metrics["robustness"]
     halves = pack["subperiod"]
@@ -353,9 +354,7 @@ def honesty(metrics: dict, pack: dict, desk: dict) -> dict:
     )
 
 
-# Each crisis the September book was replayed through (fiam/exhibits/stress.py), with the whole US
-# market's move over the same days: every stock in the crisis cache, weighted by its value the day
-# before. The book's own result is the replay in stress.json. Needs pandas, so run it with uv.
+# Each replayed crisis beside the value-weighted US market's move.
 def crises() -> list[dict]:
     import pandas as pd
 
@@ -383,6 +382,7 @@ def crises() -> list[dict]:
     return out
 
 
+# The site's whole data file from the pack, the desk and the exhibits.
 def build(folder: Path = PACK) -> dict:
     metrics, pack = load(folder / "metrics.json"), load(folder / "exhibits" / "pack.json")
     returns = rows(folder / "returns.csv")
@@ -449,7 +449,7 @@ def build(folder: Path = PACK) -> dict:
     )
 
 
-# Both files need the pack, and the crises the crisis cache; the results kit puts both in place.
+# Both files need the pack and crisis cache, which the results kit sets.
 def main(args: list[str]) -> None:
     folder = Path(args[0]) if args else PACK
     for path in (folder, CACHE):

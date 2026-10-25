@@ -1,8 +1,4 @@
-# The finals deck in deck 1's look, built two ways from one set of slides. Live: a ten-minute
-# visual story where every slide builds itself (tools/motion.py), the AI Crowd Lab film playing on
-# its own, the script in the notes and the brief's pages as backup. Printed: the brief's eight
-# pages and a ten-page appendix, from deck 1's own tables, as the PDF.
-# uv run run.py --finals-pack builds both over final v3's pack (out/finals/<run>/), and the PDF.
+# Finals deck, live and printed, from one set via run.py --finals-pack.
 
 import re
 import shutil
@@ -20,7 +16,7 @@ from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches
 
 ROOT = Path(__file__).resolve().parents[1]
-# The repo root goes on the path, so fiam and the first deck's helpers import from anywhere.
+# Repo root on sys.path, so fiam and deck 1's helpers always import.
 sys.path.insert(0, str(ROOT))
 
 from fiam import paths  # noqa: E402
@@ -34,7 +30,7 @@ from tools.motion import added, finish, stagger  # noqa: E402
 OUT, PRINTED = ROOT / "deck" / "FIAM_finals.pptx", ROOT / "deck" / "FIAM_finals_print.pptx"
 FIGURES, V2 = ROOT / "out" / "figures", ROOT / "out" / "v2"
 CLIPS = FIGURES / "clips"
-# The film's palette, so the dots on the slides are the same investors as in the film.
+# The film's palette, so the slides' dots match the film's investors.
 LIGHT, NAVY = RGBColor.from_string(A.LIGHT[1:]), RGBColor.from_string(A.NAVY[1:])
 PERSONAS = [c[1:] for c in A.PERSONAS]
 RECIPES = [A.RECIPES[k][1:] for k in ("v1", "brief_2026", "case_2025")]
@@ -57,7 +53,7 @@ FOOTERS = (
 # "live" (the talk) or "print" (the PDF).
 MODE = "live"
 
-# The talk, slide by slide: what to say over each, numbers filled in from qa.facts().
+# The talk slide by slide: what to say, numbers filled from qa.facts().
 NOTES = dict(
     title="Open on the idea, not the numbers. In ten minutes, a book that holds up, what it can "
     "carry, and the AI crowd we built to see who we trade against.",
@@ -144,12 +140,12 @@ def notes(name: str, f: dict, **extra) -> str:
     return NOTES[name].format_map(f | extra)
 
 
-# The section label: "Appendix" for a story slide the printed deck carries there, else its own.
+# A slide's section, or "Appendix" when the printed deck moves it there.
 def section(name: str, appendix: bool = False) -> str:
     return "Appendix" if MODE == "print" and appendix else name
 
 
-# Method pages describe the models, so they read the submitted run even for a finals book.
+# Method pages describe the models, so they read the submitted run.
 @contextmanager
 def submitted():
     saved = R.SUBMISSION
@@ -160,7 +156,7 @@ def submitted():
         R.SUBMISSION = saved
 
 
-# Words in a box at (left, top, width, height) in inches: one size, one colour.
+# Text in a box at (left, top, width, height) in inches, one style.
 def say(page, words, at, size=18, color=D.INK, bold=False, center=False):
     box = page.shapes.add_textbox(*(Inches(x) for x in at))
     frame = box.text_frame
@@ -173,13 +169,14 @@ def say(page, words, at, size=18, color=D.INK, bold=False, center=False):
     return box
 
 
+# A flat shape at a spot in inches, named so Morph can match it.
 def shape(page, kind, at, fill, name: str = ""):
     s = D.flat(page.shapes.add_shape(kind, *(Inches(x) for x in at)), fill)
     s.name = name or s.name
     return s
 
 
-# A headline number on a light card, its label under it, grouped so it moves as one.
+# A big number on a light card, label under it, grouped to move as one.
 def card(page, at, value: str, label: str, size: float = 32):
     group = page.shapes.add_group_shape()
     shape(group, MSO_SHAPE.RECTANGLE, at, D.PANEL)
@@ -198,7 +195,7 @@ def cards(page, items, top=5.3, left=0.6, width=12.13, height=1.25, size=32) -> 
     ]
 
 
-# Cards stacked down a column: (left, top, width, height, step down, number size).
+# Cards down a column: left, top, width, height, step down, number size.
 def column(page, items, left, top, width, height, step, size) -> list:
     return [
         card(page, (left, top + step * i, width, height), value, label, size)
@@ -206,7 +203,7 @@ def column(page, items, left, top, width, height, step, size) -> list:
     ]
 
 
-# A heading and a line on a panel, grouped: the building block of every visual slide.
+# Heading and line on a panel, grouped, to build every visual slide.
 def tile(page, at, head: str, line: str = "", fill=D.PANEL, ink=D.INK, size=20):
     group = page.shapes.add_group_shape()
     shape(group, MSO_SHAPE.ROUNDED_RECTANGLE, at, fill)
@@ -231,7 +228,7 @@ def pillars(page, ideas) -> list:
     return stagger(row, "rise", 0, 450)
 
 
-# A chart fitted in its box: ours from out/figures, the book's own from deck 1's folder.
+# A chart fit to its box, from out/figures or, for the book, deck 1's.
 def chart(page, name: str, at, book: bool = False):
     path = (D.FIGURES if book else FIGURES) / f"{name}.png"
     if not path.exists():
@@ -243,8 +240,7 @@ def chart(page, name: str, at, book: bool = False):
     return pic
 
 
-# A chart that draws itself (fiam.report.clips) when its film exists, else the still chart, and
-# the film for the slide's timeline to start.
+# The chart's film (fiam.report.clips) for the timeline, else its still.
 def moving(page, name: str, at, still: str, book: bool = False):
     movie, poster = CLIPS / f"{name}.mp4", CLIPS / f"{name}.png"
     if not (movie.exists() and poster.exists()):
@@ -256,7 +252,7 @@ def moving(page, name: str, at, still: str, book: bool = False):
     return clip, clip
 
 
-# A full-bleed navy slide: a small line, then a headline with its second line in light petrol.
+# Navy slide: small line, headline, its second line in light petrol.
 def dark(deck, small: str, big: str, accent: str = "", notes: str = "", lines=(), dots=0):
     page = deck.slides.add_slide(deck.slide_layouts[6])
     shape(page, MSO_SHAPE.RECTANGLE, (0, 0, 13.333, 7.5), NAVY, "!!night")
@@ -275,8 +271,7 @@ def dark(deck, small: str, big: str, accent: str = "", notes: str = "", lines=()
     return page
 
 
-# Sixty AI investors as dots in their crowd's colours, above and below the headline. Each dot is
-# named after its agent, so Morph flies the same investor from slide to slide.
+# Sixty AI investor dots, each named for its agent so Morph flies it on.
 def constellation(page, count: int) -> list:
     rng, dots = np.random.default_rng(7), []
     for i in range(count):
@@ -288,7 +283,7 @@ def constellation(page, count: int) -> list:
     return [dots[i] for i in rng.permutation(len(dots))]
 
 
-# One AI investor: retail agents in their persona's colour, copycats in their recipe's.
+# An investor dot in its persona's colour, or a copycat's recipe colour.
 def agent(page, i: int, at, size: float):
     colour = PERSONAS[i // 5] if i < 30 else RECIPES[(i - 30) // 10]
     return shape(
@@ -296,6 +291,7 @@ def agent(page, i: int, at, size: float):
     )
 
 
+# The title slide: our line, team and schools over sixty investors.
 def title(deck, f: dict, m: dict) -> None:
     lines = [
         "Market neutral. Hedged by machine learning. Watched by an AI crowd.",
@@ -306,6 +302,7 @@ def title(deck, f: dict, m: dict) -> None:
     dark(deck, meeting, "THE NEXT CROWD IS", "MADE OF MACHINES", notes("title", f), lines, dots=60)
 
 
+# The hook: the brief's AI crowd warning, then the crowd we built.
 def hook(deck, f: dict, m: dict) -> None:
     page = D.slide(deck, "Your Brief Warned About an AI Crowd", "", "The question")
     words = (
@@ -315,7 +312,7 @@ def hook(deck, f: dict, m: dict) -> None:
     )
     quote = say(page, [words, "The organizers' 2026 brief"], (0.6, 1.75, 11.8, 2), 21)
     built = say(page, "So we built that crowd.", (0.6, 3.85, 12.13, 0.8), 40, D.ACCENT, True)
-    # The title slide's sixty investors fly in by Morph and settle beside it, one dot each.
+    # The title's sixty investors Morph in and settle beside the quote.
     for i in range(60):
         agent(page, i, (8.55 + (i % 15) * 0.28, 3.72 + (i // 15) * 0.28), 0.2)
     row = cards(
@@ -331,6 +328,7 @@ def hook(deck, f: dict, m: dict) -> None:
     finish(page, notes("hook", f), steps)
 
 
+# Our answer in three pillars: theory, machine learning, the AI crowd.
 def ideas(deck, f: dict, m: dict) -> None:
     page = D.slide(deck, "One Book, Three Ideas", "", "Our answer")
     steps = pillars(
@@ -353,7 +351,7 @@ def ideas(deck, f: dict, m: dict) -> None:
     finish(page, notes("ideas", f), steps)
 
 
-# How a stock earns its place, as a film of one real month (fiam.report.clips), full screen.
+# A stock earning its place, one real month's film (fiam.report.clips).
 def journey(deck, f: dict, m: dict) -> None:
     movie, poster = CLIPS / "journey.mp4", CLIPS / "journey.png"
     told = load(CLIPS / "journey.json")
@@ -399,6 +397,7 @@ def journey_still(deck, f: dict, m: dict) -> None:
     finish(page, "", sorted(steps, key=lambda s: s[2]) + [(line, "rise", 3700)])
 
 
+# Where machine learning won on beta and lost on volatility, pre-2021.
 def ml(deck, f: dict, m: dict) -> None:
     title_, subtitle = (
         "Machine Learning Only Where It Earns Its Place",
@@ -411,6 +410,7 @@ def ml(deck, f: dict, m: dict) -> None:
     finish(page, notes("ml", f), [(pic, "wipe", 0), (line, "fade", 1300)])
 
 
+# The six AI colleagues, as a film when there is one, else as tiles.
 def desk(deck, f: dict, m: dict) -> None:
     page = D.slide(deck, "Six AI Colleagues. None of Them Trades.", "", "How it works")
     movie, poster = CLIPS / "desk.mp4", CLIPS / "desk.png"
@@ -443,11 +443,13 @@ def desk(deck, f: dict, m: dict) -> None:
     finish(page, notes("desk", f), steps)
 
 
+# The navy turn to results: did it work, January 2021 to August 2026.
 def results(deck, f: dict, m: dict) -> None:
     small = "January 2021 to August 2026. Every cost charged."
     dark(deck, small, "So, did it", "WORK?", notes("results", f))
 
 
+# Growth of $1 vs the hurdle and S&P 500, with the IR and net return.
 def growth(deck, f: dict, m: dict) -> None:
     perf = m["performance"]
     subtitle = "Growth of $1 against cash plus 4% and the S&P 500, 2021 to August 2026"
@@ -463,6 +465,7 @@ def growth(deck, f: dict, m: dict) -> None:
     finish(page, notes("growth", f), steps, film=film)
 
 
+# Rolling S&P 500 beta, called zero only within two standard errors.
 def neutral(deck, f: dict, m: dict) -> None:
     perf = m["performance"]
     beta, error = perf["beta_realized"], perf["beta_stderr"]
@@ -484,6 +487,7 @@ def neutral(deck, f: dict, m: dict) -> None:
     finish(page, words, steps, film=film)
 
 
+# Dollars and IR by fund size, where v1 peaks and stops, final at $5B.
 def capacity(deck, f: dict, m: dict) -> None:
     subtitle = "Dollars earned and IR by fund size, after all costs"
     page = D.slide(deck, "How Much Money Can It Run?", subtitle, section("Capacity", True))
@@ -498,7 +502,7 @@ def capacity(deck, f: dict, m: dict) -> None:
     finish(page, notes("capacity", f), steps, film=film)
 
 
-# Final v3, the book we present (v2_amendment_3.md), against v1, v2 and v2-pass by fund size.
+# Final v3 (v2_amendment_3.md) against v1, v2 and v2-pass by fund size.
 def final(deck, f: dict, m: dict) -> None:
     every = f["fd_best_sharpe"] == f["fd_sizes"]
     heading = "One Book for Every Fund Size, $10M to $5B" if every else "The Book We Present"
@@ -529,6 +533,7 @@ def final(deck, f: dict, m: dict) -> None:
     finish(page, notes("final", f), steps)
 
 
+# Where it struggles: weak IR years beside the crisis replays.
 def losses(deck, f: dict, m: dict) -> None:
     subtitle = "After all costs, with 2016 to 2020 as the pre-test"
     page = D.slide(deck, "Where It Struggles, and Why", subtitle, section("Risk", True))
@@ -552,11 +557,12 @@ def losses(deck, f: dict, m: dict) -> None:
     finish(page, said, stagger(row, "rise", 0, 400) + [(pic, "wipe", 1200)])
 
 
+# The navy turn to the edge tests: is the edge real?
 def edge(deck, f: dict, m: dict) -> None:
     dark(deck, "Every backtest looks good.", "Is the edge", "REAL?", notes("edge", f))
 
 
-# Final v3 against 1,000 random large-cap books (final_exhibits.md section 1.1).
+# Final v3 among 1,000 random large-cap books (final_exhibits.md 1.1).
 def monkeys(deck, f: dict, m: dict) -> None:
     subtitle = "Long-short books of the 500 largest stocks, with our size, holdings and costs"
     page = D.slide(
@@ -574,7 +580,7 @@ def monkeys(deck, f: dict, m: dict) -> None:
     finish(page, notes("monkeys", f), steps, film=film)
 
 
-# Every benchmark on one axis, and what we expect live (final_exhibits.md sections 1 and 2).
+# Every benchmark on one axis, and the live outlook (final_exhibits.md).
 def ladder(deck, f: dict, m: dict) -> None:
     subtitle = "IR at $10M after all costs, 2021 to August 2026"
     page = D.slide(deck, "Every Benchmark We Could Think Of", subtitle, section("The edge", True))
@@ -590,7 +596,7 @@ def ladder(deck, f: dict, m: dict) -> None:
     finish(page, notes("ladder", f), steps, film=film)
 
 
-# The printed appendix's edge page: the random books and every benchmark.
+# The printed edge page: the random books and every benchmark.
 def edge_page(deck, f: dict, m: dict) -> None:
     subtitle = "The final book at $10M, 2021 to August 2026, after all costs"
     page = D.slide(deck, "Is the Edge Real? Random Books and Every Benchmark", subtitle, "Appendix")
@@ -608,7 +614,7 @@ def edge_page(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# The printed appendix's crowd page: how the AI crowd herds, and how copycats land on our stocks.
+# The printed crowd page: how the AI crowd herds and copycats find us.
 def crowd_page(deck, f: dict, m: dict) -> None:
     title_ = f"30 AI Investors Vote Like {f['voters']}, and Copycats Land on Our Stocks"
     page = D.slide(deck, title_, CLEAN, "Appendix")
@@ -638,7 +644,7 @@ def risk_slide(deck, f: dict, m: dict) -> None:
     finish(page, notes("risk", f), [(pic, "wipe", 0)] + stagger(row, "zoom", 1300, 300))
 
 
-# What final v3 bets on, month by month, told by the explainer agent with every number checked.
+# Final v3's bets by month, told by the explainer, every number checked.
 def exposures_slide(deck, f: dict, m: dict) -> None:
     subtitle = "Exposure to five styles, every month"
     page = D.slide(deck, "What It Bets On, Month by Month", subtitle, section("Risk", True))
@@ -649,7 +655,7 @@ def exposures_slide(deck, f: dict, m: dict) -> None:
     finish(page, notes("exposures", f), [(pic, "wipe", 0), (story, "fade", 1400)])
 
 
-# The printed appendix's risk page: the risk table, the exposures and what the optimizer adds.
+# The printed risk page: risk table, exposures, what the optimizer adds.
 def risk_page(deck, f: dict, m: dict) -> None:
     subtitle = "The final book, 2021 to August 2026, after all costs, risk from our factor model"
     heading = "Where the Risk Sits, What It Bets On, What the Optimizer Adds"
@@ -660,12 +666,13 @@ def risk_page(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
+# The navy turn to the crowd: who is on the other side of our trades.
 def turn(deck, f: dict, m: dict) -> None:
     small = "Who is on the other side of our trades?"
     dark(deck, small, "Meet", "THE AI CROWD", notes("turn", f), dots=60)
 
 
-# The crowd laid out by who they are: retail personas in rows, copycats by the recipe they read.
+# The crowd by kind: retail personas in rows, copycats by their recipe.
 def meet(deck, f: dict, m: dict) -> None:
     from fiam.agents import crowd_lab
 
@@ -688,7 +695,7 @@ def meet(deck, f: dict, m: dict) -> None:
     finish(page, notes("meet", f), stagger(labels, "fade", 600, 120) + [(line, "rise", 1800)])
 
 
-# The thirty retail investors fly into the groups their votes actually form, biggest first.
+# Retail investors fly into the groups their votes form, biggest first.
 def swarm(deck, f: dict, m: dict) -> None:
     net = load(V2 / "crowd_insights.json").get("network", {})
     groups = dict(zip(net.get("agents", []), net.get("groups", [])))
@@ -723,6 +730,7 @@ def swarm(deck, f: dict, m: dict) -> None:
     finish(page, notes("swarm", f, biggest=biggest), steps)
 
 
+# The AI Crowd Lab film full screen, the talk's cut if there is one.
 def film(deck, f: dict, m: dict) -> None:
     page = deck.slides.add_slide(deck.slide_layouts[6])
     shape(page, MSO_SHAPE.RECTANGLE, (0, 0, 13.333, 7.5), NAVY, "!!night")
@@ -739,6 +747,7 @@ def film(deck, f: dict, m: dict) -> None:
     finish(page, notes("film", f), film=clip)
 
 
+# How often copycats buy our longs, given the brief or our own recipe.
 def copycats(deck, f: dict, m: dict) -> None:
     from fiam.report.figures import copycat_test
 
@@ -761,6 +770,7 @@ def copycats(deck, f: dict, m: dict) -> None:
     finish(page, notes("copycats", f), steps, film=film)
 
 
+# Our crowding beta and our loss if a $50B AI crowd sold at once.
 def trades(deck, f: dict, m: dict) -> None:
     subtitle = "The AI crowd's real votes over 19 months"
     page = D.slide(deck, "We Are Already in Their Trades", subtitle, section("AI Crowd Lab", True))
@@ -775,20 +785,20 @@ def trades(deck, f: dict, m: dict) -> None:
     finish(page, notes("trades", f), steps, film=film)
 
 
-# The recipe the copycat was told, word for word, its list of signals left out.
+# The copycat's recipe word for word, without its list of signals.
 def told_short(recipe: str) -> str:
     head, _, rest = recipe.partition(":")
     last = rest.split(". ", 1)[1] if ". " in rest else ""
     return f"“{head} … {last}”" if last else f"“{recipe}”"
 
 
-# A measure's name short enough for a column: before any colon, cut at a word.
+# A measure's name fit for a column: before any colon, cut at a word.
 def measure(name: str) -> str:
     name = name.split(":")[0].strip()
     return name if len(name) <= 26 else name[:26].rsplit(" ", 1)[0]
 
 
-# One saved decision, rebuilt from the data: what the copycat was told, saw, answered and meant.
+# A saved decision rebuilt: what the copycat was told, saw and answered.
 def receipt(deck, f: dict, m: dict) -> None:
     r = load(FIGURES / "receipt.json")
     same = r.get("hash_match") and r.get("same_stocks")
@@ -835,8 +845,7 @@ def receipt(deck, f: dict, m: dict) -> None:
     finish(page, notes("receipt", f), steps)
 
 
-# The book run under the finals' own rules today (finals_global.md): the latest run on real data,
-# never the fake-country rehearsal; no slide until there is one.
+# Today's finals-rules book from real data only (finals_global.md).
 def today(deck, f: dict, m: dict) -> None:
     runs = sorted((V2 / "finals").glob("*.json"), key=lambda p: p.stat().st_mtime)
     real = [load(p) for p in runs]
@@ -876,6 +885,7 @@ def today(deck, f: dict, m: dict) -> None:
     finish(page, notes("today", f), stagger(row, "zoom", 0, 300))
 
 
+# What we would build next: a growing book, a crowd monitor, fast rules.
 def launch(deck, f: dict, m: dict) -> None:
     page = D.slide(deck, "What We Would Build Next", "", "The product")
     steps = pillars(
@@ -901,6 +911,7 @@ def launch(deck, f: dict, m: dict) -> None:
     finish(page, notes("launch", f), steps)
 
 
+# The closing navy slide: what we would do with real money, and thanks.
 def closing(deck, f: dict, m: dict) -> None:
     lines = [
         "One book that beats the hurdle from $10M to $5B."
@@ -960,7 +971,7 @@ def summary(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Page 2 of the brief: the legs, the neutrality we enforce, the signals, top names, growth.
+# Brief page 2: legs, enforced neutrality, signals, top names, growth.
 def strategy(deck, f: dict, m: dict) -> None:
     comp = m["compliance"]
     side = R.load("exhibits/pack.json")["completeness"]["ranges"]["gross_exposure"]["mean"] / 2
@@ -1000,7 +1011,7 @@ def strategy(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Page 3 of the brief: data, method, out-of-sample R², and every agent's sight, tools and model.
+# Brief page 3: data, method, out-of-sample R² and each agent's setup.
 def method(deck, f: dict, m: dict) -> None:
     with submitted():
         mine = R.load("metrics.json")
@@ -1060,7 +1071,7 @@ def method(deck, f: dict, m: dict) -> None:
         finish(page)
 
 
-# Page 4 of the brief: returns against the hurdle and the market, and risk, exposure and costs.
+# Brief page 4: returns vs the hurdle and market, risk, exposure, costs.
 def returns_page(deck, f: dict, m: dict) -> None:
     perf = m["performance"]
     side = R.load("exhibits/pack.json")["completeness"]["comparison"]
@@ -1135,7 +1146,7 @@ def committee(deck, f: dict, m: dict) -> None:
         page(deck, f, m)
 
 
-# Page 8 of the brief: deck 1's discussion, with what the crowd and capacity add.
+# Brief page 8: deck 1's discussion, plus what crowd and capacity add.
 def discussion(deck, f: dict, m: dict) -> None:
     try:
         lines = D.discussion(R, m)
@@ -1169,6 +1180,7 @@ def discussion(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
+# Appendix: each fix's own pre-2021 test, then the edge tests.
 def evidence(deck, f: dict, m: dict) -> None:
     verdicts = load(V2 / "evidence.json").get("verdicts", {})
     rows = ["| Fix | Its own pre-2021 test |", "|---|---|"]
@@ -1207,7 +1219,7 @@ def evidence(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# The prompts deck 1 shows, then the finals agents' own, as the brief asks.
+# Deck 1's prompts, then the finals agents' own, as the brief asks.
 def prompts(deck, f: dict, m: dict) -> None:
     from fiam.agents import crowd_lab, rules_reader
 
@@ -1238,6 +1250,7 @@ def prompts(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
+# The critic's tools as the model got them, the data and how to run it.
 def tools(deck, f: dict, m: dict) -> None:
     with submitted():
         listed = R.load("exhibits/agents/tools.json")
@@ -1283,6 +1296,7 @@ PAPER = [summary, strategy, method, committee, discussion, final, edge_page, los
 # fmt: on
 
 
+# Builds a deck from its slides, swaps in our footer, returns the count.
 def build(parts: list, target: Path, f: dict, m: dict) -> int:
     deck = Presentation()
     deck.slide_width, deck.slide_height = D.WIDE, D.TALL
@@ -1303,7 +1317,7 @@ def build(parts: list, target: Path, f: dict, m: dict) -> int:
     return len(deck.slides)
 
 
-# The PDF through LibreOffice, else PowerPoint on Windows; None without either.
+# The PDF by LibreOffice, else PowerPoint on Windows, else None.
 def pdf(path: Path) -> Path | None:
     found = [
         Path("C:/Program Files/LibreOffice/program/soffice.exe"),
@@ -1336,6 +1350,7 @@ def pdf(path: Path) -> Path | None:
     return target if target.exists() else None
 
 
+# Builds the live deck and the printed one, and the PDF with --pdf.
 def main(args: list[str]) -> None:
     global MODE
     if "finals" not in paths.OUT_ROOT.as_posix():

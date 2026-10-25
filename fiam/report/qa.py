@@ -1,5 +1,4 @@
-# The Q&A bank: the questions a portfolio manager will ask, answered from numbers our code wrote.
-# facts() is also the one source of every number on the finals slides.
+# Q&A bank from our numbers; facts() is the finals slides' one source.
 
 import re
 from pathlib import Path
@@ -13,11 +12,11 @@ from fiam.paths import read_json as load
 
 OUT = Path("out") / "qa.md"
 PCT, INT, ONE, TWO, SIGNED = "{:.1%}", "{:,.0f}", "{:.1f}", "{:.2f}", "{:+.3f}"
-# AMD's total board power for our Radeon RX 9070 XT: an upper bound for the energy estimate.
+# AMD's board power for our RX 9070 XT, an upper bound on energy used.
 BOARD_WATTS = 304
 
 
-# A value from nested results, formatted, or a dash while the step that writes it has not run.
+# A nested value, formatted, or a dash until its step has run.
 def get(data: dict, keys: str, fmt: str = TWO) -> str:
     for key in keys.split("/"):
         if not isinstance(data, dict) or key not in data:
@@ -118,16 +117,18 @@ def money(x) -> str:
     return f"${x / 1e9:.1f}B" if abs(x) >= 1e9 else f"${x / 1e6:.0f}M"
 
 
-# The finals numbers added for capacity, the crowd insights, v2a and the desk, in the same form.
+# Facts for capacity, the crowd insights, v2a and the desk, same form.
 def more() -> dict:
     cap, ins = load(v2.OUT / "capacity.json"), load(v2.OUT / "crowd_insights.json")
     crowd, ev = load(v2.OUT / "crowd_lab.json"), load(v2.OUT / "evidence.json")
     books = cap.get("books", {})
 
+    # One book's figure at one fund size, or None if it was not run there.
     def at(book: str, capital: float, key: str):
         rows = books.get(book, {}).get("record", [])
         return next((r[key] for r in rows if r["capital"] == capital), None)
 
+    # A number in the given format, or a dash when it is missing.
     def show(value, fmt: str = TWO) -> str:
         return fmt.format(value) if isinstance(value, (int, float)) else "-"
 
@@ -167,7 +168,7 @@ def more() -> dict:
         before_costs=get(ins, "before_costs/retail/gross_ir"),
         after_costs=get(ins, "before_costs/retail/net_ir"),
     )
-    # Each rules drill against its hand-made reference: this year's rules first, then 2025's.
+    # Rules drills against hand-made references: 2026's first, then 2025's.
     drills = load(v2.OUT / "drill.json")
     latest = drills.get("rules_2026") or drills.get("case_2025") or {}
     f["drill"] = show(latest.get("minutes"), ONE)
@@ -209,7 +210,7 @@ NOUNS = dict(
 )
 
 
-# v3, the final book (v2_amendment_2.md): its parts' verdicts and its figures at each fund size.
+# v3 (v2_amendment_2.md): part verdicts and figures at each fund size.
 def final(ev: dict, books: dict, at) -> dict:
     verdicts = ev.get("verdicts", {})
     judged = [p for p in v2.PARTS if p in verdicts]
@@ -248,7 +249,7 @@ def final(ev: dict, books: dict, at) -> dict:
     return f | final_three(ev, books, at, shown)
 
 
-# What each of final v3's rules and fixes does, in a sentence's words (v2_amendment_3.md).
+# What each final v3 rule and fix does, in words (v2_amendment_3.md).
 FINAL_WORDS = dict(
     zerobeta="holds its beta at zero",
     target10="aims at 10% volatility with a risk forecast that corrects itself",
@@ -258,7 +259,7 @@ FINAL_WORDS = dict(
 FINAL_NOUNS = dict(riskcap="risk-sized positions", adaptive="adaptive signal weights")
 
 
-# Final v3's figures at each fund size, its fixes' verdicts and its wins against every other book.
+# Final v3's figures by fund size, fix verdicts and wins over the rest.
 def final_three(ev: dict, books: dict, at, shown: dict) -> dict:
     verdicts = ev.get("verdicts", {})
     chosen = ev.get("v3", {}).get("final", {}).get("switches", [])
@@ -283,13 +284,12 @@ def final_three(ev: dict, books: dict, at, shown: dict) -> dict:
     f["fv3_dollars_5bn"] = money(dollars) if dollars is not None else "-"
     others = ("v1", "v2", "v2-pass", "v3")
     f |= wins(ev.get("v3", {}), "final v3", others, "fv3")
-    # The deck's comparison: final v3 against the submitted book and the two benchmarks.
+    # For the deck: final v3 vs the submitted book and the two benchmarks.
     f |= wins(ev.get("v3", {}), "final v3", ("v1", "v2", "v2-pass"), "fd")
     return f | final_exhibits(ev)
 
 
-# Final v3's own exhibits (final_exhibits.md): its 2016-2020 check, the AI crowd against its book,
-# the naive benchmarks, the risk table and what the agents said about it.
+# Final v3's own exhibits, as listed in final_exhibits.md.
 def final_exhibits(ev: dict) -> dict:
     name = ev.get("v3", {}).get("final", {}).get("name")
     if not name:
@@ -330,7 +330,7 @@ def final_exhibits(ev: dict) -> dict:
     ) | edge(exhibits)
 
 
-# Is the edge real (final_exhibits.md): random books, our favourites, large caps, the live view.
+# Edge checks (final_exhibits.md): random books, favourites, large caps.
 def edge(exhibits: dict) -> dict:
     null = exhibits.get("null", {})
     naive = exhibits.get("naive", {})
@@ -354,7 +354,7 @@ def edge(exhibits: dict) -> dict:
     )
 
 
-# At how many fund sizes, $10M to $5B, a book beats the others named on each measure.
+# How many sizes, $10M to $5B, a book beats the others on each measure.
 def wins(scored: dict, book: str, others: tuple, prefix: str) -> dict:
     tags = [
         t for t in ("1e7", "1e8", "5e8", "1e9", "5e9") if book in scored.get(t, {}).get("books", {})
@@ -384,8 +384,7 @@ def wins(scored: dict, book: str, others: tuple, prefix: str) -> dict:
     return out
 
 
-# What the agents cost to run, from the timings every llama-server log records, scaled from the
-# calls it logged to every decision on file.
+# Agent run cost from llama-server timings, scaled to every decision.
 def compute(decisions: int) -> dict:
     timing = re.compile(r"(prompt eval|\beval) time =\s+([\d.]+) ms /\s+(\d+) tokens")
     calls, tokens, seconds = 0, 0, 0.0
@@ -406,7 +405,7 @@ def compute(decisions: int) -> dict:
     )
 
 
-# finals.md: the smallest fund size where v2's information ratio passes v1's, in log capital.
+# finals.md: smallest fund where v2's IR passes v1's, in log capital.
 def crossover(books: dict) -> float | None:
     one = {r["capital"]: r["information_ratio"] for r in books.get("v1", {}).get("record", [])}
     two = {r["capital"]: r["information_ratio"] for r in books.get("v2", {}).get("record", [])}
@@ -421,6 +420,7 @@ def crossover(books: dict) -> float | None:
     return None
 
 
+# Writes out/qa.md, every number in its answers taken from facts().
 def main() -> None:
     f = facts()
     qa = [

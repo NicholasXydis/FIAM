@@ -1,4 +1,4 @@
-# The explainer: why the book held its biggest winners and losers, in words tied to the facts.
+# Why the book held its best and worst names, in words tied to facts.
 
 import json
 
@@ -16,7 +16,7 @@ SYSTEM = (
 )
 SCHEMA = dict(type="object", properties=dict(why=dict(type="string")), required=["why"])
 
-# What each measure is, in words, so a reader or a model never has to guess a code.
+# Each measure in words, so a reader or model never guesses a code.
 NAMES = {
     "ivol_capm_21d": "idiosyncratic volatility over the last month",
     "be_me": "book value to market value",
@@ -33,7 +33,7 @@ NAMES = {
 }
 
 
-# Each of the twelve signals as a percentile within its month, at the name's last decision.
+# Each of the 12 signals as a month percentile at the last decision.
 def signal_ranks(names: list[dict]) -> dict[int, dict]:
     universe = P.universe()
     ranks = {c: universe.groupby("eom")[c].rank(pct=True) for c in P.SIGNALS}
@@ -55,7 +55,7 @@ def main() -> None:
         for name in names[: 2 if paths.SMOKE else None]:
             facts = dict(
                 name,
-                # Each measure by its name, so the model never has to guess what a code means.
+                # Each measure by name, so the model never guesses what a code means.
                 signal_percentiles={NAMES[c]: v for c, v in ranks.get(name["permno"], {}).items()},
                 signal_directions={
                     NAMES[c]: "higher is better" if s > 0 else "lower is better"

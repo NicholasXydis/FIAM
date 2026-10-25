@@ -1,4 +1,4 @@
-# Builds the data bundle: uv run -m fiam.build_data <organizer folder> [--archive <folder>].
+# Builds the bundle: uv run -m fiam.build_data <folder> [--archive <d>].
 
 import os
 import re
@@ -16,10 +16,10 @@ FILINGS = "8k_20150101_20260831_identified.parquet"
 CHAR_LIST = "factor_char_list.csv"
 
 FIRST_DAY, LAST_MONTH = pd.Timestamp("2015-01-01"), pd.Timestamp("2026-08-31")
-# The archive's WRDS panels stop here, so their layers can never drive a 2026 decision.
+# WRDS archive panels stop here, so they never drive a 2026 decision.
 LAST_ARCHIVE_MONTH = pd.Timestamp("2025-12-31")
 
-# Identifiers and auxiliaries kept beside the 147 characteristics. The rest of the 51 is unused.
+# IDs and extras kept beside the 147. The rest of the 51 is unused.
 IDENTIFIERS = ["permco", "gvkey", "iid", "date", "ticker", "company_name", "gics", "sic", "naics"]
 IDENTIFIERS += ["ff49", "common", "primary_sec", "exch_main", "obs_main", "prc", "me"]
 IDENTIFIERS += ["me_company", "shares", "adjfct", "dolvol", "bidask", "size_grp"]
@@ -39,7 +39,7 @@ ITEMS = {
     "item_801_other_event": "8.01",
 }
 
-# Word counts, a crude tone gauge kept for research. No book signal uses them.
+# Word counts, a crude tone gauge for research. No book signal uses it.
 TERMS = {
     "text_negative": r"\b(?:loss|losses|decline|impair(?:ed|ment)|restatement|investigation"
     r"|litigation|default|bankruptcy)\b",
@@ -50,12 +50,12 @@ TERMS = {
 
 FILING_COLUMNS = ["document_id", "permno", "gvkey", "iid", "cik", "ticker", "company_name"]
 FILING_COLUMNS += ["filing_date", "form_type", "is_amendment", "items", "word_count"]
-# Every name and ticker the provider, CRSP and Compustat give a filing, all masked from its text.
+# Each name and ticker from the provider, CRSP and Compustat, masked.
 NAMES = ["provider_company_name", "content_company_name", "historical_crsp_company_name"]
 NAMES += ["compustat_header_company_name"]
 TICKERS = ["provider_ticker", "compustat_header_ticker"]
 
-# The excerpt a model reads: from the first item heading, masked, this many characters.
+# The excerpt a model reads, masked, this long from the first heading.
 EXCERPT = 3000
 HEADING = re.compile(r"\bitem\s+\d{1,2}\.\d{2}", re.I)
 MONTHS = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?"
@@ -76,7 +76,7 @@ SUFFIX = re.compile(
     r"[\s,.]+(?:inc|corp|corporation|co|company|ltd|llc|plc|lp|/[a-z]{2}/)\.?$", re.I
 )
 
-# What each extra layer is for, written into the manifest and the data card.
+# What each extra layer is for, in the manifest and the data card.
 LAYERS = {
     "daily_market": "CRSP daily prices to 2025: teaches beta, marks the book day by day",
     "ibes_monthly_research_only": "analyst price targets to 2025: teaches revisions",
@@ -89,7 +89,7 @@ def month_end(dates: pd.Series) -> pd.Series:
     return pd.to_datetime(dates).dt.to_period("M").dt.to_timestamp("M")
 
 
-# Written beside its target and moved in whole, so a failed build never leaves half a file.
+# Written beside its target and moved whole, so no half file is left.
 def write(frame: pd.DataFrame, name: str) -> None:
     path = data.DIR / f"{name}.parquet"
     partial = path.with_suffix(".partial")
@@ -98,7 +98,7 @@ def write(frame: pd.DataFrame, name: str) -> None:
     print(f"  {name}: {len(frame):,} rows", flush=True)
 
 
-# The organizer's panel split in two: predictors, and the next-month return on its own.
+# The organizer panel split: predictors, and next-month return alone.
 def organizer(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     listed = pd.read_csv(folder / CHAR_LIST)["variable"].tolist()
     columns = sorted({"permno", "eom", data.TARGET, *listed, *IDENTIFIERS, *LABEL_COLUMNS})
@@ -116,7 +116,7 @@ def organizer(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     return features, labels, listed
 
 
-# One filing's names, tickers and CIK: each name also without its corporate suffix.
+# One filing's names, tickers and CIK, each name also without suffix.
 def identities(row: dict) -> tuple[list[str], list[str]]:
     names, short = set(), set()
     for raw in [row.get(c) for c in ("company_name", *NAMES)]:
@@ -134,7 +134,7 @@ def identities(row: dict) -> tuple[list[str], list[str]]:
     return sorted((n for n in names if len(n) >= 4), key=len, reverse=True), sorted(words)
 
 
-# The excerpt a model reads: from the first item heading, names, tickers, CIK and dates masked.
+# The excerpt from the first heading, names, tickers, CIK, dates masked.
 def excerpt(text: str, row: dict) -> str:
     found = HEADING.search(text)
     body = text[found.start() if found else 0 :][: EXCERPT + 500]
@@ -147,7 +147,7 @@ def excerpt(text: str, row: dict) -> str:
     return body[:EXCERPT]
 
 
-# Every 8-K once, without its text, plus its item flags and word counts. One pass over the text.
+# Every 8-K once, no text, with item flags and word counts. One pass.
 def filing_table(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     parts, texts = [], []
     source = pq.ParquetFile(folder / FILINGS)
@@ -175,7 +175,7 @@ def filing_table(folder: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     return table, pd.concat(texts, ignore_index=True)
 
 
-# Filings summed into the month they were filed in, known by that month's end.
+# Filings summed into their filing month, known by that month's end.
 def monthly_events(table: pd.DataFrame) -> pd.DataFrame:
     table = table.assign(eom=month_end(table["filing_date"]), filing_count=1)
     table["amendment_count"] = table["is_amendment"].fillna(False).astype("int8")
@@ -186,7 +186,7 @@ def monthly_events(table: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-# No filing that month is a count of zero. Days-before stays empty: zero would mean filed that day.
+# No filing counts as zero. Days-before stays empty, 0 means same day.
 def join_events(features: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     out = features.merge(events, on=data.KEYS, how="left", validate="one_to_one")
     counts = [c for c in events.columns if c not in {*data.KEYS, "filing_days_before_eom"}]
@@ -194,7 +194,7 @@ def join_events(features: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-# CRSP daily rows for the panel's securities, streamed so the multi-GB files never sit in memory.
+# CRSP daily rows for the panel's names, streamed to spare the memory.
 def daily_market(archive: Path, permnos: set) -> None:
     renamed = dict(PERMNO="permno", DlyCalDt="date", DlyPrc="close", DlyRet="total_return")
     renamed |= dict(DlyRetx="price_return", DlyVol="volume", DlyBid="bid", DlyAsk="ask")
@@ -220,7 +220,7 @@ def daily_market(archive: Path, permnos: set) -> None:
     os.replace(partial, path)
 
 
-# Recommendations and price targets on WRDS's dated IBES-CRSP link, never on a bare ticker.
+# IBES ratings and targets on WRDS's dated CRSP link, not a bare ticker.
 def ibes(archive: Path) -> pd.DataFrame:
     link = pd.read_csv(archive / "ibes_crsp_link.csv", dtype={"TICKER": "string"})
     link = link[["TICKER", "PERMNO", "sdate", "edate", "SCORE"]]
@@ -262,7 +262,7 @@ def ibes(archive: Path) -> pd.DataFrame:
     return tables[0].merge(tables[1], on=data.KEYS, how="outer", validate="one_to_one")
 
 
-# Reported short interest on the panel's dated gvkey and issue. The current series wins a tie.
+# Short interest on the panel's dated gvkey and issue, new wins a tie.
 def short_interest(archive: Path, features: pd.DataFrame) -> pd.DataFrame:
     parts = []
     for name, source in (("short_interest.csv", "new"), ("short_interest_legacy.csv", "legacy")):
@@ -291,7 +291,7 @@ def short_interest(archive: Path, features: pd.DataFrame) -> pd.DataFrame:
     return out.rename(columns=renamed)
 
 
-# Numeric issue ids read from CSV lose their leading zero. Letters stay as they are.
+# Numeric issue ids from CSV lose their leading zero. Letters stay.
 def issue(values: pd.Series) -> pd.Series:
     text = values.astype("string").str.strip().str.replace(r"\.0$", "", regex=True)
     return text.where(~text.str.fullmatch(r"\d+"), text.str.zfill(2))
@@ -315,7 +315,7 @@ def card(listed: dict) -> str:
     )
 
 
-# Builds the bundle from the organizer's files; --archive adds the 2025 layers.
+# Builds the bundle from organizer files, --archive adds 2025 layers.
 def main(args: list[str]) -> None:
     if not args or args[0].startswith("-"):
         raise SystemExit("usage: uv run -m fiam.build_data <organizer folder> [--archive <folder>]")
@@ -358,7 +358,7 @@ def main(args: list[str]) -> None:
         what="Private FIAM data bundle. Never commit or submit it.",
         organizer_characteristics=listed,
         sources=sources,
-        # A layer built from the archive on an earlier run keeps the record of that run.
+        # An archive layer from an earlier run keeps that run's record.
         archive=str(archive) if archive else before.get("archive"),
         last_archive_month=str(LAST_ARCHIVE_MONTH.date()),
         timing=dict(

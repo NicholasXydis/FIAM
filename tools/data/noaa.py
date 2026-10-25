@@ -13,7 +13,7 @@ OUT = ROOT / "data" / "noaa"
 CLIMDIV = "https://www.ncei.noaa.gov/monitoring-content/data/us/climdiv/monthly/current/"
 STORMS = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
 USAGE = "uv run run.py --data noaa climdiv | storms | archive | verify"
-# Pre-2021 copies in the Internet Archive for the B23 check (protocol.md).
+# Pre-2021 Internet Archive copies for the B23 check (protocol.md).
 CDX = "http://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,original,digest"
 CDX += "&matchType=prefix&to=20201231&filter=statuscode:200"
 STORM_COPIES = "www1.ncdc.noaa.gov/pub/data/swdi/stormevents/csvfiles/StormEvents_details"
@@ -95,7 +95,7 @@ def archive_digest(body: bytes) -> str:
     return base64.b32encode(hashlib.sha1(body).digest()).decode()
 
 
-# The captures to fetch: storm years 2000-2020 and the two climate kinds.
+# Captures to fetch: storm years 2000-2020 and the two climate kinds.
 def copies() -> list[tuple[str, str, str, str]]:
     found = {}
     for prefix in (STORM_COPIES, *CLIMATE_COPIES):

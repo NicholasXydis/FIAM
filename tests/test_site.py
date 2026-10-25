@@ -1,5 +1,4 @@
-# The showcase site's data: what it bundles matches final v3's own files, so no number on screen
-# can drift from the pack. With no pack (a fresh clone), only the file's own consistency is checked.
+# Site data matches final v3's files, so no number on screen can drift.
 
 import json
 
@@ -11,6 +10,7 @@ from tools import build_site
 SITE = build_site.OUT
 
 
+# The site's bundled data, loaded once per module; skips if not built.
 @pytest.fixture(scope="module")
 def site():
     if not SITE.exists():
@@ -35,7 +35,7 @@ def test_headline_matches_metrics(site):
     assert site["headline"]["beta"] == pytest.approx(perf["beta_realized"], abs=5e-4)
 
 
-# Growth of $1 compounds to the pack's own cumulative return, and the months line up.
+# $1 grows to the pack's own cumulative return, and the months line up.
 def test_growth_ends_at_the_cumulative_return(site):
     race = site["race"]
     assert len(race["book"]) == len(site["months"]) + 1
@@ -55,14 +55,14 @@ def test_each_month_is_market_neutral_in_dollars(site):
         assert abs(net) < 0.005
 
 
-# The ledger behind the honesty scene adds up to the trial count in the metrics.
+# The honesty scene's ledger adds up to the metrics' trial count.
 def test_attempts_add_up(site):
     honesty = site["honesty"]
     assert sum(f["attempts"] for f in honesty["families"]) == honesty["attempts"]
     assert sum(f["attempts"] for f in honesty["families"] if f["eligible"]) == honesty["eligible"]
 
 
-# The September book the site shows is the frozen one: market neutral in dollars at 160% gross.
+# The September book shown is frozen: dollar neutral at 160% gross.
 def test_september_book_is_neutral(site):
     weights = [w / 1e5 for _, _, w in site["september"]["book"]]
     assert abs(sum(weights)) < 1e-3
@@ -70,7 +70,7 @@ def test_september_book_is_neutral(site):
     assert {e["ticker"] for e in site["explained"]} <= {t for t, _, _ in site["september"]["book"]}
 
 
-# The ad's crashes are the stress test's own windows and replays, with a market move for each.
+# Ad crashes: the stress windows and replays, with a market move each.
 def test_crashes_match_the_stress_test():
     if not build_site.CRASHES.exists():
         pytest.skip("no crash data; uv run tools/build_site.py writes it")
@@ -89,9 +89,7 @@ def test_crashes_match_the_stress_test():
     assert covid["market"] < -0.3 < covid["book"]
 
 
-# The ad says its numbers out loud, so the recorded voice must agree with the data it is built from:
-# seven agents, thousands of filings, sixty AI investors of whom thirty think like four, and
-# seventeen replayed crises.
+# The ad's voice matches its data: agents, filings, investors, crises.
 def test_ad_voice_matches_the_data(site):
     if not build_site.CRASHES.exists():
         pytest.skip("no crash data; uv run tools/build_site.py writes it")

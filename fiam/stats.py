@@ -1,4 +1,4 @@
-# The risk dashboard and the evidence tests, computed one way for any book (docs/protocols).
+# Risk dashboard and evidence tests for any book, per docs/protocols.
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ TRIALS_PAST = 1665
 HURDLE = 0.04 / 12
 
 
-# Fama-French five factors and momentum by holding month, from the market layer.
+# FF five factors and momentum by holding month, from the market layer.
 def factors() -> pd.DataFrame | None:
     table = layers.load("market/factors_monthly")
     if table is None:
@@ -21,7 +21,7 @@ def factors() -> pd.DataFrame | None:
     return table.set_index("month")[["mktrf", "smb", "hml", "rmw", "cma", "umd"]]
 
 
-# OLS of y on x with Newey-West errors at the given lag; returns (alpha a month, its t).
+# OLS of y on x, Newey-West at the given lag: (monthly alpha, its t).
 def hac_alpha(y: pd.Series, x: pd.DataFrame, lags: int) -> tuple[float, float]:
     both = pd.concat([y.rename("_y"), x], axis=1, sort=True).dropna()
     fit = sm.OLS(both["_y"], sm.add_constant(both.drop(columns="_y"))).fit(
@@ -30,7 +30,7 @@ def hac_alpha(y: pd.Series, x: pd.DataFrame, lags: int) -> tuple[float, float]:
     return float(fit.params.iloc[0]), float(fit.tvalues.iloc[0])
 
 
-# The equal-weighted cosine t on the alpha (Lazarus, Lewis, Stock and Watson 2018).
+# Equal-weighted cosine t on alpha (Lazarus, Lewis, Stock, Watson 2018).
 def ewc_alpha_t(y: pd.Series, x: pd.DataFrame) -> float:
     both = pd.concat([y.rename("_y"), x], axis=1, sort=True).dropna()
     exog = sm.add_constant(both.drop(columns="_y")).to_numpy()
@@ -49,14 +49,14 @@ def ewc_alpha_t(y: pd.Series, x: pd.DataFrame) -> float:
     return float(fit.params[0] / np.sqrt(cov[0, 0]))
 
 
-# Largest fall from any earlier high, counting the starting NAV as the first high.
+# Largest fall from any earlier high, the starting NAV counting as one.
 def drawdown(net: pd.Series) -> float:
     growth = (1 + net).cumprod()
     peak = np.maximum(growth.cummax(), 1.0)
     return float((growth / peak - 1).min())
 
 
-# The longest run of months below an earlier peak, counting the starting NAV as the first peak.
+# Longest run of months below an earlier peak, starting NAV as a peak.
 def underwater(net: pd.Series) -> int:
     growth = (1 + net).cumprod()
     below = growth < np.maximum(growth.cummax(), 1.0)
@@ -64,7 +64,7 @@ def underwater(net: pd.Series) -> int:
     return int(runs.max()) if len(runs) else 0
 
 
-# VaR and CVaR of daily losses three ways: historical, Student-t, and EVT above the 90th percentile.
+# Daily VaR, CVaR: historical, Student-t, EVT above the 90th percentile.
 def tail(daily: pd.Series, level: float) -> dict:
     loss = -daily.dropna().to_numpy()
     hist_var = float(np.quantile(loss, level))
@@ -83,7 +83,7 @@ def tail(daily: pd.Series, level: float) -> dict:
     return out
 
 
-# A book's daily returns from its monthly weights held through each holding month.
+# A book's daily returns from monthly weights held through each month.
 def daily_book(held: pd.DataFrame, returns: pd.DataFrame) -> pd.Series:
     parts = []
     for eom, w in held.groupby("eom"):
@@ -93,8 +93,7 @@ def daily_book(held: pd.DataFrame, returns: pd.DataFrame) -> pd.Series:
     return pd.concat(parts).sort_index() if parts else pd.Series(dtype=float)
 
 
-# Each trading day's gross of the month-start book held untraded, as a share of that day's NAV
-# (cash collateral included), beside the month-start gross.
+# Daily gross of the untraded month-start book over NAV, cash included.
 def daily_gross(held: pd.DataFrame, returns: pd.DataFrame) -> pd.DataFrame:
     parts = []
     for eom, w in held.groupby("eom"):
@@ -117,7 +116,7 @@ def dimson_beta(daily: pd.Series, market: pd.Series) -> float:
     return float(fit.params[["m0", "m1", "m_1"]].sum())
 
 
-# Concentration: effective names per side and the ten largest positions' share of gross.
+# Effective names per side and the top ten positions' share of gross.
 def concentration(held: pd.DataFrame) -> dict:
     rows = []
     for _, w in held.groupby("eom"):
@@ -157,14 +156,14 @@ def dashboard(book: pd.DataFrame, market: pd.Series) -> dict:
     return out
 
 
-# The daily part: Dimson beta, VaR and CVaR at 95% and 99% three ways, and concentration.
+# The daily part: Dimson beta, 95% and 99% VaR and CVaR, concentration.
 def daily_risk(held: pd.DataFrame, returns: pd.DataFrame, market: pd.Series) -> dict:
     daily = daily_book(held, returns)
     out = dict(dimson_beta=dimson_beta(daily, market), days=len(daily))
     return out | dict(tail_95=tail(daily, 0.95), tail_99=tail(daily, 0.99)) | concentration(held)
 
 
-# Politis-White (2004) automatic block length for the stationary bootstrap.
+# Politis-White (2004) automatic block length for stationary bootstrap.
 def block_length(x: np.ndarray) -> float:
     n = len(x)
     x = x - x.mean()
@@ -182,8 +181,7 @@ def block_length(x: np.ndarray) -> float:
     return float(max((2 * g**2 / d) ** (1 / 3) * n ** (1 / 3), 1.0))
 
 
-# Stationary bootstrap (Politis and Romano 1994) of any statistic of a frame's rows, the block
-# length from the first column: the estimate with 90% and 95% intervals.
+# Stationary bootstrap (Politis-Romano 1994) of a statistic, 90/95% CIs.
 def bootstrap(frame: pd.DataFrame, statistic, reps: int = 10_000, seed: int = 42) -> dict:
     frame = frame.dropna()
     n, block = len(frame), block_length(frame.iloc[:, 0].to_numpy())
@@ -204,12 +202,12 @@ def bootstrap(frame: pd.DataFrame, statistic, reps: int = 10_000, seed: int = 42
     )
 
 
+# The stationary bootstrap of one series' mean, with its intervals.
 def bootstrap_mean(x: pd.Series, reps: int = 10_000, seed: int = 42) -> dict:
     return bootstrap(x.to_frame(), lambda f: f.iloc[:, 0].mean(), reps, seed)
 
 
-# Patton (2009) beyond correlation: both below their medians (0.25 if independent), and the
-# book in its worst tenth when the market is in its own (0.10 if independent), binomial p-values.
+# Patton (2009): both under median (0.25), worst tenths together (0.10).
 def patton(net: pd.Series, market: pd.Series) -> dict:
     both = pd.concat([net.rename("r"), market.rename("m")], axis=1).dropna()
     low = (both["r"] < both["r"].median()) & (both["m"] < both["m"].median())

@@ -1,4 +1,4 @@
-# The event-triage agent: a local model labels a fixed sample of masked 8-Ks from 2015-2018.
+# The event-triage agent: a local model labels masked 2015-2018 8-Ks.
 
 from operator import itemgetter
 
@@ -27,7 +27,7 @@ def sample() -> pd.DataFrame:
     return texts.iloc[np.sort(at)].reset_index(drop=True)
 
 
-# Each filing labelled once; every answer is saved as it comes, so a stop resumes.
+# Labels each filing once, saving as it goes so a stop can resume.
 def main() -> None:
     if data.research("filing_text", ["document_id"]) is None:
         raise SystemExit("No 8-K text layer: import the new fiam_v1.zip, then run this again.")

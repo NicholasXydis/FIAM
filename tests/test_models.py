@@ -1,4 +1,4 @@
-# The models, the shipped hedge and the agents' plumbing on tiny inputs. No data, no network.
+# Models, hedge and agent plumbing on tiny inputs, no data, no network.
 
 import importlib
 from operator import itemgetter
@@ -9,7 +9,7 @@ import pandas as pd
 from fiam import book as P
 
 
-# The crowd agent sees codes, percentiles and filings, never a name, a ticker or a date.
+# Crowd cards: codes, percentiles and filings, no name, ticker or date.
 def test_crowd_cards_carry_no_names_or_dates():
     crowd = importlib.import_module("fiam.agents.crowd")
     C = importlib.import_module("fiam.ml.crowd")
@@ -28,7 +28,7 @@ def test_crowd_cards_carry_no_names_or_dates():
     assert text.splitlines()[1].startswith("S01")
 
 
-# The rehearsal swaps every model for the tiny one, and a machine can be chosen by hand.
+# The rehearsal uses the tiny model; a machine can be chosen by hand.
 def test_harness_resolves_models_and_machines(monkeypatch):
     harness = importlib.import_module("fiam.agents.harness")
     monkeypatch.setattr(harness.paths, "SMOKE", True)
@@ -38,7 +38,7 @@ def test_harness_resolves_models_and_machines(monkeypatch):
     assert all(len(sha) == 64 for builds in harness.BUILDS.values() for _, sha in builds)
 
 
-# Text components are fitted on the training rows alone: test rows cannot change them.
+# Text components fit on training rows only; test rows cannot move them.
 def test_text_components_fit_on_training_rows_only():
     text = importlib.import_module("fiam.ml.text")
     rng = np.random.default_rng(0)
@@ -53,7 +53,7 @@ def test_text_components_fit_on_training_rows_only():
     assert np.isnan(first[700:]).all()
 
 
-# The stock picker's target carries no beta or style: it is uncorrelated with each exposure.
+# The stock picker's target is uncorrelated with beta and every style.
 def test_stock_picker_target_is_free_of_style():
     scorer = importlib.import_module("fiam.ml.scorer")
     rng = np.random.default_rng(0)
@@ -66,7 +66,7 @@ def test_stock_picker_target_is_free_of_style():
     assert all(abs(np.corrcoef(out, frame[c])[0, 1]) < 1e-8 for c in scorer.STYLE)
 
 
-# The agents' answer log resumes: a second session sees what the first one saved.
+# The answer log resumes: a second session sees what the first saved.
 def test_agent_answers_resume(tmp_path, monkeypatch):
     harness = importlib.import_module("fiam.agents.harness")
     monkeypatch.setattr(harness, "RUNS", tmp_path)
@@ -76,7 +76,7 @@ def test_agent_answers_resume(tmp_path, monkeypatch):
         assert done == {"a": dict(id="a", label="good")}
 
 
-# Only the analyst's verdicts dated before the evaluation's first decision teach .
+# Only analyst verdicts before the evaluation's first decision teach.
 def test_analyst_verdicts_from_the_evaluation_never_teach():
     learned = importlib.import_module("fiam.ml.analyst")
     eom = pd.to_datetime(["2020-10-31", "2020-11-30", "2020-12-31", "2023-05-31"])
@@ -94,9 +94,11 @@ def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
 
     # Records which rows each fit was given, and predicts nothing.
     class Stub:
+        # Zeros for every row, since the test only checks the fit's rows.
         def predict(self, x, **_):
             return np.zeros(len(x))
 
+    # Stands in for lgb.train, keeping the label rows each fit was given.
     def fake(params, dataset, rounds):
         seen.append(dataset.label.index)
         return Stub()
@@ -107,7 +109,7 @@ def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
     assert frame.loc[seen[0], "holding_month"].max() == pd.Timestamp("2017-08-01")
 
 
-# One month of a toy universe: one sector, one beta, so neutralizing keeps every order.
+# A toy month with one sector and one beta, so neutralizing keeps order.
 def toy_month(n: int = 100) -> pd.DataFrame:
     rng = np.random.default_rng(1)
     return pd.DataFrame(
@@ -124,7 +126,7 @@ def toy_month(n: int = 100) -> pd.DataFrame:
     )
 
 
-# The shipped book hedges on the teacher's beta where it has one, the 60-month beta elsewhere.
+# The shipped book hedges on the teacher's beta, else the 60-month beta.
 def test_shipped_book_hedges_on_the_learned_beta():
     month = toy_month(4)
     month["hedge_beta"] = month["beta_60m"]
