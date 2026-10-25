@@ -16,6 +16,10 @@ from pathlib import Path
 import pandas as pd
 from _shared import ROOT, check, data_root, fingerprint, receipts, setting, stamp
 
+# One name key for both builders, kept in the link module only.
+sys.path.insert(0, str(ROOT))
+from fiam.v4.links import entity_key  # noqa: E402
+
 OUT = ROOT / "data" / "edgar"
 BULK = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
 # SEC rebuilds it nightly, so it stays on the Mac with its hash kept.
@@ -28,7 +32,7 @@ INSIDER_FILES = r"/files/[^\"]+/insider-transactions-data-sets/\d{4}q\d_form345\
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data"
 USAGE = (
     "uv run run.py --data edgar bulk | facts | 13f | insiders | map | filings | forms | docs"
-    " | verify [--deep]"
+    " | verify [--deep] | relog | names"
 )
 EIGHT_K = "8k_20150101_20260831_identified.parquet"
 # Annual reports for Lazy Prices, and the 8-K items that are red flags.
@@ -246,12 +250,143 @@ def link() -> int:
     report["conflicts"] = int(firms["conflict"].sum())
     (OUT / "cik_map.json").write_text(json.dumps(report, indent=1))
     print(json.dumps(report, indent=1))
+    candidates(firms)
     return 0
+
+
+# Every filer's names with their dates, from the bulk file's headers.
+def names() -> int:
+    rows, firsts = [], []
+    with zipfile.ZipFile(OUT / "submissions.zip") as zf:
+        for member in zf.namelist():
+            if not re.fullmatch(r"CIK\d{10}\.json", member):
+                continue
+            d = json.loads(zf.read(member))
+            former = d.get("formerNames") or []
+            former = sorted(former, key=lambda f: (f.get("to") or "", f.get("from") or ""))
+            ends = [pd.Timestamp(f["to"][:10]) for f in former if f.get("to")]
+            starts = [(f.get("from") or "")[:10] for f in former]
+            prev = ""
+            for i, f in enumerate(former):
+                stop = (f.get("to") or "")[:10]
+                # The oldest name runs from the start; a gap keeps this one live.
+                start = "" if i == 0 else starts[i] or prev
+                later = starts[i + 1] if i + 1 < len(former) else ""
+                stop = max(stop, later) if stop and later else stop
+                rows.append((int(d["cik"]), f["name"], start, stop))
+                prev = stop or prev
+            start = max(ends).strftime("%Y-%m-%d") if ends else ""
+            rows.append((int(d["cik"]), d.get("name", ""), start, ""))
+            # The filer's first SEC filing, over every page of its history.
+            recent = d["filings"]["recent"].get("filingDate", [])
+            pages = [f.get("filingFrom", "") for f in d["filings"].get("files", [])]
+            dates = [x for x in [*recent, *pages] if x]
+            firsts.append((int(d["cik"]), min(dates) if dates else ""))
+    table = pd.DataFrame(rows, columns=["cik", "name", "valid_from", "valid_to"])
+    for col in ("valid_from", "valid_to"):
+        table[col] = pd.to_datetime(table[col], errors="coerce")
+    table.to_parquet(OUT / "cik_names.parquet", index=False)
+    first = pd.DataFrame(firsts, columns=["cik", "first_filing"])
+    first["first_filing"] = pd.to_datetime(first["first_filing"], errors="coerce")
+    first.to_parquet(OUT / "cik_first_filing.parquet", index=False)
+    print(f"{table['cik'].nunique():,} filers, {len(table):,} dated names")
+    return 0
+
+
+# Candidate SEC ids per stock from 2006: header, 8-K pairs, dated names.
+def candidates(firms: pd.DataFrame) -> pd.DataFrame:
+    cols = ["PERMNO", "MthCalDt", "MthCap", "ShareType", "SecurityType", "PrimaryExch", "IssuerNm"]
+    crsp = pd.read_parquet(ROOT / "data" / "v4" / "extracts" / "crsp_monthly.parquet", columns=cols)
+    crsp["permno"] = pd.to_numeric(crsp["PERMNO"]).astype("int64")
+    crsp["date"] = pd.to_datetime(crsp["MthCalDt"])
+    common = (crsp["ShareType"] == "NS") & (crsp["SecurityType"] == "EQTY")
+    common &= crsp["PrimaryExch"].isin(["N", "A", "Q"])
+    early = crsp["date"].between("2006-01-01", "2014-12-31") & (crsp["MthCap"] >= 600_000)
+    stocks = set(firms.index) | set(crsp.loc[common & early, "permno"])
+    rows = []
+    lk = pd.read_parquet(ROOT / "data" / "v4" / "links.parquet")
+    gv = lk[(lk["kind"] == "gvkey") & lk["permno"].isin(stocks)][["permno", "value"]]
+    comp = pd.read_parquet(ROOT / "data" / "v4" / "extracts" / "compustat_quarterly.parquet")
+    comp = comp[["gvkey", "datadate", "cik"]].dropna(subset=["cik"]).sort_values("datadate")
+    header = comp.groupby("gvkey")["cik"].last()
+    for r in gv.drop_duplicates().itertuples():
+        if r.value in header.index:
+            rows.append((r.permno, int(pd.to_numeric(header[r.value])), "compustat_header"))
+    filed = pd.read_parquet(organisers() / EIGHT_K, columns=["permno", "cik"]).dropna()
+    for r in filed.drop_duplicates().itertuples():
+        rows.append((int(r.permno), int(pd.to_numeric(r.cik)), "organisers_8k_pairs"))
+    # A dated EDGAR name equal to the stock's CRSP name of that time.
+    names = pd.read_parquet(OUT / "cik_names.parquet")
+    names["key"] = names["name"].map(entity_key)
+    mine = (
+        crsp[crsp["permno"].isin(stocks)]
+        .groupby(["permno", "IssuerNm"])["date"]
+        .agg(["min", "max"])
+    )
+    mine = mine.reset_index().assign(key=lambda d: d["IssuerNm"].map(entity_key))
+    both = mine.merge(names, on="key")
+    lo = both["valid_from"].fillna(pd.Timestamp("1900-01-01"))
+    hi = both["valid_to"].fillna(pd.Timestamp("2100-01-01"))
+    near = (lo <= both["max"] + pd.Timedelta(days=365)) & (
+        hi >= both["min"] - pd.Timedelta(days=365)
+    )
+    both = both[near & (both["key"] != "")]
+    # A name over 3 filers share keeps those that filed in the stock's life.
+    width = both.groupby(["permno", "IssuerNm"])["cik"].transform("nunique")
+    wide = both[width > 3][["permno", "IssuerNm", "cik", "min", "max"]].drop_duplicates()
+    busy = filing_counts(wide)
+    busy = busy[busy["filings"] > 0]
+    for r in pd.concat([both[width <= 3], busy]).itertuples():
+        rows.append((r.permno, int(r.cik), "name"))
+    out = pd.DataFrame(rows, columns=["permno", "cik", "source"]).drop_duplicates()
+    out.to_parquet(OUT / "cik_candidates.parquet", index=False)
+    print(f"{out['permno'].nunique():,} stocks, {out['cik'].nunique():,} candidate filers")
+    return out
+
+
+# Each candidate's filings in its stock's life, from the bulk file.
+def filing_counts(pairs: pd.DataFrame) -> pd.DataFrame:
+    both = pairs.merge(submission_dates(sorted(pairs["cik"].unique())), on="cik")
+    lo, hi = both["min"] - pd.Timedelta(days=365), both["max"] + pd.Timedelta(days=365)
+    inside = (both["filing_date"] >= lo) & (both["filing_date"] <= hi)
+    counts = both[inside].groupby(["permno", "IssuerNm", "cik"]).size().rename("filings")
+    keys = ["permno", "IssuerNm", "cik"]
+    out = pairs.merge(counts.reset_index(), on=keys, how="left")
+    return out.fillna({"filings": 0})
+
+
+# Filing dates per filer from the bulk file, every page of each filer.
+def submission_dates(ciks: list[int]) -> pd.DataFrame:
+    rows = []
+    with zipfile.ZipFile(OUT / "submissions.zip") as zf:
+        names = set(zf.namelist())
+        for cik in ciks:
+            main = f"CIK{cik:010d}.json"
+            if main not in names:
+                continue
+            doc = json.loads(zf.read(main))
+            pages = [doc["filings"]["recent"]]
+            for extra in doc["filings"].get("files", []):
+                if extra["name"] in names:
+                    pages.append(json.loads(zf.read(extra["name"])))
+            for page in pages:
+                rows += [(cik, d) for d in page.get("filingDate", [])]
+    out = pd.DataFrame(rows, columns=["cik", "filing_date"])
+    out["filing_date"] = pd.to_datetime(out["filing_date"], errors="coerce")
+    return out
 
 
 # Every SEC id a panel stock may file under, both sources (fix B12).
 def panel_ciks(firms: pd.DataFrame) -> list[int]:
     found = pd.concat([firms[c] for c in ("cik", "cik_compustat", "cik_8k") if c in firms])
+    more = OUT / "cik_candidates.parquet"
+    if more.exists():
+        found = pd.concat([found, pd.read_parquet(more)["cik"]])
+    # Every filer the leader's decisions name is indexed too.
+    path = OUT.parent / "v4" / "cik_decisions.json"
+    chosen = json.loads(path.read_text())["stocks"] if path.exists() else {}
+    decided = [link[0] for entry in chosen.values() for link in entry["links"]]
+    found = pd.concat([found, pd.Series(decided, dtype="float64")])
     return sorted(int(c) for c in found.dropna().unique())
 
 
@@ -296,7 +431,8 @@ def index(ciks: list[int], wanted, since: str) -> tuple[list[dict], list[int]]:
 def filings() -> int:
     ciks = panel_ciks(pd.read_parquet(OUT / "cik_map.parquet"))
     rows, missing = index(ciks, lambda form: form in ANNUAL or form == "8-K", START)
-    table = pd.DataFrame(rows).drop_duplicates("accession")
+    # A joint filing stays once per filer, so a parent keeps its own copy.
+    table = pd.DataFrame(rows).drop_duplicates(["cik", "accession"])
     table["red_flag"] = table["items"].fillna("").map(lambda s: bool(FLAGS & set(s.split(","))))
     table.to_parquet(OUT / "filings.parquet", index=False)
     report = {"filers": len(ciks), "not_in_bulk": len(missing), "filings": len(table)}
@@ -313,7 +449,8 @@ def forms() -> int:
     ciks = panel_ciks(pd.read_parquet(OUT / "cik_map.parquet"))
     wanted = EXITS | INSIDERS | OFFERINGS | SUCCESSION
     rows, missing = index(ciks, lambda form: form in wanted, FORMS_START)
-    table = pd.DataFrame(rows).drop_duplicates("accession")
+    # A joint filing stays once per filer, as in the filings index.
+    table = pd.DataFrame(rows).drop_duplicates(["cik", "accession"])
     groups = {"exit": EXITS, "insider": INSIDERS, "succession": SUCCESSION, "offering": OFFERINGS}
     kinds = {form: kind for kind, members in groups.items() for form in members}
     table["kind"] = table["form"].map(kinds)
@@ -329,11 +466,18 @@ def forms() -> int:
 
 # Every panel firm's annual reports and red-flag 8-Ks, gzipped (A2).
 def docs() -> int:
-    firms = pd.read_parquet(OUT / "cik_map.parquet")
-    panel = set(panel_ciks(firms))
     table = pd.read_parquet(OUT / "filings.parquet")
     pick = table["form"].isin(ANNUAL) | ((table["form"] == "8-K") & table["red_flag"])
-    want = table[pick & table["cik"].isin(panel) & (table["document"] != "")].copy()
+    want = table[pick & (table["document"] != "")].copy()
+    # Only filers linked to a stock, inside the link's dates (audit 3).
+    lk = pd.read_parquet(ROOT / "data" / "v4" / "links.parquet")
+    lk = lk[lk["kind"] == "cik"].assign(cik=lambda d: pd.to_numeric(d["value"]).astype("int64"))
+    when = pd.to_datetime(want["filing_date"])
+    both = want.assign(when=when).merge(lk[["cik", "valid_from", "valid_to"]], on="cik")
+    inside = both["when"] >= both["valid_from"] - pd.Timedelta(days=90)
+    inside &= both["valid_to"].isna() | (both["when"] <= both["valid_to"] + pd.Timedelta(days=365))
+    linked = both.loc[inside, ["cik", "accession"]].drop_duplicates()
+    want = want.merge(linked, on=["cik", "accession"]).copy()
     # Annual reports first, strong red flags next, officer changes last.
     strong = want["items"].fillna("").map(lambda s: bool((FLAGS - {"5.02"}) & set(s.split(","))))
     want["order"] = 2
@@ -344,16 +488,41 @@ def docs() -> int:
     folder.mkdir(parents=True, exist_ok=True)
     have = {f"{p.parent.name}/{p.stem}" for p in folder.glob("*/*.gz")}
     todo = [r for r in want.itertuples() if f"{r.cik}/{r.accession}" not in have]
-    print(f"{len(want)} documents for {len(panel)} firms, {len(todo)} to fetch", flush=True)
+    firms = want["cik"].nunique()
+    print(f"{len(want)} documents for {firms} filers, {len(todo)} to fetch", flush=True)
     saved = failed = 0
     with ThreadPoolExecutor(WORKERS) as pool, log.open("a", encoding="utf-8") as fh:
         for n, entry in enumerate(pool.map(grab, todo), 1):
+            # Each receipt is written at once, so a stopped run loses none.
             fh.write(json.dumps(entry) + "\n")
+            fh.flush()
             saved, failed = saved + ("error" not in entry), failed + ("error" in entry)
             if n % 500 == 0:
-                fh.flush()
                 print(f"{n} of {len(todo)}: {saved} saved, {failed} failed", flush=True)
     print(f"Done: {saved} saved this run, {failed} failed, log in {log}")
+    return 0
+
+
+# Receipts for saved documents the log lacks (a run stopped mid-batch).
+def relog() -> int:
+    log = OUT / "docs" / "log.jsonl"
+    logged = {json.loads(line).get("path") for line in log.read_text().splitlines()}
+    table = pd.read_parquet(OUT / "filings.parquet").drop_duplicates("accession")
+    where = table.set_index("accession")
+    added = 0
+    with log.open("a", encoding="utf-8") as fh:
+        for path in sorted((OUT / "docs").glob("*/*.gz")):
+            rel = path.relative_to(OUT).as_posix()
+            if rel in logged:
+                continue
+            row = where.loc[path.name.removesuffix(".gz")]
+            url = f"{ARCHIVE}/{path.parent.name}/{row.name.replace('-', '')}/{row.document}"
+            body = gzip.decompress(path.read_bytes())
+            entry = {"url": url, "path": rel, "bytes": len(body)}
+            entry |= {"sha256": hashlib.sha256(body).hexdigest(), "relogged": True}
+            fh.write(json.dumps(entry) + "\n")
+            added += 1
+    print(f"{added} receipts added to {log}")
     return 0
 
 
@@ -410,7 +579,8 @@ def verify(deep: bool = False) -> int:
 if __name__ == "__main__":
     OUT = data_root(sys.argv) / "edgar"
     verbs = {"bulk": bulk, "facts": facts, "13f": thirteen_f, "insiders": insiders, "map": link}
-    verbs |= {"filings": filings, "forms": forms, "docs": docs, "verify": verify}
+    verbs |= {"filings": filings, "forms": forms, "docs": docs, "verify": verify, "relog": relog}
+    verbs |= {"names": names}
     verb = sys.argv[1] if len(sys.argv) > 1 else ""
     if verb not in verbs:
         print(f"Usage: {USAGE}")

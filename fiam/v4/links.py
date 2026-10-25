@@ -1,6 +1,8 @@
 # The dated PERMNO link table: each id and its period (PLAN §6.7).
 
+import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -34,6 +36,9 @@ def paths(data: Path = DATA) -> dict[str, Path]:
         "filings": data / "edgar" / "filings.parquet",
         "forms": data / "edgar" / "forms.parquet",
         "decisions": data / "v4" / "cik_decisions.json",
+        "candidates": data / "edgar" / "cik_candidates.parquet",
+        "cik_names": data / "edgar" / "cik_names.parquet",
+        "cik_first": data / "edgar" / "cik_first_filing.parquet",
         "carc": data / "carbon_arc" / "catalogue" / "entities" / "companies.json",
         "carc_manifest": data / "carbon_arc" / "catalogue" / "entities" / "manifest.json",
     }
@@ -59,17 +64,17 @@ def runs(frame: pd.DataFrame, kind: str, source: str, end: pd.Timestamp | None) 
     return got.assign(kind=kind, source=source, score=pd.NA)[COLUMNS]
 
 
-# CUSIP, ticker, symbol, share class and PERMCO by date, CRSP monthly.
+# CUSIP, ticker, symbol, share class, PERMCO and name by date, CRSP.
 def crsp(path: Path) -> pd.DataFrame:
     keep = ["PERMNO", "MthCalDt", "SecInfoStartDt", "CUSIP9", "Ticker", "TradingSymbol"]
-    m = pd.read_parquet(path, columns=keep + ["ShareClass", "PERMCO"])
+    m = pd.read_parquet(path, columns=keep + ["ShareClass", "PERMCO", "IssuerNm"])
     m["permno"] = pd.to_numeric(m["PERMNO"]).astype("int64")
     m["date"] = pd.to_datetime(m["MthCalDt"])
     start = pd.to_datetime(m["SecInfoStartDt"], errors="coerce")
     m["start"] = start.where(start <= m["date"], m["date"]).fillna(m["date"])
     end = m["date"].max()
     pairs = [("CUSIP9", "cusip"), ("Ticker", "ticker"), ("TradingSymbol", "symbol")]
-    pairs += [("ShareClass", "share_class"), ("PERMCO", "permco")]
+    pairs += [("ShareClass", "share_class"), ("PERMCO", "permco"), ("IssuerNm", "name")]
     return pd.concat([runs(m.assign(value=m[c]), k, "crsp_monthly", end) for c, k in pairs])
 
 
@@ -107,7 +112,7 @@ def compustat_ids(path: Path) -> pd.DataFrame:
     return life.join(head.set_index("gvkey")["cusip"].str[:8].rename("cusip8"))
 
 
-# WRDS ratios' gvkey per stock and month; two on one date resolved (A16).
+# WRDS ratios' gvkey per stock and month; two on a date resolved (A16).
 def ratio_months(path: Path, first: pd.DataFrame) -> tuple[pd.DataFrame, int]:
     r = pd.read_parquet(path, columns=["gvkey", "permno", "public_date"]).dropna()
     r["date"] = pd.to_datetime(r["public_date"])
@@ -121,10 +126,7 @@ def ratio_months(path: Path, first: pd.DataFrame) -> tuple[pd.DataFrame, int]:
     return picked.drop_duplicates(["permno", "month"], keep="last"), len(r) - len(picked)
 
 
-# Pre-2015 gvkey and iid by month (A16, M2, 4A+, approved 2026-10-23):
-# WRDS ratios first; then the stock's own 2015 pair carried back from the
-# gvkey's first Compustat date; then Compustat's CUSIP matched to CRSP's
-# CUSIP of that month; then a stock whose every link names one gvkey.
+# Pre-2015 gvkey and iid by month, four routes in order (4A+, protocol).
 def ratios(
     path: Path, panel_path: Path, crsp_path: Path, ids_path: Path | None = None
 ) -> tuple[pd.DataFrame, dict]:
@@ -170,8 +172,7 @@ def ratios(
     g = g.dropna(subset=["gvkey"])
     report["pre_2015_months_by_source"] = g["source"].value_counts().to_dict()
     g["start"] = g["month"].dt.start_time
-    # iid 01 only when CRSP shows one common stock for the company (M2);
-    # else the stock's own 2015 panel iid when its gvkey agrees; else none.
+    # iid 01 only for a one-common-stock company (M2), else the 2015 iid.
     count = common_per_company(crsp_path)
     single = count.reindex(pd.MultiIndex.from_arrays([g["permno"], g["month"]])).eq(1)
     single = single.to_numpy()
@@ -281,8 +282,10 @@ def ciks(
     one = pairs.drop_duplicates("permno").set_index("permno")["cik"]
     rows = []
     for permno, entry in chosen.items():
+        # Each decision carries the day the leader made it.
+        source = f"decision_{entry.get('approved', '2026-10-23')}"
         for cik, start, stop in entry["links"]:
-            rows.append((int(permno), str(cik), start, stop, "decision_2026-10-23"))
+            rows.append((int(permno), str(cik), start, stop, source))
     first = pd.Series(dtype="datetime64[ns]") if first is None else first
     for firm in firms.itertuples():
         if str(firm.permno) in chosen:
@@ -304,6 +307,297 @@ def ciks(
     dated = out["source"].isin(["organisers_8k_pairs", "compustat_header"])
     report["cik_starting_at_first_filing"] = int((dated & (out["valid_from"].dt.year > 1900)).sum())
     return out, report
+
+
+# Legal words that never tell two companies apart (as in edgar.py).
+LEGAL = {"INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY", "LTD", "LIMITED", "LLC"}
+LEGAL |= {"PLC", "HOLDINGS", "HOLDING", "GROUP", "NV", "SA", "AG", "LP", "SE", "THE", "NEW", "DEL"}
+LEGAL |= {"DE", "CL", "CLASS", "HLDGS", "HLDG", "HLDS", "HLD", "HLDNGS", "GRP"}
+# CRSP's short forms, mined from trusted pairs, used on both names.
+SHORT = {"ACQUISITION": "ACQ", "ACQUISITIONS": "ACQ", "INTERNATIONAL": "INTL"}
+SHORT |= {"SERVICES": "SVCS", "SRVCS": "SVCS", "SERVICE": "SVC", "TECHNOLOGY": "TECH"}
+SHORT |= {"TECHNOLOGIES": "TECH", "TECHS": "TECH", "INDUSTRIES": "INDS", "COMPANIES": "COS"}
+SHORT |= {"FINANCIAL": "FINL", "SYSTEMS": "SYS", "CAPITAL": "CAP", "OPPORTUNITIES": "OPP"}
+SHORT |= {"OPPORTUNITY": "OPP", "TRUST": "TR", "SOLUTIONS": "SOL", "SOLS": "SOL", "SOLNS": "SOL"}
+SHORT |= {"SOLUTNS": "SOL", "BANCORPORATION": "BANCORP", "NATIONAL": "NATL", "MANAGEMENT": "MGMT"}
+SHORT |= {"PARTNERS": "PTNRS", "PRODUCTS": "PRODS", "INFRASTRUCTURE": "INFR", "INFRA": "INFR"}
+SHORT |= {"DEVELOPMENT": "DEV", "RESOURCES": "RES", "INSURANCE": "INS", "LABORATORIES": "LABS"}
+SHORT |= {"INVESTMENT": "INVT", "INVESTMENTS": "INVT", "INFORMATION": "INFO", "ESTATE": "EST"}
+SHORT |= {
+    "ENTERTAINMENT": "ENTMT",
+    "POWER": "PWR",
+    "COMMUNICATIONS": "COMMS",
+    "ASSOCIATES": "ASSOC",
+}
+SHORT |= {"PROPERTIES": "PPTYS", "PHARMACEUTICALS": "PHARM", "PHARMACEUTICAL": "PHARM"}
+SHORT |= {"PHARMS": "PHARM", "BANCSHRS": "BANCSHARES", "CHEMICALS": "CHEM", "CHEMICAL": "CHEM"}
+SHORT |= {"MANUFACTURING": "MFG"}
+STRONG = {"compustat_header", "organisers_8k_pairs"}
+SUCCESSION = ("8-K12B", "8-K12G3", "8-A12B")
+FRESH = pd.DateOffset(months=3)
+SILENT = pd.Timedelta(days=400)
+INDEX_START = pd.Timestamp("2006-01-01")
+NAME_GAP = 24
+NEAR_FILING = pd.DateOffset(months=18)
+
+
+# A company name as its sorted words, state tags and legal words out.
+def entity_key(name) -> str:
+    s = re.sub(r"\(LAST KNOWN\)", " ", str(name).upper()).replace("'", "").replace("\u2019", "")
+    s = re.sub(r"/(?!OLD/?\s*$)[A-Z]{1,3}/?\s*$", " ", s.strip()).replace("&", " AND ")
+    # Stops and hyphens split words ("WEB.COM", "O-I"); a glued "INC" too.
+    s = re.sub(r"\b([A-Z]{5,})INC\b", r"\1 INC", s.replace(".", " ").replace("-", " "))
+    # CRSP's "3RD NEW" tags a re-listing; a slash splits "B/E" in two.
+    s = re.sub(r"\b\d+(?:ST|ND|RD|TH)\s+NEW\b", " ", s).replace("/", " ")
+    # Letters or digits spelled one by one ("T C F", "F 5") are one word.
+    s = re.sub(r"\b(?:[A-Z0-9]\s+)+[A-Z0-9]\b", lambda m: m.group(0).replace(" ", ""), s)
+    words = {SHORT.get(w, w) for w in re.findall(r"[A-Z0-9]+", s)}
+    return " ".join(sorted(words - LEGAL))
+
+
+# Share of words matched both ways; four shared letters match "HLDGS".
+def overlap(a: str, b: str) -> float:
+    x, y = a.split(), b.split()
+    if not x or not y:
+        return 0.0
+
+    # One word against another: equal, or the same first four letters.
+    def same(u: str, v: str) -> bool:
+        return u == v or (len(u) >= 4 and len(v) >= 4 and u[:4] == v[:4])
+
+    # A word meets a word, or two words joined ("CARMART", "CAR MART").
+    def found(u: str, own: list, other: list) -> bool:
+        if any(same(u, v) for v in other):
+            return True
+        joined = {v + w for v in other for w in other if v != w}
+        return u in joined or any(u + w in other or w + u in other for w in own if w != u)
+
+    hits = sum(found(u, x, y) for u in x) + sum(found(v, y, x) for v in y)
+    return hits / (len(x) + len(y))
+
+
+# Each stock-month's SEC filer by dated names (final audit 3, B12).
+def dated_ciks(paths: dict) -> tuple[pd.DataFrame, dict]:
+    cand = pd.read_parquet(paths["candidates"])
+    names = pd.read_parquet(paths["cik_names"]).assign(key=lambda d: d["name"].map(entity_key))
+    crsp = pd.read_parquet(paths["crsp"], columns=["PERMNO", "PERMCO", "MthCalDt", "IssuerNm"])
+    crsp = crsp.assign(
+        permno=pd.to_numeric(crsp["PERMNO"], errors="coerce"),
+        month=pd.to_datetime(crsp["MthCalDt"]),
+        stock_key=crsp["IssuerNm"].map(entity_key),
+    ).dropna(subset=["permno", "month"])
+    crsp = crsp[crsp["permno"].isin(cand["permno"])].astype({"permno": "int64"})
+    crsp = crsp[["permno", "PERMCO", "month", "stock_key"]].drop_duplicates(["permno", "month"])
+    # Filer links start with the SEC index in 2006, as no SEC data is older.
+    crsp = crsp[crsp["month"] >= INDEX_START]
+    f = pd.concat(
+        [
+            pd.read_parquet(paths[k], columns=["cik", "form", "filing_date", "accession"])
+            for k in ("filings", "forms")
+        ]
+    )
+    f = f.assign(
+        cik=pd.to_numeric(f["cik"]).astype("int64"), filing_date=pd.to_datetime(f["filing_date"])
+    )
+    # Each filer's succession forms, every copy of a joint filing kept.
+    succ = f[f["form"].isin(SUCCESSION)].sort_values("filing_date")
+    reg = {
+        c: np.sort(g.to_numpy().astype("datetime64[ns]"))
+        for c, g in succ.groupby("cik")["filing_date"]
+    }
+    # A filer's own filings, those no other filer in the index shares.
+    copies = f.groupby("accession")["cik"].transform("nunique")
+    own = f[copies == 1]
+    dates = {
+        c: np.sort(g.to_numpy().astype("datetime64[ns]"))
+        for c, g in own.groupby("cik")["filing_date"]
+    }
+    # A joint filing goes to the co-filer with more own filings in a year.
+    joint = f[copies > 1].copy()
+    joint["recent"] = 0
+    for c, rows in joint.groupby("cik").groups.items():
+        when = joint.loc[rows, "filing_date"].to_numpy().astype("datetime64[ns]")
+        joint.loc[rows, "recent"] = [filed_in(dates, c, d, np.timedelta64(365, "D")) for d in when]
+    joint = joint.sort_values(["recent", "cik"], ascending=[False, True])
+    f = pd.concat([own, joint.drop_duplicates("accession").drop(columns="recent")])
+    span = f.groupby("cik")["filing_date"].agg(first="min", last="max")
+    # A filer counts only from its first SEC filing, on every page (H1).
+    sec_first = pd.read_parquet(paths["cik_first"]).set_index("cik")["first_filing"]
+    sec = pd.Series(span.index.map(sec_first), index=span.index)
+    span["first"] = pd.concat([sec, span["first"]], axis=1).min(axis=1)
+    # Every stock-month beside each candidate id and its SEC name then.
+    grid = crsp.merge(cand, on="permno").merge(
+        names[["cik", "key", "valid_from", "valid_to"]], on="cik"
+    )
+    live = grid["valid_from"].isna() | (grid["valid_from"] <= grid["month"])
+    live &= grid["valid_to"].isna() | (grid["valid_to"] >= grid["month"] - pd.offsets.MonthBegin(1))
+    grid = grid[live].join(span, on="cik")
+    near = (grid["first"] <= grid["month"] + pd.offsets.MonthEnd(0)) & (
+        grid["last"] >= grid["month"] - NEAR_FILING
+    )
+    grid = grid[near.fillna(False)]
+    pairs = grid[["key", "stock_key"]].drop_duplicates()
+    pairs["score"] = [overlap(a, b) for a, b in zip(pairs["key"], pairs["stock_key"])]
+    grid = grid.merge(pairs, on=["key", "stock_key"])
+    strong = grid["source"].isin(STRONG)
+    # Both trusted sources on the only filer filing then (Wabtec's brand).
+    trusted = grid[strong].groupby(["permno", "cik"])["source"].nunique().rename("trusted")
+    grid = grid.join(trusted, on=["permno", "cik"])
+    alone = grid.groupby(["permno", "month"])["cik"].transform("nunique") == 1
+    agreed = (grid["trusted"] == len(STRONG)) & alone
+    # A trusted source needs half its words matched; a name alone, all.
+    named = (strong & (grid["score"] >= 0.5)) | (grid["score"] >= 1.0)
+    agreed_only = grid[agreed & ~named][["permno", "month"]].drop_duplicates()
+    grid = grid[named | agreed]
+    grid = grid.assign(strong=strong[grid.index]).sort_values(["permno", "month", "score"])
+    grid = grid.assign(agreed=grid["trusted"] == len(STRONG))
+    best = grid.groupby(["permno", "month", "cik"], as_index=False).agg(
+        score=("score", "max"),
+        strong=("strong", "max"),
+        agreed=("agreed", "max"),
+        permco=("PERMCO", "first"),
+    )
+    # Both sources' filer is never taken by another company on a name.
+    held = best[best["agreed"]]
+    claimed = set(zip(held["cik"], held["month"]))
+    owners = set(zip(held["cik"], held["month"], held["permco"]))
+    keys = list(zip(best["cik"], best["month"], best["permco"]))
+    blocked = pd.Series([(c, m) in claimed and (c, m, p) not in owners for c, m, p in keys])
+    blocked = blocked.to_numpy() & ~best["agreed"].to_numpy() & ~best["strong"].to_numpy()
+    lost = int(blocked.sum())
+    best = best[~blocked]
+    # An id-month belongs to the companies carrying its name best (Swift).
+    top = best.groupby(["cik", "month"])["score"].transform("max")
+    tied = best["score"] >= top
+    held_by = best[tied & best["strong"]]
+    trusted = set(zip(held_by["cik"], held_by["month"]))
+    trusted_co = set(zip(held_by["cik"], held_by["month"], held_by["permco"]))
+    keys = zip(best["cik"], best["month"], best["permco"])
+    beaten = [(c, m) in trusted and (c, m, p) not in trusted_co for c, m, p in keys]
+    tied &= ~pd.Series(beaten, index=best.index)
+    owned = best[tied]
+    chosen = pick_ids(owned, reg, span, dates)
+    # An owner filing under another id that month leaves this one free.
+    used = set(zip(chosen["cik"], chosen["month"]))
+    lower = best[~tied]
+    freed = lower[[(c, m) not in used for c, m in zip(lower["cik"], lower["month"])]]
+    if len(freed):
+        chosen = pick_ids(pd.concat([owned, freed]), reg, span, dates)
+    report = {"candidate_months_owned_by_another_company": len(lower) - len(freed)}
+    report["candidate_months_freed_as_owner_files_elsewhere"] = len(freed)
+    report["stock_months_held_by_trusted_agreement"] = len(agreed_only)
+    report["candidate_months_lost_to_trusted_agreement"] = lost
+    # Two companies left on one id-month carry its name equally: counted.
+    shared = chosen.groupby(["cik", "month"])["permco"].transform("nunique") > 1
+    report["cik_months_shared_by_equal_names"] = int(shared.sum())
+    out = month_periods(chosen, crsp)
+    report["cik_dated_stocks"] = int(out["permno"].nunique())
+    report["cik_dated_periods"] = len(out)
+    return out, report
+
+
+# Filings of one filer in the window up to a day, from its sorted dates.
+def filed_in(dates: dict, cik: int, end: np.datetime64, window: np.timedelta64) -> int:
+    got = dates.get(cik)
+    if got is None:
+        return 0
+    hi = np.searchsorted(got, end, side="right")
+    return int(hi - np.searchsorted(got, end - window, side="right"))
+
+
+# A successor's latest succession form in the three months to a day.
+def fresh_form(reg: dict, cik: int, end: np.datetime64, since: np.datetime64):
+    got = reg.get(cik)
+    if got is None:
+        return None
+    at = np.searchsorted(got, end, side="right") - 1
+    return got[at] if at >= 0 and got[at] > since else None
+
+
+# One id per stock-month: the sitting one while it still matches.
+def pick_ids(best: pd.DataFrame, reg: dict, span: pd.DataFrame, dates: dict) -> pd.DataFrame:
+    rows = []
+    year, quiet_for = np.timedelta64(365, "D"), np.timedelta64(SILENT.days, "D")
+    first = span["first"].to_dict()
+    cols = ["permno", "month", "cik", "score", "strong", "permco"]
+    for permno, g in best[cols].sort_values("month").groupby("permno", sort=False):
+        sitting, by_month = None, {}
+        for r in g.itertuples(index=False):
+            by_month.setdefault(r.month, []).append(r)
+        for month, options in by_month.items():
+            end = np.datetime64(month + pd.offsets.MonthEnd(0), "ns")
+            back = np.datetime64(month + pd.offsets.MonthEnd(0) - FRESH, "ns")
+            busy = {o.cik: filed_in(dates, o.cik, end, year) for o in options}
+            # Trusted first, then the best name, the busiest year, the oldest.
+            order = sorted(
+                options,
+                key=lambda o: (
+                    -o.strong,
+                    -o.score,
+                    -busy[o.cik],
+                    first.get(o.cik, pd.Timestamp.max),
+                ),
+            )
+            by_cik = {o.cik: o for o in options}
+            since = pd.NaT
+            if sitting in by_cik:
+                held = by_cik[sitting].score
+                # A successor is trusted, or carries the stock's name better.
+                fresh = [
+                    o
+                    for o in order
+                    if o.cik != sitting
+                    and o.score >= held
+                    and (o.strong or o.score > held)
+                    and fresh_form(reg, o.cik, end, back) is not None
+                ]
+                # A filer silent for 13 months yields to an option that files.
+                awake = [
+                    o for o in order if o.cik != sitting and filed_in(dates, o.cik, end, quiet_for)
+                ]
+                if fresh:
+                    pick = fresh[0]
+                    since = max(
+                        pd.Timestamp(fresh_form(reg, pick.cik, end, back)), month.replace(day=1)
+                    )
+                elif awake and not filed_in(dates, sitting, end, quiet_for):
+                    pick = awake[0]
+                else:
+                    pick = by_cik[sitting]
+            else:
+                pick = order[0]
+            sitting = pick.cik
+            rows.append((permno, month, pick.cik, pick.score, pick.permco, since))
+    return pd.DataFrame(rows, columns=["permno", "month", "cik", "score", "permco", "since"])
+
+
+# Monthly ids into periods, with short name-lag gaps filled (24 months).
+def month_periods(chosen: pd.DataFrame, crsp: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    last_month = crsp["month"].max()
+    for permno, g in chosen.sort_values("month").groupby("permno"):
+        g = g.reset_index(drop=True)
+        start = g.loc[0, "month"].replace(day=1)
+        for i in range(1, len(g) + 1):
+            done = i == len(g)
+            if not done:
+                same = g.loc[i, "cik"] == g.loc[i - 1, "cik"]
+                gap = (g.loc[i, "month"].to_period("M") - g.loc[i - 1, "month"].to_period("M")).n
+                if same and gap <= NAME_GAP:
+                    continue
+            # A period runs to its month end, or to the day before a dated switch.
+            end = g.loc[i - 1, "month"]
+            stop = pd.NaT if end >= last_month else end + pd.offsets.MonthEnd(0)
+            since = g.loc[i, "since"] if not done else pd.NaT
+            nxt = since if pd.notna(since) else None
+            follows = not done and g.loc[i, "month"].to_period("M") == end.to_period("M") + 1
+            if nxt is not None and follows:
+                stop = nxt - pd.Timedelta(days=1)
+            rows.append((permno, str(int(g.loc[i - 1, "cik"])), start, stop))
+            if not done:
+                start = nxt if nxt is not None else g.loc[i, "month"].replace(day=1)
+    out = pd.DataFrame(rows, columns=["permno", "value", "valid_from", "valid_to"])
+    return out.assign(kind="cik", source="sec_dated_names", score=pd.NA)[COLUMNS]
 
 
 # Carbon Arc tickers to PERMNO by the CRSP ticker on the pull date.
@@ -376,7 +670,7 @@ def permno_at(links: pd.DataFrame, kind: str, values, dates) -> pd.Series:
     return out
 
 
-# A symbol reduced to letters and digits, so BRK.B, BRK/B and BRKB match.
+# A symbol in letters and digits only, so BRK.B, BRK/B and BRKB match.
 def plain_symbol(symbols) -> pd.Series:
     text = pd.Series(symbols, dtype="string").fillna("").str.upper()
     return text.str.replace(r"[^A-Z0-9]", "", regex=True)
@@ -417,6 +711,19 @@ def build(data: Path = DATA) -> dict:
     ratio_links, ratio_report = ratios(p["ratios"], p["panel"], p["crsp"], p["ids"])
     first = first_filings([p["filings"], p["forms"]])
     cik_links, cik_report = ciks(p["cik_map"], p["eightk"], p["decisions"], first)
+    # The leader's 17 decisions stand; every other stock takes dated ids.
+    dated, dated_report = dated_ciks(p)
+    decided = cik_links[cik_links["source"].str.startswith("decision")]
+    dated = dated[~dated["permno"].isin(decided["permno"])]
+    cik_links = pd.concat([decided, dated], ignore_index=True)
+    # Every CIK link ends at its stock's last CRSP month (final audit L3).
+    m = pd.read_parquet(p["crsp"], columns=["PERMNO", "MthCalDt"])
+    m = m.assign(permno=pd.to_numeric(m["PERMNO"]), month=pd.to_datetime(m["MthCalDt"]))
+    last = m.groupby("permno")["month"].max() + pd.offsets.MonthEnd(0)
+    ended = cik_links["permno"].map(last.where(last < m["month"].max()))
+    to = pd.to_datetime(cik_links["valid_to"])
+    cik_links["valid_to"] = to.where(to.notna() & (to <= ended.fillna(to)), ended)
+    cik_report |= dated_report
     carc_links, carc_report = carbon_arc(p["carc"], p["carc_manifest"], crsp_links)
     parts = [crsp_links, panel(p["panel"]), ratio_links, wrds_links(p["ibes"], p["options"])]
     parts += [taq(p["taq"]), cik_links, carc_links]
@@ -433,7 +740,21 @@ def build(data: Path = DATA) -> dict:
     report |= ratio_report | cik_report | carc_report
     report["panel_coverage"] = coverage(links, p["panel"])
     (data / "v4" / "links.json").write_text(json.dumps(report, indent=1, default=str))
+    # The build's receipt: its code and every input's hash (final audit L4).
+    code = [Path(__file__), Path(__file__).parents[2] / "tools" / "data" / "edgar.py"]
+    book = {"code": {c.name: digest(c) for c in code}}
+    book["inputs"] = {k: digest(v) for k, v in p.items() if v.exists()}
+    (data / "v4" / "links_build.json").write_text(json.dumps(book, indent=1))
     return report
+
+
+# A file's SHA-256, read in chunks.
+def digest(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 # Builds the link table: uv run python -m fiam.v4.links

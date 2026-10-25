@@ -114,3 +114,70 @@ def test_permno_by_symbol_reads_classes_na_and_dates():
     dates[2] = DAY("2021-06-15")
     got = links.permno_by_symbol(table, symbols, dates).astype(object)
     assert [None if pd.isna(v) else v for v in got] == [10, 20, 30, None, 40, None]
+
+
+# Both name keys agree, and spelled-out letters join into one word.
+def test_entity_keys_agree_and_join_letters(monkeypatch):
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    tools = Path(links.__file__).resolve().parents[2] / "tools" / "data"
+    monkeypatch.setattr(sys, "path", [str(tools), *sys.path])
+    spec = importlib.util.spec_from_file_location("edgar_tool", tools / "edgar.py")
+    edgar = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(edgar)
+    cases = [("T C F FINANCIAL CORP", "FINL TCF"), ("WALT DISNEY CO/", "DISNEY WALT")]
+    cases += [
+        ("A T & T INC", "AND AT T"),
+        ("Knight-Swift Transportation Holdings Inc.", "KNIGHT SWIFT TRANSPORTATION"),
+    ]
+    cases += [("U.S. SILICA HOLDINGS, INC.", "SILICA US"), ("U S SILICA HOLDINGS INC", "SILICA US")]
+    cases += [("F 5 NETWORKS INC", "F5 NETWORKS"), ("B/E AEROSPACE INC", "AEROSPACE BE")]
+    cases += [("LIBERTY MEDIA CORP 3RD NEW", "LIBERTY MEDIA"), ("1ST SOURCE CORP", "1ST SOURCE")]
+    cases += [("INDEPENDENT BANK CORP MA", "BANK INDEPENDENT MA")]
+    for name, key in cases:
+        assert links.entity_key(name) == key == edgar.entity_key(name)
+    # CRSP's short forms meet the SEC's full words; others stay apart.
+    same = [("MONOLITHIC PWR SYS INC", "MONOLITHIC POWER SYSTEMS INC")]
+    same += [("AMERICAN NATIONAL INS CO", "AMERICAN NATIONAL INSURANCE CO /TX/")]
+    same += [("HARMAN INTL INDS INC NEW", "HARMAN INTERNATIONAL INDUSTRIES INC /DE/")]
+    for crsp, sec in same:
+        assert links.entity_key(crsp) == links.entity_key(sec) == edgar.entity_key(sec)
+    assert links.entity_key("PENNYMAC FINANCIAL SVCS INC") != links.entity_key("PNC FINANCIAL")
+    assert links.entity_key("ACME MANUFACTURING CO") == edgar.entity_key("ACME MFG CO")
+    # "/OLD" marks a predecessor, so it stays a word; state tags go.
+    assert links.entity_key("HarborOne Bancorp, Inc./OLD") == "BANCORP HARBORONE OLD"
+    assert links.entity_key("INDEPENDENT BANK CORP /MA/") == "BANK INDEPENDENT"
+    cases = [("WEB.COM GROUP, INC.", "COM WEB"), ("Zoe's Kitchen, Inc.", "KITCHEN ZOES")]
+    cases += [
+        ("O-I Glass, Inc. /DE/", "GLASS OI"),
+        ("WORLD WRESTLING ENTERTAINMENTINC", "ENTMT WORLD WRESTLING"),
+    ]
+    for name, key in cases:
+        assert links.entity_key(name) == key == edgar.entity_key(name)
+    assert links.overlap("HLDGS KNIGHT SWIFT TRANSPORTATION", "KNIGHT SWIFT TRANSPORTATION") > 0.8
+    assert links.overlap("AMERICAS CARMART", "AMERICAS CAR MART") == 1.0
+    assert links.overlap("AMERICAS CAR", "AMERICAS CAR MART") == 0.8
+
+
+# On real links, no stock takes a filer before its first SEC filing.
+@pytest.mark.skipif(
+    not (links.DATA / "edgar" / "cik_first_filing.parquet").exists(), reason="no data"
+)
+def test_real_links_never_precede_the_first_filing():
+    lk = pd.read_parquet(links.DATA / "v4" / "links.parquet")
+    lk = lk[(lk["kind"] == "cik") & lk["source"].eq("sec_dated_names")]
+    first = pd.read_parquet(links.DATA / "edgar" / "cik_first_filing.parquet")
+    first["value"] = first["cik"].astype(str)
+    both = lk.merge(first[["value", "first_filing"]], on="value")
+    early = both["valid_from"] + pd.offsets.MonthEnd(0) < both["first_filing"]
+    assert int(early.sum()) == 0
+
+
+# On real links, an SEC id sits on two companies only with equal names.
+@pytest.mark.skipif(not (links.DATA / "v4" / "links.json").exists(), reason="no data")
+def test_real_ciks_rarely_shared_between_companies():
+    report = json.loads((links.DATA / "v4" / "links.json").read_text())
+    assert report["cik_months_shared_by_equal_names"] <= 400
+    assert report["cik_dated_stocks"] >= 7000
