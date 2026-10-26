@@ -1,0 +1,82 @@
+[
+  {
+    "file": "w28432.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w28432/w28432.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "95807b0cc26262dad87be2f9b50d653d71f236b669e3d5c5d45f64b0729ce693",
+    "bytes": 589961,
+    "text_file": "w28432.txt"
+  },
+  {
+    "file": "w25398.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w25398/w25398.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "cf4ebd0a103c7714235c8e464e060c96f9f7332c4e82b2219f2560767d928c66",
+    "bytes": 2387285,
+    "text_file": "w25398.txt"
+  },
+  {
+    "file": "w27843.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w27843/w27843.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "b6abb68d7771db98ed3fc3cd2fc0022ffe2b2107a4820722bf8ecf7d22e21f89",
+    "bytes": 1082910,
+    "text_file": "w27843.txt"
+  },
+  {
+    "file": "w24070.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w24070/w24070.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "4058efa0eb3c2f4e14af3b33584df259966fae9dc867096c2bb933024b8e776a",
+    "bytes": 3651515,
+    "text_file": "w24070.txt"
+  },
+  {
+    "file": "w15205.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w15205/w15205.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "0060c0357f607cf113d9e6c27d4bd74f20ccde17bd5ca66e95d65a8d24df3405",
+    "bytes": 346725,
+    "text_file": "w15205.txt"
+  },
+  {
+    "file": "w22208.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w22208/w22208.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "be1ea92102e1394e9ddec9545489902f45e5a07b42bd4c42faf8ee372e99fa7a",
+    "bytes": 1013730,
+    "text_file": "w22208.txt"
+  },
+  {
+    "file": "w20592.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w20592/w20592.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "15387ff6505c7eafdf18a89b63883b130a1497aaa41a9160d260a5ba045dfcef",
+    "bytes": 677490,
+    "text_file": "w20592.txt"
+  },
+  {
+    "file": "w23394.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w23394/w23394.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "8d00169a4cf6b4895587b054b41fe934b600ea501f210f02433cfe4db316f163",
+    "bytes": 821858,
+    "text_file": "w23394.txt"
+  },
+  {
+    "file": "w16601.pdf",
+    "source_url": "https://www.nber.org/system/files/working_papers/w16601/w16601.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "ccb60baf587453692eec6ddca6f66c839e054ed78d1ec81cf859e9f1f19d3c2c",
+    "bytes": 506859,
+    "text_file": "w16601.txt"
+  },
+  {
+    "file": "taming_factor_zoo.pdf",
+    "source_url": "https://dachxiu.chicagobooth.edu/download/ZOO.pdf",
+    "retrieved": "2026-10-23",
+    "sha256": "55ba89d37bc12516a9bf3e89e02966637efa4fda6f2ff5f4bf49bb39fe1676ac",
+    "bytes": 3726059,
+    "text_file": "taming_factor_zoo.txt"
+  }
+]

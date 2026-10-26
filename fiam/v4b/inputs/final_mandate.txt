@@ -1,0 +1,1169 @@
+1. Introductory Note
+
+Congratulations on reaching the finals. Out of a highly competitive field you are one of eleven finalist teams                          —
+and the number itself is worth a word of explanation. The finals have been capped at ten in previous editions.
+This year the quality of the fir   st - round submissions was high enough that we expanded the field, which is the
+clearest statement we can make about the standard of work this cohort produced.
+
+The first challenge asked you to build a market            - neutral U.S. equity strategy on a monthly panel, using 147 firm
+characteristics and a corpus of 8      - K filings. Many of you did that well. The finals ask a harder question, and a more
+realistic one: what happens       to your strategy when the decision frequency goes from monthly to daily, when the
+news arrives as a stream rather than a file, when the universe you may short is constrained the way a real prime                        -
+brokerage relationship constrains it, and when your results                 must be reported the way an allocator expects to
+receive them?
+
+Three things change materially. You may now trade daily, and we provide daily returns for every stock in the
+universe. You gain access to the Carbon Arc data platform, where all finalists will be onboarded, and with it a
+large library of alternative and ma      rket data. And the short leg now has a hard floor on market capitalisation,
+because the micro - cap short books that several first       - round submissions produced are, in practice, unborrowable.
+
+Everything else about the mandate is unchanged. The universe is U.S. public equities. The strategy is equity
+market neutral. The benchmark is cash plus a premium, and the headline number is the information and Sharpe
+ratios. You are building the same produ       ct; you are now building it under conditions closer to the ones it would
+actually face.
+
+This document contains what you need to start work. Further constraints and the final data configuration will be
+given at the start of the two - day event. Read the forward      - looking bias and reporting sections carefully: at daily
+frequency the ways to leak fu    ture information multiply, and we will be checking.
+
+
+
+  DATA ACCESS
+  Online folder:    MCGILL FIAM ASSET MANAGEMENT HACKATHON FINALS OCTOBER 2026
+  Carbon Arc:      every team member is onboarded individually.
+  Arcana:    one account per team, registered to the team leader’s email address.
+  Watch your inbox.       Onboarding emails from Carbon Arc and Arcana will arrive over the coming days, Carbon
+  Arc first and Arcana at the same time or shortly after. Check your spam folder, and act on them when they
+  arrive. A team that has not completed onboarding before the even               t starts loses working hours it cannot get
+  back.
+  Full contents of the folder are listed in Section 11.
+
+
+
+
+2. What Changes from the First Challenge
+
+The table below is the complete list of differences. If a row is not in this table, assume the first           - challenge rule still
+applies.
+                              First Challenge                                    Final Challenge
+
+Universe                      U.S. public equities                               Unchanged      — U.S. public equities only
+
+Return data                   Monthly returns                                    Daily returns for all stocks, in addition to
+                                                                                 monthly
+
+Rebalancing                   Monthly or slower; at least semi        - annual   Any frequency from daily to monthly
+
+Shortable universe            No restriction                                     Market capitalisation ≥ US$500 million at
+                                                                                 formation
+
+Long universe                 No restriction                                     Unchanged      — no restriction
+
+News and text                 8 - K filings corpus                               8 - K corpus plus the Carbon Arc data library
+
+Platform                      Team's own environment                             Carbon Arc and Arcana; teams onboarded
+                                                                                 on both. Team's own coding environment
+
+Fund size                     Not specified                                      US$1 billion initial endowment, compounding
+                                                                                 over the test period
+
+Position count                100 –500 names, long and short                     200 –500 names, long and short combined
+                              combined
+
+Single position limit         Maximum 10% of capital                             Maximum 5% of capital
+
+Agentic work                  Encouraged, mainly in signal                       Extended to portfolio construction and
+                              generation                                         position - level risk management (Section 5)
+
+Mandate                       Market neutral, gross ≤ 200%, net                  Unchanged
+                              within ±50%
+
+Benchmark                     3 - month T - bill + 4% per year                   Unchanged
+
+Headline metric               Sharpe, Information ratios                         Unchanged, with standardised reporting
+                                                                                 (Section 9)
+
+Reporting                     Prescribed statistics                              Standardised industry      - format table, turnover
+                                                                                 mandatory
+
+Evaluation                    Code review for look     - ahead bias              Economic and factor review on the Arcana
+                                                                                 platform (Section 11)
+
+
+
+ A note on what is not changing.          The point of the finals is not to reward whoever adds the most new data. A
+ clean, well - understood monthly strategy that you extend thoughtfully to daily/weekly decisions and report
+ honestly will beat a strategy that bolts on six alternative datasets nobody              had time to validate. Several first          -
+ round submissions were undone not by weak ideas but by data handling. Carbon Arc is an opportunity, not
+ an obligation.
+3. The Final Mandate
+
+Design and test an equity market    - neutral U.S. equity strategy that uses machine learning, large language models,
+agentic workflows, or any combination of them, to forecast returns or firms' fundamentals and to construct a
+portfolio from those forecasts. Re    port performance strictly out of sample.
+
+
+3.1 Portfolio constraints
+
+
+ Constraint                           Specification
+
+ Starting capital                     US$1 billion endowed at the start of the out               - of - sample period; the fund
+                                      compounds from there
+
+ Positions                            At least 200 and at most 500 names, long and short legs combined
+
+ Gross exposure                       Up to 200% of capital (leverage of at most 2×)
+
+ Net exposure                         Within −50% to +50% at all times; dollar neutrality is the natural centre
+
+ Shortable universe                   Only names with market capitalisation ≥ US$500m, measured at the formation
+                                      date
+
+ Single position                      Maximum 5% of capital in any one name
+
+ Rebalancing                          Any frequency from daily to monthly; you choose and you justify it
+
+ Benchmark                            3 - month U.S. Treasury bill + 4% per year, computed month by month
+
+ Out - of - sample window             01/2021 – 08/2026
+
+
+
+
+3.2 A note on the position count
+
+The floor has doubled, from 100 names to 200. The ceiling is unchanged at 500. The effect is to narrow the range
+rather than widen it, and the narrowing is deliberate.
+
+The higher floor is about breadth. The fundamental law of active management says that your information ratio
+scales with the square root of the number of independent bets you take, for a given level of skill per bet. A market                  -
+neutral book is a diversified     product by construction, and a 100     - name book run at 200% gross leaves individual
+positions large enough that a handful of names can dominate the result             — which is a concentrated stock          - picking
+fund, not a systematic strategy. Two hundred names is the point            at which the statistics of your signal, rather than
+the idiosyncrasies of a few holdings, start to drive the outcome.
+
+The ceiling stays where it was because 500 names is already enough to express almost any signal you are likely
+to build on this universe, and because every name you add is a name you have to trade, monitor and pay for. At
+500 names and 200% gross, equal we             ighting gives positions of roughly 0.4% of capital each               — about US$4
+million at the stated fund size; at the 200        - name floor, roughly 1%, or US$10 million. Against that, the single           -
+position cap has been tightened from 10% to 5% of capital, which is US$50 mi                  llion. At these position counts the
+cap is a backstop rather than a binding constraint, and a book that comes anywhere near it is concentrated in a
+way this mandate is not meant to accommodate              — expect to be asked to justify it.
+
+Two interactions to keep in view. First, breadth and turnover trade against each other: a 500                          - name book
+rebalanced daily is a large number of trades, and at US$1bn each of those trades is large enough in its own right
+that market impact, not commission, is         the binding cost. Second, the short leg now draws on a restricted universe.
+Roughly 3,000 to 3,500 U.S. listed companies carry a market capitalisation above US$500m, so a 250                      - name short
+book is shorting something like seven or eight per cent of everything            you are permitted to short. That is a workable
+fraction, but it means your short      - side alpha has to come from selection within a pool you are already sampling
+heavily.
+
+
+3.3 Fund size, capacity and market impact
+
+This year the mandate carries a stated fund size. You are endowed with US$1 billion at the start of the out                           - of -
+sample period, and the job is to grow it. The fund compounds: whatever the portfolio earns or loses in one period
+is capital you are managing in      the next, exactly as it would be for a real fund. There are no subscriptions and no
+redemptions, so the only thing that changes your capital is your own performance.
+
+The first challenge left fund size open, and that omission let several teams report returns from books that could
+not have been traded at any institutional scale. Naming the number closes that gap, makes every submission
+comparable on the same terms, and g            ives you a second figure that an allocator actually cares about: what the
+billion dollars was worth at the end.
+
+Work through what it implies at inception. At 200% gross you are deploying US$2 billion                       — roughly US$1 billion
+long and US$1 billion short. Spread across 500 names that is about US$4 million a position; across 200 names,
+about US$10 million. Those are not          small orders. A US$4 million position in a company that trades US$20 million
+a day is a fifth of a day’s volume, and professional desks generally keep participation below ten to twenty per
+cent of average daily volume to avoid moving the price against them                   selves. Several of the names that looked
+attractive in your first - round backtests will not absorb this.
+
+And because the fund compounds, this problem does not stay still. Gross and net exposure are percentages of
+current capital, so every position scales with the fund. A strategy that doubles the endowment has also doubled
+every order it sends, and names that        comfortably absorbed US$4 million at inception may not absorb US$8 million
+five years later. Success tightens your own capacity constraint. This is not a trick of the exercise                — it is the central
+operational problem of a successful fund, and a team that n               otices it in the backtest and says what it would do
+about it is demonstrating something most candidates never think about.
+
+This is also the real justification for the US$500 million market            - capitalisation floor on the short side. It is not an
+arbitrary restriction invented to make the problem harder. At a billion dollars of capital, a short book built from
+micro - caps is not mer       ely expensive to borrow         — it is unborrowable in the size the mandate requires, and a
+backtest of it is fiction. The floor forces the short leg into names where the position can actually exist.
+
+Neutrality has more than one definition and you should be explicit about which one you enforce                      — dollar, beta, or
+sector and factor neutrality. A dollar      - neutral book that is long high   - beta names and short low        - beta names is not
+neutral; it is a levered long    position in disguise. We will estimate your realised beta ourselves, at both daily and
+monthly frequency, and a beta materially different from zero over the out                  - of - sample period will be read as a
+directional strategy however the deck describes it.
+
+
+3.4 Why the benchmark is cash plus a premium
+
+A market - neutral book is nominally zero           - cost: short proceeds finance the longs, and the capital posted as
+collateral earns the bill rate. Benchmarking it against the S&P 500 makes no sense, because a manager who
+matched the index would have failed at the mandate. Your hurdle is the return you could have had risk                    - free plus
+the premium an allocator pays for acti       ve management. With the 3      - month bill near 3.7% the hurdle is roughly 7.7%
+annualised; in 2021, when bills yielded almost nothing, the same rule gave a hurdle near 4%. It is a time series,
+not a constant.
+
+Show the S&P 500 alongside your strategy for context and for the beta regression, but the number that decides
+whether the strategy worked is the information ratio of your return against cash plus 4%.
+
+
+4. Daily Decisions
+
+We provide daily returns for every stock in the universe, and you may rebalance as often as every trading day.
+This is a genuine extension of the problem rather than a convenience, and it is worth being clear about what it
+buys you and what it costs.
+
+
+What it buys you
+
+ ● Event response. A material disclosure or a news event is a dated, discrete thing. At monthly frequency you
+   can only trade it at the next month        - end, by which point most of the price response has happened. At daily
+   frequency you can act on it in the window w           here it is still information.
+ ● Faster - decaying signals. Several of the characteristics in the panel, and most of what alternative data
+   captures, have half - lives measured in days or weeks. Monthly rebalancing throws that away.
+ ● Tighter risk control. Beta, sector and factor exposures can be brought back to target daily rather than drifting
+   for a month.
+
+
+What it costs
+
+ ● Turnover. This is the binding constraint and it is not close. A strategy that replaces a tenth of its book every
+   day has an annualised one          - way turnover above 2,500%, and an average holding period of under two weeks.
+   At institutional size that is not a stra      tegy, it is a transfer of your alpha to the market makers. Report turnover
+   honestly (Section 9) and expect the judges to ask about it.
+ ● Cost sensitivity. At monthly frequency, commissions and spreads are a rounding error against a good signal.
+   At daily frequency they are often the whole answer. If you trade daily you must model costs, and you must
+   report performance before and after them.
+ ● Noise. Daily cross        - sectional return dispersion is dominated by microstructure and liquidity, not by
+   fundamentals. A model trained to predict tomorrow's return is largely being trained to predict noise. Think
+   about whether your signal has a daily horizon at               all before you trade it daily.
+ ● Point - in- time discipline. Every leakage hazard in Section 7 gets sharper when the decision interval shrinks
+   from twenty - one trading days to one.
+
+
+
+  You are not required to trade daily.          Daily trading is permitted, not mandated. A defensible answer is a weekly
+  or monthly core book with a daily overlay for events              — or a monthly book that you simply execute better. "We
+  tested daily rebalancing, it did not survive costs, and here is the evide               nce" is a strong finding and we will
+  credit it. What we will not credit is a daily strategy whose reported turnover and costs are missing or
+  implausible.
+5. Agentic Workflows and Position-Level Risk Management
+
+Almost every first - round submission that used agents used them in the same place: on the signal. An agent read
+a filing, classified an event, scored a company, and the output became a factor. That work was often good, and
+you should continue it. But it is       now the obvious move, which means it is no longer where the differentiation lies.
+
+Two less - explored opportunities are where we want to see effort this time. The first is downstream of the signal:
+portfolio construction and risk management. The second is upstream of it: using agents to explore an unfamiliar
+data library and find signals    nobody is running yet. Both are a long way from “have a model read a filing and score
+it”, and both are where this year’s differentiation will come from.
+
+Take the risk layer first. This is deliberate. Signal generation is a well          - defined supervised learning problem with a
+large literature and mature tooling. Position sizing and risk control are neither. It is the part of a systematic strategy
+that practition ers spend most of their time on, where most strategies actually fail, and where the governing logic
+is a tangle of soft constraints, conditional exceptions and trade             - offs that no single objective function captures
+cleanly. That is precisely the shape of pr            oblem a reasoning system can be good at              — and it is almost entirely
+unexplored in student competitions.
+
+
+5.1 What an agent can usefully do in the risk layer
+
+These are concrete, buildable, and each one is testable against a fixed                  - rule alternative. You do not need all of
+them. One done well, with evidence, is worth more than six gestured at.
+
+ 1. Pre - trade constraint review.         Before each rebalance, hand the agent the proposed book, the current book,
+    and the full constraint set        — gross, net, position count, the 5% cap, the US$500m short floor, sector and
+    factor exposures, realised beta. Its job is not to approve or reject but to                 explain: which constraint binds, by
+    how much, what the cheapest remedy is, and what that remedy costs in expected return. A rule                                   - based
+    optimiser returns a number. This returns a reason, and the reason is what you put in the deck.
+ 2. Exposure attribution and drift detection.               Decompose the book each day into intended and unintended
+    exposures. An intended exposure is one somebody decided to take; everything else is drift. A short book that
+    quietly migrates into small      - cap value over six months, or a long book whose sector weights                 track the signal's
+    own coverage bias, is carrying risk nobody chose. An agent that surfaces this in plain language, with the
+    attribution behind it, is doing work a risk analyst does.
+ 3. Context - conditional position sizing.          A fixed sizing rule treats every one      - sigma signal identically. It does not
+    know that this name reports earnings in three days, that one is hard to borrow, a third has had six news events
+    in a week, and a fourth has seen its realised volatility triple. An a             gent can condition the size on that context
+    — smaller into a print you have no edge on, smaller where borrow is tight, smaller where the position would
+    take too many days to exit, smaller where the signal and the crowd agree too enthusiastically. This is,                          in our
+    view, the single highest      - value application available to you.
+ 4. Trade triage against the cost model.            Most rebalancing trades are noise: a name moved from rank 103 to rank
+    97 and the optimiser dutifully adjusts the weight. Give an agent the target book, the current book and the cost
+    model, and have it decide which trades are worth paying for and which shou                     ld be left alone. At this fund size
+    this is not a refinement     — it is where a daily strategy either survives its own turnover or does not.
+ 5. Anomaly escalation.        When a position loses materially more than the model expected, something has usually
+    changed — in the company, in the data, or in your pipeline. An agent that investigates the exception,
+    distinguishes a genuine company event from a stale feed or a corporat                  e action you mishandled, and escalates
+    with a recommendation, is catching the class of error that quietly destroys live strategies.
+ 6. The post - trade explainer.         A short written account, each period, of what moved the book and why: which
+    signals drove the turnover, which exposures changed, which positions contributed. Allocators ask for exactly
+    this, and very few students produce it. It is also the most honest test                 of whether you understand your own
+     strategy.
+
+
+5.2 Agents on the data itself: exploratory signal discovery
+
+The second under - explored frontier is upstream of the signal, not downstream of it. The Carbon Arc library runs
+to seventy - seven datasets. Reading the documentation, forming hypotheses, pulling samples, checking coverage
+and testing candidate features acro     ss that library is several weeks of analyst work.
+
+This is where the platform's delivery mechanics matter more than they first appear. Carbon Arc exposes a REST
+API and an MCP server        , which means a language model can query the data directly rather than waiting to be
+handed a feature matrix someone built by hand. The integration is close to plug                  - and - play: you are not writing
+connectors, you are pointing a model at a data source and ask            ing it questions. What that buys you is the ability to
+explore far more of the library than you could manually in the time available.            NOTE , once onboarded, the platform
+has 20K tokens per day for the whole competition starting from the release. It is normally enough for the unlimited
+download but if you hit the limit, expect the system to reset the next day, and renew upload next day.
+
+Four applications worth building, roughly in order of expected payoff:
+
+ 1. Automated dataset triage.        Point an agent at the catalogue and at your universe, and have it report back per
+    asset: what fraction of your names it covers, when the history starts, what the publication lag is for the metric
+    you care about, what the entity key is, and a first           - pass jud gement on whether a usable feature exists. This is
+    the four - question screen from Section 6.6, run across seventy                  - seven assets instead of three. It produces a
+    written record you can put straight into the deck.
+ 2. Hypothesis generation at scale.            Give an agent a dataset, a sector and the question: what in here would
+    plausibly predict returns, and why? Have it propose candidate features together with an economic rationale
+    for each. The agent generates; your walk                - forward framework adjudicates, on val             idation data only. The
+    requirement for a stated economic rationale is what separates this from data mining                          — make it mandatory,
+    and reject candidates that cannot supply one.
+ 3. Cross - dataset combinations.         The commercial value of these datasets is mostly realised one at a time. The
+    genuinely under - explored space is the joins: job postings against software adoption, foot traffic against card
+    spend in the same catchment, open              - source development activity agains            t engineering hiring, government
+    contract awards against facility      - level capacity. An agent can enumerate and screen candidate pairs far faster
+    than you can, and these combinations are where a signal nobody else is running is most likely to be hiding.
+ 4. Documentation archaeology.            Every asset ships a field         - level data dictionary with types, descriptions and
+    sample values. Models are good at reading these closely and surfacing the field that actually matters                           — the
+    exclusivity flag on the news table, the claim         - maturity column, the reco rd - version key — which is exactly what
+    a human skimming a schema at speed will miss. Several of the points in Section 6 were found this way.
+
+
+Why this is a real edge, and where it stops being one
+
+Be clear - eyed about why the opportunity exists. Datasets like these are licensed mostly to institutional users who
+apply them to a handful of names in a sector they already cover. Systematic, cross               - sectional use across an entire
+universe is far less common     , historically because the entity mapping was too expensive for anyone but the largest
+shops to build. Carbon Arc has done the mapping, and agents make the exploration cheap. That combination is
+new enough that the obvious signals in this library are genui         nely not all arbitraged away      — which is not something
+one can say about the 147 characteristics in the main panel.
+  The warning that comes with it.            Cheap exploration means cheap multiple testing, and this is the way an
+  agentic research pipeline fails. If an agent proposes and tests four hundred candidate features and you report
+  the best one, you have found noise           — and you have found it with great conf      idence, because the search was
+  thorough. Three defences, and we expect all three: state how many hypotheses you tested, in total, not how
+  many you kept; hold out a slice of data that nothing touched until the very end; and require an economic
+  rationale wri tten down before the test, not after. A team that reports "we tested 380 candidates, 11 survived
+  validation, 4 survived the holdout, here they are" is doing science. A team that shows four features and no
+  denominator is not, and we will ask for the denomin           ator.
+
+
+
+5.3 Design requirements
+
+These apply to everything in this section        — the risk layer and the data - exploration work alike. If you build an agent
+into the pipeline, they are not suggestions. A risk layer that cannot be audited is not a risk layer.
+
+ 1. The agent proposes; code enforces.               Every hard constraint      — gross, net, position count, the 5% cap, the
+    US$500m short floor         — must be enforced in deterministic code after the agent has had its say. Never in a
+    prompt. A language model that is asked nicely to respect a limit will eventually no                t, and a breach you discover
+    in the backtest is a breach the judges will discover too.
+ 2. Log every decision with its inputs.          What the agent saw, what it decided, and what it gave as a reason. This
+    log is the deliverable as much as the returns are, and it is what lets a reviewer confirm that the agent was not
+    reasoning from information it should not have had.
+ 3. Point - in - time applies to agents too.      Everything in Section 8.2      — dated inputs only, no live retrieval, declared
+    model cutoff — applies with full force here. An agent sizing a position on the strength of knowledge about
+    how that company's quarter turned out has leaked, and no amount of care el                    sewhere repairs it.
+ 4. Build the counterfactual, and report it.          Run the identical strategy twice: once with the agent in the risk layer,
+    once with a fixed rule in its place. Report both. Without that comparison you have no basis for claiming the
+    agent contributed anything, and we will not take the claim on faith. This                       is the single most important
+    requirement in this section.
+ 5. Design the trigger, not just the agent.           A model call per name per day across 500 names and 1,400 trading
+    days is roughly 700,000 calls. That is neither affordable nor reproducible. Build the agent to run on exceptions
+    — a constraint near its bound, an unexplained loss, a sudden change in a name'                      s context — and handle the
+    routine cases in code. Knowing when not to invoke the model is itself a design skill.
+ 6. Cache and version every response.              Model outputs are non - deterministic. Persist each response keyed by
+    its inputs so the pipeline reruns identically, and so a judge can read exactly what the model said on any given
+    date.
+
+
+
+  A negative result here is a real result.       "We built an agentic risk layer, measured it against a fixed rule, and it
+  did not improve the information ratio       — here is where it helped, here is where it hurt, and here is our read on
+  why" is a strong, publishable finding and the judges will credit it ac           cordingly. What earns nothing is an agent
+  in the architecture diagram with no evidence that it changed anything.
+6. The Carbon Arc Data Platform
+
+All finalists will be onboarded on Carbon Arc, our data partner for the finals                       — www.carbonarc.co          , with the
+catalogue at www.carbonarc.co/explore           - data .
+
+Carbon Arc aggregates a large library of alternative and market datasets and               — this is the part that matters for
+your work — resolves them against a single entity ontology, so that a merchant, a brand, a physical store, a
+software product or a code reposit          ory can be mapped to a listed company without you building a separate
+crosswalk for every vendor.
+
+Data reaches you four ways: bulk extracts, pre           - aggregated views, a REST API, and an MCP server that an LLM
+agent can query directly. That last route is worth your attention given this year's theme: an agent can be given a
+question about a company and go an            d interrogate the data itself rather than being handed a pre           - built feature
+matrix. Section 5.2 sets out how to use that productively.
+
+Alongside this document you will receive              MCGILL_2026_CarbonArc_Data_Screen.xlsx                 , a screening workbook
+covering the full catalogue with, for each asset, its identifier, provider, entity key, history, update frequency,
+publication lag, region, a usability verdict for this mandate, and an assessment of survivorship exposure. Treat it
+as the manual. It will save you most of a day.
+
+
+6.1 What Carbon Arc is good at
+
+ ● Entity resolution.     The hardest part of alternative data is joining it to a security. Carbon Arc has done that
+   work. You still have to verify it (Section 6.3), but you are verifying a mapping rather than building one.
+ ● Breadth across the real economy.             Card spending, point        - of - sale, foot traffic, clickstream, job postings and
+   job movements, software adoption, open                  - source development activity, medical and pharmacy claims,
+   government contracts, trade flows, facility          - level physical risk. These are reads on c             ompany performance that
+   do not come from the accounting statements, which is exactly why they can carry information prices do not.
+ ● Documented lag, and in places documented maturity.                          Each asset publishes its update frequency and
+   publication lag. A few go further: the medical claims asset publishes its completion curve                           — roughly 45% of
+   a service day's claims arrive in week one and 80% by week four                           — which makes a correct point           - in- time
+   implementation possible rather than guesswork. Prefer assets that tell you this.
+ ● Record versioning.        Many assets carry last           - updated, hash - key and partition - date columns. These exist
+   because records get revised. Used properly they let you reconstruct what the data looked like on a past date,
+   which is the single most valuable thing an alternative data platf                 orm can give a backtester.
+ ● A handful of genuinely long histories.             Daily stock prices from 1990, financial reporting from 2008, open                      -
+   source activity from 2008, Benzinga event data from 2011, SEC filings from 2012, brand reviews from 2013.
+   These are long enough to train on.
+
+
+6.2 What Carbon Arc is not good at
+
+These are not criticisms of the platform; they are properties of alternative data, and every professional user
+manages them. Your handling of them is part of what is being evaluated.
+
+ 1. Short histories. Most alternative panels begin between 2019 and 2024. Your out                   - of - sample window starts in
+    2021. A panel that starts in 2019 therefore gives you about two years of pre              - sample history to train on, which
+    is not enough to fit anything complex without overfittin          g it. Check the start date before you build a feature,
+    not after.
+ 2. Heterogeneous and sometimes metric               - specific lag. Publication lag across the library runs from four hours
+    to ninety days, and within a single asset it can differ by metric         — one asset publishes brand         - level weekly data
+    at T+9 days, category        - level weekly at T+16 and monthly at T+12. A blanket "lag everything one month" rule
+    is wrong in both directions: too conservative for some series, and still leaking for others.
+ 3. Revisions and backfill.         The series you see today is not what you would have seen at the time. Panels are
+    backfilled as new contributors are added and restated as data is cleaned. If you use the current vintage of a
+    revisable series as a historical feature, you have leaked               — and i t will not look like a leak in your code.
+ 4. The entity map is a present            - day map. Mappings are built against the companies that exist now. Firms that
+    were acquired, went private or were delisted during your sample may be missing or incompletely mapped.
+    This is a survivorship problem and it is the one most likely to bite you (Section 6.3                   ).
+ 5. Panel composition drift.          A card panel that captured 2% of a retailer's sales in 2019 may capture 6% today.
+    The "growth" that falls out of the raw level is an artefact of the panel, not of the company. Work in shares,
+    growth rates and cross        - sectional ranks, not levels, and normalis         e against the panel's own total wherever you
+    can.
+ 6. Sector coverage is skewed.                 Consumer, retail, technology, media and healthcare are richly covered.
+    Financials, utilities, energy and much of industrials are not. A signal that only fires in consumer names is a
+    sector bet wearing a stock          - selection costume      — and in a market - neutral boo k, an unintended sector bet is
+    exactly the exposure the mandate is supposed to eliminate.
+ 7. Some series are closed.          Several assets in the library are historical only and receive no further updates; a few
+    end during 2025 or 2026. They are usable for research and useless for anything that has to run forward. The
+    workbook flags them.
+ 8. Crowding. These datasets are commercially licensed and widely used. A meaningful part of the obvious
+    signal in them is already in prices. Treat every alternative dataset the way you would treat a new factor:
+    assume it is contaminated until you have shown that it is                not.
+
+
+6.3 The survivorship test we expect you to run
+
+Survivorship exposure in this library comes in three forms, and they need different treatment:
+
+ ● Immune. Assets keyed to something other than a company and resolved to tickers only at the point of use                            —
+   weather, macro series, commodity prices, box office. The underlying records do not depend on which firms
+   still exist.
+ ● Crosswalk - only. The observations themselves are complete, but the company mapping is current                            - vintage.
+   Card transactions at a merchant that no longer exists were still recorded; the question is whether that
+   merchant still resolves to a ticker. This is the large middle cate        gory, and it is fixable if you check.
+ ● Universe - level. The asset only contains entities that are in some present               - day index, list or panel. Here the
+   missing names are genuinely absent, not merely unmapped, and no amount of care at the join recovers them.
+
+
+A concrete test, which takes an hour and which we will ask about:                    take a list of U.S. companies that delisted
+between 2017 and 2020           — Sears, Bon - Ton Stores, Pier 1, GNC, Ascena, J.C. Penney are a reasonable starting
+set — and count how many of them resolve in the entity map of each asset you intend to use. Then run the
+c omplementary return test: within your universe, compare the average return of names your dataset covers
+against names it does not, over the same period. If covered names systematically outperform, your coverage is
+not random and any signal built on it inhe         rits the bias. Report what you found. A team that documents a coverage
+bias and controls for it will score better than a team that did not look.
+
+
+6.4 The 8-K corpus: a worked example from the first round
+
+The previous section describes a test. Here is what happened when one team actually ran it, on a dataset we
+supplied ourselves.
+In the first challenge we provided a corpus of 8        - K filings covering the sample period. Out of multiple submissions,
+only one team checked whether that corpus covered companies that had left the universe during the sample                                —
+and found that it did not. Firms         that delisted, were acquired or went private between 2015 and 2026 were
+materially under - represented, because the corpus had been assembled against a present                     - day list of filers rather
+than against the filers who existed at each point in time.
+
+Three things are worth saying plainly about that.
+
+It was a real defect, and the finding was correct.           The corpus we handed you carried a survivorship bias. A text
+signal estimated on surviving firms only will overstate its own performance, and it will do so in a particular
+direction: the companies that disappeared are disproportionately the ones whose news                     was bad. A model trained
+to read 8 - Ks learns, without anyone intending it, that disclosures of this kind are usually survivable             — because in
+the data it was given, they always were.
+
+Most of teams did not ask.         That is the part to sit with. The corpus arrived from a credible source, with a tidy
+schema, in a competition where the organisers had clearly put work into the data. None of that is evidence of
+completeness, and the question costs an hour to answer. This                 is precisely the test in Section 6.3, and the reason
+it is in this document is that almost nobody ran it.
+
+There is a clean remedy, and you have it this year.             See below.
+
+
+EDGAR is survivorship-free
+
+The SEC's EDGAR system is an archive of what was filed, when, and by whom, keyed to the filer's CIK. Nothing
+is removed from it when a company delists, is acquired, or goes bankrupt. The filings of a company that ceased
+to exist in 2018 are still there, ex actly as filed, and will remain there permanently. A text channel built directly from
+EDGAR therefore inherits no survivorship bias from the text side             — and this is true of 10 - K and 10 - Q filings just as
+it is of 8 - Ks.
+
+Carbon Arc's CA0032, Financial Filing Forms           , is EDGAR: roughly 150,000 filings a year across ten form types,
+from 2012 onward, keyed by CIK. It gives you the option of rebuilding the text channel from the primary source
+rather than from a curated extract     — on a footing you can verify yourself rathe          r than take on trust.
+
+One caveat, so that you do not over        - claim this in your deck:
+
+ ● Map through CIK, not through ticker.           CIKs are stable and permanent. Tickers are neither            — they change,
+   and they get reassigned to unrelated companies after a delisting. A ticker            - based join over a long sample will
+   silently attach one company's filings to another company's returns.
+
+
+Which filings to use
+
+The two form families do different jobs, and the best submissions will probably use both. A 10                        - K or 10 - Q is
+periodic, long, comprehensive and heavily lagged            — the right source for fundamentals, management discussion,
+risk - factor language and year     - over - year changes in how a company describes itself. An 8             - K is event - driven,
+short, tied to one occurrence and timestamped to the day, which makes it far better suited to the daily decision
+frequency this year's challenge permits. Use the 8         - K for timing and the per iodic filings for content, and be explicit
+in your deck about which filings fed which part of your signal.
+
+
+6.5 The news data — read this before you plan around it
+
+You asked, in effect, whether you can form signals from daily news as it arrives. The honest answer requires
+knowing what the news asset actually contains, and it is not what most teams will assume. The relevant asset is
+CA0035, "Financial News & Data", provided by Benzinga              . Its properties, verified against the catalogue:
+
+
+
+ Property                            Value
+
+ History                             2011 – present
+
+ Coverage                            3,000+ tickers (Wilshire 5000 plus roughly 1,000 widely              - held names outside it)
+
+ Update frequency                    Weekly
+
+ Publication lag                     T + 1 day
+
+ Record granularity                  Date (calendar day). No intraday timestamp.
+
+ Fields                              Ticker · event label · exclusive     - vs - non - exclusive mention flag · date
+
+ Event taxonomy                      Earnings Beats, Price Target, Offerings, Acquisitions, Contracts, SEC, Movers,
+                                     Pre - market Outlook, Hedge Funds, Federal Reserve, Guidance, Politics, Sector
+                                     ETFs, General, and others
+
+ Also included                       Analyst rating, earnings, dividend, IPO and M&A calendars; bull/bear viewpoints
+
+ Not included                        Headline text · article body · intraday timestamp · sentiment score
+
+
+
+  Three consequences, and please plan around them rather than discovering them on day one.
+  1. There is no news text here.       This asset is an event     - tagged table, not a corpus. You cannot run an LLM over
+  headlines or article bodies, because neither is in the data. If your plan involves language models reading
+  news, your text source is the 8       - K corpus from the first challenge, or t        he SEC filings asset (CA0032)        — both
+  of which do contain full text. What this asset gives you instead is clean, long                    - history, ticker - keyed event
+  counts by type, which is a different and in some ways more tractable signal.
+  2. Daily signals yes, live daily feed no.        Records are dated to the calendar day, so you can build daily event               -
+  based features across the full history for backtesting. But the platform refresh is weekly, so during the two                      -
+  day event you will not be receiving a live daily news stream. Design for a his              torical daily backtest, not for live
+  trading on today's news.
+  3. No intraday timestamp is a leakage trap.            An event dated day t may have been published before the open,
+  during the session, or after the close           — the data does not say which. You must therefore treat any event
+  dated t as actionable no earlier than the open of day t+1. Trading at the close of day t                 on an event dated day
+  t is a look - ahead violation, and    it is the single most likely way a team may disqualify itself this year            .
+
+One genuinely useful field deserves a mention: the              exclusive - mention flag tells you whether the underlying
+article was about this ticker alone or mentioned it among many. That is a reasonable proxy for whether the event
+was material to the company or incidental, and it is the kind of field that separates a thoughtful feature fr             om a
+naive event count.
+
+Two clocks, and which one governs.          The T+1 figure above is the source publication lag; the weekly figure is how
+often the platform delivers. For this competition, historical eligibility follows source publication: an event dated
+day t may enter a feature from day t+1, under the execution co                 nvention in Section 7. We allow this because the
+backtest is the exercise, and the weekly cadence is an artefact of delivery rather than of when the information
+existed. A live implementation, though, would see the week’s events only at the next refresh                     — so if your signal’s
+edge decays inside a week, say so, and show what weekly                - delivery timing would do to it. A strategy whose alpha
+survives only under source      - pub lication timing is a strategy that could not have been run.
+
+
+6.6 Suggested starting points
+
+From the full catalogue, these are the assets with a usable publication lag, direct or near                   - direct ticker keying, and
+enough history to be worth the effort. Most update daily; the exceptions are marked as such in the table                                      —
+CA0035 and CA0043A are weekly,                CA0015 monthly, CA0065C quarterly, and CA0032 is an event feed                          — and
+they earn their place on history and content rather than on frequency. The workbook has the complete list with
+verdicts; this is where we would start. One asset breaks the training              - history rule deliberately. CA0086 begins only
+in 2023, well inside the out      - of - sample window, and it is listed because it is the only intraday series in the library.
+A series that starts     after the beginning of your test period may still be used, on two conditions: it enters the
+strategy only from the date its history begins, with the walk             - forward respecting that start rather than back            - filling
+it, and you report the sub      - period in which it w as active separately from the full           - period result. Do not fit a model
+on a 2023 - onward series and then present a 2021            - onward backtest of it.
+
+
+
+ ID               Asset                                     Provider                     History            Freq.           Lag
+
+ CA0092           Securities Ratings                        New Constructs               2016 –             Daily           T+2d
+
+ CA0065S          Stock Prices                              Fiscal AI                    1990 –             Daily           T+1d
+
+ CA0035           Financial News & Data                     Benzinga                     2011–              Weekly          T+1d
+
+ CA0032           Financial Filing Forms                    SEC EDGAR                    2012 –             Feed            T+1d
+
+ CA0056           Credit Card    – US Complete              Facteus                      2019 –             Daily           T+3d
+
+ CA0058           Credit Card    – Health Spend             —                            2017 –             Daily           T+5d
+
+ CA0030           Clickstream                               —                            2020 –             Daily           T+1d
+
+ CA0060           Foot Traffic                              PassBy                       2019 –             Daily           T+5d
+
+ CA0029           POS – Convenience Stores                  PDI Technologies             2019 –             Daily           T+1d
+
+ CA0052           Brand Reviews                             —                            2013 –             Daily           T+1d
+
+ CA0098           Open - Source Dev Activity                Sherlock Data                2008 –             Daily           T+1d
+
+ CA0065C          Company Reported Actuals                  Fiscal AI                    2015 –             Qtrly           T+1d*
+
+ CA0043A          Job Openings                              PredictLeads                 2017 –             Weekly          Bi - mo.
+
+ CA0086           Credit Card    – US Neo                   —                            2023 –             Intraday        T+4h
+
+ CA0015           Macroeconomic Data (FRED)                 St. Louis Fed                1980 –             Monthly         ~real - time
+
+* After the company releases. CA0092 updates Sunday through Friday. CA0086 is the only intraday asset but
+has the shortest history.
+
+Before you commit to any asset, answer four questions in writing:                       (i) when does the history start, and is that
+early enough to train before 2021? (ii) what is the publication lag for the specific metric I am using? (iii) is this
+series revised, and if so can I reconstruct the vintage? (iv) what fraction of my universe does it actually cover,
+and is that coverage ra      ndom with respect to returns? If you cannot answer all four, do not use the asset. Three
+well - understood datasets beat eight you are guessing about.
+
+
+7. Forward-Looking Bias
+
+  Critical rule. If your portfolio construction, signal generation, model selection or optimisation uses forward                       -
+  looking information — intentionally or accidentally         — your team will be disqualified. At any point in time t you
+  may use only information that would genuinely h           ave been available at t.
+
+In most of data science, using all available data is acceptable. In finance it is not, because the whole claim you
+are making is that your method would have worked at the time. How we verify that claim has changed this year
+— we examine the economics of yo             ur portfolio rather than audit your code         — and Section 11 explains what that
+means in practice. The short version: a leak shows up in the behaviour of the returns, and that is much harder to
+conceal than source code.
+
+The examples below are the ones we actually find. The first two carry over from previous editions. The rest are
+specific to daily decisions and to alternative data, and they are where we expect this year's problems to be.
+
+
+The classic two
+
+ 1. Feature selection on the full sample.        Running importance analysis over 147 characteristics across the whole
+    2015 –2026 panel, identifying the factors that mattered, and then training a model from 2015 using only those
+    factors. By 2018 you could not have known which factors would matter through                   2026. You have used future
+    knowledge to improve past decisions.
+ 2. Regime identification with future data.         Defining high - and low - volatility regimes from the full VIX series and
+    then applying those labels retroactively. A regime          - switching model must classify each date using only data
+    up to that date.
+
+
+The daily-frequency and alternative-data cases
+
+ 1. Same - day news without an intraday timestamp.                  Covered in Section 6.5 and repeated here because it is the
+    most likely violation this year: an event dated day t is actionable no earlier than the open of day t+1. Because
+    the supplied daily returns are close           - to- close, you cannot simulate an opening trade                   exactly. Use this
+    convention, and state any departure from it: information dated through day t forms the book at the close of
+    day t+1, and the first return you earn on it is the close of t+1 to the close of t+2. The same convention applies
+    to any feature c omputed from day - t information, including the day               - t return itself.
+ 2. Earning a return your signal already used.                If a feature uses the day        - t return — a reversal signal, or a
+    momentum or volatility measure computed through day t                    — then that day’s return is already spent, and you
+    cannot also earn it. Teams routinely compute a signal through day t and then book the day                      - t return as strategy
+    performance, which silently credits them a day they could not have captured. Under the convention above,
+    a book formed on information through day t first earns the return from the close of t+1 to the close of t+2.
+ 3. Current - vintage alternative data.        Pulling a revisable panel as it stands today and using it as a 2021 feature.
+    Lagging the date does not fix this. A lag handles publication delay; it does nothing about a value that was
+    revised upward six months later, because the revised number is what sit                   s in the cell whatever date you attach
+    to it. Only three treatments are acceptable: reconstruct the vintage from the asset’s versioning columns; or
+    show that revisions to the series cease within a bounded interval and lag beyond it, with the evidence in th                          e
+    deck; or leave the series out of the point         - in- time backtest and use it only descriptively. If you cannot do one
+    of the three, do not build a feature on it.
+ 4. Survivorship through the entity map.             Building a feature that exists only for companies the vendor can still
+    map, and comparing it against a universe that includes companies it cannot. Section 6.3.
+ 5. Event date versus announcement date.                   Calendar - type data is especially dangerous here. A scheduled
+    earnings date is known in advance and is legitimate. An analyst rating or a price target is known only when
+    published. Check which date a field carries before you align it to a formation date.
+ 6. Delisting and the missing stub return.           At daily frequency this matters more than at monthly. If a name simply
+    disappears from your return file on the day it collapses, a short position in it books the gain on the way down
+    and never takes the final stub. State explicitly how you handled delistin                gs, halts and missing days.
+ 7. Full - sample standardisation.        Z - scoring a feature using the full        - sample mean and standard deviation, or
+    winsorising at full - sample percentiles. Normalise cross             - sectionally within each date, or with an expanding
+    window — never with statistics computed over the whole period.
+ 8. Hyperparameters tuned on the test period.                 Choosing a learning rate, a penalty, a lookback or a number of
+    holdings by what performed best out of sample. This is the most common form of leakage in the whole
+    competition and it almost never appears in the code as a date error. Tune on validation data                         that precedes
+    the test window, and keep the split dates explicit.
+
+
+Model memory: the leak you cannot instruct away
+
+One finding from the first round deserves its own treatment, because it breaks an assumption almost everyone
+starts with.
+
+Several teams discovered that a language model instructed not to use forward                    - looking information still used it.
+Told explicitly to reason only from the text in front of it, the model nonetheless recognised the company from that
+text and brought to bear wha       t it already knew about how the story ended. One team went further and blinded the
+filings — stripping the company name, the ticker and other obvious identifiers                      — and found that the model
+frequently re - identified the firm anyway, from the residue that a d                ocument inevitably carries: the business
+described, the products named, the geography, the dollar magnitudes, the particular phrasing of a known event.
+
+Take the implication seriously. A pretrained model is not a blank reasoner that you point at your data. It is a system
+that has already read a great deal about the companies in your universe, including what happened to them after
+the date you are pretendin      g it is. Two things follow that are easy to get wrong:
+
+ ● An instruction is not a control.              “Do not use information after this date” in a prompt is a request, not a
+   mechanism. The model has no reliable way to partition its own knowledge by date, and no way to tell you
+   when it failed to.
+ ● Blinding identifiers is not sufficient either.              It raises the cost of re  - identification; it does not eliminate it. A
+   filing stripped of its ticker is still a highly specific document.
+This is an active research question rather than a settled one, and the evidence cuts both ways                    — smaller models
+appear markedly less prone to it than large ones. We are not banning pretrained models; the competition would
+be pointless without them. What we         are asking is that you stop treating the problem as solved by a line in a prompt.
+
+
+What we expect you to do about it
+
+ 1. Report your model's release date against your test window.                 If the model was released partway through the
+    out - of - sample period, split the results: performance before the release date and after it. The post               - release
+    sub - period is the cleaner test, and a strategy that holds up across the boundary is making a much stro                   nger
+    claim than one that does not.
+ 2. Run the re - identification test, and report the number.             Take a sample of your blinded inputs, ask the model
+    to name the company, and measure how often it can. That hit rate is a direct estimate of how much of your
+    “blinding” is real. It takes an hour, nobody has a good answer for it, and a team that reports it                     honestly —
+    whatever the number          — will be taken more seriously than a team that asserts the inputs were blinded and
+    moves on.
+ 3. Prefer smaller or older models where the task allows.                     If a compact model does the classification or
+    extraction adequately, it carries less of this risk than a frontier model, and you can say so with evidence rather
+    than hope.
+ 4. Build at least one signal that does not depend on a pretrained model at all.                   A structured feature from the
+    panel or from Carbon Arc has no memory of 2023. Having one in the book gives you a clean comparison and
+    a fallback if the text channel is challenged.
+
+
+
+  How we will treat this.     Residual model memory is a limitation of the current technology, not misconduct, and
+  we will not disqualify a team for using a pretrained model. We will treat an undisclosed one quite differently
+  from a measured and disclosed one. If your deck claims the t              ext channel is free of look   - ahead because the
+  model was instructed not to look ahead, the first         - round evidence says that claim is wrong, and the judges
+  now know it.
+
+
+
+Cost and borrow assumptions: a disclosure rule, not a leak
+
+One case from the first round deserves its own rule, because it is genuinely ambiguous and we would rather settle
+it in advance than argue about it afterwards.
+
+Modelling trading costs or borrow fees requires a fee schedule, and published schedules are current                       — nobody
+has a 2021 vintage of a broker's commission table or short        - stock file. Calibrating a cost model on today's schedule
+and applying it across your sam     ple is therefore permitted, and it is better practice than assuming shorting is free.
+But it is a forward - dated parameter choice, and it must be handled openly:
+
+ ● State in the deck which schedule you used, as of what date, and what the model does not capture (market
+   impact, locate failures, recalls are the usual omissions).
+ ● Report your headline result with a flat, conservative alternative assumption alongside it                   — for example a
+   uniform borrow fee of 50 bp for large caps and 5% for the rest. If the strategy only works under your fitted
+   curve, that is important and we need to s         ee it.
+ ● Never let a cost or fee parameter enter the return forecast. It belongs in the construction and ranking layer
+   only.
+
+
+
+  Disclosed modelling assumptions are judged on merit. Undisclosed ones are judged as leakage.                       Nothing
+  in this section is intended to discourage you from modelling implementation costs              — the teams that did so in
+  the first round produced visibly more realistic portfolios. Model them, and write down what you assumed.
+
+
+
+8. Methodology Standards
+
+Every team in this field is working with AI coding assistants, and several of you are building agentic research
+workflows as the strategy itself. That is the point of the competition and we are not going to constrain it. But it
+raises the bar on process di      scipline rather than lowering it. A model that cannot be reproduced is not a result, and
+an agent that quietly read the wrong file has leaked whether or not anyone wrote a line of leaking code.
+The standards below are what a quantitative research team would expect of its own members.
+
+
+8.1 Walk-forward discipline
+
+ 1. State your split dates explicitly,       in the deck and in the code. The first      - challenge convention is a reasonable
+    default: train 01/2015 –12/2018, validate 01/2019 –12/2020, first out - of - sample year 2021, then expand the
+    training window and roll the validation window forward one year at a time.
+ 2. Refit on a schedule, not on a hunch.            Annual or quarterly refitting with an expanding window is standard.
+    Refitting whenever performance dipped is curve             - fitting.
+ 3. Write a leakage test.      At minimum, one assertion per data join that the maximum date on the feature side is
+    less than or equal to the formation date, accounting for publication lag. This is five lines per join and it catches
+    the majority of real leaks. We will not be inspecting           these tests — write them because they are how you find
+    a leak before the judges find its signature in your returns.
+ 4. Separate the modules.         Forecast, construction, and cost accounting should be distinct components with a
+    defined interface. Beyond good practice, this is what makes it possible for you                   — and for us — to see which
+    layer a result actually comes from.
+
+
+8.2 Working with agents and language models
+
+ 1. The agent sees only what the strategy sees.               If an agent reads a document, that document must be dated on
+    or before the formation date. If it searches the web, it will find the future                  — so either disable retrieval or
+    constrain it to a dated corpus, and say which you did.
+ 2. Log every prompt with the formation date it belonged to.                   The prompt log is your evidence of point        - in- time
+    integrity.
+ 3. Declare your model's training cutoff.            A pretrained model may have seen your out            - of - sample period during
+    training, which is a subtle but real form of look          - ahead. If your model was released partway through your test
+    window, report the sub        - period after its release separately. A team in the first             round did this well and it
+    materially strengthened their submission.
+ 4. You own what the agent wrote.             Read the code it produces. "The assistant generated it" is not a defence
+    against a leak, a wrong sign, or a fabricated number               — and agent - written code leaks in characteristic ways,
+    most often by reaching for a convenient full           - sample statistic.
+
+
+8.3 Honesty in the numbers
+
+ 1. Every figure in the deck traces to an output file.          No number typed in by hand. If a judge asks where 1.42
+    came from, you should be able to name the file.
+ 2. Report what broke.       If you breached a constraint, exceeded your turnover budget, or found that a signal
+    stopped working in 2024, say so, with the economic reason and what you would do with more time. This
+    reads as competence, not weakness.
+ 3. Name what you did not model.          Market impact, borrow availability, short recalls, financing spreads, capacity.
+    You are not required to model all of them. You are required to know which ones you skipped.
+9. Standardised Performance Reporting
+
+Last year teams reported performance in a dozen different formats, which made comparison across submissions
+harder than it should have been. This year the reporting format is fixed. The table below is what an allocator
+expects to receive, and every team wi        ll submit it on one slide, for the full out    - of - sample period, for the strategy
+and for the benchmark where applicable.
+
+
+9.1 The required table
+
+
+ Metric                                         Units / basis                         Strategy                 Benchmark
+
+ Ending value of the endowment                  US$ billion
+
+ Cumulative return over the period              %
+
+ Annualised return                              % per year
+
+ Annualised volatility                          % per year
+
+ Annualised alpha vs S&P 500                    % per year (+ s.e.)                                            n/a
+
+ Beta vs S&P 500      — monthly                 coefficient (+ s.e.)                                           n/a
+
+ Beta vs S&P 500      — daily                   coefficient (+ s.e.)                                           n/a
+
+ Sharpe ratio                                   annualised
+
+ Information ratio vs T   - bill + 4%           annualised                                                     n/a
+
+ Tracking error                                 % per year                                                     n/a
+
+ Maximum drawdown                               %
+
+ Maximum one - month loss                       %
+
+ Maximum one - day loss                         %
+
+ Positions held                                 average / min / max                                            n/a
+
+ Gross exposure                                 average / maximum, % of                                        n/a
+                                                capital
+
+ Net exposure                                   average / min / max, % of                                      n/a
+                                                capital
+
+ One - way turnover                             % per rebalance and                                            n/a
+                                                annualised
+
+ Average holding period                         trading days                                                   n/a
+
+ Average position size                          US$ million                                                    n/a
+ Metric                                          Units / basis                         Strategy                 Benchmark
+
+ Short book median market cap                    US$ million                                                    n/a
+
+ Trading cost                                    % of NAV per year                                              n/a
+
+ Borrow cost                                     % of NAV per year                                              n/a
+
+ Information ratio, net of all costs             annualised                                                     n/a
+
+
+
+
+9.2 Conventions
+
+Annualization — and two different numbers.            State the frequency you worked in. From monthly data, multiply the
+mean by 12 and the standard deviation by √12; from daily data, by 252 and √252. Do not mix the two within one
+statistic. These are arithmetic annualised moments, and they are the inputs to               the Sharpe and information        ratios.
+They are not the compound growth rate, and they will not reconcile with the ending value of the endowment.
+Report both, and label them: the CAGR          — (ending NAV / starting NAV) raised to the power 1/years, minus one                  —
+is the figure that ties to the d   ollar outcome; the arithmetic mean is the figure that drives the risk          - adjusted ratios.
+A strategy with meaningful volatility will show a CAGR visibly below its arithmetic annualised return, and that gap
+is not an error.
+
+Active return and information ratio.            Define the active return in period t as your portfolio return less the
+benchmark return for that period, where the monthly benchmark return is b_t = TB3MS_t / 1200 + 0.04 / 12, with
+TB3MS_t the annualised 3       - month bill rate in per cent for that month, and t        he daily equivalent is b_t = TB3MS_t /
+25200 + 0.04 / 252. A benchmark series computed on this basis will be supplied with the data, so that every team
+is measured against identical numbers. The information ratio is the annualised mean active return divide                     d by its
+annualised standard deviation. This is the headline number for the mandate.
+
+Alpha and beta.      Regress your excess return on the S&P 500 excess return. The intercept, annualised by
+multiplying by the number of periods per year, is alpha; the slope is beta. Report the standard error (or t           - stats) on
+both. For a market     - neutral book the beta is evidence        of compliance with the mandate and the alpha should
+account for very nearly all of your mean excess return. Report beta at both daily and monthly frequency: a book
+that looks neutral monthly can carry meaningful daily beta, and vice versa.
+
+
+9.3 Turnover — the definition we will use
+
+Turnover was reported inconsistently last year, so here is the formula. On each rebalancing date τ, one                           - way
+turnover is
+
+                                           Turnover( τ) = ½ · Σ ᵢ | wᵢ,τ − w ᵢ,τ₋ |
+where w ᵢ,τ is the weight of name i immediately after the rebalance and w              ᵢ,τ₋ is the weight carried into it. The one      -
+half makes it one     - way: a position fully replaced by another counts once, not twice. Report the average per                        -
+rebalance figure and the annualised figure, which is the average multiplied by the number of rebalances pe                        r year
+— 252 for daily, 52 for weekly, 12 for monthly. Also report the average holding period. It is not simply the inverse
+of turnover for a leveraged book: at 200% gross, replacing                   the whole book once a year produces 200%
+annualised one - way turnover, so the inverse would wrongly imply a six               - month holding period. Measure holding
+periods directly — the position - weighted average number of trading days a name stays in the book                          — or repor t
+average gross exposure divided by annualised turnover and label it an approximation.
+For context, and noting that these figures are stated as a fraction of NAV rather than of gross exposure: for a
+long - only book run at 100% gross, 100% annualised turnover means the book is replaced once a year. Under this
+mandate, at 200% gross, replacing             the whole book once a year is 200% turnover. Long                 - only institutional
+managers typically run 20       –80%. Active quantitative equity strategies commonly run 100            –400%. Daily rebalancing
+of a sizeable fraction of the book takes you into the thousands of percent, w               here cost assumptions stop being a
+detail and become the result.
+
+
+9.4 Required exhibits
+
+ ● Cumulative active return of the strategy against the benchmark, over the full out                  - of - sample period, with the
+   S&P 500 shown for context.
+ ● Rolling beta to the S&P 500        — a 252 - day window — across the out - of - sample period.
+ ● Calendar - year returns, before and after costs, against the benchmark.
+ ● Time series of gross exposure, net exposure and position count.
+ ● Top ten and bottom ten holdings by average weight over the out                     - of - sample period, with those average
+   weights.
+ ● The ten largest positive and ten largest negative contributors to return, by name.
+ ● Short - book characteristics: distribution of market capitalisation and of dollar volume, demonstrating
+   compliance with the US$500m floor.
+ ● Distribution of position size in days of average daily volume, long and short legs shown separately.
+
+
+10. Final Presentation
+
+Each team has ten minutes before the panel of judges. The judges are senior asset management professionals,
+several of whom oversee multibillion    - dollar portfolios and many of whom are deploying AI in their own investment
+processes. Some are not AI speciali    sts. All of them evaluate investment products for a living.
+
+They will be most interested in your investment thesis, your process, and the future potential of the product                          —
+not in the architecture of your model. Technical depth matters only where it connects to a financial reason. "We
+used a transformer" is not an i    nvestment argument; "we believed the market underreacts to supplier                  - relationship
+changes, and here is how we measured them" is.
+
+
+Minimum deck contents
+
+ 1. Executive summary.       The strategy in four sentences, the methods used, and headline performance against
+    the benchmark.
+ 2. Investment thesis and signals.         What inefficiency you are harvesting and why it should exist. Which signals
+    express it, and why you chose them.
+ 3. Data and methodology.         Datasets used, including any Carbon Arc assets and your answers to the four
+    screening questions in Section 6.6. Your model, your training and validation design, your split dates.
+ 4. Portfolio construction.     How forecasts become positions. Which definition of neutrality you enforce, how you
+    size, how you handle the short      - side market - cap floor, your rebalancing frequency and why.
+ 5. Risk management, and your agent evidence.                 How risk is controlled at the position and book level. If you
+    used an agent anywhere in construction or risk, show the counterfactual required by Section 5.3                       — the same
+    strategy with the agent and with a fixed rule, side by side              — along with the decision l       og and one worked
+    example of the agent earning or failing to earn its place.
+ 6. The standardised performance table           from Section 9.1, plus the required exhibits from Section 9.4.
+ 7. Costs and implementation.        Your cost assumptions, performance before and after costs, and the sensitivity
+    check described in Section 7.
+ 8. Discussion. Did the strategy behave as you trained it to? Which signals drove performance, which positions,
+    and which macroeconomic events? Where did it fail, and what would you do with more time? Any constraint
+    breaches, with their economic rationale.
+
+
+11. Data Access
+
+
+Data
+
+Core panel.   You continue with the dataset from the first challenge: the 147 characteristics and the 8                - K text corpus.
+
+Daily returns. A new file, dsf_mini_from_2014.csv, containing daily returns for the universe from 2014 onward.
+Merge it to the monthly panel on permno and           control for date , do not merge on forward date     . Once a name delists
+it simply has no further daily return data.       If your strategy genuinely needs      daily price levels — for a liquidity or
+participation measure, say        — they are available through Carbon Arc (CA0065S, daily since 1990) and through
+Arcana.
+
+A note on the 8 - K corpus. The supplied 8 - K file carries the survivorship defect described in Section 6.4. It stays
+in the folder because many of you have already built against it, but if you use it, acknowledge the limitation in
+your deck and say how you handled it. Rebuilding the            text channel from EDGAR (Carbon Arc CA0032) avoids the
+problem entirely and will be credited.
+
+Carbon Arc.    Onboarding instructions and credentials will be sent separately.
+
+Screening workbook.        MCGILL_2026_CarbonArc_Data_Screen.xlsx                 — the catalogue manual described in Section
+6.
+
+
+How your work will be reviewed: the Arcana platform
+
+Every team will be given an account on          Arcana (www.arcana.io ), the second platform you will work on this year.
+Arcana serves three purposes at once: it is a tool you use while building, it is the lens through which the judges
+will examine your portfolio, and it is where you will present. Full instructions will come               during the two - day event;
+what follows is enough to understand what is being measured, and to think about it before you arrive.
+
+One account per team.        Unlike Carbon Arc, where every team member is onboarded individually, Arcana issues a
+single account per team, registered to the team leader’s email address. Team leaders are responsible for giving
+their members access to it. Onboarding emails from both pl               atforms arrive over the coming days    — Carbon Arc
+first, Arcana at the same time or shortly after. Do not let them sit unread in a spam folder.
+
+Arcana is a portfolio intelligence platform used by hedge funds, multi                  - manager platforms and allocators. The
+simplest way to place it: if you have seen factor analysis run through Bloomberg, or a Barra risk report, Arcana
+does that and considerably more. I          t carries a library of over 120 risk models           — MSCI Barra, Axioma and Wolfe
+Research among them, alongside its own proprietary factor models                   — with roughly twenty years of model history,
+so it covers the whole of your out       - of - sample period. Where a conventio        nal risk report gives you a static snapshot
+of exposures, Arcana decomposes performance continuously: factor contribution against idiosyncratic
+contribution, position by position and period by period, with the attribution recomputed as the portfolio evolve                      s.
+
+The reason we are using it is that it answers the questions this mandate actually turns on, and a factor report does
+not.
+
+And it connects to Claude.          In October 2026 Arcana released an MCP connector that puts portfolio, risk,
+performance and research data directly into Claude, so that a model can be asked about a book in natural
+language and answer from the portfolio itself rather than from generic knowledge. Arcana’s own examples include
+summarising the major sources of risk a         cross a portfolio, identifying changes in exposures, explaining recent
+performance, understanding thematics and crowding, comparing positioning against a benchmark, and exploring
+hedge ideas. The announcement, 6 October 2026, is here:                     Arcana Brings Institutional Portfolio Intelligence
+Directly to Claude .
+
+Take that seriously when you plan your two days and the current time you have before October 28 and 29,
+because it turns what Section 5 asks of you from an ambition into something buildable. The hardest part of putting
+an agent into the risk layer is norma      lly giving it a trustworthy view of the book          — exposures, attribution, factor
+decomposition — and that is exactly what this connector supplies, computed by an institutional risk engine rather
+than by code you wrote at two in the morning. An agent that read                   s your live exposures through Arcana and
+reasons about what to do next is the shortest path we know to the kind of submission described in Section 5.1.
+
+
+What the judges will be looking at
+
+ 1. Factor versus idiosyncratic return.           How much of your performance is exposure to known factors, and how
+    much is genuinely idiosyncratic? For a market                - neutral mandate this is close to the whole question. If your
+    information ratio is being produced by a persistent small                  - cap tilt or a value tilt  , you have not built an alpha
+    product — you have built a cheap factor exposure with an expensive process attached, and an allocator can
+    buy that elsewhere for a few basis points.
+ 2. Unintended exposures, and when they emerged.                       Arcana will show not just that your book drifted into an
+    exposure but the date it started and what drove it. “We were sector neutral” is a claim the platform will either
+    confirm or contradict in about ten seconds.
+ 3. Sizing versus selection.        Did you make money by picking the right names, or by sizing them well? These are
+    different skills, they come from different parts of your pipeline, and most teams have never separated them.
+    If your returns come from sizing, your signal may be weaker than y                       ou think and your construction better.
+ 4. Hit rate against win/loss ratio.         A book that is right 48% of the time with a 1.6 win/loss ratio is a completely
+    different animal from one that is right 58% of the time with a ratio of 1.0. Both can produce the same
+    information ratio, they fail in different market conditions, and you shoul                       d know which one you have built
+    before a judge tells you.
+ 5. Alpha decay. How quickly the edge in your signal dissipates after formation. This is the empirical answer to
+    the rebalancing - frequency question in Section 4               — if your alpha decays over three days, a monthly book is
+    leaving most of it on the table; if it decays over two             months, daily trading is paying costs for nothing.
+ 6. Earnings versus ex        - earnings performance.            Particularly relevant this year, given how many of you are
+    building event - driven signals from 8         - K filings and news. If essentially all of your alpha arrives in earnings
+    windows, you have a specific and capacity                 - constrained strategy rather than a general on             e. That is not a
+    criticism, but it has to be the strategy you say you built.
+ 7. Stress and scenario behaviour.           The platform carries more than fifty stress scenarios spanning factor shocks,
+    macro events and historical episodes. Expect to be asked how the book behaves in a few of them, including
+    ones outside your sample.
+
+
+Why this catches what a code review would not
+
+We are not going to audit your code. Reading eleven repositories in two hours, even with AI, was never a realistic
+way to catch anything.
+
+The economic review is the more demanding test, not the lighter one. A data leak does not look like a bug in the
+economics — it looks like a strategy that works for no reason anyone can articulate. The idiosyncratic share of
+return is implausibly high with no identifiable driver. The hit rate is better than any professional book achieves.
+The returns concentrate in exactly the periods or names where the leaked information would have been most
+valuable. The exposures do not mat         ch the thesis in the deck. These are signatures, they show up in the attribution,
+and unlike a line of code they cannot be tidied up before submission.
+
+The practical consequence is that the discipline in Section 8 is now for your benefit rather than ours. We will not
+be checking whether you wrote the leakage tests. We will be checking whether your results behave like results
+from a strategy that does what      you say it does. Write the tests so that you find the problem first.
+
+Be ready to answer, for any position or any period a judge points at: why was this trade on, what did the strategy
+believe, and what did it earn? A team that can do that fluently is in a very strong position. A team that cannot is in
+trouble regardless of     the information ratio.
+
+
+
+  Prepare for this lens now.     You do not need Arcana to ask these questions of your own work           — you need only
+  decompose your returns into factor and residual components, split your P&L by sizing and selection, and
+  compute your hit rate and win/loss ratio. Do it before the event. The tea           ms who are surprised by what the
+  attribution shows will be the ones who never looked.
+
+
+
+What you will need to submit before final presentation:
+
+ ● Presentation deck. Decks are presented with Arcana generated output and out further instructions; the format
+   and upload instructions come at the event.
+ ● Holdings file: date, identifier, weight, for every rebalancing date in the out             - of - sample period. This is what
+   drives the economic review, so the format matters            — the specification will come with your Arcana instructions.
+
+
+
+
+12. Closing
+
+The coding language of the competition is Python. Comment explicitly and keep a consistent style                      — not because
+we will be grading the code, but because you will be explaining your own strategy under questioning, and a
+pipeline you cannot follow is one you      cannot defend.
+
+We do not expect you to reinvent portfolio management in two days. We expect rigour, honesty about what you
+do not know, and an investment idea that a professional would recognise as an idea. The finalists who have gone
+furthest in previous editions were n      ot the ones with the most elaborate models; they were the ones who could
+explain precisely why their strategy made money and under what conditions it would stop.
+
+Further constraints and the final data configuration will be issued at the start of the event.                  Start working now.
+Good luck.
+

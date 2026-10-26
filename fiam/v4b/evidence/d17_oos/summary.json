@@ -1,0 +1,44 @@
+{
+  "net_ir_daily": -1.7796035926234754,
+  "gross_ir_daily": -1.1234069529532917,
+  "active_ann_mean": -0.08896946893143776,
+  "active_ann_vol": 0.04999398141261323,
+  "cagr": -0.01726294743794865,
+  "cost_pct_nav_yr": {
+    "spread": 0.00337383070797947,
+    "impact": 0.02502004469684405,
+    "fees": 0.0015669706464683116,
+    "borrow": 0.0031274253499125946
+  },
+  "turnover_per_rebalance": 0.6843949611890285,
+  "turnover_annualised": 8.212739534268342,
+  "turnover_sum_over_years": 8.253196379264738,
+  "avg_names": 381.75017593244195,
+  "min_names": 305,
+  "avg_gross": 1.790524966921109,
+  "max_gross": 1.9784626916106351,
+  "breaches": 7545,
+  "breach_rules": {
+    "liquidation_days": 7495,
+    "participation": 41,
+    "short_floor": 9
+  },
+  "policy_breach_days": 1409,
+  "policy_required": true,
+  "max_abs_hedge_beta": 0.07106515237315245,
+  "max_abs_sector": 0.04555068276783653,
+  "reconcile": [],
+  "beta_sp500_daily": {
+    "alpha": -0.00019957334215847097,
+    "beta": 0.012256805184816352,
+    "beta_se": 0.011169698740045966,
+    "beta_t": 1.0973263890164608,
+    "n": 1421
+  },
+  "unresolved_quote_position_days": 0,
+  "unverified_gap_position_days": 2626,
+  "eligible_for_oos": false,
+  "diagnostic_only": true,
+  "diagnostic_label": "2021-2026 single run of E5 (D12)",
+  "covariance_and_cost_audit": "audit complete; see RISK_COST_AUDIT.md"
+}

@@ -1,0 +1,1883 @@
+                               NBER WORKING PAPER SERIES
+
+
+
+
+      DYNAMIC TRADING WITH PREDICTABLE RETURNS AND TRANSACTION
+                                COSTS
+
+                                       Nicolae B. Garleanu
+                                        Lasse H. Pedersen
+
+                                       Working Paper 15205
+                               http://www.nber.org/papers/w15205
+
+
+                     NATIONAL BUREAU OF ECONOMIC RESEARCH
+                              1050 Massachusetts Avenue
+                                Cambridge, MA 02138
+                                    August 2009
+
+
+
+
+We are grateful for helpful comments from Kerry Back, Darrell Due, Pierre Collin-Dufresne, Andrea
+Frazzini, Esben Hedegaard, Hong Liu (discussant), Anthony Lynch, Ananth Madhavan (discussant),
+Andrei Shleifer, and Humbert Suarez, as well as from seminar participants at Stanford Graduate School
+of Business, University of California at Berkeley, Columbia University, NASDAQ OMX Economic
+Advisory Board Seminar, University of Tokyo, New York University, the University of Copenhagen,
+Rice University, University of Michigan Ross School, Yale University SOM, the Bank of Canada,
+and the Journal of Investment Management Conference. Lasse Pedersen is affiliated with AQR Capital
+Management, a global asset management firm that may apply some of the principles discussed in this
+research in some of its investment products. The views expressed herein are those of the author(s)
+and do not necessarily reflect the views of the National Bureau of Economic Research.
+
+NBER working papers are circulated for discussion and comment purposes. They have not been peer-
+reviewed or been subject to the review by the NBER Board of Directors that accompanies official
+NBER publications.
+
+© 2009 by Nicolae B. Garleanu and Lasse H. Pedersen. All rights reserved. Short sections of text,
+not to exceed two paragraphs, may be quoted without explicit permission provided that full credit,
+including © notice, is given to the source.
+Dynamic Trading with Predictable Returns and Transaction Costs
+Nicolae B. Garleanu and Lasse H. Pedersen
+NBER Working Paper No. 15205
+August 2009
+JEL No. G11,G12
+
+                                               ABSTRACT
+
+We derive a closed-form optimal dynamic portfolio policy when trading is costly and security returns
+are predictable by signals with different mean-reversion speeds. The optimal strategy is characterized
+by two principles: 1) aim in front of the target and 2) trade partially towards the current aim. Specifically,
+the optimal updated portfolio is a linear combination of the existing portfolio and an "aim portfolio,"
+which is a weighted average of the current Markowitz portfolio (the moving target) and the expected
+Markowitz portfolios on all future dates (where the target is moving). Intuitively, predictors with slower
+mean reversion (alpha decay) get more weight in the aim portfolio. We implement the optimal strategy
+for commodity futures and find superior net returns relative to more naive benchmarks.
+
+
+Nicolae B. Garleanu
+Haas School of Business
+F628
+University of California, Berkeley
+Berkeley, CA 94720
+and NBER
+garleanu@haas.berkeley.edu
+
+Lasse H. Pedersen
+Copenhagen Business School
+Solbjerg Plads 3, A5
+DK-2000 Frederiksberg
+DENMARK
+and NYU
+and also NBER
+lpederse@stern.nyu.edu
+   Active investors and asset managers — such as hedge funds, mutual funds, and propri-
+etary traders — try to predict security returns and trade to profit from their predictions.
+Such dynamic trading often entails significant turnover and transaction costs. Hence, any
+active investor must constantly weigh the expected benefit of trading against its costs and
+risks. An investor often uses different return predictors, e.g., value and momentum pre-
+dictors, and these have different prediction strengths and mean-reversion speeds, or, said
+differently, different “alphas” and “alpha decays.” The alpha decay is important because it
+determines how long the investor can enjoy high expected returns and, therefore, affects the
+trade-off between returns and transactions costs. For instance, while a momentum signal
+may predict that the IBM stock return will be high over the next month, a value signal
+might predict that Cisco will perform well over the next year.
+   This paper addresses how the optimal trading strategy depends on securities’ current
+expected returns, the evolution of expected returns in the future, their risks and correlations,
+and their transaction costs. We present a closed-form solution for the optimal dynamic
+portfolio strategy, giving rise to two principles: 1) aim in front of the target and 2) trade
+partially towards the current aim.
+   To see the intuition for these portfolio principles, note that the investor would like to
+keep his portfolio close to the optimal portfolio in the absence of transaction costs, which
+we call the “Markowitz portfolio.” The Markowitz portfolio is a moving target, since the
+return-predicting factors change over time. Due to transaction costs, it is obviously not
+optimal to trade all the way to the target all the time. Hence, transaction costs make it
+optimal to slow down trading and, interestingly, to modify the aim, thus not to trade directly
+towards the current Markowitz portfolio. Indeed, the optimal strategy is to trade towards
+an “aim portfolio,” which is a weighted average of the current Markowitz portfolio (the
+moving target) and the expected Markowitz portfolios on all future dates (where the target
+is moving).
+   While new to finance, these portfolio principles have close analogues in other fields such as
+the guidance of missiles towards moving targets, shooting, and sports. For example, related
+
+
+
+                                               2
+dynamic programming principles are used to guide missiles to an enemy airplane in so-called
+“lead homing” systems. Similarly, hunters are reminded to “lead the duck” when aiming
+their weapon.1 The most famous example from the sports world is perhaps the following
+quote from the “great one”:
+
+      “A great hockey player skates to where the puck is going to be, not where it is.”
+      — Wayne Gretzky
+
+   Another way to state our portfolio principle is that the best new portfolio is a combination
+of 1) the current portfolio (to reduce turnover), 2) the Markowitz portfolio (to partly get
+the best current risk-return trade-off), and 3) the expected optimal portfolio in the future
+(a dynamic effect).
+   Figure 1 illustrates this natural trading rule. The solid line illustrates the expected path [Figure 1]
+of the Markowitz portfolio, starting with large positions in both security 1 and security 2,
+and gradually converging towards its long-term mean (e.g., the market portfolio). The aim
+portfolio is a weighted-average of the current and future Markowitz portfolios so it lies in
+the “convex hull” of the solid line or, equivalently, between the current Markowitz portfolio
+and the expected aim portfolio next period. The optimal new position is achieved by trading
+partially towards this aim portfolio.
+   In this example, the curvature of the solid line means that the Markowitz position in
+security 1 decays more slowly as the predictor that currently “likes” security 1 is more
+persistent. Therefore, the aim portfolio has a larger position in security 1, and, consequently,
+the optimal trade buys more shares in security 1 than it would otherwise. We show that it
+is in fact a more general principle that predictors with slower mean reversion (alpha decay)
+get more weight in the aim portfolio. An investor facing transaction costs should trade more
+aggressively on persistent signals than on fast mean-reverting signals: the benefits from the
+former accrue over longer periods, and are therefore larger.
+   The key role played by each return predictor’s mean reversion is an important implication
+of our model. It arises because transaction costs imply that the investor cannot easily change
+his portfolio and, therefore, must consider his optimal portfolio both now and in the future.
+
+                                               3
+In contrast, absent transaction costs, the investor can re-optimize at no cost and needs to
+consider only the current investment opportunities without regard to alpha decay.
+   Our specification of transaction costs is sufficiently rich to allow for both purely transitory
+and persistent costs. Persistent transaction costs means that trading leads to a market
+impact and this effect on prices persists for a while. Indeed, since we focus on market-
+impact costs, it may be more realistic to consider such persistent effects, especially over
+short time periods. We show that, with persistent transaction costs, the optimal strategy
+remains to trade partially towards an aim portfolio and to aim in front of the target, though
+the precise trading strategy is different and more involved.
+   Finally, we illustrate our results empirically in the context of commodity futures markets.
+We use returns over the past five days, 12 months, and five years to predict returns. The
+five-day signal is quickly mean reverting (fast alpha decay), the 12-month signal mean reverts
+more slowly, whereas the five-year signal is the most persistent. We calculate the optimal
+dynamic trading strategy taking transaction costs into account and compare its performance
+to the optimal portfolio ignoring transaction costs and to a class of strategies that perform
+static (one-period) transaction-cost optimization. Our optimal portfolio performs the best
+net of transaction costs among all the strategies that we consider. Its net Sharpe ratio is
+about 20% better than that of the best strategy among all the static strategies. Our strategy’s
+superior performance is achieved by trading at an optimal speed and by trading towards an
+aim portfolio that is optimally tilted towards the more persistent return predictors.
+   We also study the impulse-response of the security positions following a shock to return
+predictors. While the no-transaction-cost position immediately jumps up and mean reverts
+with the speed of the alpha decay, the optimal position increases more slowly to minimize
+trading costs and, depending on the alpha decay speed, may eventually become larger than
+the no-transaction-cost position, as the optimal position is reduced more slowly.
+   The paper is organized as follows. Section I describes how our paper contributes to
+the portfolio-selection literature that started with Markowitz (1952). We provide a closed-
+form solution for a model with multiple correlated securities and multiple return predictors
+
+
+
+                                                4
+with different mean-reversion speeds. The closed-form solution illustrates several intuitive
+portfolio principles that are difficult to see in the models following Constantinides (1986),
+where the solution requires complex numerical techniques even with a single security and
+no return predictors (i.i.d. returns). Indeed, we uncover the role of alpha decay and the
+intuitive aim-in-front-of-the-target and trade-towards-the-aim principles, and our empirical
+analysis suggests that these principles are useful.
+   Section II lays out the model with temporary transaction costs and lays out the solu-
+tion method. Section III shows the optimality of aiming in front of the target, and trading
+partially towards the aim. Section IV solves the model with persistent transaction costs.
+Section V provides a number of theoretical applications, while Section VI applies our frame-
+work empirically to trading commodity futures. Section VII concludes, and all proofs are in
+the appendix.
+
+
+
+I. Related Literature
+   A large literature studies portfolio selection with return predictability in the absence of
+trading costs (see, e.g., Campbell and Viceira (2002) and references therein). Alpha decay
+plays no role in this literature, and nor does it play a role in the literature on optimal port-
+folio selection with trading costs but without return predictability following Constantinides
+(1986).
+   This latter literature models transaction costs as proportional bid-ask spreads and relies
+on numerical solutions. Constantinides (1986) considers a single risky asset in a partial equi-
+librium and studies trading-cost implications for the equity premium.2 Equilibrium models
+with trading costs include Amihud and Mendelson (1986), Vayanos (1998), Vayanos and
+Vila (1999), Lo, Mamaysky, and Wang (2004), and Gârleanu (2009), as well as Acharya and
+Pedersen (2005), who also consider time-varying trading costs. Liu (2004) determines the
+optimal trading strategy for an investor with constant absolute risk aversion (CARA) and
+many independent securities with both fixed and proportional costs (without predictabil-
+ity). The assumptions of CARA and independence across securities imply that the optimal
+
+                                               5
+position for each security is independent of the positions in the other securities.
+   Our trade-partially-towards-the-aim strategy is qualitatively different from the optimal
+strategy with proportional or fixed transaction costs, which exhibits periods of no trading.
+Our strategy mimics a trader who is continuously “floating” limit orders close to the mid-
+quote — a strategy that is used in practice. The trading speed (the limit orders’ “fill rate”
+in our analogy) depends on how large transaction costs the trader is willing to accept (i.e.,
+on where the limit orders are placed).
+   In a third (and most related) strand of literature, using calibrated numerical solutions,
+trading costs are combined with incomplete markets by Heaton and Lucas (1996), and with
+predictability and time-varying investment-opportunity sets by Balduzzi and Lynch (1999),
+Lynch and Balduzzi (2000), Jang, Koo, Liu, and Loewenstein (2007), and Lynch and Tan
+(2011). Grinold (2006) derives the optimal steady-state position with quadratic trading costs
+and a single predictor of returns per security. Like Heaton and Lucas (1996) and Grinold
+(2006), we also rely on quadratic trading costs.
+   A fourth strand of literature derives the optimal trade execution, treating the asset and
+quantity to trade as given exogenously (see, e.g., Perold (1988), Bertsimas and Lo (1998),
+Almgren and Chriss (2000), Obizhaeva and Wang (2006), and Engle and Ferstenberg (2007)).
+   Finally, quadratic programming techniques are also used in macroeconomics and other
+fields, and, usually, the solution comes down to algebraic matrix Riccati equations (see,
+e.g., Ljungqvist and Sargent (2004) and references therein). We solve our model explicitly,
+including the Riccati equations.
+
+
+
+II. Model and Solution
+   We consider an economy with S securities traded at each time t ∈ {0, 1, 2, ...}. The
+securities’ price changes between times t and t + 1 in excess of the risk-free return, pt+1 −
+(1 + rf )pt , are collected in an S × 1 vector rt+1 given by
+
+
+      rt+1 = Bft + ut+1 .                                                                 (1)
+
+
+                                                6
+Here, ft is a K × 1 vector of factors that predict returns,3 B is an S × K matrix of factor
+loadings, and ut+1 is the unpredictable zero-mean noise term with variance vart (ut+1 ) = Σ.
+   The return-predicting factor ft is known to the investor already at time t and it evolves
+according to
+
+
+      ∆ft+1 = −Φft + εt+1 ,                                                                 (2)
+
+
+where ∆ft+1 = ft+1 − ft is the change in the factors, Φ is a K × K matrix of mean-
+reversion coefficients for the factors, and εt+1 is the shock affecting the predictors with
+variance vart (εt+1 ) = Ω. We impose on Φ standard conditions sufficient to ensure that f is
+stationary.
+   The interpretation of these assumptions is straightforward: the investor analyzes the se-
+curities and his analysis results in forecasts of excess returns. The most direct interpretation
+is that the investor regresses the return on security s on the factors f that could be past
+returns over various horizons, valuation ratios, and other return-predicting variables, and
+thus estimates each variable’s ability to predict returns as given by β sk (collected in the
+matrix B). Alternatively, one can think of each factor as an analyst’s overall assessment of
+the various securities (possibly based on a range of qualitative information) and B as the
+strength of these assessments in predicting returns.
+   Trading is costly in this economy and the transaction cost (T C) associated with trading
+∆xt = xt − xt−1 shares is given by
+
+                 1
+      T C(∆xt ) = ∆x> Λ∆xt ,                                                                (3)
+                 2 t
+
+where Λ is a symmetric positive-definite matrix measuring the level of trading costs.4 Trad-
+ing costs of this form can be thought of as follows. Trading ∆xt shares moves the (average)
+price by 21 Λ∆xt , and this results in a total trading cost of ∆xt times the price move, which
+gives T C. Hence, Λ (actually, 1/2Λ, for convenience) is a multi-dimensional version of Kyle’s
+lambda, which can also be justified by inventory considerations (e.g., Grossman and Miller
+
+
+
+                                               7
+(1988) or Greenwood (2005) for the multi-asset case). While this transaction-cost specifi-
+cation is chosen partly for tractability, the empirical literature generally finds transaction
+costs to be convex (e.g., Engle, Ferstenberg, and Russell (2008), Lillo, Farmer, and Man-
+tegna (2003)), with some researchers actually estimating quadratic trading costs (e.g., Breen,
+Hodrick, and Korajczyk (2002)).
+   Most of our results hold with this general transaction cost function, but some of the
+resulting expressions are simpler in the following special case.
+
+
+Assumption A. Transaction costs are proportional to the amount of risk, Λ = λΣ.
+
+
+   This assumption means that the transaction cost matrix Λ is some scalar λ > 0 times
+the variance-covariance matrix of returns, Σ, as is natural and, in fact, implied by the model
+of Gârleanu, Pedersen, and Poteshman (2009). To understand this, suppose that a dealer
+takes the other side of the trade ∆xt , holds this position for a period of time and “lays it
+off” at the end of the period. Then the dealer’s risk is ∆x>
+                                                           t Σ∆xt and the trading cost is the
+
+dealer’s compensation for risk, depending on the dealer’s risk aversion reflected by λ.
+   The investor’s objective is to choose the dynamic trading strategy (x0 , x1 , ...) to maximize
+the present value of all future expected excess returns, penalized for risks and trading costs:
+                    "                                                           #
+                        X                            γ       (1 − ρ)t
+       max E0               (1 − ρ)t+1       x>         >
+                                              t rt+1 − xt Σxt −         ∆x>
+                                                                          t Λ∆xt ,           (4)
+      x0 ,x1 ,...
+                        t
+                                                      2           2
+
+where ρ ∈ (0, 1) is a discount rate, and γ is the risk-aversion coefficient.5
+   We solve the model using dynamic programming. We start by introducing a value func-
+tion V (xt−1 , ft ) measuring the value of entering period t with a portfolio of xt−1 securities
+and observing return-predicting factors ft . The value function solves the Bellman equation:
+                                                                                     
+                      1 >                
+                                           >             γ >
+V (xt−1 , ft ) = max − ∆xt Λ∆xt + (1 − ρ) xt Et [rt+1 ] − xt Σxt + Et [V (xt , ft+1 )]   . (5)
+                  xt  2                                  2
+
+The model in its general form can be solved explicitly:
+
+
+                                                         8
+Proposition 1 The model has a unique solution and the value function is given by
+
+                        1                         1 >
+      V (xt , ft+1 ) = − x>           >
+                          t Axx xt + xt Axf ft+1 + ft+1 Af f ft+1 + A0 .                   (6)
+                        2                         2
+
+The coefficient matrices Axx , Axf , and Af f are stated explicitly in (A.15), (A.18), and
+(A.22), and Axx is positive definite.6
+
+
+
+III. Results: Aim in Front of the Target
+   We next explore the properties of the optimal portfolio policy, which turns out to be
+intuitive and relatively simple. The core idea is that the investor aims to achieve a certain
+position, but trades only partially towards this “aim portfolio” due to transaction costs.
+The aim portfolio itself combines the current optimal portfolio in the absence of transaction
+costs and the expected future such portfolios. The formal results are stated in the following
+propositions.
+
+Proposition 2 (Trade Partially Towards the Aim) (i) The optimal portfolio is
+
+
+      xt = xt−1 + Λ−1 Axx (aim t − xt−1 ) ,                                                (7)
+
+
+which implies trading at a proportional rate given by the the matrix Λ−1 Axx towards the “aim
+portfolio,”
+
+
+      aim t = A−1
+               xx Axf ft .                                                                 (8)
+
+
+(ii) Under Assumption A, the optimal trading rate is the scalar a/λ < 1, where
+                                     p
+                −(γ(1 − ρ) + λρ) +       (γ(1 − ρ) + λρ)2 + 4γλ(1 − ρ)2
+      a =                                                               .                  (9)
+                                         2(1 − ρ)
+
+The trading rate is decreasing in transaction costs λ and increasing in risk aversion γ.
+
+
+
+
+                                                   9
+   This proposition provides a simple and appealing trading rule. The optimal portfolio is
+a weighted average of the existing portfolio xt−1 and the aim portfolio:
+                     a       a
+     xt =        1−      xt−1 + aim t .                                                   (10)
+                      λ        λ
+
+The weight of the aim portfolio — which we also call the “trading rate” — determines
+how far the investor should rebalance towards the aim. Interestingly, the optimal portfolio
+always rebalances by fixed fraction towards the aim (i.e., the trading rate is independent of
+the current portfolio xt−1 or past portfolios). The optimal trading rate is naturally greater
+if transaction costs are smaller. Said differently, high transaction costs imply that one must
+trade more slowly. Also, the trading rate is greater if risk aversion is larger, since a larger
+risk aversion makes the risk of deviating from the aim more painful. A larger absolute risk
+aversion can also be viewed as a smaller investor, for whom transaction costs play a smaller
+role, and who therefore trades closer to her aim.
+   Next, we want to understand the aim portfolio. The aim portfolio in our dynamic setting
+turns out to be closely related to the optimal portfolio in a static model without transaction
+costs (Λ = 0), which we call the M arkowitz portfolio. In agreement with the classical
+findings of Markowitz (1952),
+
+
+     Markowitz t = (γΣ)−1 Bft .                                                           (11)
+
+
+As is well known, the Markowtiz portfolio is the tangency portfolio appropriately leveraged
+depending on the risk aversion γ.
+
+Proposition 3 (Aim in Front of the Target) (i) The aim portfolio is the weighted av-
+erage of the current Markowitz portfolio and the expected future aim portfolio. Under As-
+sumption A, this can be written as follows, letting z = γ/(γ + a):
+
+
+     aim t = z Markowitz t + (1 − z) Et (aim t+1 ).                                       (12)
+
+
+(ii) The aim portfolio can also be expressed as the weighted average of the current Markowitz
+
+                                              10
+portfolio and the expected Markowitz portfolios at all future times. Under Assumption A,
+                ∞
+                X
+      aim t =           z(1 − z)τ −t Et (Markowitz τ ) .                                    (13)
+                 τ =t
+
+
+The weight z of the current Markowitz portfolio decreases with the transaction costs (λ) and
+increases in risk aversion (γ).
+
+   We see that the aim portfolio is a weighted average of current and future expected
+Markowitz portfolios. While, without transaction costs, the investor would like to hold the
+Markowitz portfolio to earn the highest possible risk-adjusted return, with transaction costs
+the investor needs to economize on trading and thus trade partially towards the aim and,
+as a result, he needs to adjust his aim in front of the target. Proposition 3 shows that the
+optimal aim portfolio is an exponential average of current and future (expected) Markowitz
+portfolios, where the weight on the current (and near term) Markowitz portfolio is larger if
+transaction costs are smaller.
+   A graphical illustration of optimal trading rule. The optimal trading policy is [Figure 2]
+illustrated in detail in Figure 2. Panel A of Figure 2 shows how the optimal first trade
+is derived, Panel B shows the expected second trade, and Panel C shows the entire path
+of expected future trades. Let’s first understand Panel A. The solid curve is the expected
+path of future Markowitz portfolios. Since expected returns mean revert, the expected
+Markowitz portfolio converges to its long-term mean, illustrated at the origin of the figure.
+In this example, asset 2 loads on a factor that decays the fastest, so the future Markowitz
+positions are expected to have relatively larger positions in asset 1. As a result of the general
+alpha decay and transaction costs, the current aim portfolio has smaller positions than the
+Markowitz portfolio and, as a result of the differential alpha decay, the aim portfolio loads
+more on asset 1. The optimal new position is found by moving partially towards the aim
+portfolio. Panel B shows that the expected next trade is towards the new aim, using the
+same logic as before. Panel C traces out the entire path of expected future positions. The
+optimal strategy is to chase a moving target, adjusting the aim for alpha decay and trading
+patiently by always edging partially towards the aim.7
+
+                                                    11
+   To further understand the aim portfolio, we can characterize the effect of the future
+expected Markowitz portfolios in terms of the different trading signals (or factors), ft , and
+their mean reversion speeds. Naturally, a more persistent factor has a larger effect on future
+Markowitz portfolios than a factor that quickly mean reverts. Indeed, the central relevance
+of signal persistence in the presence of transaction costs is one of the distinguishing features
+of our analysis.
+
+Proposition 4 (Weight Signals Based on Alpha Decay) (i) Under Assumption A, the
+aim portfolio is the Markowitz portfolio built as if the signals f were scaled down based on
+their mean reversion Φ:
+                                −1
+                      −1       a
+        aim t = (γΣ)       B I+ Φ    ft .                                                     (14)
+                               γ
+
+(ii) If the matrix Φ is diagonal, Φ = diag(φ1 , ..., φK ), then the aim portfolio simplifies as the
+Markowitz portfolio with each factor ftk scaled down based on its own alpha decay φk :
+                                                                  >
+                                    ft1                  ftK
+                            
+                      −1
+        aim t = (γΣ) B                     , . . . ,                   .                      (15)
+                                1 + φ1 a/γ           1 + φK a/γ
+
+(iii) A persistent factor i is scaled down less than a fast factor j, and the relative weight of i
+compared to that of j increases in the transaction cost, i.e., (1+φj a/γ)/(1+φi a/γ) increases
+in λ.
+
+   This proposition shows explicitly the close link between the optimal dynamic aim portfolio
+in light of transaction costs and the classic Markowitz portfolio. The aim portfolio resembles
+the Markowitz portfolio, but the factors are scaled down based on transaction costs (captured
+by a), risk aversion (γ), and, importantly, the mean-reversion speed of the factors (Φ).
+   The aim portfolio is particularly simple under the rather standard assumption that the
+dynamics of each factor f k depend only on its own level (not the level of the other factors),
+that is, Φ = diag(φ1 , ..., φK ) is diagonal, so that Equation (2) simplifies to scalars:
+
+          k
+        ∆ft+1 = −φk ftk + εkt+1 .                                                             (16)
+
+
+                                                    12
+The resulting aim portfolio is very similar to the Markowitz portfolio, (γΣ)−1 Bft . Hence,
+transaction costs imply first that one optimally only trades part of the way towards the
+aim, and, second, that the aim down-weights each return-predicting factor more the higher
+is its alpha decay φk . Down-weighting factors reduces the size of the position, and, more
+importantly, changes the relative importance of the different factors. This feature is also
+seen in Figure 2. The convex J-shape of the path of expected future Markowitz portfolios
+indicates that the factors that predict a high return for asset 2 decay faster than those that
+predict asset 1. To make this point in a different way, if the expected returns of the two
+assets decayed equally fast, then the Markowitz portfolio would be expected to move linearly
+towards its long-term mean. Since the aim portfolio downweights the faster decaying factors,
+the investor trades less towards asset 2. To see this graphically, note that the aim lies below
+the line joining the Markowitz portfolio with the origin, thus downweighting asset 2 relative
+to asset 1. Naturally, giving more weight to the more persistent factors means that the
+investor trades towards a portfolio that not only has a high expected return now, but also
+is expected to have a high expected return for a longer time in the future.
+   We end this section by considering what portfolio an investor ends up owning if he always
+follows our optimal strategy.
+
+Proposition 5 (Position Homing In) Suppose that the agent has followed the optimal
+trading strategy from time −∞ until time t. Then the current portfolio is an exponentially
+weighted average of past aim portfolios. Under Assumption A,
+
+               t
+               X a            a t−τ
+      xt =                1−          aim τ                                               (17)
+              τ =−∞
+                      λ        λ
+
+We see that the optimal portfolio is an exponentially weighted average of current and past
+aim portfolios. Clearly, the history of the past expected returns affects the current position,
+since the investor trades patiently to economize on transaction costs. One reading of the
+proposition is that the investor computes the exponentially weighted average of past aim
+portfolios and always trades all the way to this portfolio (assuming that his initial portfolio
+is right, otherwise the first trade is suboptimal).
+
+                                               13
+IV. Persistent Transaction Costs
+     In some cases the impact of trading on prices may have a non-negligible persistent com-
+ponent. If an investor trades weekly and the current prices are unaffected by his trades
+during the previous week, then the temporary transaction cost model above is appropriate.
+However, if the frequency of trading is large relative to the the resiliency of prices, then the
+investor will be affected by persistent price-impact costs.
+     To study this situation, we extend the model by letting the price be given by p̄t = pt + Dt
+and the investor incur the cost associated with the persistent price distortion Dt in addition
+to the temporary trading cost T C from before. Hence, the price p̄t is the sum of the price
+pt without the persistent effect of the investor’s own trading (as before) and the new term
+Dt , which captures the accumulated price distortion due to the investor’s (previous) trades.
+Trading an amount ∆xt pushes prices by C ∆xt such that the price distortion becomes
+Dt +C ∆xt , where C is Kyle’s lambda for persistent price moves. Further, the price distortion
+mean reverts at a speed (or “resiliency”) R. Hence, the price distortion next period (t + 1)
+is
+
+
+        Dt+1 = (I − R) (Dt + C ∆xt ) .                                                     (18)
+
+
+     The investor’s objective is as before, with a natural modification due to the price distor-
+tion:
+             "
+                 X                                               γ >       
+                   (1 − ρ)t+1 x>                 f
+                                                   
+        E0                       t  Bf t − R + r     (D t + C∆xt ) −  x  Σx t
+                 t
+                                                                     2 t
+                                                                         #
+                                   1                          1
+                    + (1 − ρ)t − ∆x>     Λ∆xt + x>                 >
+                                                   t−1 C∆xt + ∆xt C∆xt        .            (19)
+                                   2 t                        2
+
+Let us explain the various new terms in this objective function. The first term is the position
+xt times the expected excess return of the price p̄t = pt + Dt given inside the inner square
+brackets. As before, the expected excess return of pt is Bft . The expected excess return due
+
+
+
+
+                                                   14
+to the post-trade price distortion is
+
+
+      Dt+1 − (1 + rf )(Dt + C ∆xt ) = −(R + rf ) (Dt + C ∆xt ) .                                (20)
+
+
+The second term is the penalty for taking risk as before. The three terms on the second line
+of (19) are discounted at (1 − ρ)t because these cash flows are incurred at time t, not time
+t + 1. The first of these is the temporary transaction cost as before. The second reflects
+the mark-to-market gain from the old position xt−1 from the price impact of the new trade,
+C∆xt . The last term reflects that the traded shares ∆xt are assumed to be executed at the
+average price distortion, Dt + 21 C∆xt . Hence, the traded shares ∆xt earn a mark-to-market
+gain of 12 ∆x>                                          1
+             t C∆xt as the price moves up an additional 2 C∆xt .
+
+   The value function is now quadratic in the extended state variable (xt−1 , yt ) ≡ (xt−1 , ft , Dt ):
+
+                  1                     1
+      V (x, y) = − x> Axx x + x> Axy y + y > Ayy y + A0 .
+                  2                     2
+
+As before, there exists a unique solution to the Bellman equation and the following propo-
+sition characterizes the optimal portfolio strategy.
+
+Proposition 6 The optimal portfolio xt is
+
+
+      xt = xt−1 + M rate (aimt − xt−1 ) ,                                                       (21)
+
+
+which tracks an aim portfolio, aimt = M aim yt . The aim portfolio depends on the return-
+predicting factors and the price distortion, yt = (ft , Dt ). The coefficient matrices M rate and
+M aim are stated in the appendix.
+
+The optimal trading policy has a similar structure to before, but the persistent price impact
+changes both the trading rate and the aim portfolio. The aim is now a weighted average of
+current and expected future Markowitz portfolios, as well as the current price distortion.
+   Figure 3 illustrates graphically the optimal trading strategy with temporary and per-
+sistent price impact. Panel A uses the parameters from Figures 1–2 with only temporary [Figure 3]
+transaction costs, Panel B has both temporary and persistent transaction costs, while Panel
+
+                                                 15
+C has purely persistent price impact. Specifically, suppose that Kyle’s lambda for temporary
+price impact is Λ = wΛ̃ and Kyle’s lambda for persistent price impact is C = (1 − w)Λ̃,
+where we vary w to determine how much of the price impact is temporary versus persistent
+and where Λ̃ is a fixed matrix. Panel A has w = 1 (pure temporary costs), Panel B has
+w = 0.5 (both temporary and persistent costs), and Panel C has w = 0 (pure persistent
+costs).8
+   We see that the optimal portfolio policy with persistent transaction costs also tracks the
+Markowitz portfolio while aiming in front of the target. It can be shown more generally
+that the optimal portfolio under persistent price impact depends on the expected future
+Markowitz portfolios (i.e., aims in front of the target). This is similar to the case of temporary
+price impact, but what is different with purely persistent price impact is that the initial trade
+is larger and, even in continuous time, there can be jumps in the portfolio. This is because,
+when the price impact is persistent, the trader incurs a transaction cost based on the entire
+cumulative trade, and therefore is more willing to incur it early in order to start collecting
+the benefits of a better portfolio. (The resilience still makes it cheaper to postpone part of
+trade, however). Furthermore, the cost of buying a position and selling it shortly thereafter
+is much smaller with persistent price impact.
+
+
+
+V. Theoretical Applications
+   We next provide a few simple and useful examples of our model.
+
+
+Example 1: Timing a single security
+   A simple case is when there is only one security. This occurs when an investor is timing
+his long or short view of a particular security or market. In this case, Assumption A (Λ = λΣ)
+is without loss of generality since all parameters are scalars, and we use the notation σ 2 = Σ
+and B = (β 1 , ..., β K ). Assuming that Φ is diagonal, we can apply Proposition 4 directly to
+
+
+
+
+                                               16
+get the optimal timing portfolio:
+
+                                         K
+                       a        a 1 X        βi
+      xt =        1−       xt−1 +     2         i
+                                                     fti .                                                 (22)
+                        λ         λ γσ i=1 1 + φ a/γ
+
+
+
+Example 2: Relative-value trades based on security characteristics
+   It is natural to assume that the agent uses certain characteristics of each security to
+predict its returns. Hence, each security has its own return-predicting factors (whereas, in
+the general model above, all the factors could influence all the securities). For instance,
+one can imagine that each security is associated with a value characteristic (e.g., its own
+book-to-market) and a momentum characteristic (its own past return). In this case, it is
+natural to let the expected return for security s be given by
+
+                    X
+           s
+      Et (rt+1 )=        β i fti,s ,                                                                       (23)
+                    i
+
+
+where fti,s is characteristic i for security s (e.g., IBM’s book-to-market) and β i be the pre-
+dictive ability of characteristic i (i.e., how book-to-market translates into future expected
+return, for any security), which is the same for all securities s. Further, we assume that
+characteristic i has the same mean-reversion speed for each security, that is, for all s,
+
+        i,s
+      ∆ft+1 = −φi fti,s + εi,s
+                           t+1 .                                                                           (24)
+
+                                                                                                                 >
+We collect the current values of characteristic i for all securities in a vector fti =       fti,1 , ..., fti,S        ,
+e.g., the book-to-market of security 1, book-to-market of security 2, etc.
+   This setup based on security characteristics is a special case of our general model. To
+map it into the general model, we stack all the various characteristic vectors on top of each
+
+
+
+
+                                                  17
+other into f :
+                      
+              f1
+              t 
+            . 
+      ft =  ..  .                                                                              (25)
+                
+             ftI
+
+Further, we let IS×S be the S-by-S identity matrix and can express B using the Kronecker
+product:
+                                                                         
+                                  β1    0     0           βI    0     0
+                                                                        
+      B = β > ⊗ IS×S =  0             ..                      ..
+                                          .        ···            .   0 .                       (26)
+                                                                        
+                                              0           0
+                                                                        
+                         0              0     β1          0     0     βI
+
+Thus, Et (rt+1 ) = Bft . Also, let Φ = diag(φ ⊗ 1S×1 ) = diag(φ1 , ..., φ1 , ..., φI , ..., φI ). With
+these definitions, we apply Proposition 4 to get the optimal characteristic-based relative-
+value trade as
+                                          I
+                       a       a    −1
+                                         X       1
+      xt =           1−    xt−1 + (γΣ)             i a/γ
+                                                         β i fti .                               (27)
+                        λ        λ       i=1
+                                             1 + φ
+
+
+
+Example 3: Static model
+   Consider an investor who performs a static optimization involving current expected re-
+turns, risk, and transaction costs. Such an investor simply solves
+
+                         γ >      λ >
+      max x>
+           t Et (rt+1 ) − xt Σxt − ∆xt Σ∆xt .                                                    (28)
+       xt                2        2
+
+with solution
+
+              λ          γ                              γ
+      xt =       xt−1 +     (γΣ)−1 Et (rt+1 ) = xt−1 +     (Markowitz t − xt−1 ) .               (29)
+             γ+λ        γ+λ                            γ+λ
+
+This optimal static portfolio in light of transaction costs differs from our optimal dynamic
+portfolio in two ways: (i) The weight on the current portfolio xt−1 is different, and (ii) the
+
+
+                                                     18
+aim portfolio is different since in the static case the aim portfolio is the Markowitz portfolio.
+Problem (i) with the static portfolio, namely that it prescribes a suboptimal trading rate
+because it does not account for the future benefits of the position can be fixed by changing
+the transaction-cost parameter λ (or risk aversion γ or both).
+   However, problem (ii) cannot be fixed in this way. Interestingly, with multiple return-
+predicting factors, no choice of risk aversion γ and trading cost λ recovers the dynamic
+solution. This is because the static solution treats all factors the same, while the dynamic
+solution gives more weight to factors with slower alpha decay. We show empirically in
+Section VI that even the best choice of γ and λ in a static model may perform significantly
+worse than our dynamic solution. To recover the dynamic solution in a static setting, one
+must change not just γ and λ, but additionally the expected returns Et (rt+1 ) = Bft by
+changing B as described in Proposition 4.
+
+
+Example 4: Today’s first signal is tomorrow’s second signal
+   Suppose that the investor is timing a single market using each of the several past daily
+returns to predict the next return. In other words, the first signal ft1 is the daily return for
+yesterday, the second signal ft2 is the return the day before yesterday, and so on for K past
+time periods. In this case, the trader already knows today what some of her signals will look
+like in the future. Today’s yesterday is tomorrow’s day-before-yesterday:
+
+       1
+      ft+1 = ε1t+1
+       k
+      ft+1 = ftk−1      for k > 1
+
+
+Said differently, the matrix Φ has the form
+                                   
+             0          0
+                         
+                         
+            1 0          
+      I −Φ=   ... ..
+                          .
+                      .
+                         
+                         
+                         
+             0      1 0
+
+
+                                               19
+Suppose for simplicity that all signals are equally important for predicting returns B =
+(β, ..., β) and use the notation σ 2 = Σ. Then we can use Proposition 4 to get the optimal
+trading strategy
+              a         a 1
+      xt =        1−
+                   xt−1 +    2
+                               B (γ + aΦ)−1 ft
+               λ          λσ
+                                  K            K+1−k !
+              a         a β X               a
+          = 1−     xt−1 +             1−                 ftk .                               (30)
+               λ          λ γσ 2 k=1       γ+a
+
+Hence, the optimal portfolio gives the largest weight to the first signal (yesterday’s return),
+the second largest to the second signal, and so on. This is intuitive, since the first signal will
+continue to be important the longest, the second signal the second longest, and so on.
+
+
+
+VI. Empirical Application: Dynamic Trading of Com-
+       modity Futures
+   In this section we illustrate our approach using data on commodity futures. We show
+how dynamic optimizing can improve performance in an intuitive way, and how it changes
+the way new information is used.
+
+
+A. Data
+
+   We consider 15 different liquid commodity futures, which do not have tight restrictions
+on the size of daily price moves (limit up/down). In particular, as seen in Table I, we collect [Table I]
+data on Aluminum, Copper, Nickel, Zinc, Lead, and Tin from the London Metal Exchange
+(LME), Gasoil from the Intercontinental Exchange (ICE), WTI Crude, RBOB Unleaded
+Gasoline, and Natural Gas from the New York Mercantile Exchange (NYMEX), Gold and
+Silver from the New York Commodities Exchange (COMEX), and Coffee, Cocoa, and Sugar
+from the New York Board of Trade (NYBOT). (This excludes futures on various agriculture
+and livestock that have tight price limits.) We consider the sample period 01/01/1996 –
+01/23/2009, for which we have data on all the commodities.9
+
+                                               20
+   For each commodity and each day, we collect the futures price measured in U.S. dollars
+per contract. For instance, if the gold price is $1,000 per ounce, the price per contract is
+$100,000, since each contract is for 100 ounces. Table I provides summary statistics on each
+contract’s average price, the standard deviation of price changes, the contract multiplier
+(e.g., 100 ounces per contract in the case of gold), and daily trading volume.
+   We use the most liquid futures contract of all maturities available. By always using data
+on the most liquid futures, we are implicitly assuming that the trader’s position is always
+held in these contracts. Hence, we are assuming that when the most liquid futures nears
+maturity and the next contract becomes more liquid, the trader “rolls” into the next contract,
+i.e., replaces the position in the near contract with the same position in the far contract.
+Given that rolling does not change a trader’s net exposure, it is reasonable to abstract from
+the transaction costs associated with rolling. (Traders in the real world do in fact behave
+like this. There is a separate roll market, which entails far smaller costs than independently
+selling the “old” contract and buying the “new” one.) When we compute price changes, we
+always compute the change in price of a given contract (not the difference between the new
+contract and the old one), since this corresponds to an implementable return. Finally, we
+collect data on the average daily trading volume per contract as seen in the last column of
+Table I. Specifically, we receive an estimate of the average daily volume of the most liquid
+contract traded electronically and outright (i.e., not including calendar-spread trades) in
+December 2010 from an asset manager based on underlying data from Reuters.
+
+
+B. Predicting Returns and Other Parameter Estimates
+
+   We use the characteristic-based model described in Example 2 in Section II, where each
+commodity characteristic is its own past return at various horizons. Hence, to predict returns,
+we run a pooled panel regression:
+
+     s
+    rt+1 = 0.001 +        10.32 ft5D,s + 122.34 ft1Y,s −        205.59    ft5Y,s + ust+1 ,
+                                                                                             (31)
+             (0.17)      (2.22)             (2.82)              (−1.79)
+
+
+
+                                              21
+where the left-hand side is the daily commodity price changes and the right-hand side con-
+tains the return predictors: f 5D is the average past five days’ price change, divided by the
+past five days’ standard deviation of daily price changes, f 1Y is the past year’s average
+daily price change divided by the past year’s standard deviation, and f 5Y is the analogous
+quantity for a five-year window. Hence, the predictors are rolling Sharpe ratios over three
+different horizons, and, to avoid dividing by a number close to zero, the standard deviations
+are winsorized below the tenth percentile of standard deviations. We estimate the regression
+using feasible generalized least squares and report the t-statistics in brackets.
+   We see that price changes show continuation at short and medium frequencies and re-
+versal over long horizons.10 The goal is to see how an investor could optimally trade on
+this information, taking transaction costs into account. Of course, these (in-sample) re-
+gression results are only available now and a more realistic analysis would consider rolling
+out-of-sample regressions. However, using the in-sample regression allows us to focus on
+the economic insights underlying our novel portfolio optimization. Indeed, the in-sample
+analysis allows us to focus on the benefits of giving more weight to signals with slower alpha
+decay, without the added noise in the predictive power of the signals arising when using
+out-of-sample return forecasts.)
+   The return predictors are chosen so that they have very different mean reversion:
+
+        5D,s
+      ∆ft+1  = −0.2519ft5D,s + ε5D,s
+                                t+1
+
+        1Y,s
+      ∆ft+1  = −0.0034ft1Y,s + ε1Y,s
+                                t+1                                                       (32)
+        5Y,s
+      ∆ft+1  = −0.0010ft5Y,s + ε5Y,s
+                                t+1 .
+
+
+
+These mean reversion rates correspond to a 2.4-day half life for the five-day signal, a 206-day
+half life for the one-year signal, and a 700-day half life for the five-year signal.11
+   We estimate the variance-covariance matrix Σ using daily price changes over the full
+sample, shrinking the correlations 50% towards zero. We set the absolute risk aversion
+to γ = 10−9 , which we can think of as corresponding to a relative risk aversion of 1 for
+an agent with 1 billion dollars under management. We set the time discount rate to ρ =
+
+
+                                                22
+1 − exp(−0.02/260) corresponding to a 2 percent annualized rate.
+   Finally, to choose the transaction-cost matrix Λ, we make use of price-impact estimates
+from the literature. In particular, we use the estimate from Engle, Ferstenberg, and Russell
+(2008) that trades amounting to 1.59% of the daily volume in a stock have a price impact of
+about 0.10%. (Breen, Hodrick, and Korajczyk (2002) provides a similar estimate.) Further,
+Greenwood (2005) finds evidence that market impact in one security spills over to other
+securities using the specification Λ = λΣ, where we recall that Σ is the variance-covariance
+matrix. We calibrate Σ as the empirical variance-covariance matrix of price changes, where
+the covariance are shrunk 50% towards zero for robustness.
+   We choose the scalar λ based on the Engle, Ferstenberg, and Russell (2008) estimate
+by calibrating it for each commodity and then computing the mean and median across
+commodities. Specifically, we collect data on the trading volume of each commodity contract
+as seen in last column of Table I and then calibrate λ for each commodity as follows. Consider,
+for instance, unleaded gasoline. Since gasoline has a turnover of 11,320 contracts per day
+and a daily price-change volatility of $1,340, the transaction cost per contract when one
+trades 1.59% of daily volume is 1.59%×11, 320 × λGasoline /2 × 1, 3402 , which is 0.10% of the
+average price per contract of $48,000 if λGasoline = 3 × 10−7 .
+   We calibrate the trading costs for the other commodities similarly, and obtain a me-
+dian value of 5.0 × 10−7 and a mean of 8.4 × 10−7 . There are significant differences across
+commodities (e.g., the standard deviation is 1.0 × 10−6 ), reflecting that these estimates are
+based on turnover while the specification Λ = λΣ assumes that transaction costs depend on
+variances. While our model is general enough to handle transaction costs that depend on
+turnover (e.g., by using these calibrated λ’s in the diagonal of the Λ matrix), we also need
+to estimate the spill-over effects (i.e., the off-diagonal elements). Since Greenwood (2005)
+provides the only estimate of these transaction-cost spill-overs in the literature using the
+assumption Λ = λΣ and since real-world transaction costs likely depend on variance as well
+as turnover, we stick to this specification and calibrate λ as the median across the estimates
+for each commodity. Naturally, other specifications of the transaction-cost matrix would give
+
+
+
+                                              23
+slightly different results, but our main purpose is simply to illustrate the economic insights
+that we have proved in general theoretically.
+   We also consider a more conservative transaction cost estimate of λ = 10 × 10−7 . Al-
+ternatively, this more conservative analysis can be interpreted as the trading strategy of a
+larger investor (i.e., we could have equivalently reduced the absolute risk aversion γ).
+
+
+C. Dynamic Portfolio Selection with Trading Costs
+
+   We consider three different trading strategies: the optimal trading strategy given by
+Equation (27) (“optimal”), the optimal trading strategy in the absence of transaction costs
+(“Markowitz”), and a number of trading strategies based on a static (i.e., one-period)
+transaction-cost optimization as in Equation (29) (“static optimization”). The static portfo-
+lio optimization results in trading partially towards the Markowitz portfolio (as opposed to
+an aim portfolio that depends on signals’ alpha decays) and we consider ten different trading
+speeds in seen in Table II. Hence, under the static optimization, the updated portfolio is a [Table II]
+weighted average of the Markowitz portfolio (with weight denoted “weight on Markowitz”)
+and the current portfolio.
+   Table II reports the performance of each strategy as measured by, respectively, its Gross
+Sharpe Ratio and its Net Sharpe Ratio (i.e., its Sharpe ratio after accounting for transaction
+costs). Panel A reports these numbers using our base-case transaction-cost estimate (dis-
+cussed above), while Panel B uses our high transaction-cost estimate. We see that, naturally,
+the highest SR before transaction costs is achieved by the Markowitz strategy. The optimal
+and static portfolios have similar drops in gross SR due to their slower trading. After trans-
+action costs, however, the optimal portfolio is the best, significantly better than the best
+possible static strategy, and the Markowitz strategy incurs enormous trading costs.
+   It is interesting to consider the driver of the superior performance of the optimal dynamic
+trading strategy relative to the best possible static strategy. The key to the out-performance
+is that the dynamic strategy gives less weight to the five-day signal because of its fast alpha
+decay. The static strategy simply tries to control the overall trading speed, but this is not
+
+
+                                                24
+sufficient: it either incurs large trading costs due to its “fleeting” target (because of the
+significant reliance on the five-day signal), or it trades so slowly it is difficult to capture the
+return. The dynamic strategy overcomes this problem by trading somewhat fast, but trading
+mainly according to the more persistent signals.
+   To illustrate the difference in the positions of the different strategies, Figure 4 shows [Figure 4]
+the positions over time of two of the commodity futures, namely Crude and Gold. We
+see that the optimal portfolio is a much smoother version of the Markowitz strategy, thus
+reducing trading costs while at the same time capturing most of the excess return. Indeed,
+the optimal position tends to be long when the Markowitz portfolio is long and short when
+the Markowitz portfolio is short, and to be larger when the expected return is large, but
+moderates the speed and magnitude of trades.
+
+
+D. Response to New Information
+
+   It is instructive to trace the response to a shock to the return predictors, namely to εi,s
+                                                                                           t
+
+in Equation (32). Figure 5 shows the responses to shocks to each return-predicting factor, [Figure 5]
+namely the five-day factor, the one-year factor, and the five-year factor.
+   The first panel shows that the Markowitz strategy immediately jumps up after a shock
+to the five-day factor and slowly mean reverts as the alpha decays. The optimal strategy
+trades much more slowly and never accumulates nearly as large a position. Interestingly,
+since the optimal position also trades more slowly out of the position as the alpha decays,
+the lines cross as the optimal strategy eventually has a larger position than the Markowitz
+strategy.
+   The second panel shows the response to the one-year factor. The Markowitz jumps up
+and decays, whereas the optimal position increases more smoothly and catches up as the
+Markowitz starts to decay. The third panel shows the same for the 5Y signal, except that
+the effects are slower and with opposite sign, since five-year returns predict future reversals.
+
+
+
+
+                                                25
+VII. Conclusion
+   This paper provides a highly tractable framework for studying optimal trading strategies
+in the presence of several return predictors, risk and correlation considerations, as well as
+transaction costs. We derive an explicit closed-form solution for the optimal trading policy,
+which gives rise to several intuitive results. The optimal portfolio tracks an “aim portfolio,”
+which is analogous to the optimal portfolio in the absence of trading costs in its trade-off
+between risk and return, but different since more persistent return predictors are weighted
+more heavily relative to return predictors with faster alpha decay. The optimal strategy is
+not to trade all the way to the aim portfolio, since this entails too high transaction costs.
+Instead, it is optimal to take a smoother and more conservative portfolio that moves in the
+direction of the aim portfolio while limiting turnover.
+   Our framework constitutes a powerful tool to optimally combine various return predictors
+taking into account their evolution over time, decay rate, and correlation, and trading off
+their benefits against risks and transaction costs. Such dynamic trade-offs are at the heart
+of the decisions of “arbitrageurs” that help make markets efficient as per the efficient market
+hypothesis. Arbitrageurs’ ability to do so is limited, however, by transaction costs, and our
+model provides a tractable and flexible framework for the study of the dynamic implications
+of this limitation.
+   We implement our optimal trading strategy for commodity futures. Naturally, the opti-
+mal trading strategy in the absence of transaction costs has a larger Sharpe ratio gross of
+fees than our trading policy. However, net of trading costs our strategy performs signifi-
+cantly better, since it incurs far lower trading costs while still capturing much of the return
+predictability and diversification benefits. Further, the optimal dynamic strategy is signifi-
+cantly better than the best static strategy — i.e., taking dynamics into account significantly
+improves performance.
+   In conclusion, we provide a tractable solution to the dynamic trading strategy in a rel-
+evant and general setting that we believe to have many interesting applications. The main
+insights for portfolio selection can be summarized by the rules that one should aim in front
+
+
+                                              26
+of the target and trade partially towards the current aim.
+
+
+
+
+                                            27
+A. Proofs
+   In what follows we’ll make repeated use of the notation
+
+
+      ρ̄ = 1 − ρ                                                                             (A.1)
+
+      Λ̄ = ρ̄−1 Λ                                                                            (A.2)
+
+      λ̄ = ρ̄−1 λ.                                                                           (A.3)
+
+
+Proof of Proposition 1. Assuming that the value function is of the posited form, we
+calculate the expected future value function as
+
+                             1                              1 >
+      Et [V (xt , ft+1 )] = − x>              >                        >
+                               t Axx xt + xt Axf (I − Φ)ft + ft (I − Φ) Af f (I − Φ)ft
+                             2                              2
+                             1     >
+                            + Et (εt+1 Af f εt+1 ) + A0 .                              (A.4)
+                             2
+
+The agent maximizes the quadratic objective − 21 x>          >
+                                                  t Jt xt + xt jt + dt with
+
+
+
+      Jt = γΣ + Λ̄ + Axx
+
+      jt = (B + Axf (I − Φ))ft + Λ̄xt−1                                                      (A.5)
+             1             1 >                         1
+      dt = − x>                         >                    >
+               t−1 Λ̄xt−1 + ft (I − Φ) Af f (I − Φ)ft + Et (εt+1 Af f εt+1 ) + A0 .
+             2             2                           2
+
+   The maximum value is attained by
+
+
+      xt = Jt−1 jt ,                                                                         (A.6)
+
+
+and it is equal to V (xt−1 , ft ) = 21 jt> Jt−1 jt + dt . Combining this fact with (6) we obtain an
+equation that must hold for all xt−1 and ft , which implies the following restrictions on the
+
+
+
+
+                                                28
+coefficient matrices:12
+
+
+       −ρ̄−1 Axx = Λ̄(γΣ + Λ̄ + Axx )−1 Λ̄ − Λ̄                                             (A.7)
+
+        ρ̄−1 Axf = Λ̄(γΣ + Λ̄ + Axx )−1 (B + Axf (I − Φ))                                   (A.8)
+
+        ρ̄−1 Af f = (B + Axf (I − Φ))> (γΣ + Λ̄ + Axx )−1 (B + Axf (I − Φ))
+
+                      +(I − Φ)> Af f (I − Φ).                                               (A.9)
+
+
+   The existence of a solution to this system of Riccati equations can be established using
+standard results, e.g., as in Ljungqvist and Sargent (2004). In this case, however, we can
+                                                                            1       1
+derive explicit expressions, as follows. We start by letting Z = Λ̄− 2 Axx Λ̄− 2 and M =
+   1       1
+Λ̄− 2 ΣΛ̄− 2 and rewriting Equation (A.7) as
+
+
+        ρ̄−1 Z = I − (γM + I + Z)−1 ,                                                      (A.10)
+
+
+which is a quadratic with an explicit solution. Since all solutions Z can be written as a limit
+of polynomials of M , Z and M commute and the quadratic can be sequentially rewritten as
+
+
+        Z 2 + Z(I + γM − ρ̄I) = ρ̄γM                                                       (A.11)
+                         2
+               1                      1
+           Z + (γM + ρI)      = ρ̄γM + (γM + ρI)2 ,                                        (A.12)
+               2                      4
+
+resulting in
+                                    21
+                        1         2        1
+         Z =     ρ̄γM + (ρI + γM )       − (ρI + γM )                                      (A.13)
+                        4                  2
+                   "                      12             #
+                 1         1                    1              1
+        Axx = Λ̄ 2   ρ̄γM + (ρI + γM )2        − (ρI + γM ) Λ̄ 2 ,                         (A.14)
+                           4                    2
+
+that is,
+
+                                                                         12
+                    1     1  1 2 2           1     1
+                                                        2   1
+                                                                 −1   1       1
+       Axx = ρ̄γ Λ̄ 2 ΣΛ̄ 2 + (ρ Λ̄ + 2ργ Λ̄ 2 ΣΛ̄ 2 + γ Λ̄ 2 ΣΛ̄ ΣΛ̄ 2 ) − (ρΛ̄ + γΣ). (A.15)
+                             4                                                2
+
+   Note that the positive definite choice of solution Z is the only one that results in a positive
+
+                                                  29
+definite matrix Axx .
+   The other value-function coefficient determining optimal trading is Axf , which solves the
+linear equation (A.8). To write the solution explicitly, we note first that, from (A.7),
+
+
+        Λ̄(γΣ + Λ̄ + Axx )−1 = I − Axx Λ−1 .                                               (A.16)
+
+
+Using the general rule that vec(XY Z) = (Z > ⊗ X) vec(Y ), we rewrite (A.8) in vectorized
+form:
+
+
+ vec(Axf ) = ρ̄ vec((I − Axx Λ−1 )B)                                                       (A.17)
+
+                    +ρ̄((I − Φ)> ⊗ (I − Axx Λ−1 )) vec(Axf ),
+
+
+so that
+
+                                                          −1
+        vec(Axf ) = ρ̄ I − ρ̄(I − Φ)> ⊗ (I − Axx Λ−1 )          vec((I − Axx Λ−1 )B).      (A.18)
+
+
+   Finally, Af f is calculated from the linear equation (A.9), which is of the form
+
+
+        ρ̄−1 Af f = Q + (I − Φ)> Af f (I − Φ)                                              (A.19)
+
+
+with
+
+
+        Q = (B + Axf (I − Φ))> (γΣ + Λ̄ + Axx )−1 (B + Axf (I − Φ))                        (A.20)
+
+
+a positive-definite matrix.
+   The solution is easiest to write explicitly for diagonal Φ, in which case
+
+                               ρ̄Qij
+        Af f,ij =                               .                                          (A.21)
+                     1 − ρ̄(1 − Φii )(1 − Φjj )
+
+In general,
+
+                                                         −1
+        vec (Af f ) = ρ̄ I − ρ̄(I − Φ)> ⊗ (I − Φ)>             vec(Q).                     (A.22)
+
+
+                                                    30
+One way to see that Af f is positive definite is to iterate (A.19) starting with A0f f = 0.
+     We conclude that the posited value function satisfies the Bellman equation.
+
+
+Proof of Proposition 2.            Differentiating the Bellman equation (5) with respect to xt−1
+gives
+
+
+        −Axx xt−1 + Axf ft = Λ(xt − xt−1 ),
+
+
+which clearly implies (7) and (8).
+     In the case Λ = λΣ for some scalar λ > 0, and the solution to the value-function
+coefficients is Axx = aΣ, where a solves a simplified version of (A.7):
+
+                       λ̄2
+        −ρ̄−1 a =              − λ̄,                                                     (A.23)
+                    γ + λ̄ + a
+
+or
+
+
+        a2 + (γ + λ̄ρ)a − λγ = 0,                                                        (A.24)
+
+
+with solution
+             p
+                    (γ + λ̄ρ)2 + 4γλ − (γ + λ̄ρ)
+        a =                                      .                                       (A.25)
+                                2
+
+It follows immediately that Λ−1 Axx = a/λ.
+     Note that a is symmetric in (λρ(1 − ρ)−1 , γ). Consequently, a increases in λ if and only
+if it increases in γ. Differentiating (A.25) with respect to λ, one gets
+                                        
+          da      −1  1 2(γ + λ̄ρ) + 4γ
+        2    = −ρ̄ ρ + p                  .                                              (A.26)
+          dλ          2 (γ + λ̄ρ)2 + 4γλ
+
+This expression is positive if and only if
+
+                                                       2
+        ρ̄−2 ρ2 (γ + λ̄ρ)2 + 4γλ ≤ (γ + λ̄ρ)ρ̄−1 ρ + 2γ ,
+                                
+                                                                                         (A.27)
+
+
+
+                                                     31
+which is verified to hold with strict inequality as long as ρ̄γ > 0.
+   Finally, note that a/λ is increasing in γ and homogeneous of degree zero in (λ, γ), so that
+applying Euler’s theorem for homogeneous functions gives
+
+       d a     d a
+           =−      < 0.                                                                (A.28)
+      dλ λ    dγ λ
+
+
+
+
+Proof of Proposition 3. We show that
+
+
+      aimt = (γΣ + Axx )−1 (γΣ × Markowitz t + Axx × Et (aimt+1 ))                     (A.29)
+
+
+by using (8), (A.8), and (A.7) successively to write
+
+
+      aimt = A−1
+              xx Axf ft                                                                (A.30)
+                                      −1
+             = A−1
+                xx Λ γΣ + Λ̄ + Axx           (γΣ × Markowitz t + Axx × Et (aimt+1 ))
+
+             = (γΣ + Axx )−1 (γΣ × Markowitz t + Axx × Et (aimt+1 )) .
+
+
+To obtain the last equality, re-write (A.7) as
+
+
+      (Λ − Axx ) Λ−1 (γΣ + Λ̄ + Axx ) = Λ̄                                             (A.31)
+
+
+and then further
+
+
+      γΣ + Axx = (γΣ + Λ̄ + Axx )Λ−1 Axx ,                                             (A.32)
+
+
+since Axx Λ−1 Σ = ΣΛ−1 Axx . Equation (12) follows immediately as a special case.
+
+
+
+
+                                                 32
+   For part (ii), we iterate (A.29) forward to obtain
+
+
+     aimt = (γΣ + Axx )−1 ×
+             ∞
+            X                     (τ −t)
+                Axx (γΣ + Axx )−1         γΣ × Et (M arkowitzτ ),
+                   τ =t
+
+
+which specializes to (13). Given that a increases in λ, z decreases in λ. Furthermore,
+z increases in γ if and only if a/γ decreases, which is equivalent (by symmetry) to a/λ
+decreasing in λ.
+
+
+Proof of Proposition 4. In the case Λ = λΣ, equation (A.8) is solved by
+
+
+     Axf = λB((γ + λ̄ + a)I − λ(I − Φ))−1
+
+           = λB((γ + λ̄ρ + a)I + λΦ)−1
+               γ     −1
+           = B    +Φ      ,                                                           (A.33)
+                a
+
+where the last equality uses (A.23). The aim portfolio is
+                               γ        −1
+                          −1
+     aimt = (aΣ) B                  +Φ         ft ,                                   (A.34)
+                                a
+
+which is the same as (14). Equation (15) is immediate.
+   For part (iii), we use the result shown above (proof of Proposition 2) that a increases in
+λ, which implies that (1 + φj a/γ)/(1 + φi a/γ) does whenever φj > φi .
+
+
+Proof of Proposition 5. Rewriting (7) as
+
+
+              I − Λ−1 Axx xt−1 + Λ−1 Axx × aimt
+                         
+     xt =                                                                             (A.35)
+
+
+and iterating this relation backwards gives
+
+              t
+              X                         t−τ
+     xt =                 I − Λ−1 Axx          Λ−1 Axx × aimτ .                       (A.36)
+             τ =−∞
+
+
+
+                                                       33
+Proof of Proposition 6. We start by defining
+                                                
+             Φ     0                              0
+      Π =             ,           C̃ = (1 − R)   ,
+             0     R                              C
+           h                    i
+      B̃ = B                f
+                  −(R + r ) ,                                                             (A.37)
+                                   
+             Ω    0                  εt
+      Ω̃ =         ,        ε̃t =   .
+             0    0                  0
+
+   It is useful to keep in mind that yt = (ft> , Dt> )> (a column vector). Given this definition,
+it follows that
+
+
+      Et [yt+1 ] = (I − Π)yt + C̃(xt − xt−1 ).                                            (A.38)
+
+
+   The conjectured value function is
+
+                        1                             1 >
+      V (xt−1 , yt ) = − x>               >
+                          t−1 Axx xt−1 + xt−1 Axy yt + yt Ayy yt + A0 ,                   (A.39)
+                        2                             2
+
+so that
+
+                              1 >              >
+                                                                          
+      Et [V (xt , yt+1 )] = − xt Axx xt + xt Axy (I − Π)yt + C̃(xt − xt−1 ) +         (A.40)
+                              2
+                            1                             >                           
+                                (I − Π)yt + C̃(xt − xt−1 ) Ayy (I − Π)yt + C̃(xt − xt−1 ) +
+                            2
+                            1  >               
+                              Et ε̃t+1 Ayy ε̃t+1 + A0 .
+                            2
+
+
+
+
+                                               34
+   The trader consequently chooses xt to solve
+           
+                                                γ
+        max x> B̃yt − x> (R + rf )C(x − xt−1 ) − x> Σx
+         x                                      2
+               1
+             + ρ̄−1 x> Cx − x>                         >
+                                                                     
+                                t−1 Cxt−1 − (x − xt−1 ) Λ(x − xt−1 )
+               2
+               1                                           
+             − x> Axx x + x> Axy (I − Π)yt + C̃(x − xt−1 )                        (A.41)
+               2
+               1                           >                            
+             +     (I − Π)yt + C̃(x − xt−1 ) Ayy (I − Π)yt + C̃(x − xt−1 )    ,
+               2
+
+which is a quadratic of the form − 12 x> Jx + x> jt + dt , with
+
+               1
+                  J0 + J0>
+                           
+        J =                                                                       (A.42)
+               2
+             = γΣ + Λ̄ + 2(R + rf ) − ρ̄−1 C + Axx − 2Axy C̃ − C̃ > Ayy C̃
+                                          
+        J0                                                                        (A.43)
+                                                                    
+             = B̃yt + Λ̄ + (R + rf )C xt−1 + Axy (I − Π)yt − C̃xt−1 +
+                                     
+        jt                                                                        (A.44)
+                                       
+               C̃Ayy (I − Π)yt − C̃xt−1
+
+             ≡ Sx xt−1 + Sy yt                                                    (A.45)
+                 1              1
+        dt   = − xt−1 Λ̄xt−1 − ρ̄−1 x>t−1 Cxt−1 +                                 (A.46)
+                 2              2
+               1                    >                    
+                   (I − Π)yt − C̃xt−1 Ayy (I − Π)yt − C̃xt−1 .
+               2
+
+Here,
+
+
+        Sx = Λ̄ + (R + rf )C − Axy C̃ − C̃ > Ayy C̃                               (A.47)
+
+        Sy = B̃ + Axy (I − Π) + C̃ > Ayy (I − Π).                                 (A.48)
+
+
+   The value of x attaining the maximum is given by
+
+
+        xt = J −1 jt ,                                                            (A.49)
+
+
+
+
+                                               35
+and the maximal value is
+
+      1 −1
+        jt J jt + dt = V (xt−1 , yt ) − A0                                                    (A.50)
+      2
+                         1                              1 >
+                     = − x>                 >
+                            t−1 Axx xt−1 + xt−1 Axy yt + yt Ayy yt .                          (A.51)
+                         2                              2
+
+   The unknown matrices have to satisfy a system of equations encoding the equality of all
+coefficients in (A.51). Thus,
+
+
+     −ρ̄−1 Axx = Sx> J −1 Sx − Λ̄ − ρ̄−1 C + C̃ > Ayy C̃                                      (A.52)
+
+       ρ̄−1 Axy = Sx> J −1 Sy − C̃ > Ayy (I − Π)                                              (A.53)
+
+       ρ̄−1 Ayy = Sy> J −1 Sy + (I − Π)> Ayy (I − Π).                                         (A.54)
+
+
+   For our purposes, the more interesting observation is that the optimal position xt is
+rewritten as
+                                                                                        
+                            −1
+                                                    −1
+                                                               −1       −1
+                                                                                
+     xt = xt−1 + I − J Sx                     I −J        Sx         J        Sy yt −xt−1 .   (A.55)
+                |    {z   }               |                    {z                 }
+                         M rate                      aimt = M aim yt
+
+
+
+
+                                                          36
+References
+Acharya, Viral, and Lasse Heje Pedersen, 2005, Asset pricing with liquidity risk, Journal of
+  Financial Economics 77, 375–410.
+
+Almgren, Robert, and Neil Chriss, 2000, Optimal execution of portfolio transactions, Journal
+  of Risk 3, 5–39.
+
+Amihud, Yakov, and Haim Mendelson, 1986, Asset pricing and the bid-ask spread, Journal
+  of Financial Economics 17, 223–249.
+
+Balduzzi, P., and A.W. Lynch, 1999, Transaction costs and predictability: some utility cost
+  calculations, Journal of Financial Economics 52, 47–78.
+
+Bertsimas, Dimitris, and Andrew W. Lo, 1998, Optimal control of execution costs, Journal
+  of Financial Markets 1, 1–50.
+
+Breen, William .J., Laurie S. Hodrick, and Robert A. Korajczyk, 2002, Predicting Equity
+  Liquidity, Management Science 48, 470–483.
+
+Campbell, John Y., and Luis M. Viceira, 2002, Strategic Asset Allocation Portfolio Choice
+  for Long-Term Investors. (Oxford University Press, ).
+
+Constantinides, George M., 1986, Capital market equilibrium with transaction costs, Journal
+  of Political Economy 94, 842–862.
+
+Engle, Robert, and Robert Ferstenberg, 2007, Execution risk, Journal of Portfolio Manage-
+  ment 33, 34–45.
+
+Engle, Robert, Robert Ferstenberg, and Jeffrey Russell, 2008, Measuring and Modeling
+  Execution Cost and Risk, Working paper, University of Chicago.
+
+Gârleanu, Nicolae, 2009, Portfolio choice and pricing in imperfect markets, Journal of Eco-
+  nomic Theory 144, 532–564.
+
+
+
+                                            37
+Gârleanu, Nicolae, Lasse Heje Pedersen, and Allen Poteshman, 2009, Demand-based option
+  pricing, Review of Financial Studies 22, 4259–4299.
+
+Greenwood, Robin, 2005, Short and long term demand curves for stocks: Theory and evi-
+  dence, Journal of Financial Economics 75, 607–650.
+
+Grinold, Richard, 2006, A dynamic model of portfolio management, Journal of Investment
+  Management 4, 5–22.
+
+Grossman, Sanford, and Merton Miller, 1988, Liquidity and market structure, Journal of
+  Finance 43, 617–633.
+
+Heaton, John, and Deborah Lucas, 1996, Evaluating the effects of incomplete markets on
+  risk sharing and asset pricing, Journal of Political Economy 104, 443–487.
+
+Jang, B.G., H.K. Koo, H. Liu, and M. Loewenstein, 2007, Liquidity premia and transaction
+  costs, Journal of Finance 62, 2329–2366.
+
+Lillo, Fabrizio, J. Doyne Farmer, and Rosario N. Mantegna, 2003, Master Curve for Price-
+  Impact Function, Nature 421, 129–130.
+
+Liu, H., 2004, Optimal consumption and investment with transaction costs and multiple
+  assets, Journal of Finance 59, 289–338.
+
+Ljungqvist, Lars, and Thomas Sargent, 2004, Recursive Macroeconomic Theory, 2nd edition.
+  (MIT press, ).
+
+Lo, Andrew, H. Mamaysky, and J. Wang, 2004, Asset prices and trading volume under fixed
+  transaction costs, Journal of Political Economy 112, 1054–1090.
+
+Lynch, A.W., and P. Balduzzi, 2000, Predictability and transaction costs: the impact on
+  rebalancing rules and behavior, Journal of Finance pp. 2285–2309.
+
+
+
+
+                                             38
+Lynch, Anthony, and Sinan Tan, 2011, Explaining the magnitude of liquidity premia: The
+  roles of return predictability, wealth shocks, and state-dependent transaction costs, Jour-
+  nal of Finance 66, 1329–1368.
+
+Markowitz, Harry M., 1952, Portfolio selection, The Journal of Finance 7, 77–91.
+
+Obizhaeva, Anna, and Jiang Wang, 2006, Optimal trading strategy and supply/demand
+  dynamics, Working paper, MIT.
+
+Perold, Andre, 1988, The implementation shortfall: Paper versus reality, Journal of Portfolio
+  Management 14, 4–9.
+
+Vayanos, Dimitri, 1998, Transaction costs and asset prices: A dynamic equilibrium model,
+  Review of Financial Studies 11, 1–58.
+
+Vayanos, Dimitri, and Jean-Luc Vila, 1999, Equilibrium interest rate and liquidity premium
+  with transaction costs, Economic Theory 13, 509–539.
+
+
+
+
+                                             39
+                                             Standard                     Daily Trading
+                           Average Price                   Contract
+         Commodity                          Deviation of                     Volume
+                           Per Contract                    Multiplier
+                                           Price Changes                   (Contracts)
+         Aluminum                 44,561             637             25           9,160
+         Cocoa                    15,212             313             10           5,320
+         Coffee                   38,600           1,119         37,500           5,640
+         Copper                   80,131           2,023             25          12,300
+         Crude                    40,490           1,103          1,000         151,160
+         Gasoil                   34,963             852            100          37,260
+         Gold                     43,146             621            100          98,700
+         Lead                     23,381             748             25           2,520
+         Natgas                   50,662           1,932         10,000          46,120
+         Nickel                   76,530           2,525              6           1,940
+         Silver                   36,291             893          5,000          43,780
+         Sugar                    10,494             208        112,000          25,700
+         Tin                      38,259             903              5            NaN
+         Unleaded                 47,967           1,340         42,000          11,320
+         Zinc                     36,513             964             25           6,200
+
+
+Table I: Summary Statistics. For each commodity used in our empirical study, the
+first column reports the average price per contract in U.S. dollars over our sample period
+01/01/1996–01/23/2009. For instance, since the average gold price is $431.46 per ounce, the
+average price per contract is $43,146 since each contract is for 100 ounces. Each contract’s
+multiplier (100 in the case of gold) is reported in the third column. The second column
+reports the standard deviation of price changes. The fourth column reports the average
+daily trading volume per contract, estimated as the average daily volume of the most liquid
+contract traded electronically and outright (i.e., not including calendar-spread trades) in
+December 2010.
+
+
+
+
+                                              40
+                                               Panel A:              Panel B:
+                                              Benchmark          High Transaction
+                                           Transaction Costs          Costs
+
+                                          Gross SR      Net SR   Gross SR   Net SR
+
+          Markowitz                              0.83    -9.84       0.83   -10.11
+          Dynamic optimization                   0.62     0.58       0.58     0.53
+          Static optimization
+              Weight on Markowitz = 10%          0.63    -0.41       0.63    -1.45
+              Weight on Markowitz = 9%           0.62    -0.24       0.62    -1.10
+              Weight on Markowitz = 8%           0.62    -0.08       0.62    -0.78
+              Weight on Markowitz = 7%           0.62     0.07       0.62    -0.49
+              Weight on Markowitz = 6%           0.62     0.20       0.62    -0.22
+              Weight on Markowitz = 5%           0.61     0.31       0.61     0.00
+              Weight on Markowitz = 4%           0.60     0.40       0.60     0.19
+              Weight on Markowitz = 3%           0.58     0.46       0.58     0.33
+              Weight on Markowitz = 2%           0.52     0.46       0.52     0.39
+              Weight on Markowitz = 1%           0.36     0.33       0.36     0.31
+
+
+Table II: Performance of Trading Strategies Before and After Transaction Costs.
+This table shows the annualized Sharpe ratio gross and net of trading costs for the optimal
+trading strategy in the absence of trading costs (“no TC”), our optimal dynamic strategy
+(“optimal”), and a strategy that optimizes a static one-period problem with trading costs
+(“static”). Panel A illustrates this for a low transaction cost parameter, while Panel B has
+a high one.
+
+
+
+
+                                            41
+                                Panel A: Construction of Current Optimal Trade
+
+                                                                            Markowitz
+                                                                                    t
+          Position in asset 2
+
+
+
+
+                                              new
+                                  old        position                aimt
+                                position       xt
+                                  xt−1
+                                                        Et(aimt+1)
+
+
+
+
+                                              Position in asset 1
+
+Figure 1: Optimal Trading Strategy: Aim in Front of the Target. This figure shows
+how the optimal trade moves the portfolio from the existing position xt−1 towards the aim
+portfolio, trading only part of the way to the aim portfolio to limit transactions costs. The
+aim portfolio is an average of the current Markowitz portfolio (the optimal portfolio in the
+absence of transaction costs) and the expected future aim portfolio, which reflects how the
+Markowitz portfolio is expected to mean-revert to its long-term level (the lower, left corner
+of the figure).
+
+
+
+
+                                                        42
+                                          Panel A: Construction of Current Optimal Trade
+
+                                                                                         Markowitz
+                                                                                                   t
+
+
+
+
+                    Position in asset 2
+                                                        new
+                                            old        position                  aim
+                                                                                   t
+                                          position       xt
+                                            xt−1
+                                                                  E (aim     )
+                                                                   t     t+1
+
+
+
+
+                                                        Position in asset 1
+
+
+                                              Panel B: Expected Next Optimal Trade
+                    Position in asset 2
+
+
+
+
+                                                         xt   Et(xt+1)                    E (Markowitz    )
+                                            xt−1                                           t           t+1
+
+
+
+
+                                                        Position in asset 1
+
+
+                                             Panel C: Expected Evolution of Portfolio
+                    Position in asset 2
+
+
+
+
+                                                                  Et(xt+h)
+                                                                                       Et(Markowitzt+h)
+
+
+
+
+                                                        Position in asset 1
+
+Figure 2: Aim in Front of the Target by Underweighting Fast-Decay Factors.
+This figure shows how the optimal trade moves from the existing position xt−1 towards the
+aim, which puts relatively more weight on assets loading on persistent factors. Relative to
+the Markowitz portoflio, the weight in the aim of asset 2 is lower because asset 2 has a faster-
+decaying alpha, as is apparent in the lower expected weight it receives in future Markowitz
+portfolios.
+
+
+
+                                                              43
+                                              Panel A: Only Transitory Cost
+
+
+
+
+                    Position in asset 2
+                                                             E (x       )
+                                                                t    t+h
+                                                                               E (Markowitz   )
+                                                                                t          t+h
+
+
+
+
+                                                     Position in asset 1
+
+
+                                          Panel B: Persistent and Transitory Cost
+                    Position in asset 2
+
+
+
+
+                                                                Et(xt+h)
+                                                                               Et(Markowitzt+h)
+
+
+
+
+                                                     Position in asset 1
+
+
+                                              Panel C: Only Persistent Cost
+                    Position in asset 2
+
+
+
+
+                                                                    Et(xt+h)
+                                                                               Et(Markowitzt+h)
+
+
+
+
+                                                     Position in asset 1
+
+Figure 3: Aim in Front of the Target with Persistent Costs. This figure shows the
+optimal trade when part of the transaction cost is persistent. In panel A, the entire cost is
+transitory, as in Figures 1 and 2. In panel B, half of the cost is transitory, while the other
+half is persistent, with a half life of 6.9 periods. In panel C, the entire cost is persistent.
+
+
+
+
+                                                           44
+        4
+     x 10               Position in Crude                                    5                Position in Gold
+ 6                                                                        x 10
+                                                                    1.5
+                                                   Markowitz                                                             Markowitz
+                                                   Optimal                                                               Optimal
+ 4                                                                   1
+
+
+ 2                                                                  0.5
+
+
+ 0                                                                   0
+
+
+−2                                                              −0.5
+
+
+−4                                                                  −1
+
+
+−6                                                              −1.5
+
+
+−8                                                                  −2
+            09/02/98   05/29/01     02/23/04   11/19/06                          09/02/98   05/29/01      02/23/04   11/19/06
+
+
+
+Figure 4: Positions in Crude and Gold Futures. This figure shows the positions
+in crude and gold for the the optimal trading strategy in the absence of trading costs
+(“Markowitz”) and our optimal dynamic strategy (“optimal”).
+
+
+
+
+                                                               45
+         4
+      x 10   Optimal Trading After Shock to Signal 1 (5−Day Returns)                                5    Optimal Trading After Shock to Signal 2 (1−Year Returns)
+3.5                                                                                              x 10
+                                                                                             4
+                                                                  Markowitz                                                                          Markowitz
+                                                                  Optimal                                                                            Optimal
+ 3                                                                Optimal (high TC)        3.5                                                       Optimal (high TC)
+
+                                                                                             3
+2.5
+
+                                                                                           2.5
+ 2
+                                                                                             2
+1.5
+                                                                                           1.5
+
+ 1
+                                                                                             1
+
+0.5                                                                                        0.5
+
+
+ 0                                                                                           0
+  0           10        20        30          40             50          60           70      0             50         100           150      200         250        300
+                                             x 10
+                                                   5   Optimal Trading After Shock to Signal 3 (5−Year Returns)
+                                         0
+                                                                                                              Markowitz
+                                                                                                              Optimal
+                                        −1                                                                    Optimal (high TC)
+
+
+                                        −2
+
+
+                                        −3
+
+
+                                        −4
+
+
+                                        −5
+
+
+                                        −6
+
+
+                                        −7
+                                          0            100         200        300      400         500       600      700      800
+
+
+Figure 5: Optimal Trading in Response to Shock to Return Predicting Signals.
+This figure shows the response in the optimal position following a shock to a return predictor
+as a function of the number of days since the shock. The top left panel does this for a shock
+to the fast five-day return predictor, the top right panel considers a shock to the 12-month
+return predictor, and the bottom panel to the five-year predictor. In each case, we consider
+the response of the optimal trading strategy in the absence of trading costs (“Markowitz”)
+and our optimal dynamic strategy (“optimal”) using high and low transactions costs.
+
+
+
+
+                                                                                       46
+
