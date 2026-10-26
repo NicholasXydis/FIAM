@@ -26,9 +26,14 @@ NAMED = {
 }
 
 
+# A table's rows up to a date: a later row is never loaded (§1.3).
+def upto(path: Path, columns: list[str], date: str, last=TEST[1]) -> pd.DataFrame:
+    return pd.read_parquet(path, columns=columns, filters=[(date, "<=", last)])
+
+
 # The panel's stock-months 2015-2020 with me, ret and the trading flag.
 def panel_months() -> pd.DataFrame:
-    p = pd.read_parquet(CLEAN / "panel.parquet", columns=["permno", "eom", "me", "ret"])
+    p = upto(CLEAN / "panel.parquet", ["permno", "eom", "me", "ret"], "eom")
     p = p[(p["eom"] >= TEST[0]) & (p["eom"] <= TEST[1])].copy()
     p["month"] = p["eom"].dt.to_period("M")
     p["trading"] = p["me"] >= FLOOR_MUSD
@@ -87,7 +92,7 @@ def within(rows: pd.DataFrame, months: int) -> set:
 
 # Leavers to resolve: the six named and 2017-2020 $500m+ delistings.
 def leavers() -> pd.DataFrame:
-    p = pd.read_parquet(CLEAN / "panel.parquet", columns=["permno", "eom", "me", "company_name"])
+    p = upto(CLEAN / "panel.parquet", ["permno", "eom", "me", "company_name"], "eom")
     last = p.sort_values("eom").groupby("permno").tail(1)
     named = []
     # Names on any row, letters and digits only ("G N C" is GNC) (M3).
@@ -126,42 +131,48 @@ def survivorship() -> dict:
         "named_found": sorted(gone.loc[gone["why"] != "delisting", "why"]),
     }
     for name, have in sets.items():
-        before = gone.assign(month=gone["eom"].dt.to_period("M"))
-        resolved = np.mean([(r.permno, r.month) in have for r in before.itertuples()])
-        trade = p[p["trading"]].copy()
-        trade["covered"] = [(a, b) in have for a, b in zip(trade["permno"], trade["month"])]
-        means = trade.groupby(["month", "covered"])["ret"].mean().unstack()
-        gap = means.get(True, pd.Series(dtype=float)) - means.get(False, pd.Series(dtype=float))
-        # Robustness: coverage at m vs next month's return, any panel row.
-        ahead = trade[trade["month"] < TEST[1].to_period("M")]
-        nxt = ahead.merge(
-            p[["permno", "month", "ret"]].assign(month=p["month"] - 1),
-            on=["permno", "month"],
-            suffixes=("", "_next"),
-        )
-        lead = nxt.groupby(["month", "covered"])["ret_next"].mean().unstack()
-        gap_next = lead.get(True, pd.Series(dtype=float)) - lead.get(False, pd.Series(dtype=float))
-        share = float(trade["covered"].mean())
-        cls = "universe-level" if resolved < 0.5 else "crosswalk-only"
-        report[name] = {
-            "class": cls,
-            "leavers_resolved": round(float(resolved), 4),
-            "covered_share_of_trading_months": round(share, 4),
-            "gap_months": int(gap.notna().sum()),
-            "gap_mean_monthly": round(float(gap.mean()), 5) if gap.notna().any() else None,
-            "gap_nw_t": round(nw_t(gap), 2),
-            "gap_next_month_nw_t": round(nw_t(gap_next), 2),
-        }
-        report[name]["needs_written_control"] = bool(abs(report[name]["gap_nw_t"]) > 2)
+        report[name] = source_test(have, p, gone)
     report["immune"] = ["crsp_market_daily", "vix", "french", "tb3ms"]
     return report
+
+
+# One coverage set's test: leavers resolved, same and next-month gaps.
+def source_test(have: set, p: pd.DataFrame, gone: pd.DataFrame) -> dict:
+    before = gone.assign(month=gone["eom"].dt.to_period("M"))
+    resolved = np.mean([(r.permno, r.month) in have for r in before.itertuples()])
+    trade = p[p["trading"]].copy()
+    trade["covered"] = [(a, b) in have for a, b in zip(trade["permno"], trade["month"])]
+    means = trade.groupby(["month", "covered"])["ret"].mean().unstack()
+    gap = means.get(True, pd.Series(dtype=float)) - means.get(False, pd.Series(dtype=float))
+    # Robustness: coverage at m vs next month's return, any panel row.
+    ahead = trade[trade["month"] < TEST[1].to_period("M")]
+    nxt = ahead.merge(
+        p[["permno", "month", "ret"]].assign(month=p["month"] - 1),
+        on=["permno", "month"],
+        suffixes=("", "_next"),
+    )
+    lead = nxt.groupby(["month", "covered"])["ret_next"].mean().unstack()
+    gap_next = lead.get(True, pd.Series(dtype=float)) - lead.get(False, pd.Series(dtype=float))
+    share = float(trade["covered"].mean())
+    cls = "universe-level" if resolved < 0.5 else "crosswalk-only"
+    out = {
+        "class": cls,
+        "leavers_resolved": round(float(resolved), 4),
+        "covered_share_of_trading_months": round(share, 4),
+        "gap_months": int(gap.notna().sum()),
+        "gap_mean_monthly": round(float(gap.mean()), 5) if gap.notna().any() else None,
+        "gap_nw_t": round(nw_t(gap), 2),
+        "gap_next_month_nw_t": round(nw_t(gap_next), 2),
+    }
+    out["needs_written_control"] = bool(abs(out["gap_nw_t"]) > 2)
+    return out
 
 
 # The PDF test on 2000-2014 over CRSP's large common stocks (audit M4).
 def survivorship_early() -> dict:
     cols = ["PERMNO", "MthCalDt", "MthCap", "MthRet", "ShareType", "SecurityType", "PrimaryExch"]
     cols += ["USIncFlg", "IssuerType"]
-    m = pd.read_parquet(DATA / "v4" / "extracts" / "crsp_monthly.parquet", columns=cols)
+    m = upto(DATA / "v4" / "extracts" / "crsp_monthly.parquet", cols, "MthCalDt", "2014-12-31")
     m = m.assign(
         permno=pd.to_numeric(m["PERMNO"], errors="coerce"), eom=pd.to_datetime(m["MthCalDt"])
     )
@@ -223,9 +234,7 @@ def share_within(diff: pd.Series, tolerance: float, bar: float) -> dict:
 # The cross-source agreement exhibit on 2015-2020 (protocol.md data).
 def agreement() -> dict:
     p = panel_months()
-    m = pd.read_parquet(
-        CLEAN / "crsp_monthly.parquet", columns=["permno", "date", "ret", "retx", "cap_musd"]
-    )
+    m = upto(CLEAN / "crsp_monthly.parquet", ["permno", "date", "ret", "retx", "cap_musd"], "date")
     m["month"] = m["date"].dt.to_period("M")
     both = p.merge(m, on=["permno", "month"], suffixes=("", "_crsp"))
     report = {
@@ -233,7 +242,7 @@ def agreement() -> dict:
         "panel_ret_vs_crsp": share_within(both["ret"] - both["ret_crsp"], 1e-6 + 1e-9, 0.99),
         "panel_me_vs_crsp_cap": share_within(both["me"] / both["cap_musd"] - 1, 0.005, 0.99),
     }
-    d = pd.read_parquet(CLEAN / "dsf.parquet", columns=["permno", "date", "ret"])
+    d = upto(CLEAN / "dsf.parquet", ["permno", "date", "ret"], "date")
     d = d[(d["date"] >= TEST[0]) & (d["date"] <= TEST[1])]
     d["month"] = d["date"].dt.to_period("M")
     comp = (1 + d["ret"]).groupby([d["permno"], d["month"]]).prod() - 1

@@ -689,6 +689,11 @@ def stamped(frame: pd.DataFrame, public, cal: pd.Series, market_day=None) -> pd.
     return out
 
 
+# The organisers' 147 characteristics, as their list names them.
+def characteristics(data: Path = DATA) -> list[str]:
+    return pd.read_csv(data / "organisers" / "factor_char_list.csv")["variable"].tolist()
+
+
 # The organisers' panel: ids, the 147, labels and the named extras.
 def load_panel(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     chars = pd.read_csv(data / "organisers" / "factor_char_list.csv")["variable"].tolist()
@@ -1393,23 +1398,9 @@ def unsealed() -> bool:
 def read(
     name: str, columns: list[str] | None = None, purpose: str | None = None, where=None
 ) -> pd.DataFrame:
-    if name in NEVER:
-        raise NotForBacktest(f"{name}: {NEVER[name]}")
-    source = REGISTRY[name]
-    # Exhibit-only sources never reach the backtest (approved 2026-10-23).
-    if source.use == "exhibit" and purpose not in {"exhibit", "live"}:
-        raise NotForBacktest(f"{name}: exhibits and live context only")
-    # Restated values and labels serve their named uses, never a feature.
-    if source.purposes and purpose not in source.purposes:
-        raise NotForBacktest(f"{name}: only for {sorted(source.purposes)}")
     asked = None if columns is None else set(columns)
     # A row filter is a use of its columns: the same bans apply.
-    touched = (asked or set()) | set(where or {})
-    for col in touched & set(source.banned):
-        raise BannedField(f"{name}.{col} is banned (§1.2)")
-    for col, allowed in source.restricted.items():
-        if col in touched and purpose not in allowed:
-            raise BannedField(f"{name}.{col} only for {sorted(allowed)} (§1.2)")
+    source = allowed_use(name, (asked or set()) | set(where or {}), purpose)
     path = CLEAN / name if name in FOLDERS else CLEAN / f"{name}.parquet"
     need = {"available_at", "first_close", "eom"} | set(source.key)
     if name in FOLDERS:
@@ -1426,6 +1417,35 @@ def read(
         return frame
     order = [*source.key, *columns, "first_close", "available_at"]
     return frame[[c for c in dict.fromkeys(order) if c in frame.columns]]
+
+
+# The registry's checks on one use of a table: uses, bans, purposes.
+def allowed_use(name: str, touched: set, purpose: str | None) -> Source:
+    if name in NEVER:
+        raise NotForBacktest(f"{name}: {NEVER[name]}")
+    source = REGISTRY[name]
+    # Exhibit-only sources never reach the backtest (approved 2026-10-23).
+    if source.use == "exhibit" and purpose not in {"exhibit", "live"}:
+        raise NotForBacktest(f"{name}: exhibits and live context only")
+    # Restated values and labels serve their named uses, never a feature.
+    if source.purposes and purpose not in source.purposes:
+        raise NotForBacktest(f"{name}: only for {sorted(source.purposes)}")
+    for col in touched & set(source.banned):
+        raise BannedField(f"{name}.{col} is banned (§1.2)")
+    for col, allowed in source.restricted.items():
+        if col in touched and purpose not in allowed:
+            raise BannedField(f"{name}.{col} only for {sorted(allowed)} (§1.2)")
+    return source
+
+
+# A folder table one part at a time, under the same checks and seal.
+def read_parts(name: str, columns: list[str], purpose: str | None = None):
+    if name not in FOLDERS:
+        raise ValueError(f"{name} is not a folder table")
+    source = allowed_use(name, set(columns), purpose)
+    want = sorted(set(columns) | {"available_at", "first_close"} | set(source.key))
+    for path in sorted((CLEAN / name).glob("part-*.parquet")):
+        yield sealed_out(read_unsealed(path, want), source, set(columns))
 
 
 # A folder table's rows public by the seal, so sealed text never loads.
