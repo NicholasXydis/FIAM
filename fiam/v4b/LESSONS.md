@@ -782,3 +782,15 @@ band ±0.20); beta error = realised 21-session OLS book beta − predicted.
     - Lesson: a beta-neutral construction is only as good as the beta forecast's
       dispersion. Test that first, cheaply, on short windows, before any book race
       (the branch book's ex-ante 0 / realised sd 0.069 was the same warning).
+
+101. **No trailing beta survives a sell-off, and our calibration map overcompresses
+    (D20 step A, 2026-10-26).** Six beta forecasts (engine calibrated/uncalibrated,
+    v4's Welch and Dimson, beta_60m, Welch+Dimson) were tested on the first two months of
+    2017–2020.
+    - Calm windows (2017, 2019): the uncalibrated engine beta and Welch+Dimson hit slope
+      ≈ 1. The calibration map (on since D14, although it failed its own accuracy rule)
+      pushed the slope to 1.4–1.8.
+    - Sell-off windows (Feb 2018, Feb 2020): every forecast's slope fell to 0.1–0.6.
+    - Neutral books can still carry beta at net 0 and predicted beta 0. The W17 E6 books
+      did (+0.16..+0.23), because the beta error lined up with the long/short selection.
+      That points to style exposure, not to the beta's level or scale.

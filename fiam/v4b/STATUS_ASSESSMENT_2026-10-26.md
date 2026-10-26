@@ -4,8 +4,9 @@ This preserves the assessment provided to Andrew, with one material correction:
 a subsequent D19 short-window run was recorded after the original assessment.
 It reports **no E6 survivor**. D20 subsequently records Andrew's authorization
 for additional short windows, beta candidates and a plain-decile hypothesis.
-E6 has not earned a full-window return screen or an out-of-sample run. The
-stopped D18 screen remains sealed under D19–D20.
+All six D20 beta candidates subsequently failed the four-window rule, so D20
+steps B and C stop pending Andrew. E6 has not earned a full-window return screen
+or an out-of-sample run. The stopped D18 screen remains sealed under D19–D20.
 
 ## Goal and status
 
@@ -27,7 +28,7 @@ not pass the short-window gates.
 | Beat 12.8%/year | Not achieved | E5 validation +6.5%/year; historical diagnostic −1.7%/year. The best E-LASSO construction grid was an in-sample screen, not a promotion. |
 | Finals compliance on executed holdings | Partial for E5; E6 G5 not run | E5 has no reported gross breach but has short-floor, participation, liquidation-capacity and policy exceptions. E6 needs an executed-holdings check after preceding gates. |
 | One/two-month tests before longer windows | D19 run; no survivors | Raw scores fail G0; betamatch versions fail one or more G1–G4 checks. G5 was not run. Do not read sealed D18 screen returns. |
-| Follow-up beta and decile gates | D20 preregistered; scripts in progress | Six beta candidates across four two-month windows; E6 and the plain decile reference proceed only under D20's rules. W17 is already viewed. No results are claimed here. |
+| Follow-up beta and decile gates | D20 step A failed; steps B and C stopped | None of six candidates passed all four two-month windows. Every candidate failed W18 and W20; W17 was already viewed. No additional candidate is authorized by D20 without Andrew. |
 | 2017–2020 then 2021–2026 | Not earned for E6 | D19 requires all gates to pass before evaluating eligible sealed screen variants; D18 prescribes the full-book and subsequent historical-window decision. |
 
 ## Completed E5 benchmark — not E6
@@ -52,7 +53,7 @@ pristine holdout.
 
 Sources: `evidence/race_d17.json`, `evidence/d17_oos/{summary,legs}.json`,
 `RISK_COST_AUDIT.md`, `HANDOFF_2026-10-26.md`, `DECISIONS.md` D16–D20,
-and `LESSONS.md` 93–100. Raw output files remain local/private; aggregate
+and `LESSONS.md` 93–101. Raw output files remain local/private; aggregate
 evidence is copied into `evidence/` for the repository.
 
 ## D19 short-window outcome
@@ -80,6 +81,17 @@ assumptions; the cross-sectional beta regression uses noisy realized beta
 labels. These are limitations for interpretation, not grounds to override a
 failed registered gate. The target screen remains sealed and no longer window
 is authorized by these results.
+
+## D20 beta comparison
+
+Six candidate forecasts were tested on the first two months of each year
+2017–2020. None passed the prespecified confidence-interval rule in all four
+windows. The uncalibrated engine beta and the Welch/Dimson average passed in
+2017 and 2019 but failed in 2018 and 2020. All six failed those latter two
+windows. These are short, noisy-window findings, not a proof that every possible
+beta method must fail in sell-offs. D20 calls for stopping and reporting; no
+additional candidates, E6 regate or plain-decile test proceed under that rule
+without Andrew. Aggregate log: `evidence/d20/beta_gates_modal.log`.
 
 ## Independent verification of prototype
 

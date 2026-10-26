@@ -23,6 +23,9 @@ not by itself proof of a permanent defect or its root cause. The window was
 already inspected; it is now diagnostic data for any repair. D20 records
 Andrew's subsequent authorization to compare six beta candidates across four
 short windows and, subject to those results, regate E6 and a plain decile sort.
+No candidate passed all four windows: D20 requires stopping and reporting,
+with no additional candidates without Andrew. Steps B and C are not authorized
+by the failed step A.
 
 The earlier E5 2021–26 diagnostic is −1.7%/year, with long alpha −3.6% and
 short alpha +0.6%, and the window has been repeatedly viewed. The earlier
@@ -92,6 +95,8 @@ traded, not just average individual-stock error. Pre-register each new
 hypothesis and window under D19. Andrew has authorized D20's four two-month
 windows; January–February 2017 is already viewed. D20 governs their use and
 does not authorize any other window or a full run before its gates pass.
+Its six-candidate beta gate has now failed. The proposals below are research
+recommendations, not permission to run additional candidates or to regate E6.
 
 The D19 realized-on-predicted slope 1.76, bootstrap interval [1.43, 2.11], and
 realized book beta +0.16 to +0.23 fail the specified gates. That is evidence
@@ -228,10 +233,10 @@ merely by asking for it when the gross and other rules bind.
 ## Priority and stop rules
 
 1. **Now:** finish the timing, missingness, gate-power and execution audit;
-   write and validate short-window mechanical/known-truth tests. D20's beta
-   gate is authorized; no full return screen or 2021–26 look is authorized yet.
-2. **Next, under D20:** validate the six beta candidates, then regate E6 and
-   the plain decile book only as D20 permits. Separately register any new
+   write and validate mechanical/known-truth tests. D20's six beta candidates
+   failed, so no E6 regate, full return screen or 2021–26 look is authorized.
+2. **Next, subject to Andrew's decision:** choose and preregister any new beta
+   hypothesis and permitted short-window test. Separately register any new
    tradable long- and short-signal test. A failed or underpowered gate stops
    promotion.
 3. **Then:** fix only demonstrated mechanisms, repeat the registered gate as

@@ -45,6 +45,29 @@ cap, which is reported, not repaired), G2 and G3b pooled, G5 on W17. Registry +4
 **After.** Only a variant passing every gate in B or C earns the full 2017–2020 window:
 the sealed D18 screen for E6, a new run for H-ref. 2021+ follows only per D18.
 
+**Step A outcome (2026-10-26, `out/beta_gates/beta_gates.json` on the volume,
+`out/beta_gates_modal.log`): no candidate passes all four windows; stopped per the rule.**
+Realised-on-predicted slope (95% CI inside [0.5, 1.5] = pass):
+
+| | W17 | W18 | W19 | W20 | mean abs(slope − 1) |
+|---|---:|---:|---:|---:|---:|
+| B0 engine, calibrated | 1.76 | 0.43 | 1.38 | 0.58 | 0.53 |
+| B1 engine, uncalibrated | **1.11** | 0.28 | **0.89** | 0.40 | 0.38 |
+| B2 Welch | 1.61 | 0.32 | 1.21 | 0.52 | 0.50 |
+| B3 Dimson | 0.54 | 0.08 | **0.68** | 0.18 | 0.63 |
+| B4 beta_60m | **0.77** | 0.17 | 0.48 | 0.26 | 0.58 |
+| B5 Welch+Dimson | **1.00** | 0.16 | **0.96** | 0.32 | 0.39 |
+
+Bold = passed that window. In the calm windows (W17, W19), B1 and B5 are calibrated, and
+the calibration map (b ≈ 0.63–0.69) overcompresses B0 (1.76, 1.38). In the two sell-off
+windows (Feb 2018, Feb 2020) every candidate fails: realised betas compress (slopes
+0.08–0.58, mean realised 0.88–0.96 against predicted 1.1–1.4), which no trailing estimator
+foresees. Rank correlation is 0.2–0.7 everywhere. The W17 E6 books were dollar-neutral at
+both formations (net 0.000; weights read from the sealed targets, no returns), so their
++0.16..+0.23 realised beta is not a slope effect, which would cancel at net 0 and
+predicted beta 0. It is name-level beta error lined up with the long/short selection.
+Registry +6. Steps B and C wait for the user.
+
 ## D19 — Earn the window: short-window gates before any full-window or OOS run (2026-10-26)
 
 **Decision (user, 2026-10-26: "If the tests are not statistically significant for each
