@@ -794,3 +794,26 @@ band ±0.20); beta error = realised 21-session OLS book beta − predicted.
     - Neutral books can still carry beta at net 0 and predicted beta 0. The W17 E6 books
       did (+0.16..+0.23), because the beta error lined up with the long/short selection.
       That points to style exposure, not to the beta's level or scale.
+
+102. **Test the test before trusting a gate (D21 phase 0a, 2026-10-26).** On synthetic
+    data with known betas, the 5-day block bootstrap behind the D19/D20 beta intervals
+    covered 85%, not 90%. A book at the ±0.10 edge passed 9.5% of the time instead of 5%.
+    - Within-window and wild bootstraps were no better.
+    - HC3 + t intervals were calibrated (89–90%). Their small excess size (7.0%) came from
+      zero-filled missing returns pulling beta toward 0 by 0.002.
+    - E6 is exactly invariant to rescaling μ, so the full-window forecast scale is not a
+      look-ahead for E6 books.
+
+103. **Several betas plus style bands make E6 beta-neutral in realised terms; leg risk in
+    sell-offs is what remains (D21 phase 1, 2026-10-26).** The construction was the
+    uncalibrated engine beta, hard, plus Welch+Dimson and beta_60m bands at 0.05 and style
+    bands at 0.25.
+    - Every E6 variant's pooled realised beta over Jan–Feb 2017–2020 was within ±0.07,
+      sell-offs included. The plain decile sort scaled to beta 0 carried +0.06..+0.08.
+    - Step 2 cut realised vol 15–30% against the paper reference, and was significant.
+    - Book risk is calibrated. Leg risk is not: realised/predicted 0.7 calm, 1.8 in
+      sell-offs, for every covariance model tried (factor, Ledoit–Wolf, single index).
+      The problem is forecasting the market-variance level, not the stock-level structure.
+    - All E6 variants missed the leg band narrowly (CI upper 1.50–1.55 vs 1.50).
+    - The calibration map helps only in sell-offs, where betas compress. The uncalibrated
+      beta is better on the traded legs.

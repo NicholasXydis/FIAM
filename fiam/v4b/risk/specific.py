@@ -74,6 +74,31 @@ def qlike(realised: pd.Series, forecast: pd.Series) -> pd.Series:
     return ratio - np.log(ratio) - 1
 
 
+def choose_ewma_asof(losses: pd.DataFrame, asof) -> dict:
+    """Choose from paired, fully observed losses whose labels have completed.
+
+    This D26 selector is a standalone research mechanism; the current risk
+    model does not use it until a separate experiment registers integration.
+    """
+    required = ["formation", "label_end", "ewma84", "ewma168"]
+    data = losses[required].copy()
+    data["formation"] = pd.to_datetime(data["formation"], errors="coerce")
+    data["label_end"] = pd.to_datetime(data["label_end"], errors="coerce")
+    for col in ("ewma84", "ewma168"):
+        data[col] = pd.to_numeric(data[col], errors="coerce")
+    cutoff = pd.Timestamp(asof)
+    finite = np.isfinite(data["ewma84"]) & np.isfinite(data["ewma168"])
+    eligible = data[finite & (data["formation"] <= cutoff) & (data["label_end"] <= cutoff)
+                    & (data["label_end"] >= data["formation"])].copy()
+    monthly = eligible.groupby("formation")[["ewma84", "ewma168"]].mean().sort_index().tail(60)
+    used = eligible[eligible["formation"].isin(monthly.index)]
+    latest = used["label_end"].max() if not used.empty else None
+    winner = "ewma84"
+    if len(monthly) >= 12 and monthly["ewma168"].mean() < monthly["ewma84"].mean():
+        winner = "ewma168"
+    return {"winner": winner, "formations": int(len(monthly)), "latest_label_end": latest}
+
+
 # Diebold-Mariano t on monthly mean loss differences (negative favours a).
 def diebold_mariano(diff: pd.Series, lags: int = 3) -> float:
     d = diff.dropna().to_numpy(dtype=float)

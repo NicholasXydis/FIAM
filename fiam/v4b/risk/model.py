@@ -72,6 +72,7 @@ class RiskModel:
         s0 = sessions[sessions > eom][0] if (sessions > eom).any() else sessions[-1]
         F = covariance.factor_cov_horizon(self.factors, s0, self.factor_hl, horizon)
         F1 = covariance.factor_cov(self.factors, s0, self.factor_hl)
+        F_daily = covariance.factor_cov_daily(self.factors, s0, self.factor_hl)
         d = self.spec.loc[eom].reindex(names)
         med = d.median()
         return {
@@ -81,6 +82,7 @@ class RiskModel:
             "B": B,
             "F": F,
             "F1": F1,
+            "F_daily": F_daily,
             "d": d.fillna(med),
             "beta": b.loc[names],
             "sxx": self._sxx(eom),
@@ -124,6 +126,17 @@ def variance(snap: dict, w: pd.Series, stressed: bool = False) -> tuple[float, f
     spec_var = float((ww**2 * d).sum() * snap["horizon"])
     total = factor_var + spec_var
     return total, (factor_var / total if total > 0 else float("nan"))
+
+
+def daily_variance(snap: dict, w: pd.Series) -> float:
+    """One-session variance from contemporaneous factors and specific risk."""
+    bw, ww, d = _aligned(snap, w)
+    factors = snap["F_daily"].reindex(index=snap["B"].columns, columns=snap["B"].columns).to_numpy()
+    return float(bw @ factors @ bw + (ww**2 * d).sum())
+
+
+def daily_vol(snap: dict, w: pd.Series) -> float:
+    return float(np.sqrt(daily_variance(snap, w)))
 
 
 # Annualised vol over the snapshot horizon (252 sessions a year).

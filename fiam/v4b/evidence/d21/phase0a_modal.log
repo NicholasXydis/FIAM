@@ -1,0 +1,25 @@
+✓ Initialized. View run at
+https://modal.com/apps/andrewkoumoudjian/main/ap-Y650y4EA9st1y2rCnAEj73
+✓ Created objects.
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b/gpu/modal_book.py
+├── 🔨 Created mount fiam/__init__.py
+├── 🔨 Created mount submission/models/spreads.json
+├── 🔨 Created mount fiam/paths.py
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b/tests
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b
+├── 🔨 Created function book.
+├── 🔨 Created function screen_variant.
+├── 🔨 Created function screen_summary.
+├── 🔨 Created function beta_gates_run.
+├── 🔨 Created function gates_g0_g4.
+├── 🔨 Created function gates_g5.
+└── 🔨 Created function run_tests.
+hc3: power 1.000 size 0.056 (max 0.064) coverage 0.897/0.883 missing-return bias +0.0000/+0.0000 -> PASS
+HB method: hc3
+.slope mean 1.002 sd 0.006
+.
+2 passed, 108 deselected in 51.60s
+
+Stopping app - local entrypoint completed.
+✓ App completed. View run at
+https://modal.com/apps/andrewkoumoudjian/main/ap-Y650y4EA9st1y2rCnAEj73

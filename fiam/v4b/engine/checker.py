@@ -16,6 +16,17 @@ def floor_cap(panel: pd.DataFrame) -> pd.Series:
     return panel[["me", "me_company"]].min(axis=1, skipna=False)
 
 
+def short_floor_formation(weights: pd.Series, month: pd.DataFrame, floor: float) -> bool:
+    """Check each formation short's dated market cap; absent data fails closed."""
+    shorts = weights.index[weights < -EPS]
+    if shorts.empty:
+        return True
+    if not {"me", "me_company"}.issubset(month.columns) or not month.index.is_unique:
+        return False
+    cap = floor_cap(month.reindex(shorts))
+    return bool(cap.ge(floor).all())
+
+
 # Each (date, permno)'s floor cap at the last eom before date.
 def caps_at(pairs: pd.DataFrame, panel: pd.DataFrame) -> pd.Series:
     p = panel.assign(cap=floor_cap(panel))[["permno", "eom", "cap"]].dropna().copy()

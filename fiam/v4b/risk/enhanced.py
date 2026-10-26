@@ -125,7 +125,8 @@ class EnhancedRiskModel(model.RiskModel):
             return snap
         lf = self._lam(self.lam_f, snap["s0"]) if self.vra else 1.0
         ls = self._lam(self.lam_s, snap["s0"]) if self.vra else 1.0
-        F, F1, d, B = snap["F"] * lf, snap["F1"] * lf, snap["d"] * ls, snap["B"].copy()
+        F, F1, F_daily, d, B = (snap["F"] * lf, snap["F1"] * lf,
+                                snap["F_daily"] * lf, snap["d"] * ls, snap["B"].copy())
         beta, ab = snap["beta"], None
         if self.beta_cal:
             from fiam.v4b.risk import beta_cal as bc
@@ -142,7 +143,9 @@ class EnhancedRiskModel(model.RiskModel):
             eye = pd.DataFrame(np.eye(self.pca), index=load.columns, columns=load.columns)
             F = _block(F, eye * horizon * ls, cols)
             F1 = _block(F1, eye * ls, cols)
-        return snap | {"B": B, "F": F, "F1": F1, "d": d, "beta": beta, "beta_map": ab, "lam_f": lf, "lam_s": ls}
+            F_daily = _block(F_daily, eye * ls, cols)
+        return snap | {"B": B, "F": F, "F1": F1, "F_daily": F_daily, "d": d, "beta": beta,
+                       "beta_map": ab, "lam_f": lf, "lam_s": ls}
 
 
 def _block(a: pd.DataFrame, b: pd.DataFrame, cols: list) -> pd.DataFrame:

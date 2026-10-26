@@ -1,7 +1,7 @@
 # Research roadmap: what must be established for FIAM v4b
 
 **Date:** 2026-10-26. **Status:** research and proposed experiments, not an
-adopted decision or a performance claim. D16–D20 remain binding. No sealed
+adopted decision or a performance claim. D16–D25 remain binding. No sealed
 D18 full-window results were read to write this document.
 
 ## Executive assessment
@@ -23,9 +23,11 @@ not by itself proof of a permanent defect or its root cause. The window was
 already inspected; it is now diagnostic data for any repair. D20 records
 Andrew's subsequent authorization to compare six beta candidates across four
 short windows and, subject to those results, regate E6 and a plain decile sort.
-No candidate passed all four windows: D20 requires stopping and reporting,
-with no additional candidates without Andrew. Steps B and C are not authorized
-by the failed step A.
+No candidate passed all four windows. Andrew subsequently authorized the D21
+hedged-beta experiment: pooled beta and relative risk improved but all variants
+failed at least one gate. D22–D24 subsequently identified and addressed gate
+measurement and short-eligibility errors; those repairs do not retroactively
+promote D21 results or permit a full-window screen.
 
 The earlier E5 2021–26 diagnostic is −1.7%/year, with long alpha −3.6% and
 short alpha +0.6%, and the window has been repeatedly viewed. The earlier
@@ -68,6 +70,10 @@ formation or decision times, and unobserved returns were not presented as known.
    must not be portrayed as a point-in-time 2017 input. Positive scale leaves
    the *floor inequality* unchanged, but costs and risk calibrated in absolute
    return units still need a consistent economic interpretation.
+   **D25 finding:** the specific-risk method and factor half-life were selected
+   on the full 2017–2020 window and then used within it. That is model-selection
+   look-ahead in that validation period, even if the underlying estimates are
+   individually lagged. Use pre-window or expanding selection for a new test.
 2. Reconcile the market index, dividend treatment, stock total returns,
    identifier and exit mapping, factor times, and the 2026 proxy; trace all
    gaps and compare zero-fill against explicit missingness and bounded
@@ -78,7 +84,9 @@ formation or decision times, and unobserved returns were not presented as known.
    and monthly summaries. Audit the short-floor, participation, liquidation and
    policy exceptions individually; distinguish legal mandate rules from policy
    and capacity alerts. The required $500m short-eligible market-cap condition
-   and aggregate $500m short exposure floor are separate checks.
+   is a per-company market-cap rule, not an aggregate short-exposure floor.
+   The D19/D21 aggregate short-notional threshold is an additional research
+   constraint and must be labeled separately (D24).
 4. Freeze source/version hashes and retain negative attempts. Commit no private
    WRDS/OptionMetrics data, individual holdings, forecasts or sealed screen
    outputs. Preserve accessible aggregate evidence and the private artifact
@@ -95,8 +103,10 @@ traded, not just average individual-stock error. Pre-register each new
 hypothesis and window under D19. Andrew has authorized D20's four two-month
 windows; January–February 2017 is already viewed. D20 governs their use and
 does not authorize any other window or a full run before its gates pass.
-Its six-candidate beta gate has now failed. The proposals below are research
-recommendations, not permission to run additional candidates or to regate E6.
+Its six-candidate beta gate failed; D21 was separately authorized and also had
+no survivor. D22 and D23 synthetic checks show that the existing volatility
+interval, and both tested bootstrap alternatives, are not adequately calibrated
+under the specified heavy-tail scenario. No replacement interval has passed.
 
 The D19 realized-on-predicted slope 1.76, bootstrap interval [1.43, 2.11], and
 realized book beta +0.16 to +0.23 fail the specified gates. That is evidence

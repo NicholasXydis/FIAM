@@ -116,6 +116,18 @@ def test_reweighting_lowers_risk_at_the_floor(formation):
     assert risk_model.vol(formation.snap, w9) < risk_model.vol(formation.snap, w_eq)
 
 
+# D21 0b: E6 is invariant to any positive rescaling of mu (the frozen full-window
+# scale and kappa only rescale mu, so they cannot change an E6 book).
+@pytest.mark.parametrize("weighting", ["vw", "ew"])
+def test_mu_scale_invariance(formation, weighting):
+    import dataclasses
+    m = load_mandate()
+    w1, _ = optimize.build_book(formation, m, step(weighting))
+    w2, _ = optimize.build_book(dataclasses.replace(formation, mu=formation.mu * 3.7), m, step(weighting))
+    pd.testing.assert_index_equal(w1.index, w2.index)
+    assert np.abs(w1 - w2.reindex(w1.index)).max() < 1e-6
+
+
 # Hysteresis: a held long still in decile 8 stays; one that fell to the middle goes.
 def test_hysteresis_keeps_d9_holders_only(formation):
     dec = deciles(formation)

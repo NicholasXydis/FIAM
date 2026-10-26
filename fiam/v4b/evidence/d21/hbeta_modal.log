@@ -1,0 +1,25 @@
+✓ Initialized. View run at
+https://modal.com/apps/andrewkoumoudjian/main/ap-nafX57urwv3PK63AKfNBcS
+✓ Created objects.
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b/gpu/modal_book.py
+├── 🔨 Created mount fiam/__init__.py
+├── 🔨 Created mount fiam/paths.py
+├── 🔨 Created mount submission/models/spreads.json
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b/tests
+├── 🔨 Created mount /home/drewclaw/Forkfiam/fiam/v4b
+├── 🔨 Created function book.
+├── 🔨 Created function screen_variant.
+├── 🔨 Created function screen_summary.
+├── 🔨 Created function beta_gates_run.
+├── 🔨 Created function hbeta_run.
+├── 🔨 Created function gates_g0_g4.
+├── 🔨 Created function gates_g5.
+└── 🔨 Created function run_tests.
+W17 done
+W18 done
+W19 done
+W20 done
+survivors_before_g5 []
+Stopping app - local entrypoint completed.
+✓ App completed. View run at
+https://modal.com/apps/andrewkoumoudjian/main/ap-nafX57urwv3PK63AKfNBcS

@@ -1,0 +1,43 @@
+{
+  "reps": 10000,
+  "sessions": 160,
+  "draws": 500,
+  "seed": 20261027,
+  "bootstrap_seed": 20261028,
+  "distributions": {
+    "gaussian": {
+      "chi_square": {
+        "coverage": 0.9048,
+        "unit_power": 1.0
+      },
+      "percentile": {
+        "coverage": 0.8843,
+        "unit_power": 1.0
+      },
+      "basic_log": {
+        "coverage": 0.8882,
+        "unit_power": 1.0
+      }
+    },
+    "student_t5": {
+      "chi_square": {
+        "coverage": 0.692,
+        "unit_power": 0.9946
+      },
+      "percentile": {
+        "coverage": 0.8293,
+        "unit_power": 0.974
+      },
+      "basic_log": {
+        "coverage": 0.8439,
+        "unit_power": 0.9653
+      }
+    }
+  },
+  "eligible": {
+    "chi_square": false,
+    "percentile": false,
+    "basic_log": false
+  },
+  "pick": null
+}

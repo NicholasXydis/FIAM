@@ -31,6 +31,7 @@ from fiam.v4b.risk import covariance
 
 # Exact-penalty weights on policy slacks (return units): tier 1 >> tier 2 >> alpha.
 M1, M2 = 5.0, 1.0
+EXTRA_BETA_BAND = 0.05  # D21: |sum w beta_k| for policy.beta_bands_extra
 # Sessions over which the simulator may spill one rebalance (sim Setup).
 EXEC_DAYS = 5
 # Fees: the dated IBKR/SEC/FINRA schedule in engine/fees.py, the same lines the
@@ -289,8 +290,14 @@ def solve_qp(
         beta_cons = [beta @ w <= p.beta_band + sbeta, -beta @ w <= p.beta_band + sbeta]
         cons += beta_cons
         shadow_constraints["beta"] = (["mkt"], beta_cons)
+        sextra = None
+        extra = f.snap.get("beta_extra")
+        if extra is not None and len(extra.columns):  # D21: v4-style, several betas at once
+            ex = extra.reindex(names).fillna(extra.median()).to_numpy(dtype=float)
+            sextra = cp.Variable(ex.shape[1], nonneg=True)
+            cons += [ex.T @ w <= EXTRA_BETA_BAND + sextra, -(ex.T @ w) <= EXTRA_BETA_BAND + sextra]
         widths = _band_widths(f, 0.25)
-        wide = _band_widths(f, 1.0)
+        wide = _band_widths(f, p.style_band_share)
         tier2 = []
         for k, col in enumerate(B.columns):
             if col == "size":
@@ -306,8 +313,8 @@ def solve_qp(
                 cons += band_cons
                 shadow_constraints[col] = ([col], band_cons)
                 tier2.append(s_k)
-        obj = obj + M1 * (cp.sum(ssec) + sbeta) + M2 * sum(tier2)
-        slacks |= {"sector_max": ssec, "beta": sbeta}
+        obj = obj + M1 * (cp.sum(ssec) + sbeta + (cp.sum(sextra) if sextra is not None else 0)) + M2 * sum(tier2)
+        slacks |= {"sector_max": ssec, "beta": sbeta} | ({"beta_extra_max": sextra} if sextra is not None else {})
     # Annualised vol guardrails (base and stressed), hard but generous.
     var_cap = (p.vol_target if stage2_target else SIGMA_MAX) ** 2 * f.horizon / 252
     cons += [risk <= var_cap]

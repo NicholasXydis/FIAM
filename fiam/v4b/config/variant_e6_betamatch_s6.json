@@ -66,7 +66,9 @@
     "beta_calibration": true,
     "vol_target": 0.06,
     "vol_target_risk_aversion": 2.0,
-    "beta_source": "engine"
+    "beta_source": "engine",
+    "beta_bands_extra": [],
+    "style_band_share": 1.0
   },
   "banned_features": [
     "adjfct",

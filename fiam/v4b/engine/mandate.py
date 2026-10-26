@@ -98,6 +98,11 @@ class Policy:
     # when beta_calibration); "hedge_uncal", "welch", "dimson", "welch_dimson",
     # "beta_60m" = risk/beta_candidates.py, replacing the market column of B.
     beta_source: str
+    # Extra market-beta bands (D21): sources from risk/beta_candidates.SOURCES held
+    # within EXTRA_BETA_BAND (optimize.py) with tier-1 slack, as v4 holds several betas.
+    beta_bands_extra: tuple
+    # Width share of the value/momentum/profitability/investment bands (size uses 0.25).
+    style_band_share: float
 
 
 # The whole mandate, loaded once per run.
@@ -187,6 +192,10 @@ def check(m: Final) -> list[str]:
         out.append("beta_calibration needs the enhanced risk model")
     if p.beta_source not in ("engine", "hedge_uncal", "welch", "dimson", "welch_dimson", "beta_60m"):
         out.append(f"unknown beta_source {p.beta_source!r}")
+    if any(b not in ("hedge_uncal", "welch", "dimson", "welch_dimson", "beta_60m") for b in p.beta_bands_extra):
+        out.append(f"unknown beta_bands_extra {p.beta_bands_extra!r}")
+    if not 0 < p.style_band_share <= 1.0:
+        out.append("style_band_share must be in (0, 1]")
     if p.beta_source != "engine" and p.beta_calibration:
         out.append("beta_calibration applies to the engine beta only; turn it off for another beta_source")
     return out

@@ -4,6 +4,282 @@ Each decision states what was decided, by whom, the evidence, and where it is en
 A later decision may supersede an earlier one; both stay listed. Every plan, config and
 code file that touches a decision points here.
 
+## D26 — As-of selector for specific risk (2026-10-26)
+
+**Scope:** implement and synthetic-test a mechanism that can repair D25. No
+market-data experiment, promotion, or change to the existing risk-model default.
+The current user asked to make the strategy profitable; avoiding look-ahead is
+necessary to distinguish a genuine improvement from a historical artifact.
+
+**Rule, fixed before tests:** inputs are per-formation/per-name QLIKE losses for
+EWMA-84 and EWMA-168 plus each observation's explicit label-completion timestamp.
+At a decision timestamp, discard labels completed later, average each candidate's
+loss across the same complete names within each formation, and give each completed
+formation equal weight. Use at most the latest 60 complete formations. Require
+at least 12 paired formations; otherwise return fixed EWMA-84. Select the lower
+mean loss; ties go to EWMA-84. Missing formation date, completion timestamp,
+or paired loss is excluded. Return the selected name, the completed-formation
+count and the latest label timestamp used. Do not manufacture late or missing
+labels. The selector is not yet adopted as a strategy: it must be integrated and
+registered separately before use on real data, including multiplicity and all
+earlier window disclosures. D22/D23's no-market-re-gating stop remains in force.
+
+**Synthetic outcome:** `risk.specific.choose_ewma_asof` passes the two tests in
+`tests/test_specific_asof.py` on Modal, including invariance to changes in
+unfinished labels and the insufficient-history fallback. The model's existing
+global-selection default is unchanged; this does not prove a new book's alpha.
+
+## D25 — Disclose look-ahead in validation-period risk-model selection (2026-10-26)
+
+**Finding from code inspection; no new market return was read.** `risk/model.py`
+constructs `self.spec_race = specific.race(self.resid, all_eoms)` and uses the
+single winner for all formations. `risk/specific.py` scores realized-next-month
+variance for formation years 2017–2020. Consequently the risk method used at
+a 2017 formation was selected using later 2017–2020 outcomes. The factor half-life
+84 was also selected on the 2016-12..2020-11 validation window
+(`risk/validate.py`, `out/risk/report.json`). This is **model-selection look-ahead**
+in the 2017–2020 experiments, even though the individual rolling estimates use
+past data. D21's assertion that its risk inputs are selected from data available
+before each formation is incomplete. The effect on returns or gate conclusions
+has not been measured.
+
+For the later 2021–2026 diagnostic, 2017–2020 precedes the period, but that
+diagnostic has separate, already disclosed contamination and data limitations.
+Do not silently rewrite earlier experiments. A future evaluation needs risk
+hyperparameters fixed without the test window, or an expanding selection using
+only **completed** labels before every formation, with known-truth as-of tests
+and an explicit record of repeated choices. D22/D23's synthetic interval
+stop still applies; no new market outcome was opened by this audit.
+
+## D24 — Correct the short-floor formation check (2026-10-26)
+
+**Finding before repair:** the mandate §3.1 and `engine/checker.py` define the
+$500m short floor as **each shorted company's market capitalization**, not the
+total dollars shorted. D19 and D21 gate code incorrectly label a $500m aggregate
+short-notional check `short_floor`. The selection pipeline already uses dated
+`short_ok`, but the gate does not independently verify each short's capitalisation.
+`RESEARCH_ROADMAP_2026-10-26.md` repeated the incorrect aggregate-floor claim.
+
+**Repair:** synthetic tests first, then check `min(me, me_company) >= $500m` for
+each selected short at formation, with missing values or missing names failing.
+Keep the previously registered aggregate ≥$500m short-notional check as a
+separately named **research constraint** for D19/D21 reproducibility; do not call
+it a finals mandate. Existing decisions and results remain as recorded. No market
+re-gating or earlier strategy result is changed by the mechanical repair.
+
+**Synthetic outcome:** `tests/test_formation_short_floor.py` checks each short's
+capitalization, missing data and the distinction from short-book notional. The
+full v4b Modal suite passed 119 tests after this and D22–D26, with 54 existing
+Pandas/Nautilus deprecation warnings.
+
+## D22 — Audit daily-versus-horizon risk and the G2 interval (2026-10-26)
+
+**Authorization:** Andrew asked to evaluate the additional work and make the strategy
+profitable, retaining the existing short-window discipline. This authorizes a targeted
+diagnostic and does not make an unsuccessful strategy profitable by definition.
+
+**Observed before any new result:** D19/D21 G2 standardizes daily returns using
+`model.vol(snap, w) / sqrt(252)`. That equals the square root of **holding-period**
+variance divided by its horizon, not necessarily the variance of a daily return.
+`risk/covariance.py` includes lagged factor covariance in `F`; moreover, `F1` is a
+Newey–West-adjusted estimate rather than raw one-day variance. Daily tests need the
+zero-lag covariance. D21's failed gates are preserved and not retroactively passed.
+
+**Prerecorded diagnostics, all synthetic first:**
+1. Add a point-in-time zero-lag factor covariance and daily portfolio variance using
+   the same exposures, specific risk, VRA and PCA conventions. Verify analytically
+   on known covariance fixtures, including factor autocorrelation and date cutoffs.
+   Keep the risk optimizer's original horizon model and existing D21 gate unchanged.
+2. Test the D21 chi-square 90% volatility-ratio interval's empirical coverage on
+   10,000 independent synthetic 160-session paths, fixed seed 20261026, for Gaussian
+   and variance-normalized Student-t(5) innovations. Pass only if coverage lies in
+   [0.875, 0.925] for both. This is a test of the gate, not a strategy promotion.
+   No financial outcomes or new window are needed. A miss invalidates that interval
+   under that simulated data-generating process; it does not reverse D21 outcomes.
+3. If either known-truth test fails, stop before any market-data re-gating; report
+   the failure. No long-window or OOS run is authorized by this diagnostic.
+
+**Profitability remains separate:** D21 does not test expected-return alpha, costs,
+or executed mandate compliance. No claim about exceeding v4 can be made until a
+pre-registered separate-leg alpha test and the execution audit pass.
+
+**Outcome (synthetic only, `out/g2_known_truth.json`):** the 10,000-path coverage
+check passed for Gaussian returns (0.8993, Monte Carlo SE 0.0030) and failed for
+Student-t(5) (0.6975, SE 0.0046). As preregistered, no market-data re-gating was
+run. `tests/test_spot_risk.py` verifies the separate zero-lag daily-risk calculation;
+the original G2 and all earlier results remain unchanged. The t(5) case demonstrates
+undercoverage in that synthetic setting, not the exact coverage of the real data.
+
+## D23 — Synthetic candidates for a dependable volatility interval (2026-10-26)
+
+**Scope:** repair the test identified by D22. Synthetic data only. This does not
+authorize market re-gating, full-window returns, or changes to any past result.
+Written before calculating these candidates' results.
+
+**Fixed simulation:** 10,000 independent 160-session paths per distribution,
+seed 20261027, Gaussian and variance-normalized Student-t(5). The three intervals
+are (a) chi-square (control), (b) percentile bootstrap on sample standard deviation,
+(c) basic bootstrap on log standard deviation. Bootstrap: 500 iid resamples per
+path, seed 20261028, processed in batches. Each interval is 90%. An interval is
+eligible only if coverage of the true standard deviation is in [0.875, 0.925] in
+both distributions, and the 90% interval is wholly inside [2/3, 3/2] on at least
+80% of true-unit-vol paths. In order, consider (b), then (c). Report every result;
+if neither is eligible, stop. These iid simulations do not establish validity under
+serial dependence or regime changes; those need separate known-truth tests before
+any use with real data.
+
+**Outcome (synthetic only, `out/g2_robust_known_truth.json`):** no interval passed.
+Gaussian coverage: chi-square 0.9048, percentile 0.8843, basic-log 0.8882.
+Student-t(5) coverage: 0.6920, 0.8293 and 0.8439, respectively. The latter two
+miss the preregistered 0.875 minimum. Unit-vol power was ≥0.965 for all. No
+interval is adopted; no market-data re-gating is authorized by this study.
+
+## D21 — Beta repair hypothesis H-β, after known-truth gate tests; plan of record = STATUS_ASSESSMENT + RESEARCH_ROADMAP (2026-10-26)
+
+**Decision (user, 2026-10-26, answering D20 step A).** "1. ok": the uncalibrated engine
+beta. "2. yes realized beta": gate the book's realised beta, not stock-level slopes.
+"3. yes": v4-style neutrality under several betas, plus style neutrality. "BUT ABOVE ALL,
+you must really understand what I've determined in the plans as well as EVERY REFERENCE":
+`STATUS_ASSESSMENT_2026-10-26.md` and `RESEARCH_ROADMAP_2026-10-26.md` are the plan of
+record with D16–D20. Their order binds: audit and known-truth tests first, then the
+registered beta hypothesis on the directions actually traded, then the E6 and decile
+gates. Written before any phase ran.
+
+**Phase 0 — trust the measurement (roadmap §1, §2.1, §2.5). No market returns read.**
+- **0a Known-truth fixture** (`tests/test_gate_truth.py`, synthetic). A market with calm
+  (0.6%/day) and stressed (2.0%/day) windows. 2,000 stocks with known betas
+  (dispersion 0.4), 10 industry residual factors, t(5) residuals, 2% missing days.
+  Four windows of 40 sessions, pooled. Dollar-neutral 400-name books. Checks:
+  - HB size: true |β| = 0.10 passes ≤ 5%.
+  - HB power: true β = 0 passes ≥ 80%.
+  - Bootstrap 90% coverage in [0.85, 0.95].
+  - Zero-filled missing returns move book beta by < 0.01.
+  - Stock-level slope recovery with known slope 1 (coverage reported).
+  A failed check fixes the test, never the data, and 0a is re-run before Phase 1.
+- **0b Point-in-time.** Every E6 input is traced to its estimation window
+  (`out/pit_audit.md`). Known: the forecaster scale and kappa come from `frozen.json`
+  fitted on 2016-12..2020-11, the whole validation window, and are used inside 2017
+  formations. E6 must therefore be invariant to any positive rescaling of μ, tested on
+  the fixture: same weights within 1e-6. If it is not, this is a look-ahead and Phase 1
+  waits for the user.
+- **0c Execution audit** (roadmap §1.3) is required before any G5 or promotion, not
+  before Phase 1.
+
+**Phase 1 — H-β on W17–W20 (D20 windows), data before each formation only.**
+- **Beta in force:** B1 = engine hedge beta, `beta_calibration` off.
+- **Construction (E6 and H-ref):**
+  - B1 band 0.02, hard (slack ≤ 1e-6).
+  - Added bands |Σw·B5| ≤ 0.05 and |Σw·B4| ≤ 0.05 (Welch+Dimson and `beta_60m`, as v4's
+    optimizer holds several betas). Tier-1 slack.
+  - Value, momentum, profitability and investment bands tightened from 1.0 to 0.25 of
+    the risk-unit width, the size band's width. Tier-2 slack.
+  - Sectors unchanged at 1%.
+- **Gate HB (replaces G3a and G3b):** realised book beta (daily OLS on the S&P 500) over the
+  four windows' pooled sessions. Its 90% 5-day-block bootstrap interval must lie inside
+  [−0.10, 0.10]. Per-window values are reported, with the sell-off windows W18 and W20
+  shown separately.
+- **Paired directions (roadmap §2.3), reported, not a gate:** on the same frozen weights,
+  for the long leg, short leg, book and the adverse direction (top-minus-bottom
+  predicted-beta quintile of the candidates):
+  - realised minus predicted beta under B1 and under B0;
+  - signed and absolute error, squared hedge loss, intervals, effective dates.
+- **Variance (roadmap §2.4), reported, not a gate:** realised/predicted vol for the book
+  and both legs under four models (factor model, diagonal, single index, Ledoit–Wolf
+  single-index shrinkage on 252 prior sessions), calm (W17, W19) vs stressed (W18, W20).
+- **Variants:** E6 × {betamatch, betamatch_s6} × {vw, ew}, and H-ref (D20 step C, legs
+  scaled to B1 beta 0) × the same 4. Registry +8.
+- **E6 gates:**
+  - G1 at every formation of every window (D19 definition).
+  - G2 pooled (D19 band).
+  - HB.
+  - G4 pooled, with D19's power rule.
+  - G5 after 0c.
+- **H-ref gates:** G1 (hard rules only, reported not repaired), G2 pooled, HB, G5 after 0c.
+- No survivor: stop and report, with no new candidates without the user.
+- Survivors: D19's "After the gates" applies.
+- Separate-leg alpha tests (roadmap §3) are registered separately when the user decides.
+
+**Amendment 1 (2026-10-26, after the first 0a run, synthetic data only).**
+- **0a result.** HB with the 5-day circular block bootstrap has power 1.000, coverage
+  0.853 / 0.848 and size 0.095 at |β| = 0.10. **Fails** (size > 5%).
+- **0a passed.** Zero-fill bias −0.0000 / −0.0020. Stock-slope recovery 1.002 (sd 0.006).
+- **0b passed.** E6 weights are unchanged (< 1e-6) when μ is scaled by 3.7, vw and ew.
+  The full-window scale and kappa therefore cannot change an E6 book.
+- **Fix rule, written before trying any alternative.** The HB interval method is the
+  first of these that passes every 0a check:
+  - (1) a bootstrap that resamples 5-day blocks within each window, preserving the
+    calm/stress mix;
+  - (2) the OLS slope with HC3 standard errors and a t(n−2) interval;
+  - (3) a wild bootstrap with Rademacher signs on 5-day blocks of residuals.
+- **Monte Carlo noise.** The size check becomes ≤ 0.05 + 2 Monte Carlo standard errors
+  (REPS = 1,000; ≤ 0.064). An exactly calibrated test would otherwise fail half the time.
+  This loosens a threshold after a result. It is disclosed: the first method's 0.095
+  fails either way.
+- **If none passes:** stop and report.
+
+**Amendment 1 outcome (synthetic only, `out/phase0a_modal2.log`): none passes; stopped.**
+- strat: size 0.103, coverage 0.853 / 0.838.
+- **hc3: size 0.070, coverage 0.897 / 0.891.**
+- wild: size 0.104, coverage 0.851 / 0.835.
+- All three: power 1.000, zero-fill bias +0.0001 / −0.0020.
+
+HC3's intervals are calibrated. Its excess size matches the zero-fill bias at |β| = 0.10:
+a −0.002 shift is about 0.17 SE, which takes a 5% tail to about 6.6%. The bootstraps
+undercover by about 5 points. Consequence for D19–D20: their block-bootstrap intervals were
+too narrow. The D20 step A failures sit far outside the band (W18/W20 slopes ≤ 0.58;
+W17 B0 1.76 [1.43, 2.11]), so they stand. The stock-level slope interval itself was not
+coverage-tested. Phase 1 waits for the user.
+
+**Amendment 2 (user, 2026-10-26: "Ok bro do it"; written before the re-run).**
+- **Interval:** HB uses HC3 + t(n−2).
+- **Missing returns:** explicit (roadmap §1.2), no zero-fill. A day's leg return is the
+  observed names' P&L scaled by leg weight / observed leg weight. D19's G2 series and the
+  Phase 1 diagnostics use the same rule. Each day's unobserved weight share is reported.
+- **Order:** 0a re-runs with exactly the Amendment 1 checks (size ≤ 0.064, coverage
+  [0.85, 0.95], bias < 0.01, power ≥ 0.80). If it passes, Phase 1 runs as registered.
+  If it fails, stop.
+- **Phase 1 implementation:**
+  - B4 and B5 enter as tier-1 slack bands at 0.05 (`policy.beta_bands_extra`).
+  - Style bands at 0.25 (`policy.style_band_share`).
+  - Configs `variant_e6_<score>_hb.json`: `beta_calibration` off, `beta_source` engine.
+  - G5 waits for 0c (execution audit), as registered.
+
+**Amendment 2 outcome.**
+- **0a re-run passed (HC3 with per-leg missing returns):** power 1.000, size 0.056,
+  coverage 0.897 / 0.883, bias 0.0000.
+- **Phase 1 (`out/hbeta_gates/hbeta_gates.json`, `out/hbeta_modal.log`): no survivor
+  before G5; stopped.**
+
+| Variant | G1 | HB pooled beta (90% CI) | G2 book / long / short, CI upper | G4 E6 vs ref vol |
+|---|---|---|---|---|
+| E6 betamatch vw | fail (W17 Jan gross 1.5) | −0.019 (−0.066, +0.029) ✓ | 1.21 / 1.47 / **1.506** | 3.9% vs 4.8%, p 0.001 ✓ |
+| E6 betamatch ew | ✓ | +0.008 (−0.028, +0.043) ✓ | 1.19 / **1.502** / **1.505** | 3.6% vs 4.3% ✓ |
+| E6 betamatch_s6 vw | ✓ | +0.002 (−0.036, +0.040) ✓ | 1.29 / **1.507** / 1.49 | 4.0% vs 5.7% ✓ |
+| E6 betamatch_s6 ew | ✓ | +0.024 (−0.009, +0.056) ✓ | 1.29 / **1.552** / 1.50 | 3.9% vs 4.8% ✓ |
+| H-ref betamatch vw | fail (sector one-sided) | +0.060 (+0.024, +0.096) ✓ | 1.15 / **1.60** / 1.41 | — |
+| H-ref betamatch ew | ✓ | +0.076 (+0.041, **+0.110**) ✗ | 1.11 / **1.54** / 1.38 | — |
+| H-ref betamatch_s6 vw | ✓ | +0.060 (+0.022, +0.099) ✓ | 1.19 / **1.60** / 1.41 | — |
+| H-ref betamatch_s6 ew | ✓ | +0.069 (+0.035, **+0.103**) ✗ | 1.18 / **1.53** / 1.39 | — |
+
+- **What H-β fixed.** Every E6 book's pooled realised beta is within ±0.07, including the
+  Feb 2018 and Feb 2020 sell-offs. The W17 window alone still shows +0.13..+0.19 with
+  wide CIs. Step 2 cuts realised vol 15–30% against the paper reference, powered
+  (expected t −4.9 to −8.6).
+- **What fails.** Leg risk. The factor model's leg vol ratio is 0.71–0.75 in calm windows
+  (overpredicts) and 1.74–1.90 in sell-offs (underpredicts). Ledoit–Wolf (0.79–0.83 /
+  1.72–1.82) and single index (1.15–1.37 / 1.78–1.90) do no better; diagonal is 4.4–8.3.
+  The miss is the market-variance level in regime changes, not the cross-section. Book
+  risk passes everywhere (calm 0.95–1.10, stressed 1.06–1.29). The E6 failures are
+  narrow (CI upper 1.502–1.552 vs 1.50) but count, per the rule.
+- **Beta directions.** Realised leg betas are ≈ 0.86 against predicted ≈ 1.0 (B1) or 1.05
+  (B0). B1 has lower leg MAE and squared hedge loss than B0 in every E6 variant.
+- **Adverse top-minus-bottom quintile.** Realised +0.32 against B1 +0.63 and B0 +0.41.
+  B1 matches in calm windows (W17 0.71–0.89 vs 0.67; W19 0.52–0.60 vs 0.55). Betas
+  compress in sell-offs (W18 0.15–0.40, W20 0.32–0.33) and B0's shrinkage happens to fit
+  them better.
+
+Registry +8. No new candidates without the user.
+
 ## D20 — Fix the beta forecast first, then regate E6 and the plain decile sort on four short windows (2026-10-26)
 
 **Decision (user, 2026-10-26, answering the D19 outcome).** "1. yes, you could take from

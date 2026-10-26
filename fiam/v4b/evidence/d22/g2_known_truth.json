@@ -1,0 +1,18 @@
+{
+  "reps": 10000,
+  "sessions": 160,
+  "seed": 20261026,
+  "gaussian": {
+    "true_sd": 1.0,
+    "coverage": 0.8993,
+    "mc_se": 0.003009310718420416,
+    "pass": true
+  },
+  "student_t5": {
+    "true_sd": 1.0,
+    "coverage": 0.6975,
+    "mc_se": 0.0045934055993347685,
+    "pass": false
+  },
+  "pass": false
+}

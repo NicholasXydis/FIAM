@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from fiam.v4b.engine import inputs, ladder, optimize
+from fiam.v4b.engine import checker, inputs, ladder, optimize
 from fiam.v4b.engine.mandate import load
 from fiam.v4b.elasso import forecaster
 from fiam.v4b.elasso.walkforward import ROOT
@@ -41,6 +41,7 @@ SCORES = ("raw", "raw_s6", "betamatch", "betamatch_s6")
 WEIGHTINGS = ("vw", "ew")
 RISK_BAND, BOOK_BETA, SLOPE_BAND = (2 / 3, 3 / 2), 0.2, (0.5, 1.5)
 BLOCK, DRAWS, SEED, ALPHA = 5, 1000, 42, 0.05
+HB_BAND = 0.10
 HARD_RULES = ("names", "gross", "net", "name_cap", "short_floor")
 
 
@@ -52,14 +53,41 @@ def g0() -> dict:
     return out
 
 
-# Daily returns of a book that drifts with its names (missing returns count as 0).
-def path(w: pd.Series, rets: pd.DataFrame) -> pd.Series:
-    r = rets.reindex(columns=w.index).fillna(0.0)
-    cur, out = w.to_numpy(dtype=float).copy(), []
-    for row in r.to_numpy():
-        out.append(float(cur @ row))
-        cur = cur * (1 + row)
-    return pd.Series(out, index=r.index)
+# Daily returns of a book that drifts with its names. missing="zero" counts an
+# unobserved return as 0 (D19); "legs" (D21 Amendment 2) scales each leg's observed
+# P&L by leg weight / observed leg weight. The unobserved weight share per day
+# is in .attrs["unobserved"].
+def path(w: pd.Series, rets: pd.DataFrame, missing: str = "zero") -> pd.Series:
+    r = rets.reindex(columns=w.index).to_numpy(dtype=float)
+    cur, out, gone = w.to_numpy(dtype=float).copy(), [], []
+    for row in r:
+        seen = np.isfinite(row)
+        x = np.where(seen, row, 0.0)
+        if missing == "legs":
+            pnl = 0.0
+            for side in (cur > 0, cur < 0):
+                tot, obs = np.abs(cur[side]).sum(), np.abs(cur[side & seen]).sum()
+                pnl += float(cur[side & seen] @ x[side & seen]) * (tot / obs) if obs > 0 else 0.0
+            out.append(pnl)
+        else:
+            out.append(float(cur @ x))
+        gone.append(float(np.abs(cur[~seen]).sum() / max(np.abs(cur).sum(), 1e-12)))
+        cur = cur * (1 + x)
+    s = pd.Series(out, index=rets.index)
+    s.attrs["unobserved"] = gone
+    return s
+
+
+# One day's book return with missing returns handled per leg (D21 Amendment 2).
+def leg_return(w: np.ndarray, r: np.ndarray) -> np.ndarray:
+    seen = np.isfinite(r)
+    x = np.where(seen, r, 0.0)
+    out = np.zeros(r.shape[0])
+    for side in (w > 0, w < 0):
+        tot = np.abs(w[side]).sum()
+        obs = seen[:, side] @ np.abs(w[side])
+        out += np.where(obs > 0, (x[:, side] @ w[side]) * tot / np.where(obs > 0, obs, 1.0), 0.0)
+    return out
 
 
 def blocks(n: int, rng) -> np.ndarray:
@@ -70,6 +98,56 @@ def blocks(n: int, rng) -> np.ndarray:
 def ols_beta(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     xc = x - x.mean()
     return (xc @ (y - y.mean(axis=0))) / (xc @ xc)
+
+
+# Gate HB (D21): realised book beta on the market over pooled sessions; its
+# 90% interval must lie inside [-band, band]. Pooled OLS weights each day by its
+# market move, so stressed windows count most. Interval methods (D21 Amendment 1):
+#   "block"  5-day circular blocks over the pooled sessions (failed phase 0a)
+#   "strat"  5-day circular blocks within each window (window labels needed)
+#   "hc3"    OLS slope, HC3 standard error, t(n-2) interval
+#   "wild"   Rademacher signs on 5-day blocks of OLS residuals
+def book_beta_gate(book, mkt, band: float = HB_BAND, draws: int = DRAWS, seed: int = SEED,
+                   method: str = "block", window=None) -> dict:
+    book, mkt = np.asarray(book, dtype=float), np.asarray(mkt, dtype=float)
+    win = np.zeros(len(book), dtype=int) if window is None else np.asarray(window)
+    ok = np.isfinite(book) & np.isfinite(mkt)
+    book, mkt, win = book[ok], mkt[ok], win[ok]
+    n = len(book)
+    beta = float(ols_beta(book, mkt))
+    rng = np.random.default_rng(seed)
+
+    def slopes(x, y):
+        xc = x - x.mean(axis=1, keepdims=True)
+        return (xc * (y - y.mean(axis=1, keepdims=True))).sum(axis=1) / (xc ** 2).sum(axis=1)
+
+    if method == "hc3":
+        xc = mkt - mkt.mean()
+        e = book - book.mean() - beta * xc
+        h = 1 / n + xc ** 2 / (xc @ xc)
+        se = float(np.sqrt((xc ** 2 * e ** 2 / (1 - h) ** 2).sum()) / (xc @ xc))
+        q = stats.t.ppf(0.95, n - 2)
+        lo, hi = beta - q * se, beta + q * se
+    else:
+        if method == "block":
+            idx = np.stack([blocks(n, rng) for _ in range(draws)])
+            bb = slopes(mkt[idx], book[idx])
+        elif method == "strat":
+            pos = [np.flatnonzero(win == k) for k in np.unique(win)]
+            idx = np.stack([np.concatenate([p[blocks(len(p), rng)] for p in pos]) for _ in range(draws)])
+            bb = slopes(mkt[idx], book[idx])
+        elif method == "wild":
+            xc = mkt - mkt.mean()
+            fit = book.mean() + beta * xc
+            e = book - fit
+            nb = int(np.ceil(n / BLOCK))
+            sign = rng.choice([-1.0, 1.0], size=(draws, nb)).repeat(BLOCK, axis=1)[:, :n]
+            bb = slopes(np.broadcast_to(mkt, (draws, n)), fit + sign * e)
+        else:
+            raise ValueError(method)
+        lo, hi = np.quantile(bb, [0.05, 0.95])
+    return {"beta": beta, "ci90": [float(lo), float(hi)], "sessions": int(n), "method": method,
+            "pass": bool(-band <= lo and hi <= band)}
 
 
 def pitman_morgan(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
@@ -164,7 +242,8 @@ def run(variants: list) -> dict:
                 "name_cap": float(w.abs().max()) <= m.hard.name_cap + 1e-9,
                 "gross": float(w.abs().sum()) <= m.hard.gross_max + 1e-9,
                 "net": abs(float(w.sum())) <= m.hard.net_band + 1e-9,
-                "short_floor": float(-w[w < 0].sum()) * m.hard.nav0 / 1e6 >= m.hard.short_floor_musd - 1e-6,
+                "short_floor": checker.short_floor_formation(w, f.snap["month"], m.hard.short_floor_musd),
+                "short_gross_research": float(-w[w < 0].sum()) * m.hard.nav0 / 1e6 >= m.hard.short_floor_musd - 1e-6,
                 "sectors_two_sided": set(side[w > 0]) == set(side[w < 0]),
                 "union_fits": bool(log.get("union_fits", True)),
             }

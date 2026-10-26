@@ -190,6 +190,73 @@ def beta_gates():
     print("pick", rep["pick"])
 
 
+# D21 phase 1 (research/hbeta_gates.py): H-beta on W17..W20.
+#   modal run fiam/v4b/gpu/modal_book.py::hbeta
+@app.function(image=image, volumes={"/vol": vol}, cpu=8, memory=65536, timeout=3 * 3600)
+def hbeta_run() -> str:
+    import json
+    import os
+
+    os.environ["FIAM_V4B_CONFIG"] = "variant_e6_betamatch_hb.json"
+    _link()
+    os.chdir("/root")
+    from fiam.v4b.research import hbeta_gates
+
+    rep = hbeta_gates.run()
+    vol.commit()
+    return json.dumps(rep, default=float)
+
+
+@app.local_entrypoint()
+def hbeta():
+    import json
+
+    rep = json.loads(hbeta_run.remote())
+    Path("fiam/v4b/out/hbeta_gates").mkdir(parents=True, exist_ok=True)
+    Path("fiam/v4b/out/hbeta_gates/hbeta_gates.json").write_text(json.dumps(rep, indent=1, default=float))
+    print("survivors_before_g5", rep["survivors_before_g5"])
+
+
+# D22: synthetic known-truth check, no market inputs or return screen.
+@app.function(image=image, cpu=2, memory=4096, timeout=600)
+def g2_truth_run() -> str:
+    import json
+    from fiam.v4b.research.g2_known_truth import study
+
+    return json.dumps(study())
+
+
+@app.local_entrypoint()
+def g2_truth():
+    import json
+
+    rep = json.loads(g2_truth_run.remote())
+    path = Path("fiam/v4b/out/g2_known_truth.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rep, indent=2) + "\n")
+    print(json.dumps(rep, indent=2))
+
+
+# D23: compare synthetic-only volatility intervals.
+@app.function(image=image, cpu=4, memory=8192, timeout=1800)
+def g2_robust_truth_run() -> str:
+    import json
+    from fiam.v4b.research.g2_robust_truth import study
+
+    return json.dumps(study())
+
+
+@app.local_entrypoint()
+def g2_robust_truth():
+    import json
+
+    rep = json.loads(g2_robust_truth_run.remote())
+    path = Path("fiam/v4b/out/g2_robust_known_truth.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rep, indent=2) + "\n")
+    print(json.dumps(rep, indent=2))
+
+
 # D19 gates (research/e6_gates.py): G0-G4 for the G0 passers in one container,
 # then G5 = a Nautilus E6 smoke over W for each variant that passed G0-G4.
 #   modal run fiam/v4b/gpu/modal_book.py::gates
@@ -247,18 +314,30 @@ def gates():
 #   modal run fiam/v4b/gpu/modal_book.py::tests [--k twostep]
 test_image = image.add_local_dir("fiam/v4b/tests", "/root/fiam/v4b/tests",
                                  ignore=lambda p: "__pycache__" in Path(p).parts)
+for doc in ("DECISIONS.md", "REVISED_PLAN.md", "CONTINUATION_PLAN.md", "LESSONS.md", "README.md", "EVALUATION.md"):
+    test_image = test_image.add_local_file(f"fiam/v4b/{doc}", f"/root/fiam/v4b/{doc}")
+test_image = test_image.add_local_file("fiam/v4b/out/elasso/rolling/judge_valid.json",
+                                       "/root/fiam/v4b_test_fixtures/judge_valid.json")
 
 
 @app.function(image=test_image, volumes={"/vol": vol}, cpu=4, memory=32768, timeout=3600)
 def run_tests(k: str = "") -> str:
     import os
+    import shutil
     import subprocess
 
     _link()
     os.chdir("/root")
-    cmd = ["python", "-m", "pytest", "fiam/v4b/tests", "-q", "-p", "no:cacheprovider"] + (["-k", k] if k else [])
+    fixture = Path("/root/fiam/v4b/out/elasso/rolling/judge_valid.json")
+    if not fixture.exists():
+        fixture.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile("/root/fiam/v4b_test_fixtures/judge_valid.json", fixture)
+    cmd = ["python", "-m", "pytest", "fiam/v4b/tests", "-q", "-s", "-p", "no:cacheprovider"] + (["-k", k] if k else [])
     r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout[-6000:] + r.stderr[-2000:]
+    output = r.stdout[-6000:] + r.stderr[-2000:]
+    if r.returncode:
+        raise RuntimeError(f"pytest failed with exit {r.returncode}:\n{output}")
+    return output
 
 
 @app.local_entrypoint()

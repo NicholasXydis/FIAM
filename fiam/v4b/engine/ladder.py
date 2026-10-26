@@ -225,6 +225,8 @@ class World:
         snap = self.rm.snapshot(eom, horizon=horizon)
         if self.m.policy.beta_source != "engine":  # D20: another market beta in B
             snap = self.beta_swap(snap, eom)
+        if self.m.policy.beta_bands_extra:  # D21: further betas held in bands
+            snap = self.beta_extra(snap, eom)
         mu = self.mu[column]
         mu_t = mu[mu["eom"] == eom].set_index("permno")["mu"] * forecaster.horizon_scale(
             0, horizon, forecaster.kappa_for(self.m, column)
@@ -260,16 +262,30 @@ class World:
             nyse_me=self.nyse_me(eom),
         )
 
-    # The snapshot with policy.beta_source as its market beta (D20).
-    def beta_swap(self, snap: dict, eom) -> dict:
+    # All beta candidates on the snapshot's names at eom (risk/beta_candidates.py).
+    def beta_candidates(self, snap: dict, eom) -> pd.DataFrame:
         from fiam.v4b.risk import beta as beta_mod
         from fiam.v4b.risk import beta_candidates as bc
 
         if getattr(self, "_excess", None) is None:
             self._excess = beta_mod.excess_wide(cut=self.rm.cut)
         excess, mk = self._excess
-        cands = bc.at(self.rm, snap, excess, mk["mkt_rf"], eom, snap["B"].index)
+        return bc.at(self.rm, snap, excess, mk["mkt_rf"], eom, snap["B"].index)
+
+    # The snapshot with policy.beta_source as its market beta (D20).
+    def beta_swap(self, snap: dict, eom) -> dict:
+        from fiam.v4b.risk import beta_candidates as bc
+
+        cands = self.beta_candidates(snap, eom)
         return bc.apply(snap, cands[bc.SOURCES[self.m.policy.beta_source]])
+
+    # The snapshot with the policy's extra betas (median-filled) as "beta_extra" (D21).
+    def beta_extra(self, snap: dict, eom) -> dict:
+        from fiam.v4b.risk import beta_candidates as bc
+
+        cands = self.beta_candidates(snap, eom)
+        extra = pd.DataFrame({b: bc.filled(cands[bc.SOURCES[b]]) for b in self.m.policy.beta_bands_extra})
+        return snap | {"beta_extra": extra}
 
     # me ($m) of every NYSE name in the panel at eom (HHRZ breakpoints, E6).
     def nyse_me(self, eom) -> pd.Series:

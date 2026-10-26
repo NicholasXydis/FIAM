@@ -51,6 +51,14 @@ def _regularise(cov: np.ndarray, delta: float = DELTA) -> np.ndarray:
     return (1 - delta) * cov + delta * np.diag(np.diag(cov))
 
 
+# One-session contemporaneous covariance, without long-run autocovariances.
+def factor_cov_daily(factors: pd.DataFrame, date, half_life: int = 84) -> pd.DataFrame | None:
+    g = autocovariances(factors, date, half_life, 0)
+    if g is None:
+        return None
+    return pd.DataFrame(_regularise(g[0]), index=factors.columns, columns=factors.columns)
+
+
 # One-session factor covariance with the Newey-West pre-adjustment.
 def factor_cov(factors: pd.DataFrame, date, half_life: int = 84) -> pd.DataFrame | None:
     g = autocovariances(factors, date, half_life, NW_LAGS)
