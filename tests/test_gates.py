@@ -189,9 +189,9 @@ def test_signs_windows_and_bars_match_the_protocol():
     assert (gates.MIN_STOCKS, gates.MIN_MONTHS, gates.COVERAGE_T) == (100, 24, 2.0)
     assert (gates.NULL_SERIES, gates.NULL_SEED, gates.BURN, gates.RHO_CAP, gates.LAGS) == (
         100_000, 20261025, 50, 0.9, 6)  # fmt: skip
-    assert gates.PILOT_SEED == 20261099 and gates.NOISE_HOLD == 12
-    assert gates.POSITIVE_SEEDS == range(20261100, 20261200)
-    assert gates.NEGATIVE_SEEDS == range(20261200, 20261300)
+    assert gates.PILOT_SEEDS == range(20261500, 20261520) and gates.NOISE_HOLD == 12
+    assert gates.POSITIVE_SEEDS == range(20261300, 20261400)
+    assert gates.NEGATIVE_SEEDS == range(20261400, 20261500)
     assert (gates.POSITIVE_PASS, gates.NEGATIVE_MAX, gates.CONTROL_MONTHS) == (70, 10, 70)
     assert gates.POWER_LAST == DAY("2018-12-31")
     assert gates.HOLM == pytest.approx([0.05 / k for k in (6, 5, 4, 3, 2, 1)])
@@ -300,21 +300,24 @@ def test_gate_series_sign_and_thin_months():
     assert len(up) == 29 and (up > 0.5).all() and (down < -0.5).all()
 
 
-# The controls: the pilot's k makes its mean IC the detectable target.
+# The controls: k makes the pilots' mean IC the detectable target.
 def test_controls_bisection(monkeypatch):
     monkeypatch.setattr(gates, "NULL_SERIES", 2_000)
     monkeypatch.setattr(gates, "CONTROL_MONTHS", 30)
-    monkeypatch.setattr(gates, "POSITIVE_SEEDS", range(20261100, 20261110))
-    monkeypatch.setattr(gates, "NEGATIVE_SEEDS", range(20261200, 20261210))
+    monkeypatch.setattr(gates, "PILOT_SEEDS", range(20261500, 20261503))
+    monkeypatch.setattr(gates, "POSITIVE_SEEDS", range(20261300, 20261310))
+    monkeypatch.setattr(gates, "NEGATIVE_SEEDS", range(20261400, 20261410))
     ms = fake_months(30)
     nulls: dict = {}
     res = gates.controls(ms, nulls)
     k = res["noise_scale"]
     assert 0.01 < k < 100
-    ic = gates.planted_ic(ms, gates.planted(ms, k, gates.PILOT_SEED))
+    ics = [gates.planted_ic(ms, gates.planted(ms, k, s)) for s in gates.PILOT_SEEDS]
     c = float(np.quantile(nulls[30], 1 - gates.HOLM[0]))
-    target = (c + gates.Z80) * ic.std(ddof=1) / np.sqrt(len(ic))
-    assert ic.mean() == pytest.approx(target, abs=0.002)
+    sd = np.mean([ic.std(ddof=1) for ic in ics])
+    target = (c + gates.Z80) * sd / np.sqrt(len(ics[0]))
+    assert np.mean([ic.mean() for ic in ics]) == pytest.approx(target, abs=0.002)
+    assert res["pilot_mean_ic"] == pytest.approx(np.mean([ic.mean() for ic in ics]))
     assert res["negative_passes_at_5pct"] <= 3 and "iid_nulls" in res
 
 

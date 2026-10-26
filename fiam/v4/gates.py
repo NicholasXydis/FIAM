@@ -50,9 +50,11 @@ HOLM = [ALPHA / (FAMILY - i) for i in range(FAMILY)]
 MIN_STOCKS, MIN_MONTHS = 100, 24
 # The simulated nulls: 100,000 series, seed 20261025, AR(1) burn-in 50.
 NULL_SERIES, NULL_SEED, BURN, RHO_CAP, LAGS = 100_000, 20261025, 50, 0.9, 6
-# Controls: the pilot seed, 100 planted seeds and 100 noise seeds.
-PILOT_SEED = 20261099
-POSITIVE_SEEDS, NEGATIVE_SEEDS = range(20261100, 20261200), range(20261200, 20261300)
+# Controls rerun (2026-10-26): 20 pilots, then 100 planted, 100 noise.
+PILOT_SEEDS = range(20261500, 20261520)
+POSITIVE_SEEDS, NEGATIVE_SEEDS = range(20261300, 20261400), range(20261400, 20261500)
+# Bisection steps for the planted noise scale, from 0.01 to 100.
+BISECT = 30
 POSITIVE_PASS, NEGATIVE_MAX, CONTROL_MONTHS, NOISE_HOLD = 70, 10, 70, 12
 Z80 = float(norm.ppf(0.8))
 # Coverage bias: a |t| over 2 reruns the gate, uncovered stocks at 0.
@@ -512,21 +514,29 @@ def controls(ms: list[Month], nulls: dict) -> dict:
         nulls[n] = null_t(n)
     c = float(np.quantile(nulls[n], 1 - HOLM[0]))
 
-    # The pilot's gap between its mean IC and the detectable IC target.
+    # The pilots' mean IC and IC sd, averaged so no one seed's luck sets k.
+    def pooled(k):
+        ics = [planted_ic(ms, planted(ms, k, s)) for s in PILOT_SEEDS]
+        sd = float(np.mean([ic.std(ddof=1) for ic in ics]))
+        return float(np.mean([ic.mean() for ic in ics])), sd, len(ics[0])
+
+    # The pooled mean IC less the detectable target at the pooled sd.
     def gap(k):
-        ic = planted_ic(ms, planted(ms, k, PILOT_SEED))
-        return ic.mean() - (c + Z80) * ic.std(ddof=1) / np.sqrt(len(ic))
+        mean, sd, months = pooled(k)
+        return mean - (c + Z80) * sd / np.sqrt(months)
 
     lo, hi = 0.01, 100.0
-    for _ in range(40):
+    for _ in range(BISECT):
         mid = np.sqrt(lo * hi)
         lo, hi = (mid, hi) if gap(mid) > 0 else (lo, mid)
     k = float(np.sqrt(lo * hi))
+    pilot_mean, pilot_sd, _ = pooled(k)
     pos = [test_series(planted_ic(ms, planted(ms, k, s)), nulls)["p"] for s in POSITIVE_SEEDS]
     neg = [test_series(planted_ic(ms, noise(ms, s)), nulls)["p"] for s in NEGATIVE_SEEDS]
     passed = int(sum(p <= HOLM[0] for p in pos))
     false = int(sum(p <= ALPHA for p in neg))
-    return {"noise_scale": k, "positive_passes_at_0_83pct": passed, "positive_bar": POSITIVE_PASS,
+    return {"noise_scale": k, "pilot_mean_ic": pilot_mean, "pilot_ic_sd": pilot_sd,
+            "positive_passes_at_0_83pct": passed, "positive_bar": POSITIVE_PASS,
             "negative_passes_at_5pct": false, "negative_bar": NEGATIVE_MAX,
             "controls_pass": passed >= POSITIVE_PASS and false <= NEGATIVE_MAX,
             "iid_nulls": null_record(nulls)}  # fmt: skip
@@ -567,7 +577,7 @@ if __name__ == "__main__":
     require(stage, head)
     chars = sources.characteristics()
     ms = months(chars)
-    seeds = {"null": NULL_SEED, "pilot": PILOT_SEED,
+    seeds = {"null": NULL_SEED, "pilot": [PILOT_SEEDS.start, PILOT_SEEDS.stop - 1],
              "positive": [POSITIVE_SEEDS.start, POSITIVE_SEEDS.stop - 1],
              "negative": [NEGATIVE_SEEDS.start, NEGATIVE_SEEDS.stop - 1]}  # fmt: skip
     nulls: dict = {}
