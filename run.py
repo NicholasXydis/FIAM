@@ -50,7 +50,9 @@ HELP = """uv run run.py [options]
   doctor [--deep]      checks Python, packages, data, the kit's files, settings and the AI link
   export [folder]      writes the finals kit to the USB, rewriting only parts that changed;
                        --dry-run shows sizes, --skip PART,PART leaves parts out
-  installers, caches   uv, Node and pnpm for every machine; this machine's offline packages"""
+  installers, caches   uv, Node and pnpm for every machine; this machine's offline packages
+  finals --unseal      after the freeze is committed and pushed: checks every hash, lifts blind
+                       mode once, logs it in frozen/v4/unseal.log (the final run follows)"""
 
 # The book and what reads it, in order; each step runs with python -m.
 STEPS = [
@@ -490,6 +492,23 @@ def data_command(rest: list[str]) -> int:
     return 2
 
 
+# The finals verb; only its unseal is built so far (step 10).
+def finals(args: list[str]) -> int:
+    if "--unseal" not in args:
+        print("finals runs once blind mode is lifted:  uv run run.py finals --unseal")
+        return 1
+    from fiam.v4 import freeze
+
+    try:
+        line = freeze.unseal()
+    except (SystemExit, RuntimeError) as err:
+        print(err.code if isinstance(err, SystemExit) else err)
+        return 1
+    print(f"Unsealed, once: {line}")
+    print("The final run is the next command.")
+    return 0
+
+
 # Reads the options, then runs every step they ask for, in order.
 def main() -> int:
     os.chdir(ROOT)
@@ -508,6 +527,9 @@ def main() -> int:
         from fiam.v4 import kit
 
         return kit.main(args)
+    # The finals verb answers before any data check, as the kit's do.
+    if args[:1] == ["finals"]:
+        return finals(args[1:])
     if "-h" in args or "--help" in args:
         print(HELP)
         return 0

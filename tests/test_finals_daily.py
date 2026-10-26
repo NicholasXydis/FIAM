@@ -570,7 +570,7 @@ def test_rule_b_runs_in_2026(monkeypatch):
     assert flags["permno"].tolist() == [1]
 
 
-# The floor is breached under $500m at the decision or the trade close.
+# The floor binds at the decision close; the trade close is reported.
 def test_short_floor_is_checked_on_the_trade_day_too(monkeypatch):
     fake = Fake()
     fall = pd.Series(0.0, index=fake.days)
@@ -579,7 +579,7 @@ def test_short_floor_is_checked_on_the_trade_day_too(monkeypatch):
     out = book(fake, monkeypatch, {"2019-01-31": {1: -0.1}})
     row = out.compliance.loc["2019-02-01"]
     assert row["floor_at_formation"] == 0 and row["floor_at_trade"] == 1
-    assert row["short_floor_breaches"] == 1
+    assert row["short_floor_breaches"] == 0
 
 
 # Marks before a day's trades count too (PDF p4 "at all times").

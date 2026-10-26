@@ -255,6 +255,9 @@ def run(
     ex_days: str = "crsp",
     same_day: bool = False,
     strict: bool | None = None,
+    hook=None,
+    permnos=None,
+    synthetic: bool = False,
 ) -> Result:
     end = pd.Timestamp(end)
     rules = rules or mandate()
@@ -262,8 +265,12 @@ def run(
     # A dividend basis the engine does not know stops the run.
     if dividends not in DIVIDENDS or ex_days not in EX_DAYS:
         raise ValueError(f"dividends in {DIVIDENDS}, ex_days in {EX_DAYS}")
+    # Rehearsal 1's synthetic years need its own reader, never the unseal.
+    reader = getattr(data.table, "synthetic", False)
+    if synthetic and (unsealed or sources.unsealed() or not reader):
+        raise clock.SealedWindow("a synthetic run needs the rehearsal's reader, sealed")
     # Blind mode refuses a window past the seal; it never truncates one.
-    if end > clock.LAST_LABEL_DAY and not unsealed:
+    if end > clock.LAST_LABEL_DAY and not unsealed and not synthetic:
         raise clock.SealedWindow(f"the book ends {end:%Y-%m-%d}, after 2020-12-31")
     # Only the hash-checked unseal opens the registry's 2021+ rows.
     if unsealed and not sources.unsealed():
@@ -300,9 +307,10 @@ def run(
                 f"the formation of {pd.Timestamp(formed):%Y-%m-%d} trades outside the run"
             )
         orders[day] = (session, weights[weights != 0].astype(float))
-    permnos = set().union(*(set(w.index) for _, w in orders.values()))
-    market = Market(permnos, days, dividends, ex_days)
-    book = Book(market, nav, costs, borrow, rules)
+    held = set().union(*(set(w.index) for _, w in orders.values()))
+    # A hook that plans its own targets names the stocks it may trade.
+    market = Market(held | set(permnos or ()), days, dividends, ex_days)
+    book = Book(market, nav, costs, borrow, rules, hook)
     for i, d in enumerate(days):
         book.step(i, d, orders.get(d))
     result = book.result()
@@ -325,8 +333,8 @@ def finals_window(rules: dict, days: pd.DatetimeIndex) -> None:
 # The running state of one book, one session at a time.
 class Book:
     # An all-cash book endowed at the close of the first session.
-    def __init__(self, market: Market, nav: float, costs, borrow, rules: dict):
-        self.m, self.rules = market, rules
+    def __init__(self, market: Market, nav: float, costs, borrow, rules: dict, hook=None):
+        self.m, self.rules, self.hook = market, rules, hook
         self.cash, self.values, self.opened = float(nav), {}, {}
         self.costs, self.borrow = costs, borrow
         self.missing, self.last_price, self.stubs, self.sell_next = {}, {}, {}, set()
@@ -380,9 +388,17 @@ class Book:
             self.cash -= borrowed
         nav = self.cash + sum(self.values.values())
         pre = self.marks(nav)
+        # A hook may spill a formation's order and add the daily fixes.
+        formed = order is not None
+        if self.hook is not None:
+            order = self.hook(i, d, self, order)
+            # A hook's own re-plan (weekly or daily) counts as a formation too.
+            formed = formed or bool(getattr(self.hook, "forming", False))
         # Orders are sized on the previous close's NAV (PLAN §9.1).
         if order is not None:
-            self.formations.append((d, order[0]))
+            # Only a formation's own trade day counts as one (spill days not).
+            if formed:
+                self.formations.append((d, order[0]))
             before, start = dict(self.values), len(self.trades)
             self.pre_positions.extend((d, p, v) for p, v in before.items())
             cost = self.trade(i, d, order[0], order[1], self.nav_before)
@@ -672,7 +688,8 @@ def compliance(daily, positions, book: Book) -> pd.DataFrame:
     out["cap_ok"] = worst.max(axis=1) <= rules["name_cap"] + 1e-12
     floor = short_floor(positions, book, rules)
     out = out.join(floor).fillna({c: 0 for c in floor.columns})
-    out["short_floor_breaches"] = out[["floor_at_formation", "floor_at_trade"]].max(axis=1)
+    # The floor binds at the decision close; the trade close is reported.
+    out["short_floor_breaches"] = out["floor_at_formation"]
     # Before the first trade the book is cash: no name rule applies yet.
     first = min((d for d, _ in book.formations), default=out.index[-1])
     out["invested"] = out.index >= first

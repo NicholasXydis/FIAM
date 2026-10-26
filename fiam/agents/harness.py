@@ -84,6 +84,12 @@ MODELS = {
         "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
         "babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf",
     ),
+    # The time-cutoff model: the Pile only, data through 2020 (§10.5).
+    "pythia": (
+        "CheeseCoder/pythia-12b-deduped-Q4_K_M-GGUF",
+        "pythia-12b-deduped.Q4_K_M.gguf",
+        "75cb02b26ee0d9beb56e4f51410d8b2ed229465e19c25ae19f64a731311d64e5",
+    ),
     "tiny": (
         "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
         "qwen2.5-0.5b-instruct-q4_k_m.gguf",
@@ -94,6 +100,10 @@ MODELS = {
 # Repeatable, not correct: one prompt gives one answer, right or wrong.
 SEED, TEMPERATURE = 42, 0.0
 CONTEXT, PORT = 65536, 8081
+# Models trained on shorter windows get their own context length.
+CONTEXTS = {"pythia": 2048}
+# The address a server listens on; the Tailscale one serves the Mac.
+HOST = os.environ.get("FIAM_LLM_HOST", "127.0.0.1")
 # A server elsewhere, a cloud GPU on finals day, stands in. No download.
 REMOTE = os.environ.get("FIAM_LLM_URL", "").rstrip("/")
 # Compressed cache so 64K Qwen fits 16 GB; no thinking, readable plan.
@@ -254,10 +264,11 @@ class Server:
                 raise RuntimeError(f"{self.url} serves another model; stop it first")
             return self
         binary = server_binary()
-        args = [str(binary), "-m", str(self.path), "--alias", self.name, "-c", str(CONTEXT)]
+        args = [str(binary), "-m", str(self.path), "--alias", self.name]
+        args += ["-c", str(CONTEXTS.get(self.name, CONTEXT))]
         args += ["-np", "1", "--seed", str(SEED), "--temp", str(TEMPERATURE), "--jinja"]
         # Context checkpoints crash this build on Qwen's hybrid attention: off.
-        args += ["-ctxcp", "0", "-cram", "0", "--host", "127.0.0.1", "--port", str(PORT)]
+        args += ["-ctxcp", "0", "-cram", "0", "--host", HOST, "--port", str(PORT)]
         args += [*COMPRESSED.get(self.name, ()), *NO_THINKING, *self.extra]
         if os.environ.get("LLAMA_DEVICE"):
             args += ["--device", os.environ["LLAMA_DEVICE"]]
@@ -510,7 +521,7 @@ def export() -> None:
 
 
 if __name__ == "__main__":
-    # uv run -m fiam.agents.harness [prepare | export | serve qwen|gemma]
+    # uv run -m fiam.agents.harness [prepare | export | qwen|gemma [--long]]
     if "prepare" in sys.argv:
         prepare()
         sys.exit()
@@ -518,7 +529,8 @@ if __name__ == "__main__":
         export()
         sys.exit()
     name = next((a for a in sys.argv[1:] if a in MODELS), "qwen")
-    with Server(name) as running:
+    # --long serves as the desk's cache keys record (2048-token batches).
+    with Server(name, LONG_PROMPTS if "--long" in sys.argv else ()) as running:
         print(f"{running.name} at {running.url}/v1, {CONTEXT:,} tokens. Ctrl+C stops it.")
         if running.process:
             running.process.wait()

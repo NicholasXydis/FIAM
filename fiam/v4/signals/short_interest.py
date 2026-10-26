@@ -3,6 +3,7 @@
 import pandas as pd
 
 from fiam.v4 import data
+from fiam.v4 import inputs as engine_inputs
 from fiam.v4.signals import base
 
 # Heavily shorted stocks do worse: the gate takes the negative.
@@ -11,21 +12,26 @@ SIGN = -1
 CARRY = pd.DateOffset(months=2)
 
 
-# The latest public settlement's short interest over CRSP's shares then.
-def build(eoms, log: dict | None = None) -> pd.DataFrame:
-    log = {} if log is None else log
-    f = base.formations(eoms)
-    s = data.table("short_interest", ["shortint"])
-    s = s[s["first_close"] <= f["T"].max()]
+# Every settlement public by a day over the shares on its session.
+def history(permnos=None, by=None) -> pd.DataFrame:
+    where = None if permnos is None else {"permno": set(int(p) for p in permnos)}
+    s = data.table("short_interest", ["shortint"], where=where)
+    if by is not None:
+        s = s[s["first_close"] <= pd.Timestamp(by)]
     # Shares outstanding on the settlement day, or the session before it.
     days = data.calendar().index
     s["session"] = days[days.searchsorted(s["settlement"], side="right") - 1]
-    shares = data.table("crsp_daily", ["shrout_k"], where={"date": set(s["session"])})
-    shares = shares.rename(columns={"date": "session", "first_close": "shares_close"})
-    shares = shares[["permno", "session", "shrout_k", "shares_close"]]
-    s = s.merge(shares, on=["permno", "session"], how="left")
-    s["value"] = s["shortint"] / (s["shrout_k"] * 1000.0)
-    log["settlements_without_crsp_shares"] = int(s["shrout_k"].isna().sum())
+    s = s.merge(engine_inputs.shares_on(s["session"]), on=["permno", "session"], how="left")
+    s["value"] = s["shortint"] / s["shares"]
+    return s
+
+
+# The latest public settlement's short interest over the shares then.
+def build(eoms, log: dict | None = None) -> pd.DataFrame:
+    log = {} if log is None else log
+    f = base.formations(eoms)
+    s = history(by=f["T"].max())
+    log["settlements_without_crsp_shares"] = int(s["shares"].isna().sum())
     s = s.dropna(subset=["value"]).sort_values(["first_close", "settlement"], kind="stable")
     out = []
     for eom, T in f.itertuples(index=False):

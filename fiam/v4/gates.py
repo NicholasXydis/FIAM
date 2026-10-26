@@ -16,9 +16,11 @@ from fiam.v4 import agreement, clock, data, labels, ranks, sources
 from fiam.v4.signals import (
     base,
     best_ideas,
+    earnings_premium,
     edgar_flags,
     insiders,
     lazy_prices,
+    options_flow,
     short_interest,
     syy,
 )
@@ -43,6 +45,10 @@ SIGNALS = {
 }
 FAILED = {"customer_momentum": "customer names right on 83 of 100 (bar 85); not built"}
 FAMILY = len(SIGNALS) + len(FAILED)
+# Two signals gated late (reading 18), Holm over 8 with the six.
+LATE = {"options_flow": options_flow, "earnings_premium": earnings_premium}
+# The six gates' results the late stage reuses: the run at fa169bf.
+SIX = "fa169bf9301a"
 # Holm step-down at 5% family-wise: 0.83%, 1%, 1.25%, 1.67%, 2.5%, 5%.
 ALPHA = 0.05
 HOLM = [ALPHA / (FAMILY - i) for i in range(FAMILY)]
@@ -172,12 +178,13 @@ def test_series(ic: pd.Series, nulls: dict | None = None) -> dict:
 
 
 # Holm's step-down: pass while each sorted p clears its bar, then stop.
-def holm(pvalues: dict) -> dict:
+def holm(pvalues: dict, bars: list | None = None) -> dict:
+    bars = HOLM if bars is None else bars
     order = sorted(pvalues, key=lambda k: pvalues[k])
     out, open_ = {}, True
     for i, name in enumerate(order):
-        open_ = open_ and pvalues[name] <= HOLM[i]
-        out[name] = {"p": pvalues[name], "bar": HOLM[i], "passes": bool(open_)}
+        open_ = open_ and pvalues[name] <= bars[i]
+        out[name] = {"p": pvalues[name], "bar": bars[i], "passes": bool(open_)}
     return out
 
 
@@ -334,26 +341,51 @@ def covered_labels(ms: list[Month], by_month: dict) -> dict:
     return {e: g.set_index("permno")["resid"] for e, g in res.groupby("eom")}
 
 
+# One gate with its coverage rule: its tests and the p that enters Holm.
+def gate_one(ms: list[Month], by_month: dict, sign: int, nulls: dict) -> dict:
+    series = gate_series(ms, by_month, sign)
+    res = {"main": test_series(series, nulls) if len(series) >= MIN_MONTHS else None}
+    res["ic_by_year"] = series.groupby(series.index.year).mean().round(5).to_dict()
+    res["coverage"] = cov = coverage_test(ms, by_month)
+    p = res["main"]["p"] if res["main"] else 1.0
+    if abs(cov["gap_nw_t"]) > COVERAGE_T or abs(cov["gap_next_month_nw_t"]) > COVERAGE_T:
+        lab = covered_labels(ms, by_month)
+        rerun = gate_series(ms, by_month, sign, zero=True, lab=lab)
+        res["coverage_rerun"] = test_series(rerun, nulls)
+        p = max(p, res["coverage_rerun"]["p"])
+    res["p_for_holm"] = p
+    return res
+
+
 # Every gate with its coverage rule, then Holm (run after the commit).
 def run_gates(ms: list[Month], values: dict, nulls: dict) -> dict:
     out, pvalues = {}, {}
     for name, module in SIGNALS.items():
-        series = gate_series(ms, values[name], module.SIGN)
-        res = {"main": test_series(series, nulls) if len(series) >= MIN_MONTHS else None}
-        res["ic_by_year"] = series.groupby(series.index.year).mean().round(5).to_dict()
-        res["coverage"] = cov = coverage_test(ms, values[name])
-        p = res["main"]["p"] if res["main"] else 1.0
-        if abs(cov["gap_nw_t"]) > COVERAGE_T or abs(cov["gap_next_month_nw_t"]) > COVERAGE_T:
-            lab = covered_labels(ms, values[name])
-            rerun = gate_series(ms, values[name], module.SIGN, zero=True, lab=lab)
-            res["coverage_rerun"] = test_series(rerun, nulls)
-            p = max(p, res["coverage_rerun"]["p"])
-        res["p_for_holm"] = p
-        out[name], pvalues[name] = res, p
+        res = gate_one(ms, values[name], module.SIGN, nulls)
+        out[name], pvalues[name] = res, res["p_for_holm"]
     for name, why in FAILED.items():
         out[name], pvalues[name] = {"failed": why, "p_for_holm": 1.0}, 1.0
     return {"gates": out, "holm": holm(pvalues), "kiefer_vogelsang": fixed_b(len(ms)),
             "iid_nulls": null_record(nulls)}  # fmt: skip
+
+
+# The late gates (reading 18): two signals, Holm over the six and them.
+def late(ms: list[Month], nulls: dict) -> dict:
+    six = json.loads(result_path("gates", SIX).read_text())["gates"]["gates"]
+    pvalues = {name: res["p_for_holm"] for name, res in six.items()}
+    out, logs = {}, {}
+    for name, module in LATE.items():
+        logs[name] = {}
+        frame = module.build(labels.formations(1), logs[name])
+        by_month = {e: g.set_index("permno")["value"] for e, g in frame.groupby("eom")}
+        out[name] = gate_one(ms, by_month, module.SIGN, nulls)
+        pvalues[name] = out[name]["p_for_holm"]
+    size = len(pvalues)
+    bars = [ALPHA / (size - i) for i in range(size)]
+    # The original six alone, beside the eight, reported only (reading 20).
+    six_only = holm({k: pvalues[k] for k in six})
+    return {"gates": out, "six_from": SIX, "holm": holm(pvalues, bars),
+            "holm_six_only": six_only, "build": logs}  # fmt: skip
 
 
 # Each iid null's hash and cut-offs; the arrays are saved beside.
@@ -564,7 +596,7 @@ def write(stage: str, result: dict, head: str, seeds: dict, nulls: dict) -> Path
     return path
 
 
-# python -m fiam.v4.gates check | timing | power | controls | gates
+# python -m fiam.v4.gates check|timing|power|controls|gates|late
 if __name__ == "__main__":
     stage = sys.argv[1] if len(sys.argv) > 1 else "check"
     if stage == "check":
@@ -574,13 +606,21 @@ if __name__ == "__main__":
         print(json.dumps(timing(), indent=1))
         sys.exit(0)
     head = commit()
-    require(stage, head)
+    # The late stage reuses fa169bf's controls; each stage runs once.
+    if stage == "late":
+        if result_path("late", head).exists():
+            raise SystemExit("the late gates ran at this commit")
+    else:
+        require(stage, head)
     chars = sources.characteristics()
     ms = months(chars)
     seeds = {"null": NULL_SEED, "pilot": [PILOT_SEEDS.start, PILOT_SEEDS.stop - 1],
              "positive": [POSITIVE_SEEDS.start, POSITIVE_SEEDS.stop - 1],
              "negative": [NEGATIVE_SEEDS.start, NEGATIVE_SEEDS.stop - 1]}  # fmt: skip
     nulls: dict = {}
+    if stage == "late":
+        print(write("late", late(ms, nulls), head, seeds, nulls))
+        sys.exit(0)
     if stage == "controls":
         print(write("controls", controls(ms, nulls), head, seeds, nulls))
         sys.exit(0)

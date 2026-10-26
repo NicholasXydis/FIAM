@@ -23,9 +23,11 @@ CARDS = DATA / "v4" / "cards"
 EXTRACTS = DATA / "v4" / "extracts"
 TEXT = DATA / "v4" / "text"
 # Tables kept as a folder of parts, since one frame would be too big.
-FOLDERS = {"crsp_daily", "sections"}
+FOLDERS = {"crsp_daily", "sections", "taq_daily", "options_daily"}
 # Blind mode seals every row public after the end of 2020 (PLAN §1.3).
 SEAL = pd.Timestamp("2020-12-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
+# After the unseal: the finals' last day; nothing public later is read.
+OPENED = pd.Timestamp("2026-08-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
 # CRSP's own days before 2014; the organisers' dsf days from 2014 on.
 DSF_FROM = pd.Timestamp("2014-01-01")
 # The SEC's 8-K item codes, never v1's labels (2.05 and 2.06 swapped).
@@ -621,13 +623,51 @@ REGISTRY = {
                 "linked filers with as-filed EPS; a quarter without it has no SUE",
             ),
         ),
+        Source(
+            "taq_daily",
+            ("v4/extracts/taq_daily/*.parquet", "v4/links.parquet"),
+            ("permno", "date"),
+            "permno",
+            "next_close",
+            step=7,
+            answers=four(
+                "2003-09 (WRDS Intraday Indicators)",
+                "computed from the whole day after its close: public at the next close",
+                "as WRDS delivers it; no revision history",
+                "symbols to PERMNO by the dated TAQ-CRSP link, which ends 2024-12 (§6.5)",
+            ),
+            control=(
+                "Crosswalk-only: leavers resolved 95.4%, covered 97.4% of trading months, "
+                "same-month gap t 0.65, next month 1.96; TAQ feeds only the spread calibration "
+                "and a buy-imbalance screen whose cut is 1.0, so it never blocks a short."
+            ),
+        ),
+        Source(
+            "options_daily",
+            ("v4/extracts/options_daily/*.parquet", "v4/links.parquet"),
+            ("permno", "date"),
+            "permno",
+            "next_close",
+            step=7,
+            answers=four(
+                "2000-01 (OptionMetrics stock-level daily)",
+                "end-of-day option prices: public at the next close",
+                "as WRDS delivers it; no revision history",
+                "secid to PERMNO by the dated OptionMetrics-CRSP link, scores 1 to 5; "
+                "ends 2025-08 (§6.5)",
+            ),
+            control=(
+                "Crosswalk-only: leavers resolved 74.9%, covered 93.5% of trading months; "
+                "same-month gap t -5.28, next month 0.42. Options feed only the skew screen, "
+                "which can only block a new short; a stock without options data is never "
+                "blocked, and a name without it has no vol-jump trigger in step 8."
+            ),
+        ),
     ]
 }
 # Sources converted in the step that first reads them (§6.7).
 LATER = {
     "ibes": 9,
-    "taq_daily": 7,
-    "options_daily": 7,
     "noaa": 6,
     "fema": 6,
     "ca0065s": 3,
@@ -734,6 +774,45 @@ def load_crsp_daily(path: Path, cal: pd.Series) -> pd.DataFrame:
     d["date"] = pd.to_datetime(d["date"]).astype("datetime64[ns]")
     d["cap_musd"] = d["cap_musd"] / 1000
     return stamped(d, None, cal, market_day=d["date"])
+
+
+# TAQ columns kept: volumes, signed volumes, spreads and the close.
+TAQ_KEEP = ["total_vol", "total_dv_LR", "BuyVol_LR", "SellVol_LR", "buy_dv_LR", "sell_dv_LR"]
+TAQ_KEEP += ["EffectiveSpread_Percent_DW", "QuotedSpread_Percent_tw", "CPrc"]
+# OptionMetrics columns kept: implied vols, skew, counts, put-call.
+OPTIONS_KEEP = ["iv_CATM", "iv_PATM", "Skew_OTM", "nopt_CATM", "nopt_PATM", "PC_Ratio", "hvol"]
+
+
+# One TAQ year, symbols to PERMNO by date; public at the next close.
+def load_taq_year(path: Path, cal: pd.Series, links: pd.DataFrame, log: dict) -> pd.DataFrame:
+    t = pd.read_parquet(path, columns=["DATE", "SYM_ROOT", "SYM_SUFFIX", *TAQ_KEEP])
+    t["date"] = pd.to_datetime(t["DATE"]).astype("datetime64[ns]")
+    suffix = t["SYM_SUFFIX"].fillna("").astype(str)
+    symbol = t["SYM_ROOT"].astype(str) + np.where(suffix != "", "." + suffix, "")
+    t["permno"] = link_table.permno_at(links, "taq", symbol, t["date"]).to_numpy()
+    log[f"unlinked_{path.stem}"] = int(t["permno"].isna().sum())
+    t = t.dropna(subset=["permno"]).astype({"permno": "int64"})
+    # Two symbols of one stock on a day: the one that traded more counts.
+    t = t.sort_values("total_vol").drop_duplicates(["permno", "date"], keep="last")
+    t = t[["permno", "date", *TAQ_KEEP]].reset_index(drop=True)
+    return stamped(t, None, cal, market_day=clock.shift_sessions(t["date"], 1, cal))
+
+
+# One OptionMetrics year, secid to PERMNO by date; next close.
+def load_options_year(path: Path, cal: pd.Series, links: pd.DataFrame, log: dict) -> pd.DataFrame:
+    o = pd.read_parquet(path, columns=["secid", "date", *OPTIONS_KEEP])
+    o["date"] = pd.to_datetime(o["date"]).astype("datetime64[ns]")
+    secid = pd.to_numeric(o["secid"], errors="coerce").astype("Int64").astype(str)
+    o["permno"] = link_table.permno_at(links, "secid", secid, o["date"]).to_numpy()
+    log[f"unlinked_{path.stem}"] = int(o["permno"].isna().sum())
+    o = o.dropna(subset=["permno"]).astype({"permno": "int64"})
+    o = o.sort_values("nopt_CATM").drop_duplicates(["permno", "date"], keep="last")
+    o = o[["permno", "date", *OPTIONS_KEEP]].reset_index(drop=True)
+    return stamped(o, None, cal, market_day=clock.shift_sessions(o["date"], 1, cal))
+
+
+# Loaders of the yearly folder tables registered in step 7.
+YEARLY = {"taq_daily": load_taq_year, "options_daily": load_options_year}
 
 
 # CRSP monthly at its month's last close; caps in USD millions.
@@ -1304,6 +1383,8 @@ LOADERS = {
 # The step 6 tables, built in this order by their own command.
 STEP6 = ("compustat_quarterly", "compustat_annual", "sec_facts", "sec_13f_reports", "sec_13f")
 STEP6 += ("labels", "sue")
+# The step 7 tables, converted when construction first reads them.
+STEP7 = ("taq_daily", "options_daily")
 
 
 # Rows per year by first close or availability: counts only.
@@ -1376,6 +1457,18 @@ def convert(name: str, data: Path = DATA, cal: pd.Series | None = None) -> dict:
         frame = pd.concat(frames, ignore_index=True)
         log["item1a_found"] = round(float(frame["item1a"].mean()), 4)
         log["item7_found"] = round(float(frame["item7"].mean()), 4)
+    elif name in YEARLY:
+        folder = clean / name
+        folder.mkdir(exist_ok=True)
+        for old in folder.glob("part-*.parquet"):
+            old.unlink()
+        links = pd.read_parquet(data / "v4" / "links.parquet")
+        frames = []
+        for n, path in enumerate(sorted(Path(p) for p in glob.glob(str(data / source.raw[0])))):
+            part = YEARLY[name](path, cal, links, log)
+            part.to_parquet(folder / f"part-{n:02d}.parquet", index=False, compression="zstd")
+            frames.append(part[[*source.key, "first_close", "available_at"]])
+        frame = pd.concat(frames, ignore_index=True)
     else:
         frame = LOADERS[name](data, cal, log)
         bad = [c for c in source.banned if c in frame.columns]
@@ -1389,9 +1482,23 @@ def convert(name: str, data: Path = DATA, cal: pd.Series | None = None) -> dict:
     return made
 
 
+# The unseal check's answer, kept for the process; None until asked.
+UNSEAL_CACHE: bool | None = None
+
+
 # Blind mode lifts only by the hash-checked unseal (§13.3, step 10).
 def unsealed() -> bool:
-    return False
+    global UNSEAL_CACHE
+    if UNSEAL_CACHE is None:
+        from fiam.v4 import freeze
+
+        UNSEAL_CACHE = freeze.opened()
+    return UNSEAL_CACHE
+
+
+# The seal in force: 2020-12-31, or the finals' end once unsealed.
+def seal_at() -> pd.Timestamp:
+    return OPENED if unsealed() else SEAL
 
 
 # Reads a clean table under blind mode, bans and limits (§1.2, §1.3).
@@ -1455,7 +1562,7 @@ def read_unsealed(path: Path, want: list[str] | None, where=None) -> pd.DataFram
 
     table = ds.dataset(path)
     cols = None if want is None else [c for c in want if c in table.schema.names]
-    seal = pa.scalar(SEAL.value, type=pa.timestamp("ns", tz="UTC"))
+    seal = pa.scalar(seal_at().value, type=pa.timestamp("ns", tz="UTC"))
     expr = ds.field("available_at") <= seal
     rows = row_filter(table.schema, where)
     expr = expr if rows is None else expr & rows
@@ -1504,16 +1611,17 @@ def row_filter(schema, where):
 
 # Drops every row public after the seal, and labels that reach past it.
 def sealed_out(frame: pd.DataFrame, source: Source, asked: set) -> pd.DataFrame:
+    cut = seal_at()
     public = pd.to_datetime(frame["available_at"], utc=True)
-    keep = public <= SEAL
+    keep = public <= cut
     for label, months in source.labels.items():
         if label in asked and "eom" in frame.columns:
             ends = pd.to_datetime(frame["eom"]) + pd.offsets.MonthEnd(months)
-            keep &= ends <= SEAL.tz_convert(None)
+            keep &= ends <= cut.tz_convert(None)
     out = frame[keep.to_numpy()].copy()
     # A period ending after the seal reveals a later exit (M4): left open.
     if "valid_to" in out.columns:
-        late = pd.to_datetime(out["valid_to"]) > SEAL.tz_convert(None)
+        late = pd.to_datetime(out["valid_to"]) > cut.tz_convert(None)
         out.loc[late, "valid_to"] = pd.NaT
     return out
 
@@ -1528,9 +1636,10 @@ def count(name: str) -> dict:
 # Converts tables: python -m fiam.v4.sources [names]; step 6 apart
 if __name__ == "__main__":
     names = sys.argv[1:] or ["crsp_daily", "sections", *[n for n in LOADERS if n not in STEP6]]
+    later = {"step6.json": STEP6, "step7.json": STEP7}
     calendar = trading_calendar()
     # A run of some tables updates their entries and keeps the rest.
-    summary = "step6.json" if set(names) <= set(STEP6) else "step3.json"
+    summary = next((f for f, group in later.items() if set(names) <= set(group)), "step3.json")
     old = CARDS / summary
     report = json.loads(old.read_text()) if old.exists() else {}
     report["calendar"] = clock.cross_check(calendar.index)

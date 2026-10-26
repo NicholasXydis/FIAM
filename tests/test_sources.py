@@ -269,6 +269,8 @@ def test_only_allowed_v4_modules_open_data_files():
     allowed |= {"replay.py"}
     # The step 6 builders read the extracts and CRSP's types to clean them.
     allowed |= {"compustat.py", "thirteen_f.py"}
+    # The final run reads its own outputs and the labels it rebuilt.
+    allowed |= {"final.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):

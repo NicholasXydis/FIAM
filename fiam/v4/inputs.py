@@ -43,6 +43,30 @@ def crsp_shares(permnos, day) -> pd.Series:
     return rows.groupby("permno")["shrout_k"].last().mul(1000.0).reindex(sorted(where["permno"]))
 
 
+# Shares on each session: CRSP's through 2025, then the panel's.
+def shares_on(sessions) -> pd.DataFrame:
+    days = pd.DatetimeIndex(sorted(set(pd.to_datetime(pd.Series(sessions)))))
+    out = []
+    early = days[days <= data.CRSP_END]
+    if len(early):
+        c = data.table("crsp_daily", ["shrout_k"], where={"date": set(early)})
+        out.append(pd.DataFrame({"permno": c["permno"], "session": c["date"],
+                                 "shares": c["shrout_k"] * 1000.0,
+                                 "shares_close": c["first_close"]}))  # fmt: skip
+    # After 2025 the last public month end's cap over price (Medium 5).
+    for day in days[days > data.CRSP_END]:
+        eom = last_eom(day)
+        p = data.table("panel", ["me", "prc"], where={"eom": (eom, eom)})
+        out.append(pd.DataFrame({"permno": p["permno"], "session": day,
+                                 "shares": p["me"] * 1e6 / p["prc"].abs(),
+                                 "shares_close": p["first_close"]}))  # fmt: skip
+    if not out:
+        empty = pd.Series(dtype="datetime64[ns]")
+        return pd.DataFrame({"permno": pd.Series(dtype="int64"), "session": empty,
+                             "shares": pd.Series(dtype=float), "shares_close": empty})  # fmt: skip
+    return pd.concat(out, ignore_index=True)
+
+
 # Panel cap ($m) over |price| at the last month end, in shares.
 def panel_shares(permnos, day) -> pd.Series:
     eom = last_eom(day)

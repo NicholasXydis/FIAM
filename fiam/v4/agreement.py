@@ -71,6 +71,14 @@ def coverage_sets() -> dict[str, set]:
         path = CLEAN / f"{name}.parquet"
         if path.exists():
             sets[name] = within(pd.read_parquet(path, columns=["permno", "first_close"]), months)
+    # Step 7 folders: a stock-month is covered by any row in that month.
+    for name in ("taq_daily", "options_daily"):
+        if (CLEAN / name).exists():
+            parts = sorted((CLEAN / name).glob("part-*.parquet"))
+            last = [("date", "<=", TEST[1])]
+            t = pd.concat(pd.read_parquet(f, columns=["permno", "date"], filters=last)
+                          for f in parts)  # fmt: skip
+            sets[name] = set(zip(t["permno"], pd.to_datetime(t["date"]).dt.to_period("M")))
     folder = CLEAN / "sections"
     if folder.exists():
         cols = ["permno", "first_close", "item1a", "item7"]
