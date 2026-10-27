@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4.construct import optimizer
-from tools import crises, exhibits, flat_borrow, whatif
+from fiam.vfinal import whatif
+from fiam.vfinal.construct import optimizer
+from fiam.vfinal.exhibits import build as exhibits
+from fiam.vfinal.report import crises, flat_borrow
 
 
 # The stem is the design and the commit, found from the daily file.
@@ -124,12 +126,12 @@ def test_stressed_covariance_handles_a_flat_factor():
 
 # The size variant moves both caps and leaves the daily short floor.
 def test_cap_variant_moves_the_universe_caps(monkeypatch):
-    from fiam.v4 import universe
-    from fiam.v4.construct import execution
+    from fiam.vfinal import universe
+    from fiam.vfinal.construct import execution
 
     monkeypatch.setattr(universe, "ENTRY_MUSD", universe.ENTRY_MUSD)
     monkeypatch.setattr(universe, "HOLD_MUSD", universe.HOLD_MUSD)
-    monkeypatch.setattr(whatif.revised, "install_settings", lambda loose: None)
+    monkeypatch.setattr(whatif.headline, "install_settings", lambda loose: None)
     monkeypatch.setattr(whatif.exam, "settings_for", whatif.exam.settings_for)
     whatif.install(whatif.VARIANTS["cap_3bn"], True)
     assert (universe.ENTRY_MUSD, universe.HOLD_MUSD) == (3000.0, 2500.0)

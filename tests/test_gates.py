@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import agreement, data, gates, sources
-from fiam.v4.signals import (
+from fiam.vfinal import agreement, data, gates, sources
+from fiam.vfinal.signals import (
     base,
     best_ideas,
     edgar_flags,
@@ -65,7 +65,7 @@ def test_holm_step_down():
 
 # The runner refuses an uncommitted tree before any gate runs.
 def test_runner_refuses_a_dirty_tree(monkeypatch):
-    done = subprocess.CompletedProcess([], 0, stdout=" M fiam/v4/gates.py\n", stderr="")
+    done = subprocess.CompletedProcess([], 0, stdout=" M fiam/vfinal/gates.py\n", stderr="")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: done)
     with pytest.raises(RuntimeError):
         gates.commit()
@@ -209,7 +209,7 @@ def test_ancillary_windows_end_by_the_seal():
                        DAY("2020-09-30"))  # fmt: skip
 
 
-# The next SUE: after T, within 4 months, the earlier of two quarters.
+# The next SUE: after T, within 4 months, the first of two quarters.
 def test_next_sue():
     T = DAY("2019-06-28")
     four = T + gates.FOUR_MONTHS
@@ -464,7 +464,7 @@ def test_13f_same_day_order():
     assert [(x.base, x.adds) for x in v.itertuples()] == [("b", ()), ("b", ("a",))]
 
 
-# The runner needs a pushed commit, and each stage the earlier ones.
+# The runner needs a pushed commit, and each stage the ones before.
 def test_runner_needs_a_pushed_commit_and_earlier_stages(monkeypatch, tmp_path):
     answers = {"status": "", "branch": "", "rev-parse": "abc123\n"}
 

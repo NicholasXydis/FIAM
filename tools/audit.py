@@ -869,7 +869,7 @@ def v4_exits() -> None:
 def v4_clean() -> None:
     import pyarrow.dataset as ds
 
-    from fiam.v4 import sources
+    from fiam.vfinal import sources
 
     cal = sources.trading_calendar()
     close = pd.Series(pd.DatetimeIndex(cal).tz_localize(None).as_unit("ns"), index=cal.index)
@@ -922,7 +922,7 @@ def v4_clean() -> None:
 
 # Short interest: one source a date, public 8 sessions on.
 def v4_short_interest() -> None:
-    from fiam.v4 import sources
+    from fiam.vfinal import sources
 
     days = pd.DatetimeIndex(sources.trading_calendar().index)
     s = pd.read_parquet(CLEAN / "short_interest.parquet")
@@ -951,7 +951,7 @@ def v4_short_interest() -> None:
 
 # FINRA's files: one row per symbol and date, on sessions, sane sizes.
 def finra() -> None:
-    from fiam.v4 import sources
+    from fiam.vfinal import sources
 
     sessions = pd.DatetimeIndex(sources.trading_calendar().index)
     days, last = set(sessions), sessions.max()
@@ -1015,7 +1015,7 @@ def v4_cards() -> None:
 
 # Merge rule 1: per source, Apple's observation date beside its entry.
 def merge_rule1() -> None:
-    from fiam.v4 import sources
+    from fiam.vfinal import sources
 
     rows = []
     for name, source in sources.REGISTRY.items():

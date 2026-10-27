@@ -167,7 +167,7 @@ def parts(members: dict) -> dict:
         out["lowvol"] = dict(beta=betas[0], v2_pass_beta=betas[1], vol=vols[0], v2_pass_vol=vols[1])
         out["lowvol"]["passed"] = abs(betas[0]) < abs(betas[1]) and vols[0] < vols[1]
 
-    # Risk model starts 2017-01, so holding months from 2017-02 judge it.
+    # Risk model starts 2017-01, so holding months from 2017-02 test it.
     def steadiness(run: tuple) -> dict:
         net = run[0].loc["2017-02-01":, "net"]
         yearly = net.groupby(net.index.year).std() * np.sqrt(12)

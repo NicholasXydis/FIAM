@@ -84,7 +84,7 @@ MODELS = {
         "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
         "babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf",
     ),
-    # The time-cutoff model: the Pile only, data through 2020 (§10.5).
+    # The time-cutoff model: the Pile only, data through 2020.
     "pythia": (
         "CheeseCoder/pythia-12b-deduped-Q4_K_M-GGUF",
         "pythia-12b-deduped.Q4_K_M.gguf",
@@ -171,7 +171,7 @@ def file_hash(path: Path) -> str:
     return value
 
 
-# Downloads once, resuming a broken one, and refuses a wrong SHA-256.
+# Downloads once, resuming a broken one, and refuses a bad SHA-256.
 def fetch(url: str, target: Path, sha256: str) -> Path:
     if target.exists() and file_hash(target) == sha256:
         return target

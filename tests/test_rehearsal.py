@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import clock, daily_book, data
-from fiam.v4.construct import rehearsal
+from fiam.vfinal import clock, daily_book, data
+from fiam.vfinal.construct import rehearsal
 
 DAY = pd.Timestamp
 ROOT = rehearsal.gates.ROOT

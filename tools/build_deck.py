@@ -28,7 +28,7 @@ TINT, PANEL, BAND = (
     RGBColor(0xF7, 0xF9, 0xFA),
 )
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-# A font every PowerPoint has, so the deck looks alike for the judges.
+# A font every PowerPoint has, so the deck looks alike everywhere.
 FONT = "Calibri"
 WIDE, TALL = Inches(13.333), Inches(7.5)
 LEFT, WIDTH = Inches(0.6), Inches(12.13)
@@ -365,7 +365,7 @@ def standouts() -> str:
     return ". ".join(s[:1].upper() + s[1:] for s in parts) + "."
 
 
-# A name with its earlier one, if the company changed it in the period.
+# A name with its prior one, if the company changed it in the period.
 def known_as(ticker: str, name: str) -> str:
     import pandas as pd
 
@@ -384,7 +384,7 @@ def known_as(ticker: str, name: str) -> str:
 VERBATIM: set[str] = set()
 
 
-# Every "TICKER, Name" cell in a table, with any earlier company name.
+# Every "TICKER, Name" cell in a table, with any prior company name.
 def renamed(body: str) -> str:
     for ticker, name in re.findall(r"\| ([A-Z.]+), ([^|]+?) \|", body):
         body = body.replace(f"{ticker}, {name} |", f"{ticker}, {known_as(ticker, name)} |")
@@ -640,7 +640,7 @@ def architecture() -> str:
     return head + "\n".join("| " + " | ".join(r) + " |" for r in rows)
 
 
-# How model-side look-ahead is ruled out, with the probe's numbers.
+# How model-side future data is ruled out, with the probe's numbers.
 def recall() -> str:
     from fiam.report import docs as R
 

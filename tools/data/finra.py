@@ -202,7 +202,7 @@ def verify() -> int:
         path = OUT / "volume" / entry["name"][:4] / f"{entry['name']}.gz"
         ok = path.exists() and hashlib.sha256(gzip.decompress(path.read_bytes())).hexdigest()
         bad += ok != entry["sha256"]
-    print(f"finra: {len(book)} short interest files, {len(lines)} volume entries, {bad} wrong")
+    print(f"finra: {len(book)} short interest files, {len(lines)} volume entries, {bad} differ")
     return 1 if bad else 0
 
 

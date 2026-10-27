@@ -1,0 +1,19 @@
+{
+ "version": "vfinal",
+ "title": "The final version, the finals book",
+ "status": "in progress",
+ "code": [
+  "fiam/vfinal/"
+ ],
+ "command": "uv run fiam rerun",
+ "protocols": [
+  "versions/vfinal/protocol.md"
+ ],
+ "frozen": [
+  "frozen/vfinal/"
+ ],
+ "results": [
+  "out/vfinal/"
+ ],
+ "fingerprints": {}
+}

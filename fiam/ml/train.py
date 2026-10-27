@@ -40,7 +40,7 @@ LGBM = dict(
 # Plenty of rounds, and early stopping decides how many we actually use.
 ROUNDS, EARLY = 2000, 50
 
-# Fixed so a judge rerunning this gets our numbers.
+# Seeded so a rerun gets the same numbers.
 SEED = 42
 # Three narrowing layers, Gu-Kelly-Xiu's best. Deeper did no better.
 HIDDEN = (32, 16, 8)

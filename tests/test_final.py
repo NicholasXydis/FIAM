@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from fiam.v4 import clock, final, gates, sources
-from fiam.v4.forecast import dataset, grid
+from fiam.vfinal import clock, final, gates, sources
+from fiam.vfinal.forecast import dataset, grid
 
 DAY = pd.Timestamp
 
@@ -32,7 +32,7 @@ def test_opened_moves_the_windows_and_restores(monkeypatch):
     assert sources.OPENED.tz_convert(clock.EASTERN).date() == DAY("2026-08-31").date()
 
 
-# Rebuilt labels must leave every row public by 2020 as it was.
+# Rebuilt labels must leave every row public by 2020 as it stands.
 def test_labels_before_2021_unchanged():
     old = pd.DataFrame({"permno": [1, 2], "eom": [DAY("2019-01-31")] * 2, "horizon": 1,
                         "label": [0.1, -0.2], "available": [DAY("2019-03-01")] * 2})  # fmt: skip

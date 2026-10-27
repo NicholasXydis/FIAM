@@ -1,4 +1,4 @@
-# Every number fiam.v2 learns from data up to 2020, saved in frozen/.
+# Every number the older model learns from data to 2020, in frozen/.
 
 import json
 import sys

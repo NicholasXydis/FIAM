@@ -92,13 +92,13 @@ def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
     known = frame["holding_month"] + pd.DateOffset(months=4)
     seen = []
 
-    # Records which rows each fit was given, and predicts nothing.
+    # Records which rows each fit is given, and predicts nothing.
     class Stub:
         # Zeros for every row, since the test only checks the fit's rows.
         def predict(self, x, **_):
             return np.zeros(len(x))
 
-    # Stands in for lgb.train, keeping the label rows each fit was given.
+    # Stands in for lgb.train, keeping the label rows each fit is given.
     def fake(params, dataset, rounds):
         seen.append(dataset.label.index)
         return Stub()

@@ -64,7 +64,7 @@ def check() -> int:
         except Exception as err:  # noqa: BLE001
             print(f"{name}: refused ({type(err).__name__}: {err})")
             failed += 1
-    print("Nothing was bought and MCP was not used.")
+    print("Nothing bought, MCP not used.")
     return 1 if failed else 0
 
 
@@ -155,7 +155,7 @@ def catalogue(limit: int | None = None) -> int:
     manifest["datasets"] = len(ids)
     receipt.write_text(json.dumps(manifest, indent=1))
     print(f"Saved {len(manifest['files'])} files, {len(manifest['errors'])} errors, to {OUT}")
-    print("Nothing was bought and MCP was not used.")
+    print("Nothing bought, MCP not used.")
     return 0
 
 
@@ -193,7 +193,7 @@ def entities() -> int:
     for row in slim:
         forms[row["representation"]] = forms.get(row["representation"], 0) + 1
     print(f"Saved {len(slim)} company entries {forms}, {len(manifest['errors'])} errors")
-    print("Nothing was bought and MCP was not used.")
+    print("Nothing bought, MCP not used.")
     return 0
 
 
@@ -323,7 +323,7 @@ def plan(spec_path: str, client=None) -> int:
     book |= {"total": total, "items": items}
     target.write_text(json.dumps(book, default=str, indent=1), encoding="utf-8")
     print(f"{len(good)} priced, {total} tokens in all, {len(items) - len(good)} not buyable.")
-    print(f"Nothing was bought. To buy: uv run run.py --data carbon buy {target} {total}")
+    print(f"Nothing bought. To buy: uv run run.py --data carbon buy {target} {total}")
     return 0
 
 
@@ -423,7 +423,7 @@ def verify() -> int:
     for book in (OUT / "manifest.json", OUT / "entities" / "manifest.json"):
         files = receipts(book).get("files", {})
         wrong = check_files(OUT, files)
-        print(f"carbon {book.parent.name}: {len(files)} files, {len(wrong)} wrong {wrong[:5]}")
+        print(f"carbon {book.parent.name}: {len(files)} files, {len(wrong)} differ {wrong[:5]}")
         bad += len(wrong)
     for folder in sorted(p for p in SNAPSHOTS.glob("snapshot_*") if p.is_dir()):
         wrong, count = [], 0
@@ -436,7 +436,7 @@ def verify() -> int:
             body = gzip.decompress(data.read_bytes()) if data.exists() else b""
             if hashlib.sha256(body).hexdigest() != digest:
                 wrong.append(data.name)
-        print(f"carbon {folder.name}: {count} files, {len(wrong)} wrong {wrong[:5]}")
+        print(f"carbon {folder.name}: {count} files, {len(wrong)} differ {wrong[:5]}")
         bad += len(wrong)
     return 1 if bad else 0
 

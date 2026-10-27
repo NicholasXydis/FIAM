@@ -117,7 +117,7 @@ def total_return_market(index: pd.DataFrame) -> dict:
     return out
 
 
-# Did any accounting signal change before its report was public?
+# Whether any accounting signal moves before its report is public.
 def release_timing(reports: pd.DataFrame) -> dict:
     columns = ["permno", "gvkey", "eom", "be_me", "me_company", *ACCOUNTING[:-1]]
     panel = data.features(columns)[columns]
@@ -201,7 +201,7 @@ def release_day_sensitivity(reports: pd.DataFrame) -> dict:
     )
 
 
-# The same code on organizer data alone, what a judge without WRDS gets.
+# The same code on organizer data alone, the run without WRDS.
 def without_wrds() -> dict:
     book = P.backtest(P.shipped(P.build_signal(P.screen(P.load_panel(), wrds=False))))
     stats = P.performance(book)["performance"]

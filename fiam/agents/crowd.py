@@ -26,7 +26,7 @@ def table(batch: pd.DataFrame, codes: list[str]) -> str:
     return "\n".join(lines)
 
 
-# Each month's stocks shuffled by a fixed seed, so reruns ask the same.
+# Each month's stocks shuffled by a set seed, so reruns ask the same.
 def batches(frame: pd.DataFrame, month: pd.Timestamp) -> list[pd.DataFrame]:
     part = frame[frame["eom"] == month]
     order = np.random.default_rng([SEED, month.year, month.month]).permutation(len(part))

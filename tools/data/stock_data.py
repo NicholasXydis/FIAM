@@ -122,7 +122,7 @@ RESTATEMENT_KEEP = [
 ]  # fmt: skip
 
 
-# A file's size, time and SHA-256, to prove exactly what was read.
+# A file's size, time and SHA-256, to prove exactly what is read.
 def describe(path: Path) -> dict:
     stat = path.stat()
     when = datetime.fromtimestamp(stat.st_mtime, UTC).isoformat()
@@ -268,7 +268,7 @@ def dedupe(path: Path, keys: list[str], latest: str | None = None) -> int:
     return len(table) - len(left)
 
 
-# Rewrites in fixed million-row groups, smaller and rebuild-identical.
+# Rewrites in set million-row groups, smaller and rebuild-identical.
 def compact(path: Path) -> None:
     temp, held = path.with_name(path.name + ".part"), None
     with (
@@ -352,7 +352,7 @@ def verify() -> int:
         else:
             expected[f"{name}.parquet"] = r["output"]["sha256"]
     wrong = check(OUT, expected)
-    print(f"stock extracts: {len(expected)} files, {len(wrong)} wrong {wrong[:5]}")
+    print(f"stock extracts: {len(expected)} files, {len(wrong)} differ {wrong[:5]}")
     return 1 if wrong else 0
 
 

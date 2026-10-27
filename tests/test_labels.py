@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import clock, data, labels, ranks, sources, universe
-from fiam.v4.signals import syy
+from fiam.vfinal import clock, data, labels, ranks, sources, universe
+from fiam.vfinal.signals import syy
 
 HAVE_LABELS = (sources.DATA / "v4" / "clean" / "labels.parquet").exists()
 

@@ -187,8 +187,6 @@ def test_missing_returns_are_booked_at_zero_and_recorded():
 # Importing a module must not run or write, so a bundler can take code.
 def test_every_module_imports_without_side_effects(tmp_path):
     files = sorted((ROOT / "fiam").rglob("*.py"))
-    # The separate fiam/v4b research tree is not part of the kit.
-    files = [p for p in files if "v4b" not in p.relative_to(ROOT).parts]
     # Modules on the optional backtest extra are checked only if installed.
     if importlib.util.find_spec("nautilus_trader") is None:
         files = [p for p in files if "nautilus_trader" not in p.read_text(encoding="utf-8")]

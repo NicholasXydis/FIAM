@@ -65,7 +65,7 @@ def fingerprint(chunk: pd.DataFrame) -> str:
     return digest.hexdigest()
 
 
-# Every filing's vector by chunk, so a stopped run resumes where it was.
+# Every filing's vector by chunk, so a stopped run resumes in place.
 def filing_vectors(texts: pd.DataFrame) -> pd.DataFrame:
     FOLDER.mkdir(parents=True, exist_ok=True)
     tokenizer, model = None, None

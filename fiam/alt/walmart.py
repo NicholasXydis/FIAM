@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from fiam.alt import common, passport
-from fiam.v4 import sources
+from fiam.vfinal import sources
 
 ROOT = sources.ROOT
 CARBON = sources.DATA / "carbon_arc"
@@ -287,7 +287,7 @@ def indexed(m: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return 100 * frame / frame.loc[base] if pd.notna(base) else frame * np.nan
 
 
-# One page: panel users, growth by quarter, context and the readings.
+# One page: panel users, growth by quarter, context and the notes.
 def chart(m: pd.DataFrame, q: pd.DataFrame, report: dict, path: Path) -> None:
     import matplotlib
 
@@ -295,8 +295,8 @@ def chart(m: pd.DataFrame, q: pd.DataFrame, report: dict, path: Path) -> None:
     import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
 
-    from fiam.exhibits_v4.common import check_text
     from fiam.report.charts import ALT, BENCH, INK, MARKET, MUTED, OURS, style
+    from fiam.vfinal.exhibits.common import check_text
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 9.5))
     ax = axes[0, 0]

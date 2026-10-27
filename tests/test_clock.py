@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import clock
+from fiam.vfinal import clock
 
 DAY = pd.Timestamp
 
@@ -56,7 +56,7 @@ def test_friday_evening_and_holiday_roll_forward(cal):
     assert july3 == DAY("2024-07-05")
 
 
-# EDGAR's day opens at 06:00: earlier stamps wait, late ones move on.
+# EDGAR's day opens at 06:00: sooner stamps wait, late ones move on.
 def test_edgar_never_before_six_and_late_filings_wait(cal):
     assert edgar_close(cal, "2024-03-11T05:00:00.000Z") == DAY("2024-03-11")
     late = edgar_close(cal, "2024-03-08T18:30:00.000Z", "2024-03-11")
@@ -102,7 +102,7 @@ def test_short_interest_waits_eight_sessions(cal):
     assert clock.first_close(public, cal).iat[0] == DAY("2024-03-28")
 
 
-# A join fails when a row was not public before its formation close.
+# A join fails when a row is not public before its formation close.
 def test_join_assertion_refuses_a_same_close_row():
     clock.assert_known_before(["2024-03-08"], ["2024-03-11"], "ok")
     with pytest.raises(AssertionError, match="1 rows"):
@@ -139,7 +139,7 @@ def test_threshold_uses_only_earlier_days():
     assert np.isnan(got.iat[0])
 
 
-# Earnings dates: same quarter a year earlier + 364, else last + 91.
+# Earnings dates: same quarter a year before + 364, else last + 91.
 def test_projected_earnings_dates():
     table = pd.DataFrame(
         {
@@ -172,7 +172,7 @@ def test_label_window_refuses_the_seal():
 
 # A fit at T may hold the label of t-2, never t-1's, which ends after T.
 def test_purge_by_label_end_day():
-    from fiam.v4 import guards
+    from fiam.vfinal import guards
 
     guards.assert_label_window([pd.Timestamp("2020-06-01")], pd.Timestamp("2020-06-30"))
     with pytest.raises(AssertionError):

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4.construct import exam, jumps, optimizer
+from fiam.vfinal.construct import exam, jumps, optimizer
 from tests.test_construct import fake
 
 

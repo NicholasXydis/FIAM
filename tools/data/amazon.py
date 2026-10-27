@@ -157,7 +157,7 @@ def verify() -> int:
     for kind in ("items", "product_month"):
         expected = {f"{c}.parquet": r[kind]["sha256"] for c, r in saved.items()}
         wrong = check(OUT / kind, expected)
-        print(f"amazon {kind}: {len(expected)} files, {len(wrong)} wrong {wrong[:5]}")
+        print(f"amazon {kind}: {len(expected)} files, {len(wrong)} differ {wrong[:5]}")
         bad += len(wrong)
     return 1 if bad else 0
 
@@ -176,7 +176,7 @@ def official() -> int:
         for name, key in pairs:
             if tuple(r[key]) != published.get(name):
                 wrong.append(name)
-    print(f"amazon raw: {2 * len(saved)} files against Hugging Face, {len(wrong)} wrong {wrong}")
+    print(f"amazon raw: {2 * len(saved)} files against Hugging Face, {len(wrong)} differ {wrong}")
     return 1 if wrong else 0
 
 

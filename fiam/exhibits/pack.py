@@ -86,7 +86,7 @@ def period(part: pd.DataFrame) -> dict:
     )
 
 
-# The record split in time, as a judge would, and we'd rather go first.
+# The record split in time, the first half beside the second.
 def subperiods(df: pd.DataFrame) -> dict:
     year = df.index.year
     masks = {
@@ -129,7 +129,7 @@ def by_year(df: pd.DataFrame) -> dict:
     return out
 
 
-# The universe by year, so a break in how 2026 was built shows vs CRSP.
+# The universe by year, so a break in how 2026 is built shows vs CRSP.
 def data_by_year(universe: pd.DataFrame) -> dict:
     # Keyed on the holding month's year, the year the return belongs to.
     year = universe["eom"].dt.year + (universe["eom"].dt.month == 12)

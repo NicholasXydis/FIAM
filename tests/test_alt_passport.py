@@ -148,7 +148,7 @@ def test_survivorship_flags_for_named_firms_and_delistings():
 # The card set gains a panel field from the debias reply, sealed window.
 def test_panel_field_on_card_set(tmp_path, monkeypatch):
     from fiam.alt import common, walmart
-    from fiam.exhibits_v4.common import FORBIDDEN, OXFORD
+    from fiam.vfinal.exhibits.common import FORBIDDEN, OXFORD
 
     rows = []
     for d, a, b in [("2019-01-31", 10, 20), ("2020-01-31", 15, 25), ("2020-12-31", 24, 30)]:

@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import pytest
 
-from fiam.v4 import links
+from fiam.vfinal import links
 
 DAY = pd.Timestamp
 

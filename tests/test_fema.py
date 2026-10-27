@@ -1,6 +1,6 @@
 # The FEMA notice rule: county names, statewide aid, never mitigation.
 
-from fiam.v4 import fema
+from fiam.vfinal import fema
 
 
 # A county counts as a whole word, never inside another name.

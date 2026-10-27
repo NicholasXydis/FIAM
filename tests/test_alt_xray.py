@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from fiam.alt import xray
-from fiam.v4.desk.agents import SHRINKS
+from fiam.vfinal.desk.agents import SHRINKS
 
 DAY = pd.Timestamp
 SEAL = DAY("2020-12-31")
@@ -132,7 +132,7 @@ def test_next_print_known_by_as_of():
     assert got["date"] == "2026-11-04" and got["sessions_ahead"] == 7
     assert xray.next_print(cal, 3, DAY("2026-10-26"), SEAL, False)["status"] == "sealed"
     assert xray.next_print(cal, 3, DAY("2019-10-26"), SEAL, False)["status"] == "none known"
-    # After the unseal nothing is hidden, so the word is never sealed.
+    # With the gate open nothing is hidden, so the word is never sealed.
     late = xray.next_print(cal, 3, DAY("2026-10-26"), SEAL, True)
     assert late["status"] == "none known" and "Sealed" not in late["why"]
 

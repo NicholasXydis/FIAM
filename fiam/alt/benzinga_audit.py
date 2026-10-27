@@ -51,7 +51,7 @@ def load_benzinga(folder: Path = SNAPSHOT) -> pd.DataFrame:
     return frame
 
 
-# The pull receipts: when each insight was pulled and its stated end.
+# The pull receipts: when each insight came in and its stated end.
 def receipts(folder: Path = SNAPSHOT) -> dict:
     out = {}
     for insight, kind in INSIGHTS.items():
@@ -252,7 +252,7 @@ def plain(value):
     return value.item() if isinstance(value, np.generic) else value
 
 
-# Match rate, chance rate, look-ahead and lead days for a set of rows.
+# Match rate, chance rate, early matches and lead days for a row set.
 def stats(part: pd.DataFrame) -> dict:
     covered = part[part["covered"]]
     hit = covered[covered["matched"]]
@@ -339,7 +339,7 @@ def recall(rows: pd.DataFrame, filings: pd.DataFrame, departed: set) -> dict:
 
 # SEC filings of each audited kind from the registry, on its clock.
 def sec_filings() -> tuple[pd.DataFrame, set]:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     keep = ["permno", "kind", "available_at"]
     offers = data.table("edgar_filings", ["form"], where={"form": set(OFFER_FORMS)})
@@ -364,7 +364,7 @@ def sec_filings() -> tuple[pd.DataFrame, set]:
 
 # Tickers to PERMNO on each label's date, through the dated links.
 def map_permnos(rows: pd.DataFrame) -> tuple[pd.Series, set]:
-    from fiam.v4 import data, links
+    from fiam.vfinal import data, links
 
     lk = data.table("links", None)
     permno = links.permno_by_symbol(lk, rows["ticker"].to_numpy(), rows["label"].to_numpy())
@@ -373,7 +373,7 @@ def map_permnos(rows: pd.DataFrame) -> tuple[pd.Series, set]:
     return pd.Series(permno.to_numpy(), index=rows.index, dtype="Int64"), departed
 
 
-# Every row measured: windows, groups, matches, chance and look-ahead.
+# Every row measured: windows, groups, matches, chance and early hits.
 def audit(rows, sessions, filings, permno, departed, covered) -> pd.DataFrame:
     rows = rows.copy()
     rows["lo"], rows["hi"] = windows(rows["label"], sessions)
@@ -394,7 +394,7 @@ def audit(rows, sessions, filings, permno, departed, covered) -> pd.DataFrame:
     # The clock reads some UTC digits as Eastern, up to 5 hours late.
     early = rows["first_public"] - pd.Timedelta(hours=EARLY_HOURS)
     rows["lookahead_early"] = rows["matched"] & (early > end)
-    # The placebo: labels 26 weeks earlier, the same firms and kinds.
+    # The placebo: labels 26 weeks before, the same firms and kinds.
     moved = rows.assign(label=rows["label"] - pd.Timedelta(weeks=PLACEBO_WEEKS))
     moved["lo"], moved["hi"] = windows(moved["label"], sessions)
     rows["placebo_matched"] = match(moved, filings)["n_filings"] > 0
@@ -403,7 +403,7 @@ def audit(rows, sessions, filings, permno, departed, covered) -> pd.DataFrame:
 
 # Runs the audit and writes audit.json, audit.csv and the chart.
 def main(folder: Path = SNAPSHOT, out: Path = OUT) -> dict:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     out.mkdir(parents=True, exist_ok=True)
     every = load_benzinga(folder)

@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from fiam.v4 import text
+from fiam.vfinal import text
 
 BODY = "The following risks could hurt us. " * 30
 DOC = (
@@ -216,7 +216,7 @@ def test_boilerplate_catches_spelling_variants():
 
 # A property row is right with no extra state and at most one miss.
 def test_property_right_rule():
-    from fiam.v4 import hand_checks
+    from fiam.vfinal import hand_checks
 
     assert hand_checks.property_right(["TX", "OH"], ["TX", "OH", "CA"])
     assert not hand_checks.property_right(["TX", "NY"], ["TX"])

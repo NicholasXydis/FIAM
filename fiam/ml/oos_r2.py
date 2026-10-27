@@ -95,7 +95,7 @@ def calibrated(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(frames)
 
 
-# The composite's score mapped to returns, slope from earlier years.
+# The composite's score mapped to returns, slope from prior years.
 def composite_forecasts() -> pd.DataFrame:
     panel = P.load_panel()
     universe = P.build_signal(P.screen(panel, "2015-01-31", P.LAST_FORECAST))
@@ -117,7 +117,7 @@ def composite_forecasts() -> pd.DataFrame:
     return pd.concat(frames)
 
 
-# Picker ranks to returns by its own earlier slope, not the perfect one.
+# Picker ranks to returns by its own prior slope, not the perfect one.
 def scorer_forecasts(df: pd.DataFrame) -> pd.DataFrame | None:
     cache = P.CACHE / "scores.parquet"
     if not cache.exists():

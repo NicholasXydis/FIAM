@@ -18,12 +18,12 @@ CROWD = P.CACHE / "crowd.parquet"
 TRIAGE, ANALYST = P.CACHE / "triage.parquet", P.CACHE / "analyst.parquet"
 PREDS = P.CACHE / "preds" / "scorer.parquet"
 
-# Starts two years before testing, so forecasts scale on earlier years.
+# Starts two years before testing, so forecasts scale on prior years.
 FIRST_YEAR = 2025 if paths.SMOKE else 2019
 SEEDS = (42,) if paths.SMOKE else (42, 43, 44, 45, 46)
 ROUNDS, PATIENCE = (20, 5) if paths.SMOKE else (1000, 50)
 
-# LambdaRank by month. Fixed settings; validation picks only the rounds.
+# LambdaRank by month. Set settings; validation picks only the rounds.
 PARAMS = dict(
     objective="lambdarank",
     metric="ndcg",

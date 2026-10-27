@@ -19,7 +19,7 @@ OUT = ROOT / "out" / "ad"
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 # --preview: half size, 30 fps, 1 subframe, into out/ad, not deck/.
 PREVIEW = "--preview" in sys.argv or "--smooth" in sys.argv
-# --smooth: a preview at 60 fps with 4 subframes, to judge the motion.
+# --smooth: a preview at 60 fps with 4 subframes, to check the motion.
 SMOOTH = "--smooth" in sys.argv
 # Each film's name ending, size and H.264 level; side is 2.17:1.
 SHAPES = {

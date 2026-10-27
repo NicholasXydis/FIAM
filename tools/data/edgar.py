@@ -18,7 +18,7 @@ from _shared import ROOT, check, data_root, fingerprint, receipts, setting, stam
 
 # One name key for both builders, kept in the link module only.
 sys.path.insert(0, str(ROOT))
-from fiam.v4.links import entity_key  # noqa: E402
+from fiam.vfinal.links import entity_key  # noqa: E402
 
 OUT = ROOT / "data" / "edgar"
 BULK = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
@@ -107,7 +107,7 @@ def download(url: str, name: str) -> int:
     try:
         response = urllib.request.urlopen(request, timeout=60)
     except urllib.error.HTTPError as err:
-        # A finished part that was never renamed: fetch it again.
+        # A finished part never renamed: fetch it again.
         if err.code != 416:
             raise
         part.unlink()
@@ -556,11 +556,11 @@ def verify(deep: bool = False) -> int:
             print(f"edgar {name}: kept on the Mac, not in the kit")
             continue
         wrong = check(OUT, {name: receipts(book)["sha256"]})
-        print(f"edgar {name}: {'ok' if not wrong else 'WRONG'}")
+        print(f"edgar {name}: {'ok' if not wrong else 'DIFFERS'}")
         bad += len(wrong)
     thirteen = receipts(OUT / "13f" / "receipts.json")
     wrong = check(OUT / "13f", {k: v["sha256"] for k, v in thirteen.items()})
-    print(f"edgar 13f: {len(thirteen)} files, {len(wrong)} wrong {wrong[:5]}")
+    print(f"edgar 13f: {len(thirteen)} files, {len(wrong)} differ {wrong[:5]}")
     bad += len(wrong)
     log = OUT / "docs" / "log.jsonl"
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
@@ -570,7 +570,7 @@ def verify(deep: bool = False) -> int:
     sample = [(p, d) for p, d in list(saved.items())[::step] if (OUT / p).exists()]
     wrong_docs = [p for p, d in sample if unzipped(OUT / p) != d]
     counts = f"{len(saved)} logged, {len(missing)} missing, {len(sample)} rehashed"
-    print(f"edgar docs: {counts}, {len(wrong_docs)} wrong")
+    print(f"edgar docs: {counts}, {len(wrong_docs)} differ")
     bad += len(missing) + len(wrong_docs)
     return 1 if bad else 0
 

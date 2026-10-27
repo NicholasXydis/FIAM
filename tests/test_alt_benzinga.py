@@ -60,7 +60,7 @@ def test_match_first_and_nearest():
     assert got.loc[0, "nearest_day"] == pd.Timestamp("2020-01-09")
 
 
-# The full row audit: groups, look-ahead, the clock bound and chance.
+# The full row audit: groups, early hits, the clock bound and chance.
 def test_audit_lookahead_and_groups():
     rows = pd.DataFrame(
         {
@@ -94,7 +94,7 @@ def test_audit_lookahead_and_groups():
     # Saturday 03:00 may be Friday 22:00 under the other reading.
     assert done.loc[1, "lookahead"] and not done.loc[1, "lookahead_early"]
     assert not done.loc[2, "lookahead"]
-    # Twenty-six weeks earlier only stock 3 has a filing in the window.
+    # Twenty-six weeks before, only stock 3 has a filing in the window.
     assert done["placebo_matched"].tolist() == [False, False, True, False]
     table = ba.table(done)
     deals = table[(table["kind"] == "deals") & (table["year"] == "2014-2020")]

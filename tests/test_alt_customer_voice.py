@@ -140,7 +140,7 @@ def test_ca0052_lag_and_name_check():
                        "review_count": [30, 40, 50, 60]})  # fmt: skip
     firm, log = cv.ca0052_map(ca, links, ents)
     assert firm["permno"].tolist() == [3, 3]
-    # 2018-03-30 was Good Friday: April 2 is the first session after.
+    # 2018-03-30 is Good Friday: April 2 is the first session after.
     assert firm["eom"].tolist() == [pd.Timestamp("2018-04-30"), pd.Timestamp("2020-01-31")]
     assert log["ticker_matches_refused_name_mismatch"] == 2
     assert log["months_before_2021"] == 4 and "T + 1" in log["lag"]

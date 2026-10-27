@@ -51,8 +51,12 @@ HELP = """uv run run.py [options]
   export [folder]      writes the finals kit to the USB, rewriting only parts that changed;
                        --dry-run shows sizes, --skip PART,PART leaves parts out
   installers, caches   uv, Node and pnpm for every machine; this machine's offline packages
-  finals --unseal      after the freeze is committed and pushed: checks every hash, lifts blind
-                       mode once, logs it in frozen/v4/unseal.log (the final run follows)"""
+  check, rerun, stage, whatif, lock, verify, audit
+                       the final version's verbs, the same as uv run fiam <verb>;
+                       uv run fiam help lists them"""
+
+# The final version's verbs, passed to fiam/vfinal/cli.py as given.
+FINAL_VERBS = ("check", "rerun", "stage", "whatif", "lock", "verify", "audit")
 
 # The book and what reads it, in order; each step runs with python -m.
 STEPS = [
@@ -137,7 +141,7 @@ EXITS = BUNDLE / "wrds" / "exits.parquet"
 
 PACKAGES = ["pandas", "numpy", "pyarrow", "scipy", "cvxpy", "statsmodels", "matplotlib"]
 ML_PACKAGES = ["sklearn", "lightgbm", "torch"]
-# Carbon Arc's SDK, pinned, with nothing published after the freeze.
+# Carbon Arc's SDK, pinned, with nothing published after the cutoff.
 CARBON_SDK, CARBON_CUTOFF = "carbonarc==1.1.19", "2026-10-14T00:00:00Z"
 # DuckDB for the Amazon reviews, in its own environment, same cutoff.
 AMAZON_ENGINE = "duckdb"
@@ -290,7 +294,7 @@ def export_data() -> int:
                 zf.write(path, path.relative_to(BUNDLE.parent))
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     print(f"wrote {target.name}: {target.stat().st_size / 1e9:.2f} GB, SHA-256 {digest}")
-    print("Share it privately with teammates covered by our WRDS access. It is gitignored.")
+    print("Share it privately, only with people our WRDS access covers. It is gitignored.")
     return 0
 
 
@@ -299,7 +303,7 @@ def bundle() -> bool:
     if all((BUNDLE / name).is_file() for name in CORE):
         return True
     if not all((Path("data") / name).exists() for name in REQUIRED):
-        # Files beside MAIN.py or run.py count too, as judges put them there.
+        # Files beside MAIN.py or run.py count too, as people put them there.
         if not all(Path(name).exists() for name in REQUIRED):
             return False
         import_from(Path("."))
@@ -324,7 +328,7 @@ def unpack_edgar() -> None:
 # The steps' environment: one maths thread, so no OpenMP clash on macOS.
 def child_env(extra: dict | None = None) -> dict:
     env = os.environ | {"PYTHONUTF8": "1", "PYTHONPATH": str(ROOT)} | (extra or {})
-    # One maths thread and a fixed hash seed, so reruns repeat bit for bit.
+    # One maths thread and a set hash seed, so reruns repeat bit for bit.
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         env.setdefault(name, "1")
     env.setdefault("PYTHONHASHSEED", "0")
@@ -492,23 +496,6 @@ def data_command(rest: list[str]) -> int:
     return 2
 
 
-# The finals verb: lifts blind mode once, with --unseal.
-def finals(args: list[str]) -> int:
-    if "--unseal" not in args:
-        print("finals runs once blind mode is lifted:  uv run run.py finals --unseal")
-        return 1
-    from fiam.v4 import freeze
-
-    try:
-        line = freeze.unseal()
-    except (SystemExit, RuntimeError) as err:
-        print(err.code if isinstance(err, SystemExit) else err)
-        return 1
-    print(f"Unsealed, once: {line}")
-    print("The final run is the next command.")
-    return 0
-
-
 # Reads the options, then runs every step they ask for, in order.
 def main() -> int:
     os.chdir(ROOT)
@@ -524,12 +511,14 @@ def main() -> int:
     args = sys.argv[1:]
     # Kit verbs run before any data check, so a bare clone can use them.
     if args[:1] and args[0] in ("setup", "doctor", "export", "installers", "caches"):
-        from fiam.v4 import kit
+        from fiam.vfinal import kit
 
         return kit.main(args)
-    # The finals verb answers before any data check, as the kit's do.
-    if args[:1] == ["finals"]:
-        return finals(args[1:])
+    # The final version's verbs answer before any data check.
+    if args[:1] and args[0] in FINAL_VERBS:
+        from fiam.vfinal import cli
+
+        return cli.main(args)
     if "-h" in args or "--help" in args:
         print(HELP)
         return 0
@@ -620,7 +609,7 @@ def main() -> int:
         from fiam import kit
 
         digest = kit.export()
-        print(f"wrote {kit.NAME}, SHA-256 {digest}. Teammates only: it holds WRDS-derived results.")
+        print(f"wrote {kit.NAME}, SHA-256 {digest}. Private: it holds WRDS-derived results.")
         return 0
     fresh, smoke = "--fresh" in args, "--smoke" in args
     official = "--official" in args and not smoke
@@ -628,7 +617,7 @@ def main() -> int:
         print("The finals data is ready. Next:  uv run run.py --world --finals <mandate>")
         return 0
 
-    # No data: check what was submitted, which needs nothing but this repo.
+    # No data: check what is submitted, which needs nothing but this repo.
     if not bundle():
         if official or ml or agents:
             print("--official, --ml and --agents rebuild the book, which needs the data bundle or")

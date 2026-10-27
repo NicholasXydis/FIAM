@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from fiam.v4 import data, gates
-from fiam.v4.signals import base, earnings_premium, options_flow
+from fiam.vfinal import data, gates
+from fiam.vfinal.signals import base, earnings_premium, options_flow
 
 DAY = pd.Timestamp
 

@@ -72,7 +72,7 @@ def persona_prompt(persona: str) -> str:
     return head.strip().format(persona=found[persona], picks=PICKS)
 
 
-# This agent's cards this month: a fixed random draw, never repeated.
+# This agent's cards this month: a seeded random draw, never repeated.
 def cards(month_rows: pd.DataFrame, agent: int, month: pd.Timestamp) -> list[pd.DataFrame]:
     rng = np.random.default_rng([SEED, agent, month.year, month.month])
     size = min(CARDS * STOCKS, len(month_rows))

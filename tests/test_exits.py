@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from fiam.v4 import exits
+from fiam.vfinal import exits
 
 
 # CRSP actions map to merger-or-exchange and failure groups.

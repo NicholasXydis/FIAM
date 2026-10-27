@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from fiam.v4 import agreement
+from fiam.vfinal import agreement
 
 SERIES = [0.02, -0.01, 0.03, 0.01, 0.0, 0.04, -0.02, 0.01, 0.02, 0.03, -0.01, 0.05, 0.0, 0.02]
 

@@ -84,7 +84,7 @@ def test_order_ids_and_row_counts_are_read_from_any_shape():
     assert ca.rows({"data": []}) == 0
 
 
-# A stand-in for the SDK explorer: card panel filters and fixed prices.
+# A stand-in for the SDK explorer: card panel filters and set prices.
 class Explorer:
     # Quotes by insight id, and a list of every order placed, to assert on.
     def __init__(self, prices=None):

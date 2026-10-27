@@ -16,7 +16,7 @@ OUT = paths.EXHIBITS
 # 200 runs place our result to half a percent, finer than we ever claim.
 DRAWS = 200
 
-# Fixed, so anyone re-running this gets the same 200 shuffles we did.
+# Seeded, so any rerun gets the same 200 shuffles.
 RNG_SEED = 20260921
 
 # Each worker loads the universe once; only shuffled scores cross over.

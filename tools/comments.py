@@ -2,6 +2,7 @@
 
 import ast
 import io
+import re
 import subprocess
 import sys
 import tokenize
@@ -13,13 +14,41 @@ LIMIT = 72
 DIRECTIVES = ("# fmt:", "# noqa", "# type:", "# pragma", "# ruff:")
 # Generated files carry their sources' comments and are checked there.
 SKIP = {"MAIN.py"}
-# The separate fiam/v4b research tree keeps its own conventions.
-SKIP_UNDER = ("fiam/v4b/",)
+# Words a comment may not hold: versions, citations, people, history.
+BANNED = {
+    "a version name": r"\bv[1-4]b?\b",
+    "a document citation": r"\bPLAN\b|§|\bprotocols?\b|\breadings?\s*\(?\d|\breadings\b"
+    r"|\b[Ss]teps? \d|\b[Mm]edium \d",
+    "a lever": r"\blevers?\b",
+    "an audit label": r"\b(?!A[0-2]\b)[A-EK]\d{1,2}\b",
+    "a person": r"\b(?:leader|nicholas|andrew|team|teams|teammates?|claude|judges?)\b",
+    "a history word": r"\b(?:bugs?|fixed|mistakes?|wrong|leak\w*|peek\w*|cheat\w*|was|earlier)\b"
+    r"|\blook-?ahead\b",
+}
+# External names that look banned: URL paths, versions, code spans.
+ALLOWED = (
+    r"https?://\S+",
+    r"/v\d+\b",
+    r"\bOpenFEMA v\d\b",
+    r"\bv\d+(?:\.\d+)+\b",
+    r"`[^`]*`",
+    r"\bfixed-b\b",
+    r"\bIBKR Pro Fixed\b",
+)
 
 
 # Whether a stripped line is prose, not a shebang or a directive.
 def is_comment(line: str) -> bool:
     return line.startswith("#") and not line.startswith("#!") and not line.startswith(DIRECTIVES)
+
+
+# Each kind of banned word in one comment, external names left out.
+def banned(comment: str) -> list[str]:
+    text = comment
+    for pattern in ALLOWED:
+        text = re.sub(pattern, " ", text)
+    flags = {"a person": re.IGNORECASE, "a history word": re.IGNORECASE}
+    return [what for what, rx in BANNED.items() if re.search(rx, text, flags.get(what, 0))]
 
 
 # Lines that hold only a prose comment, from Python's own tokens.
@@ -29,6 +58,18 @@ def comment_lines(source: str) -> dict[int, str]:
     for tok in tokenize.generate_tokens(io.StringIO(source).readline):
         if tok.type == tokenize.COMMENT and not lines[tok.start[0] - 1][: tok.start[1]].strip():
             out[tok.start[0]] = tok.string.strip()
+    return out
+
+
+# Prose comments that follow code on their line, from Python's tokens.
+def trailing(source: str) -> dict[int, str]:
+    lines = source.splitlines()
+    out = {}
+    for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+        text = tok.string.strip()
+        if tok.type == tokenize.COMMENT and lines[tok.start[0] - 1][: tok.start[1]].strip():
+            if is_comment(text):
+                out[tok.start[0]] = text
     return out
 
 
@@ -47,9 +88,12 @@ def problems(source: str) -> list[tuple[int, str]]:
             continue
         if len(s) > LIMIT:
             found.append((n, f"comment of {len(s)} characters"))
+        found += [(n, f"{what} in a comment") for what in banned(s)]
         above = notes.get(n - 1, "")
         if is_comment(above) and above != "# ///":
             found.append((n, "a second comment line stacked under another"))
+    for n, s in trailing(source).items():
+        found += [(n, f"{what} in a comment") for what in banned(s)]
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             first = min([node.lineno] + [d.lineno for d in node.decorator_list])
@@ -67,7 +111,7 @@ def python_files() -> list[Path]:
         cwd=ROOT,
         check=True,
     ).stdout.split()
-    keep = [n for n in sorted(set(names)) if n not in SKIP and not n.startswith(SKIP_UNDER)]
+    keep = [n for n in sorted(set(names)) if n not in SKIP]
     return [ROOT / n for n in keep if (ROOT / n).exists()]
 
 

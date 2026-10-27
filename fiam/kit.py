@@ -28,7 +28,7 @@ PARTS = (
 )
 
 
-# Every file the kit carries, in a fixed order.
+# Every file the kit carries, in a set order.
 def files(root: Path = Path(".")) -> list[Path]:
     out = []
     for part in PARTS:

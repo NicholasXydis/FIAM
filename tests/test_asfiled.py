@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import asfiled, compustat, rebuild, sources
+from fiam.vfinal import asfiled, compustat, rebuild, sources
 
 HAVE_SUE = (sources.DATA / "v4" / "clean" / "sue.parquet").exists()
 DAY = pd.Timestamp
@@ -79,7 +79,7 @@ def test_tag_order_prefers_continuing_operations():
     assert got.iloc[0]["tag"] == t1 and got.iloc[0]["diff"] == pytest.approx(0.1)
 
 
-# A 2-for-1 split between two filings halves the earlier value.
+# A 2-for-1 split between two filings halves the prior value.
 def test_share_basis_puts_values_on_the_later_filing():
     dist = pd.DataFrame({"permno": [1], "disexdt": [DAY("2019-06-03")], "disfacshr": [1.0]})
     factor = asfiled.share_basis(dist)
@@ -106,7 +106,7 @@ def test_q4_by_annual_less_nine_months():
     assert row["diff"] == pytest.approx((4.0 - 3.0) - (4.0 - 3.6) * 0.5)
 
 
-# The SUE's scale needs at least 6 of the last 8 earlier differences.
+# The SUE's scale needs at least 6 of the last 8 prior differences.
 def test_sue_scale_needs_six_prior_quarters():
     ends = pd.date_range("2016-03-31", periods=10, freq="QE")
     d = pd.DataFrame({"permno": 1, "end": ends, "filed": ends + pd.Timedelta(days=30),
@@ -147,7 +147,7 @@ def test_compustat_quarterly_rules(tmp_path):
     log = {}
     q = compustat.quarterly(tmp_path / "q.parquet", log).set_index("gvkey")
     assert pd.isna(q.loc["1", "rdq"]) and log["rdq_before_datadate_set_missing"] == 1
-    # Equal report dates keep the calendar-quarter row; else the earlier.
+    # Equal report dates keep the calendar-quarter row; else the first.
     assert q.loc["2", "fyr"] == 12 and q.loc["3", "rdq"] == DAY("2018-04-25")
     assert log["two_calendar_pairs"] == 2
     # Results the day after rdq; other items wait for the 10-Q's day.
@@ -187,7 +187,7 @@ def test_rebuild_parts_formulas():
     assert got["o_score"] == pytest.approx(o)
 
 
-# Splits after the earlier filing, up to the later's day, rebase it.
+# Splits after the prior filing, up to the later's day, rebase it.
 def test_split_factor_date_boundaries():
     dist = pd.DataFrame({"permno": [1, 1], "disexdt": [DAY("2019-05-01"), DAY("2019-08-01")],
                          "disfacshr": [1.0, 2.0]})  # fmt: skip
@@ -196,7 +196,7 @@ def test_split_factor_date_boundaries():
     assert got.tolist() == [1 / 3]
 
 
-# Earlier differences filed after the quarter's own filing never count.
+# Prior differences filed after the quarter's own filing never count.
 def test_sue_scale_ignores_priors_filed_later():
     ends = pd.date_range("2016-03-31", periods=9, freq="QE")
     filed = list(ends + pd.Timedelta(days=30))
@@ -204,7 +204,7 @@ def test_sue_scale_ignores_priors_filed_later():
     d = pd.DataFrame({"permno": 1, "end": ends, "filed": filed, "diff": np.arange(9.0)})
     out = asfiled.scales(d, lambda p, a, b: np.ones(len(np.asarray(p))))
     assert out["n_prior"].iloc[8] == 7
-    # A quarter 59 days back is not an earlier quarter.
+    # A quarter 59 days back is not a prior quarter.
     near = d.iloc[:2].assign(end=[DAY("2016-03-31"), DAY("2016-05-29")])
     assert asfiled.scales(near, lambda p, a, b: np.ones(len(np.asarray(p))))["n_prior"].iloc[1] == 0
 
@@ -241,7 +241,7 @@ def test_jkp_frame_rolls_year_to_date():
 
 # The announcement is Compustat's rdq within 7 days, else the filing.
 def test_announce_takes_rdq_within_seven_days(monkeypatch):
-    from fiam.v4 import data, links
+    from fiam.vfinal import data, links
 
     d = pd.DataFrame({"permno": [1, 2], "end": [DAY("2019-03-30"), DAY("2019-06-30")],
                       "filed": [DAY("2019-05-01"), DAY("2019-08-01")]})  # fmt: skip
@@ -249,7 +249,7 @@ def test_announce_takes_rdq_within_seven_days(monkeypatch):
                       "rdq": [DAY("2019-04-25"), DAY("2019-07-20")]})  # fmt: skip
     asked = {}
 
-    # The registry stand-in records each purpose it was asked for.
+    # The registry stand-in records each purpose it is asked for.
     def table(name, columns=None, purpose=None, where=None):
         asked[name] = purpose
         return q if name == "compustat_quarterly" else pd.DataFrame()
@@ -302,5 +302,5 @@ def test_strict_clock_waits_for_every_quarter_used():
     got = compustat.strict_clock(x)["first_close"]
     # Q4 2018 waits for nothing later; Q1 2019 is public on its own day.
     assert got.iloc[3] == DAY("2019-02-20") and got.iloc[4] == DAY("2019-05-01")
-    # Q3 2018's late filing holds back nothing earlier.
+    # Q3 2018's late filing holds back nothing before it.
     assert got.iloc[1] == DAY("2018-08-01")

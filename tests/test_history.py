@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import data, links
-from fiam.v4.signals import history
+from fiam.vfinal import data, links
+from fiam.vfinal.signals import history
 
 
 # One PERMNO per gvkey-month: the panel's 2015 stock first, else bigger.
@@ -62,7 +62,7 @@ def test_spearman_needs_thirty_stocks():
     assert np.isnan(history.spearman(a.iloc[:30]))
 
 
-# Before 2015 there was no panel, so the larger cap picks the class.
+# Before 2015 there is no panel, so the larger cap picks the class.
 def test_share_class_before_2015_by_cap_alone(monkeypatch):
     eom = pd.Timestamp("2012-06-30")
     u = pd.DataFrame({"permno": [1, 2], "eom": [eom] * 2, "cap_musd": [900.0, 2000.0]})
@@ -75,7 +75,7 @@ def test_share_class_before_2015_by_cap_alone(monkeypatch):
 
 # niq_at: income at its release, once last quarter's 10-Q is public too.
 def test_niq_at_on_the_results_clock(monkeypatch):
-    from fiam.v4 import compustat
+    from fiam.vfinal import compustat
 
     days = pd.bdate_range("2018-01-01", "2018-12-31")
     cal = pd.Series(days + pd.Timedelta(hours=21), index=days).dt.tz_localize("UTC")

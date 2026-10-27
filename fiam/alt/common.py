@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from fiam.v4 import sources
+from fiam.vfinal import sources
 
 # The last day a sealed run may read.
 CUTOFF = pd.Timestamp("2020-12-31")
@@ -81,7 +81,7 @@ def correlation(x, y, least: int = 3) -> dict:
 
 # Tickers to PERMNO on each date through the sealed dated links.
 def permnos(tickers, dates) -> pd.Series:
-    from fiam.v4 import data, links
+    from fiam.vfinal import data, links
 
     return links.permno_by_symbol(data.table("links", None), tickers, dates)
 
@@ -125,7 +125,7 @@ def quarter_facts(facts: pd.DataFrame, tags=SALES_TAGS, first_only: bool = True)
 
 # Quarterly sales as filed for these stocks, on the sealed reader.
 def sec_quarters(stocks, tags=SALES_TAGS, first_only: bool = True) -> pd.DataFrame:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     cols = ["cik", "tag", "unit", "start", "end", "val", "accn", "form", "filed"]
     where = {"permno": {int(p) for p in stocks}, "unit": {"USD"}, "tag": set(tags)}

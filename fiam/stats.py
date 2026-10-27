@@ -49,14 +49,14 @@ def ewc_alpha_t(y: pd.Series, x: pd.DataFrame) -> float:
     return float(fit.params[0] / np.sqrt(cov[0, 0]))
 
 
-# Largest fall from any earlier high, the starting NAV counting as one.
+# Largest fall from any prior high, the starting NAV counting as one.
 def drawdown(net: pd.Series) -> float:
     growth = (1 + net).cumprod()
     peak = np.maximum(growth.cummax(), 1.0)
     return float((growth / peak - 1).min())
 
 
-# Longest run of months below an earlier peak, starting NAV as a peak.
+# Longest run of months below a prior peak, starting NAV as a peak.
 def underwater(net: pd.Series) -> int:
     growth = (1 + net).cumprod()
     below = growth < np.maximum(growth.cummax(), 1.0)

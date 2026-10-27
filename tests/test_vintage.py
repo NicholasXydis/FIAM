@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from fiam.v4 import vintage
+from fiam.vfinal import vintage
 
 
 # Values change only when young: the share by minimum age and L follow.

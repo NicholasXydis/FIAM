@@ -2,7 +2,7 @@
 
 import pytest
 
-from fiam.v4 import sources
+from fiam.vfinal import sources
 
 
 # Blind mode on unless a test turns it off, whatever the repo holds.

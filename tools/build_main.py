@@ -19,13 +19,12 @@ LEAVE_OUT = (
     ".env.example",
     "docs/PLAN.md",
     "docs/TEAM.md",
-    "fiam/v4b/",
 )
 # Deck builders, so run.py --finals-pack works from MAIN.py alone.
 CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
-# Ignores later packages, so a new release never changes a judge's run.
+# Ignores later packages, so a new release never changes a rerun.
 EXCLUDE_NEWER = "2026-10-14T00:00:00Z"
 
 LAUNCHER = """

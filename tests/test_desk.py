@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4.desk import after, agents, arms, cards, decide, triggers
+from fiam.vfinal.desk import after, agents, arms, cards, decide, triggers
 
 DAY = pd.Timestamp
 
@@ -26,7 +26,7 @@ def test_loss_trigger():
     assert sorted(got) == [1, 2]
 
 
-# Vol jumps against the 99th of every earlier stock-day, never later.
+# Vol jumps against the 99th of every prior stock-day, never later.
 def test_vol_jumps_are_past_only():
     days = pd.bdate_range("2019-01-01", periods=60)
     vol = pd.DataFrame(0.3, index=days, columns=[1, 2])
@@ -102,7 +102,7 @@ def test_enforce_keeps_gross_within_caps():
     assert left[1] == pytest.approx(0.0048) and (tight[tight > 0] <= 0.0101 + 1e-12).all()
 
 
-# The arms: none, the fixed map with its floor, the agent, the placebo.
+# The arms: none, the set map with its floor, the agent, the placebo.
 def test_arms():
     events = {(DAY("2019-03-04"), 1): {"earnings": 2}, (DAY("2019-03-04"), 2): {"vol_jump": 1.2,
               "loss": -3.4}, (DAY("2019-03-05"), 3): {"earnings": 1}}  # fmt: skip
@@ -129,8 +129,8 @@ def test_decision():
 
 # An arm replays A0's formation and applies its shrink one close late.
 def test_arm_shrinks_at_the_next_close():
-    from fiam.v4.construct import execution
-    from fiam.v4.desk import hook
+    from fiam.vfinal.construct import execution
+    from fiam.vfinal.desk import hook
 
     ids = list(range(1, 251))
     target = pd.Series(np.where(np.arange(250) < 125, 0.0064, -0.0064), index=ids)
@@ -151,7 +151,7 @@ def test_arm_shrinks_at_the_next_close():
 
 # The memory gate's two questions are closed choices over the options.
 def test_memory_questions_are_closed():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     q = {"card": {"side": "long"}, "company": ["A", "B"], "months": ["2019-01", "2019-02"]}
     asks = run.memory_messages(q)
@@ -161,7 +161,7 @@ def test_memory_questions_are_closed():
 
 # A trigger's extra variance: earnings, vol jump and loss add.
 def test_extra_variance():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     assert run.extra_var({}, 0.04, 0.01) == 0.0
     assert run.extra_var({"earnings": 3}, 0.04, 0.01) == 0.01
@@ -175,7 +175,7 @@ def test_extra_variance():
 
 # The gate keeps a shrink only where the trigger's extra risk pays.
 def test_gate_on_an_arm():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     d = DAY("2019-03-04")
     x = pd.DataFrame({"prc": 50.0, "half_spread": 0.001, "sigma_d": 0.02, "adv_cost": 1e8,
@@ -194,8 +194,8 @@ def test_gate_on_an_arm():
 
 # Squared two-session market-adjusted moves on earnings 8-Ks, past year.
 def test_earnings_variance(monkeypatch):
-    from fiam.v4 import data
-    from fiam.v4.desk import run
+    from fiam.vfinal import data
+    from fiam.vfinal.desk import run
 
     days = pd.bdate_range("2018-01-01", "2019-03-29")
     returns = pd.DataFrame(0.0, index=days, columns=[1, 2])
@@ -217,11 +217,11 @@ def test_earnings_variance(monkeypatch):
 # Parts answered on two machines merge by key into one replay.
 def test_parts_merge_and_cutoff_agreement(monkeypatch, tmp_path):
     from fiam.agents import harness
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     # The sizing agent halves; the advocate argues; Pythia keeps or halves.
     class Model:
-        # A fixed answer by schema and by the card's side.
+        # A set answer by schema and by the card's side.
         def __init__(self, keep):
             self.keep = keep
 
@@ -253,8 +253,8 @@ def test_parts_merge_and_cutoff_agreement(monkeypatch, tmp_path):
 
 # The finals' window keeps its own files, days and A0 apart.
 def test_final_window_keeps_apart(monkeypatch):
-    from fiam.v4 import final
-    from fiam.v4.desk import run
+    from fiam.vfinal import final
+    from fiam.vfinal.desk import run
 
     head = "a" * 40
     assert run.path("cards", head).name == f"cards_{'a' * 12}.json"
@@ -268,7 +268,7 @@ def test_final_window_keeps_apart(monkeypatch):
 
 # The mildest shrink passes the gate first, so cards are asked by it.
 def test_mildest_shrink_passes_first():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     d = DAY("2019-03-04")
     x = pd.DataFrame({"prc": 50.0, "half_spread": 0.001, "sigma_d": 0.02, "adv_cost": 1e8,
@@ -304,7 +304,7 @@ def test_served_name_reads_windows_paths():
 
 # Shares split the placebos; part 1 alone takes A0's twin, A1 and A2.
 def test_arm_shares_cover_every_arm_once():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     names = ["A0_replay", "A1", "A2", *(f"P1_{s}" for s in run.arms.PLACEBO_SEEDS)]
     mac, pc = run.share(names, (1, 2), 5), run.share(names, (3, 4, 5), 5)
@@ -312,9 +312,9 @@ def test_arm_shares_cover_every_arm_once():
     assert set(run.SPECIAL) <= set(mac) and len(pc) == 60
 
 
-# --fixed plans A0's twin and A1 alone, the same as the full arms do.
+# `--fixed` plans A0's twin and A1 alone, as the full arms do.
 def test_fixed_arms_need_no_answers():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     found = {(DAY("2019-03-04"), 1): {"earnings": 2}, (DAY("2019-03-05"), 2): {"loss": -3.4}}
     seeds = run.arms.PLACEBO_SEEDS[:3]
@@ -326,7 +326,7 @@ def test_fixed_arms_need_no_answers():
 
 # The cost gate prices risk at the winning design's own lambda.
 def test_gate_lambda_follows_the_ladder():
-    from fiam.v4.desk import run
+    from fiam.vfinal.desk import run
 
     assert run.risk_lambda(3.0, 12) == 0.75 and run.risk_lambda(3.0, 14) == 1.5
     assert run.risk_lambda(3.0, 1) == 3.0 and run.risk_lambda(3.0, 13) == 3.0
@@ -334,7 +334,7 @@ def test_gate_lambda_follows_the_ladder():
 
 # A replay prices a name outside the frame by the rows known that close.
 def test_replay_costs_read_no_later_row(monkeypatch):
-    from fiam.v4.construct import costs
+    from fiam.vfinal.construct import costs
 
     # The next business day stands in for the next session.
     def shift(days, n):

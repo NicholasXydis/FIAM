@@ -199,7 +199,7 @@ def coverage(
 
 # Amazon store-months for 2014 on, for the stores that ever qualify.
 def amazon_firms(links: pd.DataFrame, permnos) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     lo, hi = pd.Timestamp("2014-12-01"), pd.Timestamp(WINDOWS["amazon"][1])
     busy = data.table("amazon_stores", ["reviews"], purpose="exhibit",
@@ -223,7 +223,7 @@ def amazon_firms(links: pd.DataFrame, permnos) -> tuple[pd.DataFrame, pd.DataFra
 
 # The first NYSE session after each day, when T+1 data is usable.
 def next_session(days: pd.Series) -> pd.Series:
-    from fiam.v4 import clock
+    from fiam.vfinal import clock
 
     d = pd.to_datetime(days).dt.normalize()
     s = clock.xnys_sessions(d.min(), d.max() + pd.Timedelta(days=10))
@@ -315,7 +315,7 @@ def chart(results: dict, path: Path) -> None:
 
 # Runs the exhibit on pre-2021 data: python -m fiam.alt.customer_voice
 def main() -> dict:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     links = data.table("links", None)
     labels = data.table("labels", ["resid_panel", "resid_universe"], purpose="label",

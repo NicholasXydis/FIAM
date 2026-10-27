@@ -21,7 +21,7 @@ EVENTS += ["item_201_acquisition", "item_202_earnings", "item_205_impairment", "
 EVENTS += ["item_401_auditor_change", "item_402_nonreliance", "item_502_management_change"]
 EVENTS += ["item_701_regfd", "item_801_other_event"]
 
-# Fixed, never tuned on a test year, four threads so every run repeats.
+# Set, never tuned on a test year, four threads so every run repeats.
 PARAMS = dict(
     objective="regression",
     learning_rate=0.05,

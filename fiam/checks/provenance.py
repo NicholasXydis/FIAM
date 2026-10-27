@@ -58,7 +58,7 @@ ML_CODE = [
 SKIP = {"run_manifest.json", "reproducibility.json"}
 
 
-# One hash over files and folders, in fixed order so machines all agree.
+# One hash over files and folders, in a set order so machines agree.
 def fingerprint(entries: list[str]) -> str:
     files = []
     for entry in entries:

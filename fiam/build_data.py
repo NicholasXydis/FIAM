@@ -358,7 +358,7 @@ def main(args: list[str]) -> None:
         what="Private FIAM data bundle. Never commit or submit it.",
         organizer_characteristics=listed,
         sources=sources,
-        # An archive layer from an earlier run keeps that run's record.
+        # An archive layer from a prior run keeps that run's record.
         archive=str(archive) if archive else before.get("archive"),
         last_archive_month=str(LAST_ARCHIVE_MONTH.date()),
         timing=dict(

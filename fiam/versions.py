@@ -48,14 +48,14 @@ VERSIONS = {
         "frozen": ["frozen/september_v3.csv", "frozen/september_final.csv"],
         "results": [],
     },
-    "v4": {
-        "title": "v4, the finals book",
+    "vfinal": {
+        "title": "The final version, the finals book",
         "status": "in progress",
-        "code": ["fiam/v4/"],
-        "command": "uv run run.py finals (built from step 5)",
-        "protocols": ["versions/v4/protocol.md (written before any run, step 4)"],
-        "frozen": ["frozen/v4/ (at the freeze, step 10)"],
-        "results": ["out/v4/"],
+        "code": ["fiam/vfinal/"],
+        "command": "uv run fiam rerun",
+        "protocols": ["versions/vfinal/protocol.md"],
+        "frozen": ["frozen/vfinal/"],
+        "results": ["out/vfinal/"],
     },
 }
 

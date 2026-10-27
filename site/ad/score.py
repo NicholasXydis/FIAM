@@ -56,7 +56,7 @@ NOTES = {
 }
 
 
-# A note name like A4 or F#3 in Hz, equal tempered with A4 at 440.
+# A note name, letter then octave, in Hz, equal tempered at 440 Hz.
 def hz(name):
     m = re.fullmatch(r"([A-G]#?)(-?\d)", name)
     return 440 * 2 ** ((NOTES[m[1]] + 12 * (int(m[2]) + 1) - 69) / 12)
@@ -405,7 +405,7 @@ for s in sounds:
         if at > first["crane"]:
             put("piano", at, piano(hz("B1"), 4, 0.5) + piano(hz("F#3"), 4, 0.25))
             put("perc", at, timp_hit, 0.3)
-    # rise, fall and count: harp runs up, down, and slower up to D6.
+    # rise, fall and count: harp runs up, down, and slower to the top note.
     elif kind in ("rise", "fall", "count"):
         run = {
             "rise": ["D4", "F#4", "A4", "D5", "F#5", "A5"],
@@ -420,7 +420,7 @@ for s in sounds:
                 harp(hz(n), 1.6, 0.3 + 0.02 * j),
                 pan=(j / len(run) - 0.5) * 0.6,
             )
-    # glass: three glockenspiel notes 30 ms apart, A6, E6 and C#7.
+    # glass: three high glockenspiel notes 30 ms apart.
     elif kind == "glass":
         for j, n in enumerate(["A6", "E6", "C#7"]):
             put("glock", at + j * 0.03, glock(hz(n), 1.6, 0.18))
@@ -437,7 +437,7 @@ for s in sounds:
                 harp(hz(["B4", "D5", "F#5", "A5"][j % 4]), 1.0, 0.16),
                 pan=rng.uniform(-0.7, 0.7),
             )
-    # argue: violins a semitone apart, C#6 against D6.
+    # argue: violins a semitone apart, high in their range.
     elif kind == "argue":
         put(
             "strings",
@@ -461,7 +461,7 @@ for s in sounds:
             filt(drum[:n] * np.exp(-np.arange(n) / SR * 3)[:, None], "low", 200),
             0.25 * v,
         )
-    # land: a timpani hit with A5 and D6 on the glockenspiel.
+    # land: a timpani hit with two high notes on the glockenspiel.
     elif kind == "land":
         put("perc", at, timp_hit, 0.6)
         put("glock", at, glock(hz("A5"), 3, 0.4) + glock(hz("D6"), 3, 0.3))

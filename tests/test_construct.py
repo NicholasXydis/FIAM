@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4.construct import book, costs, inputs, optimizer
+from fiam.vfinal.construct import book, costs, inputs, optimizer
 
 
 # A synthetic formation: 600 names, sectors, styles, betas, liquidity.
@@ -196,7 +196,7 @@ def test_partial_projection():
 # HAR fits on the 24 month ends before T's month, each once.
 @pytest.mark.parametrize("T", ["2019-04-30", "2019-06-28", "2019-03-01"])
 def test_har_month_ends(T):
-    from fiam.v4.construct import risk
+    from fiam.vfinal.construct import risk
 
     ends = risk.har_ends(T)
     month = pd.Timestamp(T) + pd.offsets.MonthEnd(0)
@@ -207,8 +207,8 @@ def test_har_month_ends(T):
 
 # Betas come from the total returns given, never a day after T.
 def test_total_betas(monkeypatch):
-    from fiam.v4 import data
-    from fiam.v4.construct import risk
+    from fiam.vfinal import data
+    from fiam.vfinal.construct import risk
 
     days = pd.bdate_range("2018-01-01", periods=300)
     m = pd.Series(np.random.default_rng(1).normal(0, 0.01, 300), index=days)
@@ -224,8 +224,8 @@ def test_total_betas(monkeypatch):
 
 # After 2025 a month compounds to the panel's total; big δ on its fall.
 def test_with_delta(monkeypatch):
-    from fiam.v4 import data
-    from fiam.v4.construct import risk
+    from fiam.vfinal import data
+    from fiam.vfinal.construct import risk
 
     days = pd.bdate_range("2026-02-02", "2026-02-27")
     raw = pd.DataFrame({7: 0.0, 8: 0.001}, index=days)
@@ -280,7 +280,7 @@ def test_neutral_styles_held_at_zero():
 
 # The exam's halves are reported beside it, months split at 2018-12.
 def test_exam_halves():
-    from fiam.v4.construct import exam
+    from fiam.vfinal.construct import exam
 
     days = pd.bdate_range("2016-12-30", "2020-12-31")
     rng = np.random.default_rng(7)

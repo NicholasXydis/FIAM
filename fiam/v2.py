@@ -61,7 +61,7 @@ class Settings:
     capital: float = C.DEFAULT.nav
     mandate: M.Mandate = field(default_factory=M.Mandate)
 
-    # The run's folder name: its switches (v2, v2a), capital and mandate.
+    # The run's folder name: its switches, capital and mandate.
     @property
     def name(self) -> str:
         label = "+".join(sorted(self.on)) or "v1"
@@ -78,7 +78,7 @@ V2 = frozenset(MEMBERS)
 V2A = (V2 - {"costs"}) | {"grinold"}
 
 
-# Numbers fitted on pre-2021 data (fiam.freeze), empty until frozen.
+# Numbers fitted on pre-2021 data (fiam.freeze), empty until saved.
 def params() -> dict:
     return json.loads(PARAMS.read_text(encoding="utf-8")) if PARAMS.exists() else {}
 
@@ -305,7 +305,7 @@ def variance(w, terms: tuple[np.ndarray, np.ndarray]):
     return cp.sum_squares(loadings.T @ w) + spec @ cp.square(w)
 
 
-# The same variance for fixed weights, as a monthly volatility.
+# The same variance for constant weights, as a monthly volatility.
 def predicted_vol(w: np.ndarray, terms: tuple[np.ndarray, np.ndarray]) -> float:
     loadings, spec = terms
     return float(np.sqrt(((loadings.T @ w) ** 2).sum() + spec @ w**2))
@@ -413,7 +413,7 @@ def rules(w, pool: pd.DataFrame, prev: np.ndarray, settings: Settings, relax=1.0
     return constraints, side @ w, (lower, upper)
 
 
-# One pool solved at a fixed gross; the shipped solve with all off.
+# One pool solved at a set gross; the shipped solve with all off.
 def solve(month, pool, previous, settings: Settings, gross: float, relax=1.0) -> pd.Series | None:
     pool, prev = with_held(month, pool, previous)
     w = cp.Variable(len(pool))
@@ -927,7 +927,7 @@ def finals(path: Path) -> dict:
     return out
 
 
-# Usage: uv run -m fiam.v2 [prove|all|finals FILE|grid NAME...|NAME...]
+# The command line: prove, all, finals FILE, grid NAME... or NAME...
 def main(args: list[str]) -> None:
     if args == ["prove"]:
         print(f"largest weight gap, v2 off vs v1: {prove():.2e}")

@@ -153,7 +153,7 @@ def verify() -> int:
         folder = OUT / name
         listed_files = {k: v["sha256"] for k, v in receipts(folder / "receipts.json").items()}
         wrong = check(folder, listed_files)
-        print(f"noaa {name}: {len(listed_files)} files, {len(wrong)} wrong {wrong[:5]}")
+        print(f"noaa {name}: {len(listed_files)} files, {len(wrong)} differ {wrong[:5]}")
         bad += len(wrong)
     return 1 if bad else 0
 

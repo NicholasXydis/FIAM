@@ -68,7 +68,7 @@ def difference(ours: Path, theirs: Path) -> tuple[float, str] | None:
     return gaps[key], key
 
 
-# The numbers a judge reads first, from metrics.json.
+# The headline numbers, from metrics.json.
 HEADLINE = [
     ("performance", "information_ratio", "IR vs T-bill + 4%", "{:.3f}"),
     ("performance", "return_net_annual", "net return a year", "{:.1%}"),

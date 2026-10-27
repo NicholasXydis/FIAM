@@ -44,8 +44,8 @@ FAMILIES = {
     "safe": "Is it safe?",
 }
 CAPACITY = {"v1": "First book", "v2": "Built for size", "v2-pass": "Short rule only"}
-# The revised strategy's pick files and the hurdle's yearly premium.
-V4 = ROOT / "out" / "v4" / "final"
+# The headline's pick files and the hurdle's yearly premium.
+V4 = ROOT / "out" / "vfinal" / "final"
 PREMIUM = 0.04
 # Days in the rolling beta's window, and the cost ladder's rungs.
 BETA_DAYS = 252
@@ -466,11 +466,11 @@ def build(folder: Path = PACK) -> dict:
     )
 
 
-# The newest pick file in a folder, by when it was last written.
+# The newest pick file in a folder, by when it is last written.
 def newest_pick(folder: Path = V4) -> Path:
     picks = sorted(folder.glob("pick_*.json"), key=lambda p: p.stat().st_mtime)
     if not picks:
-        raise SystemExit(f"No pick file in {folder}: run tools/revised.py pick first.")
+        raise SystemExit(f"No pick file in {folder}: run uv run fiam stage pick first.")
     return picks[-1]
 
 
@@ -731,16 +731,18 @@ def costs_v4(t: dict[int, dict], old: dict) -> dict:
     )
 
 
-# The site data with its headline keys refilled from a v4 folder.
+# The site data with its headline keys refilled from a run folder.
 def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
     f = v4_files(folder, commit)
     t, daily = table_rows(f["table"]), pd.read_parquet(f["daily"])
     m = fund_months(daily)
     market = market_months(close, m.index)
     months = [str(p) for p in m.index]
-    # The predicted beta has no v4 source, so its months must line up.
+    # The predicted beta has no run source, so its months must line up.
     if len(base["beta"]["exante"]) != len(months):
-        raise SystemExit(f"beta.exante has {len(base['beta']['exante'])} months, v4 {len(months)}.")
+        raise SystemExit(
+            f"beta.exante has {len(base['beta']['exante'])} months, the run {len(months)}."
+        )
     return base | dict(
         book=folder.name,
         code=commit,
@@ -757,7 +759,7 @@ def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
     )
 
 
-# The pack folder, the v4 switch and any pick file, from the arguments.
+# The pack folder, the headline switch and any pick file, from args.
 def options(args: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Writes the site's data files.")
     parser.add_argument("pack", nargs="?", type=Path, default=PACK)

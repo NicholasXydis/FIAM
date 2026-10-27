@@ -4,7 +4,7 @@ import zipfile
 
 import pandas as pd
 
-from fiam.v4 import thirteen_f
+from fiam.vfinal import thirteen_f
 
 
 # One quarter's zip with two reports, a notice and five lines.

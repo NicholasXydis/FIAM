@@ -113,7 +113,7 @@ def screen(
     # Never filter on a future return, that drops the companies that failed.
     keep = (panel["prc"].abs() >= 5.0) & (panel["me"] >= 300.0)
     window = panel["eom"].between(first, last)
-    # wrds=False is the book a judge rebuilds from organizer data alone.
+    # wrds=False is the book anyone rebuilds from organizer data alone.
     return settle(panel[keep & window].copy()) if wrds else panel[keep & window].copy()
 
 
@@ -128,7 +128,7 @@ def settle(df: pd.DataFrame) -> pd.DataFrame:
     table = exits()
     if table is None:
         return df
-    # Only an exit dated by the decision was known then, so no later one.
+    # Only an exit dated by the decision is known then, so no later one.
     dead = df["permno"].map(table["exit_date"]) <= df["eom"]
     df = df[~dead].copy()
     df.attrs["dead_at_decision"] = int(dead.sum())
@@ -291,7 +291,7 @@ def solve(month: pd.DataFrame, pool: pd.DataFrame, previous: pd.Series | None) -
     constraints = [
         # Dollar neutral.
         cp.sum(w) == 0,
-        # Fixed signs make gross linear and exact; 1.5% a name means 107+ names.
+        # Set signs make gross linear and exact; 1.5% a name means 107+ names.
         side @ w == LIMITS["gross"],
         # Per-name cap, sign matches the signal.
         w >= np.minimum(side, 0) * cap,

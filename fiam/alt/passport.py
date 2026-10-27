@@ -84,7 +84,7 @@ def lag(meta: dict, pulled: str, dates: pd.Series, claimed) -> dict:
     out["refresh_minus_table_max_days"] = days(top, meta.get("refreshed_date"))
     out["pull_minus_table_max_days"] = days(top, pulled)
     out["last_label"] = None if pd.isna(last) else str(last.date())
-    # A label after the pull is a period's end, so that period was partial.
+    # A label after the pull is a period's end, so that period is partial.
     out["last_label_after_pull"] = bool(not pd.isna(last) and days(pulled, last) > 0)
     return out
 
@@ -120,7 +120,7 @@ def rewritten(old: pd.DataFrame, new: pd.DataFrame, value: str, pulled=None) -> 
     return out
 
 
-# Re-buy prices quoted for snapshot 2, by set name, if a plan was made.
+# Re-buy prices quoted for snapshot 2, by set name, if a plan exists.
 def rebuy_quotes(root: Path = CARBON) -> dict:
     plan = root / "snapshot_2" / "rebuy.plan.json"
     if not plan.exists():
@@ -138,7 +138,7 @@ def revision(name: str, pulled: str, root: Path = CARBON) -> dict:
     if not old.exists():
         return {"status": "new in snapshot 2", "why": "first bought in snapshot 2, no earlier copy"}
     price = rebuy_quotes(root).get(name)
-    # A zero quote cannot be bought by API, so nothing was re-bought.
+    # A zero quote cannot be bought by API, so nothing is re-bought.
     if price is not None and float(price) == 0.0:
         return {"status": "not re-bought", "why": "the re-buy quoted 0.0 and bought nothing"}
     return {"status": PENDING}
@@ -280,7 +280,7 @@ def flagged(keys: pd.DataFrame, carc: pd.DataFrame, dead: pd.DataFrame) -> pd.Se
 
 # Every owned file's entry, the delisting list and the summary chart.
 def build(snapshots=SNAPSHOTS) -> dict:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     found, uni, stat = coverage.stock_flags()
     last = set(uni.loc[uni["in_last"], "permno"])
@@ -300,7 +300,7 @@ def build(snapshots=SNAPSHOTS) -> dict:
     passport = {
         "about": "Carbon Arc data passport, PLAN §12.4 piece 7; counts, dates and coverage only",
         "snapshot_2": snapshot_two(entries),
-        "universe": "fiam.v4 universe new_long, month ends 2015-01 to 2020-12",
+        "universe": "fiam.vfinal universe new_long, month ends 2015-01 to 2020-12",
         "named_permnos": {k: v[0] for k, v in NAMED.items()},
         "delistings_2017_2020": gone.to_dict("records"),
         "datasets": entries,
@@ -314,7 +314,7 @@ def build(snapshots=SNAPSHOTS) -> dict:
 # The card set's panel users from the free debias reply, sealed window.
 def add_panel(entries: list[dict], end=None) -> None:
     from fiam.alt import common, walmart
-    from fiam.v4 import sources
+    from fiam.vfinal import sources
 
     last = pd.Timestamp(end) if end is not None else common.CUTOFF
     # Once unsealed the panel runs to the reply's last full month.

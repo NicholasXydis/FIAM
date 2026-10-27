@@ -129,7 +129,7 @@ def verify() -> int:
             and hashlib.sha256(path.read_bytes()).hexdigest() == entry["library_sha256"]
         )
         bad += not ok
-    print(f"openmp: {bad} wrong")
+    print(f"openmp: {bad} differ")
     return 1 if bad else 0
 
 

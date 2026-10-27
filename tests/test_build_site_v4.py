@@ -1,4 +1,4 @@
-# The site's v4 headline source on small synthetic result files.
+# The site's headline source on small synthetic result files.
 
 import csv
 import json
@@ -14,7 +14,7 @@ from tools import build_site as b
 
 COMMIT = "abcdef123456"
 SITE = Path(__file__).resolve().parents[1] / "site" / "src" / "data" / "fiam.json"
-# The keys the v4 mode fills, each checked against the bundled file.
+# The keys the headline mode fills, each checked against the bundle.
 FILLED = (
     "book",
     "code",
@@ -155,7 +155,7 @@ def base() -> dict:
     return data | {"beta": data["beta"] | {"exante": data["beta"]["exante"][:months]}}
 
 
-# The v4 output from a synthetic folder, as the JSON file holds it.
+# The headline output from a synthetic folder, as the JSON holds it.
 @pytest.fixture
 def made(tmp_path, base) -> dict:
     write_folder(tmp_path / "revised")

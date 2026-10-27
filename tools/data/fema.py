@@ -18,7 +18,7 @@ DATASETS = {
     "FemaWebDeclarationAreas": "v1",
 }
 REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
-# The sample, fixed before the check ran.
+# The sample, set before the check ran.
 SEED, SIZE, FIRST, LAST = 20261023, 100, "1994-01-01", "2020-12-31"
 # Notices for every major disaster the exhibit and live flags can use.
 NOTICES_FROM = "2012-01-01"
@@ -59,7 +59,7 @@ def get_datasets() -> int:
     return 0
 
 
-# The fixed-seed sample of 100 county designations of major disasters.
+# The seeded sample of 100 county designations of major disasters.
 def sample() -> pd.DataFrame:
     s = pd.read_csv(
         OUT / "DisasterDeclarationsSummaries.csv", usecols=["disasterNumber", "declarationType"]
@@ -164,7 +164,7 @@ def verify() -> int:
             path = folder / name
             ok = path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == entry["sha256"]
             bad += [] if ok else [name]
-    print(f"fema: {len(bad)} wrong {bad[:3]}")
+    print(f"fema: {len(bad)} differ {bad[:3]}")
     return 1 if bad else 0
 
 

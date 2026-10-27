@@ -1,11 +1,11 @@
-# The registry's bans, blind mode and look-ahead traps.
+# The registry's bans, blind mode and point-in-time traps.
 
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from fiam.v4 import clock, guards, sources
+from fiam.vfinal import clock, guards, sources
 
 SEALED_DAY = pd.Timestamp("2021-01-04")
 
@@ -103,7 +103,7 @@ def test_no_shuffle_and_no_overlapping_labels():
     with pytest.raises(ValueError, match="shuffles"):
         guards.refuse_shuffle(KFold(n_splits=3, shuffle=True))
     guards.assert_time_split(["2018-11-30", "2018-12-31"], "2019-01-31")
-    with pytest.raises(AssertionError, match="B14"):
+    with pytest.raises(AssertionError, match="training labels end"):
         guards.assert_time_split(["2018-12-31", "2019-01-31"], "2019-01-31")
 
 
@@ -262,15 +262,13 @@ def test_raw_text_tables_are_read_only_by_their_builders():
 
 
 # Only the registry, builders and count tools open data files.
-def test_only_allowed_v4_modules_open_data_files():
+def test_only_allowed_modules_open_data_files():
     allowed = {"sources.py", "links.py", "exits.py", "agreement.py", "fallbacks.py"}
     allowed |= {"hand_checks.py", "kit.py", "text.py", "vintage.py", "fema.py"}
-    # The replay reads only the stored 2016-2020 check files.
-    allowed |= {"replay.py"}
     # The table builders read the extracts and CRSP's types to clean them.
     allowed |= {"compustat.py", "thirteen_f.py"}
-    # The final run reads its own outputs and the labels it rebuilt.
-    allowed |= {"final.py"}
+    # The final run, the headline and the what-ifs read their own outputs.
+    allowed |= {"final.py", "headline.py", "whatif.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):

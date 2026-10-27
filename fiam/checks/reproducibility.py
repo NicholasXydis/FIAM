@@ -1,4 +1,4 @@
-# Re-checks the look-ahead list on code and output. Needed, not enough.
+# Re-checks the point-in-time list on code and output.
 
 import json
 import os
@@ -41,7 +41,7 @@ CHECKS = []
 
 # Registers a check by its report name. Each returns (passed, detail).
 def check(name: str):
-    # Adds the check to the list and leaves the function as it was.
+    # Adds the check to the list and returns the function unchanged.
     def register(function):
         CHECKS.append((name, function))
         return function
@@ -111,7 +111,7 @@ def missing_returns_booked_flat():
     return weight > 0, f"{weight:.4f} weight-months booked flat, a stated assumption"
 
 
-# A ticker corrected from a later month is look-ahead in the holdings.
+# A ticker corrected from a later month uses future data in holdings.
 @check("labels come from the decision month or earlier")
 def labels_are_backward_only():
     book = paths.holdings()
@@ -153,7 +153,7 @@ def ml_folds_do_not_overlap():
     return not bad, f"overlapping: {bad}" if bad else f"{len(folds())} folds, no overlap"
 
 
-# A rank or fill over the whole sample lets later months shape earlier.
+# A rank or fill over the whole sample lets later months shape prior.
 @check("model features are ranked within the month only")
 def ml_transform_is_within_month():
     lines = (PACKAGE / "ml" / "dataset.py").read_text(encoding="utf-8").splitlines()

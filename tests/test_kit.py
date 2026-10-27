@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from fiam import kit as results
-from fiam.v4 import kit
+from fiam.vfinal import kit
 
 FILES = {
     "data/organisers/readme.md": b"organisers",

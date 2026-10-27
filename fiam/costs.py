@@ -12,7 +12,7 @@ from fiam import data, paths
 MODELS = paths.SUBMISSION / "models"
 SPREADS, BORROW = MODELS / "spreads.json", MODELS / "borrow.parquet"
 
-# IBKR Pro fixed, US stocks, interactivebrokers.com pricing, 2026-09-30.
+# IBKR Pro Fixed, US stocks, interactivebrokers.com pricing, 2026-09-30.
 COMMISSION_PER_SHARE, COMMISSION_MIN, COMMISSION_MAX = 0.005, 1.00, 0.01
 # SEC Section 31 on sales, 2021-26 high, $27.80/million from May 2024.
 SEC_RATE = 27.80e-6

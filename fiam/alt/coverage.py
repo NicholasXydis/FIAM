@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from fiam.v4.links import entity_key, plain_symbol
+from fiam.vfinal.links import entity_key, plain_symbol
 
 ROOT = Path(__file__).resolve().parents[2]
 FULL = ROOT / "data" / "carbon_arc" / "access" / "insight_entities_full"
@@ -97,7 +97,7 @@ def flags(stocks: pd.DataFrame, carc: pd.DataFrame) -> pd.DataFrame:
 
 # Universe stocks over the months, and whether each is in the last.
 def universe(eoms) -> pd.DataFrame:
-    from fiam.v4 import universe as v4
+    from fiam.vfinal import universe as v4
 
     rows = []
     for eom in eoms:
@@ -151,7 +151,7 @@ def entities(insight: int) -> list[dict]:
 
 # Every insight's per-stock flags over the 2015-2020 universe.
 def stock_flags(eoms=None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     eoms = list(eoms if eoms is not None else pd.date_range(START, LAST, freq="ME"))
     uni = universe(eoms)
@@ -179,7 +179,7 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUT / "coverage.csv", index=False)
     meta = {
-        "universe": "fiam.v4.universe.members new_long, every month end 2015-01 to 2020-12",
+        "universe": "fiam.vfinal.universe.members new_long, every month end 2015-01 to 2020-12",
         "match": "CRSP dated tickers (latest holder) and compact entity_key names, 2015-2020",
         "covered": "a ticker or company-name match; brand matches counted apart",
         "status": "delisted means a CRSP or SEC exit dated 2015-2020 (exits table, dates only)",

@@ -18,14 +18,14 @@ WRDS = DIR / "wrds"
 # Our WRDS extracts (tools/data/stock_data.py), never the raw archive.
 EXTRACTS = ROOT / "data" / "v4" / "extracts"
 
-# What every step needs. Judges will not have WRDS or research layers.
+# What every step needs. A run without WRDS or research layers works.
 CORE = (FEATURES, LABELS, FILINGS, MANIFEST)
 KEYS = ["permno", "eom"]
 TARGET = "ret_exc_lead1m"
 # Under FIAM_BLIND=1 this reader drops rows with eom after this month.
 SEAL_EOM = pd.Timestamp("2020-12-31")
 
-# The organizer readme's SHA-256s. The manifest records what was built.
+# The organizer readme's SHA-256s. The manifest records the build.
 PUBLISHED = {
     "chars_final_with_names.parquet": (
         "797c01ebd59f7a14585cb2e0290aa0b2c43b9188b7ac16384762d3df615215ca"

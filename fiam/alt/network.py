@@ -137,8 +137,8 @@ def read_ca0043b(path: Path = CA0043B) -> pd.DataFrame:
 
 # Each filer's 13F holdings per period, the latest version by T.
 def thirteen_f(T: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
-    from fiam.v4 import data
-    from fiam.v4.signals import best_ideas
+    from fiam.vfinal import data
+    from fiam.vfinal.signals import best_ideas
 
     quarters = pd.date_range(end=T, periods=QUARTERS + 3, freq="QE")
     first = quarters[quarters <= T][-(QUARTERS + 2)]
@@ -259,7 +259,7 @@ def owner_edges(pairs: pd.DataFrame) -> pd.DataFrame:
 
 # Each stock's CRSP cap in $m at its last month end by T, three back.
 def caps_at(T: pd.Timestamp) -> pd.Series:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     m = data.table("crsp_monthly", ["cap_musd"], where={"date": (T - pd.DateOffset(months=3), T)})
     return (
@@ -304,7 +304,7 @@ def one_level(a: np.ndarray) -> np.ndarray:
     return relabel(comm)
 
 
-# Louvain communities on a symmetric weight matrix, fixed node order.
+# Louvain communities on a symmetric weight matrix, set node order.
 def louvain(adj: np.ndarray) -> np.ndarray:
     a = np.asarray(adj, dtype=float)
     labels = np.arange(len(a))
@@ -449,7 +449,7 @@ def build(
 
 # Stale GICS sector names: the panel's last month by T (sealed 2020).
 def sectors_at(T: pd.Timestamp, permnos) -> pd.Series:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     p = data.table(
         "panel", ["gics"], where={"eom": (T - pd.DateOffset(months=12), T), "permno": set(permnos)}
@@ -503,7 +503,7 @@ def chart(
 
 # Runs the map: python -m fiam.alt.network [book] [--date] [--label]
 def main(argv=None) -> dict:
-    from fiam.v4 import data, sources
+    from fiam.vfinal import data, sources
 
     ap = argparse.ArgumentParser()
     ap.add_argument("book", nargs="?", default=str(BOOK))

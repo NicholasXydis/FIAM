@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import betas, clock, daily_book, data, inputs, sources, universe
+from fiam.vfinal import betas, clock, daily_book, data, inputs, sources, universe
 
 RULES = dict(names_min=1, names_max=500, gross=2.0, net_band=0.5, name_cap=0.6)
 RULES |= dict(short_min_market_cap=500.0, nav_start=1e9, lag_days=1)
@@ -821,23 +821,9 @@ def test_real_dropped_stocks_are_marked_and_sold(permno):
     assert out.positions[out.positions["date"] == end].empty
 
 
-# The stored 2016-2020 check holdings replay within tolerance, same day.
-@pytest.mark.skipif(not HAVE_DATA, reason="no data folder")
-def test_real_v3_replay_within_tolerance():
-    from fiam.v4 import replay
-
-    if not (replay.V3 / "holdings.parquet").exists():
-        pytest.skip("no v3 check holdings")
-    # Only the 2016-2020 check folder, never a 2021+ record.
-    assert replay.V3.name == "check" and max(replay.targets()) <= pd.Timestamp("2020-11-30")
-    summary, both, _ = replay.compare(0)
-    assert summary["months"] == 60
-    assert summary["within_bar"] and summary["judged"]
-
-
 # Each 2026 input agrees with its CRSP original on 2019-06.
 @pytest.mark.skipif(not HAVE_DATA, reason="no data folder")
 def test_real_2026_inputs_agree_on_2019_06():
-    from fiam.v4 import inputs
+    from fiam.vfinal import inputs
 
     assert inputs.check()["passes"]

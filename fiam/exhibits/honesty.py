@@ -13,7 +13,7 @@ from fiam.agents import honesty as A
 
 OUT = Path("out") / "v2" / "honesty.json"
 REPS, SEED = 10_000, 42
-# Fixed before any result: the gap 250 per side detects at 80% power.
+# Set before any result: the gap 250 per side detects at 80% power.
 MDE = 0.125
 
 

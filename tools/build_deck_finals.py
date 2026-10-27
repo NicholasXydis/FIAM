@@ -798,7 +798,7 @@ def measure(name: str) -> str:
     return name if len(name) <= 26 else name[:26].rsplit(" ", 1)[0]
 
 
-# A saved decision rebuilt: what the copycat was told, saw and answered.
+# A saved decision rebuilt: what the copycat is told, saw and answered.
 def receipt(deck, f: dict, m: dict) -> None:
     r = load(FIGURES / "receipt.json")
     same = r.get("hash_match") and r.get("same_stocks")

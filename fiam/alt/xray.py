@@ -15,10 +15,10 @@ import numpy as np
 import pandas as pd
 
 from fiam.alt.common import CREDIT
-from fiam.v4 import clock, data, sources
-from fiam.v4 import links as link_table
-from fiam.v4.desk.agents import SHRINKS
-from fiam.v4.desk.triggers import EARNINGS_DAYS
+from fiam.vfinal import clock, data, sources
+from fiam.vfinal import links as link_table
+from fiam.vfinal.desk.agents import SHRINKS
+from fiam.vfinal.desk.triggers import EARNINGS_DAYS
 
 # Saved inputs only, no network; outputs go to out/alt/xray alone.
 ROOT = sources.ROOT
@@ -167,7 +167,7 @@ def load_series(dataset: str, snapshot: Path = SNAPSHOT, catalogue: Path = CATAL
         empty = pd.DataFrame(columns=["ticker", "part", "month", "value"])
         return Series(empty, stated_lag(dataset, catalogue), pd.NaT, "never pulled")
     rows = pd.concat(frames).dropna(subset=["value"]).sort_values("pulled_at")
-    # A later pull of the same month replaces the earlier one.
+    # A later pull of the same month replaces the prior one.
     rows = rows.drop_duplicates(["ticker", "part", "month"], keep="last").drop(columns="pulled_at")
     notes = {"values_not_numeric_dropped": bad, "tickers": sorted(rows["ticker"].unique())}
     lag = stated_lag(dataset, catalogue)
@@ -345,7 +345,7 @@ def next_print(calendar: pd.DataFrame, permno: int, as_of, seal: pd.Timestamp, o
     own = own[pd.to_datetime(own["first_close"]) <= as_of]
     opened = sources.unsealed() if opened is None else opened
     if own.empty:
-        # Only blind mode hides projections, so after the unseal none is.
+        # Only blind mode hides projections, so with the gate open none is.
         if as_of > seal and not opened:
             why = (
                 f"Sealed. Blind mode hides projections made after {seal.date()} until the "
@@ -499,7 +499,7 @@ def fill_tickers(book: pd.DataFrame, as_of, seal: pd.Timestamp, unsealed: bool) 
     book["ticker_source"] = np.where(given, "book", "none").astype(object)
     if given.all() or not unsealed:
         return book
-    # The link in force at the as-of date, or at the seal if earlier.
+    # The link in force at the as-of date, or at the seal if that is sooner.
     when = min(pd.Timestamp(as_of), seal)
     gaps = book.index[~given]
     links = data.table("links", None, purpose=None)

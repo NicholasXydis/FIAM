@@ -53,7 +53,7 @@ def entities(insights: list[int], client=None) -> int:
         path.write_text(body, encoding="utf-8")
         path.with_suffix(".receipt.json").write_text(json.dumps(receipt, indent=1))
         print(f"{insight}: {len(rows)} entities in {pages} pages, search total {total}")
-    print("Nothing was bought and MCP was not used.")
+    print("Nothing bought, MCP not used.")
     return 0
 
 

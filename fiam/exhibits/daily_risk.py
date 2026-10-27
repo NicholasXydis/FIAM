@@ -1,4 +1,4 @@
-# The monthly book marked each trading day of 2021-2025, weights fixed.
+# The monthly book marked each trading day of 2021-2025, weights held.
 
 
 import numpy as np
@@ -78,7 +78,7 @@ def daily_beta(path: pd.DataFrame) -> dict:
     )
 
 
-# Drawdown on a path of levels, the deepest fall from any earlier peak.
+# Drawdown on a path of levels, the deepest fall from any prior peak.
 def drawdown(level: pd.Series) -> float:
     return float((level / level.cummax() - 1).min())
 

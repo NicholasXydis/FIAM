@@ -135,7 +135,7 @@ def entity_keys(cols) -> list[str]:
     return [k for k, pat in KEYS.items() if any(re.search(pat, c) for c in names)]
 
 
-# Sample rows whose delivery partition says the history was back-filled.
+# Sample rows whose delivery partition marks the history back-filled.
 def backfill_in_sample(sample) -> int:
     hits = set()
     for block in (sample or {}).get("samples", []) if isinstance(sample, dict) else []:

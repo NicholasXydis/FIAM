@@ -1,4 +1,4 @@
-# fiam.v2 and finals mechanics on synthetic data. No data or network.
+# The older book's module and finals mechanics on synthetic data.
 
 import json
 from pathlib import Path

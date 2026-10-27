@@ -123,7 +123,7 @@ def more() -> dict:
     crowd, ev = load(v2.OUT / "crowd_lab.json"), load(v2.OUT / "evidence.json")
     books = cap.get("books", {})
 
-    # One book's figure at one fund size, or None if it was not run there.
+    # One book's figure at one fund size, or None if it did not run there.
     def at(book: str, capital: float, key: str):
         rows = books.get(book, {}).get("record", [])
         return next((r[key] for r in rows if r["capital"] == capital), None)

@@ -62,7 +62,7 @@ def verify() -> int:
         for k, e in saved.items()
         if (OUT / k).exists() and hashlib.sha256((OUT / k).read_bytes()).hexdigest() != e["sha256"]
     ]
-    print(f"french archive: {len(saved)} files, {len(bad)} wrong {bad[:3]}")
+    print(f"french archive: {len(saved)} files, {len(bad)} differ {bad[:3]}")
     return 1 if bad else 0
 
 

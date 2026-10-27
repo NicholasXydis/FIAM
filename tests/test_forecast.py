@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import sources
-from fiam.v4.forecast import dataset, grid, models
+from fiam.vfinal import sources
+from fiam.vfinal.forecast import dataset, grid, models
 
 CHARS = ["o_score", "gp_at", "ret_12_1", "noa_at", "z1", "z2"]
 
@@ -140,7 +140,7 @@ def test_fits_only_see_public_labels(monkeypatch):
 # A SUE target not yet public at the cut changes no fit's target rank.
 def test_sue_rank_ignores_unpublished_targets(monkeypatch):
     t = fake_table(monkeypatch)
-    # 2018-10's other targets are public by the cut, so look-ahead shows.
+    # 2018-10's other targets are public by the cut, so future rows show.
     late = (t.x["eom"] == pd.Timestamp("2018-10-31")) & (t.x["permno"] % 2 == 0)
     t.x.loc[late, "sue_public"] = pd.Timestamp("2019-03-31")
     before = grid.sue_column(t, "universe", 7, 20)

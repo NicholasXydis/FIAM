@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4 import data
-from fiam.v4.construct import book, crowding, exam, execution, screens
+from fiam.vfinal import data
+from fiam.vfinal.construct import book, crowding, exam, execution, screens
 
 DAY = pd.Timestamp
 
@@ -110,7 +110,7 @@ def test_rehedge():
     assert still.equals(w) or (still - w).abs().max() < 1e-9
 
 
-# TAQ imbalance and the history cut-off use only earlier stock-days.
+# TAQ imbalance and the history cut-off use only prior stock-days.
 def test_imbalance_and_cuts():
     rows = pd.DataFrame({"BuyVol_LR": [3.0, 1.0, 0.0], "SellVol_LR": [1.0, 1.0, 0.0]})
     assert screens.imbalance(rows).tolist()[:2] == [0.5, 0.0]
@@ -359,7 +359,7 @@ def test_short_without_cap_is_covered():
 
 # Weekly decisions re-plan on the last public month end's inputs.
 def test_weekly_decisions(monkeypatch):
-    from fiam.v4.construct import simulate
+    from fiam.vfinal.construct import simulate
 
     days = pd.bdate_range("2019-01-01", "2019-03-29")
 

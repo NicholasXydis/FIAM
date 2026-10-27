@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from fiam.alt import common, passport
-from fiam.v4 import sources
+from fiam.vfinal import sources
 
 ROOT = sources.ROOT
 FILE = sources.DATA / "carbon_arc" / "snapshot_2" / "CA0038_343_ten_retail.json.gz"
@@ -161,7 +161,7 @@ def inspect(rows: pd.DataFrame, value: str, receipt: dict) -> dict:
 
 # The full check on the sealed window; None when the run is refused.
 def build(end=None, path: Path = FILE, out: Path = OUT) -> dict | None:
-    from fiam.v4 import data
+    from fiam.vfinal import data
 
     last = common.run_end(end)
     # A run past the cutoff while sealed stops before reading anything.

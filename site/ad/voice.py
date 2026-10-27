@@ -25,7 +25,7 @@ FIRST = {"rise": 0.92, "close": 0.92}
 # lines.json holds the script; it spells QUARCC Quark to say it right.
 HERE = Path(__file__).parent / "voice"
 lines = json.loads((HERE / "lines.json").read_text())
-# words.json keeps earlier timings, so one line can be remade alone.
+# words.json keeps prior timings, so one line can be remade alone.
 words_file = HERE / "words.json"
 words = json.loads(words_file.read_text()) if words_file.exists() else {}
 # Kokoro-82M from hexgrad on Hugging Face, in American English.
