@@ -330,3 +330,34 @@ def test_gate_lambda_follows_the_ladder():
 
     assert run.risk_lambda(3.0, 12) == 0.75 and run.risk_lambda(3.0, 14) == 1.5
     assert run.risk_lambda(3.0, 1) == 3.0 and run.risk_lambda(3.0, 13) == 3.0
+
+
+# A replay prices a name outside the frame by the rows known that close.
+def test_replay_costs_read_no_later_row(monkeypatch):
+    from fiam.v4.construct import costs
+
+    # The next business day stands in for the next session.
+    def shift(days, n):
+        return pd.Series([DAY(d) + pd.offsets.BDay(n) for d in days])
+
+    monkeypatch.setattr(costs.data, "shift", shift)
+
+    # One formation's rows: every name at one price.
+    def frame(names, prc):
+        return pd.DataFrame({"prc": prc, "half_spread": 0.001, "sigma_d": 0.02,
+                             "adv_cost": 1e7, "borrow": 0.003}, index=names)  # fmt: skip
+
+    k0, k1, k2 = DAY("2019-01-02"), DAY("2019-02-01"), DAY("2019-03-01")
+    done, live = costs.Hooks(), costs.Hooks()
+    # The finished run holds all three; the live run two by mid-February.
+    for k, x in ((k0, frame([1, 3], 10.0)), (k1, frame([1, 2], 10.0)), (k2, frame([1, 3], 200.0))):
+        done.add(k, x, pd.Series(dtype=float))
+        if k < k2:
+            live.add(k, x, pd.Series(dtype=float))
+    moved, d = pd.Series({3: -1e5}), DAY("2019-02-15")
+    want = live.costs(d, moved)
+    assert not done.costs(d, moved).equals(want)
+    pd.testing.assert_series_equal(costs.Replay(done).costs(d, moved), want)
+    replay = costs.Replay(done)
+    replay.costs(DAY("2019-02-28"), moved)
+    assert k2 in replay.frames

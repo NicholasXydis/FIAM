@@ -1,5 +1,7 @@
 # The v4 exhibits on synthetic tables: files, punctuation, hand checks.
 
+import math
+
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -9,7 +11,7 @@ from fiam.exhibits_v4 import common, extras, required, synthetic
 from fiam.exhibits_v4.build import build
 from fiam.v4.report import table_9_1
 
-# Every exhibit's file stem: the PDF's eight, then the three extras.
+# Every exhibit's file stem: the PDF's eight, then the extras.
 STEMS = [name for name, _ in required.EXHIBITS + extras.EXTRAS]
 # A flat daily return for the hand checks: 3 basis points a session.
 FLAT = 0.0003
@@ -166,3 +168,16 @@ def test_sub_period_compounds_2026(written, run):
     d = run[0]["daily"]
     want = ((1 + d.loc[d.index.year == 2026, "ret"]).prod() - 1) * 100
     assert frame.loc["Return (%)", "2026 Jan to Aug"] == pytest.approx(want)
+
+
+# VaR the 5th percentile, CVaR the mean of the ceil(5%) worst months.
+def test_cvar_tail_by_hand(run):
+    x = common.prepare(*run)
+    m = (1 + x.d[["ret", "rf"]]).groupby(x.d.index.to_period("M")).prod() - 1
+    active = ((m["ret"] - (m["rf"] + table_9_1.PREMIUM / 12)) * 100).to_numpy()
+    k = math.ceil(0.05 * len(active))
+    frame = frame_of(*run, extras.cvar_tail)
+    assert frame.attrs["k"] == k and frame["in_tail"].sum() == k
+    assert frame.attrs["var95"] == pytest.approx(np.quantile(active, 0.05))
+    assert frame.attrs["cvar95"] == pytest.approx(np.sort(active)[:k].mean())
+    assert frame.attrs["worst"] <= frame.attrs["cvar95"] <= frame.attrs["var95"]

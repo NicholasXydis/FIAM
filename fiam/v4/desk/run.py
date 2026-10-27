@@ -449,7 +449,9 @@ def replay_in(head: str, plans: dict) -> dict:
             out[arm] = {"shrinks": len(plan), "resumed": True}
             continue
         act = hook.Arm(made, plan, watch, trigger, overlays, brake)
-        result = daily_book.run(holders, T0, end, costs=hooks.costs, borrow=hooks.borrow,
+        # Costs from the rows each close knew, as A0's own run had them.
+        known = costs.Replay(hooks)
+        result = daily_book.run(holders, T0, end, costs=known.costs, borrow=known.borrow,
                                 hook=act, permnos=ids, unsealed=FINAL, strict=False)  # fmt: skip
         days = result.daily[["nav", "ret", "rf", "cost", "borrow"]]
         target = path(f"arm_{arm}", head, "parquet")

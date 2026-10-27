@@ -1,11 +1,14 @@
-# The extra exhibits (PLAN §13.6): K1, capacity, 2026 on its own.
+# The extra exhibits (PLAN §13.6): K1, capacity, 2026, the tail.
+
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from fiam.exhibits_v4 import common as c
-from fiam.exhibits_v4.common import BENCH, INK, MARKET, MUTED, OURS, Inputs
+from fiam.exhibits_v4.common import BENCH, INK, MARKET, MUTED, NEG, OURS, Inputs
+from fiam.v4 import daily_book
 from fiam.v4.construct.optimizer import SPILL_ADV
 from fiam.v4.report import table_9_1
 
@@ -15,6 +18,10 @@ AT_CAP = 1 - 1e-6
 UNFILLED = "unfilled"
 # The sub-period shown on its own, beside the full window.
 SUB_YEAR = 2026
+# The tail's share, the histogram's bins and the tail figure's size.
+TAIL, BINS, TAIL_SIZE = 0.05, 13, (12.13, 4.2)
+# A white backing, so a label stays legible over a bar or a line.
+BACK = dict(facecolor="white", alpha=0.85, edgecolor="none", pad=1.5)
 
 
 # A frame drawn as a plain table on an axis, team colours.
@@ -213,9 +220,86 @@ def sub_period(x: Inputs):
     return fig, frame
 
 
+# Each month's return less the bill plus 4%, as rows 9 and 10 read it.
+def monthly_active(d: pd.DataFrame) -> pd.Series:
+    m = daily_book.monthly(d)
+    return (m["ret"] - (m["rf"] + table_9_1.PREMIUM / 12)) * 100
+
+
+# n, k = ceil(0.05 n), VaR the 5th percentile, CVaR the k worst's mean.
+def tail_stats(active: pd.Series) -> dict:
+    n = len(active)
+    k = math.ceil(TAIL * n)
+    worst = active.sort_values(kind="stable").iloc[:k]
+    return {"n": n, "k": k, "var95": float(active.quantile(TAIL)),
+            "cvar95": float(worst.mean()), "worst": float(active.min()),
+            "tail": worst}  # fmt: skip
+
+
+# A loss or a gain in words, for a value in percent.
+def sized(v: float) -> str:
+    return f"{abs(v):.1f}% {'loss' if v < 0 else 'gain'}"
+
+
+# The tail: every month's distribution, then the worst months in turn.
+def cvar_tail(x: Inputs):
+    active = monthly_active(x.d)
+    s = tail_stats(active)
+    n, k, var95, cvar95 = s["n"], s["k"], s["var95"], s["cvar95"]
+    fig, (dist, tail) = plt.subplots(1, 2, figsize=TAIL_SIZE, gridspec_kw={"width_ratios": [3, 2]})
+    sub = f"{x.period} · after all modelled costs · strategy less T-bill + 4%"
+    top = c.headline(fig, "Tail Risk, VaR and CVaR at 95%", sub)
+    fig.subplots_adjust(top=top - 0.08, bottom=0.2, wspace=0.28, left=0.06, right=0.98)
+    # Left: all months, the region below VaR shaded, the tail as a rug.
+    dist.hist(active, bins=BINS, color=OURS, edgecolor="white", linewidth=0.8)
+    lo = min(active.min(), cvar95) - 0.5
+    dist.axvspan(lo, var95, color=NEG, alpha=0.10, linewidth=0)
+    dist.set_xlim(left=lo)
+    dist.axvline(var95, color=NEG, linewidth=1.6)
+    dist.axvline(cvar95, color=NEG, linewidth=1.6, dashes=(5, 3))
+    dist.axvline(0, color=INK, linewidth=0.8)
+    ymax = dist.get_ylim()[1]
+    dist.plot(s["tail"], np.zeros(k), "|", color=NEG, markersize=16, markeredgewidth=2.2,
+              clip_on=False)  # fmt: skip
+    # Both labels right of the lines, stacked, so neither leaves the axes.
+    dist.text(var95, ymax * 0.97, f"  VaR 95% = {var95:.1f}%, solid line", color=NEG,
+              fontsize=9, va="top", ha="left", bbox=BACK)  # fmt: skip
+    dist.text(var95, ymax * 0.87, f"  CVaR 95% = {cvar95:.1f}%, dashed line", color=NEG,
+              fontsize=9, va="top", ha="left", bbox=BACK)  # fmt: skip
+    dist.text(0.98, 0.95, f"Worst 5% = {k} of {n} months", transform=dist.transAxes,
+              ha="right", va="top", fontsize=9.5, color=INK)  # fmt: skip
+    c.panel(dist, "The Worst 5% of Months", "Months")
+    dist.set_xlabel("Monthly net excess return (%)")
+    # Right: the k worst months, worst first, each with its value.
+    labels = [f"{p.strftime('%Y-%m')}" for p in s["tail"].index]
+    pos = np.arange(k)
+    tail.bar(pos, s["tail"].to_numpy(), color=NEG, width=0.6)
+    for i, v in zip(pos, s["tail"].to_numpy()):
+        tail.text(i, v, f"{v:.1f}%", ha="center", va="top" if v < 0 else "bottom",
+                  fontsize=9, color=INK, bbox=BACK)  # fmt: skip
+    tail.set_xticks(pos, labels)
+    tail.axhline(0, color=INK, linewidth=0.8)
+    tail.axhline(cvar95, color=NEG, linewidth=1.4, dashes=(5, 3))
+    low = min(float(s["tail"].min()), cvar95)
+    # A band above zero holds the note, clear of every bar.
+    tail.set_ylim(low * 1.25 if low < 0 else -0.5, max(0.5, -low * 0.4))
+    tail.text(0.98, 0.96, f"Dashed line = average of the {k} worst months = {sized(cvar95)}",
+              transform=tail.transAxes, ha="right", va="top", fontsize=9, color=NEG)  # fmt: skip
+    c.panel(tail, "The Tail, Month by Month", "%")
+    c.footnote(fig, "Monthly net excess return after all modelled costs and the T-bill + 4% "
+                    "hurdle. CVaR 95% is the average loss in the worst 5% of months, not the "
+                    f"largest possible loss. {k} of {n} months.")  # fmt: skip
+    frame = pd.DataFrame({"active_pct": active}).assign(
+        in_tail=lambda f: f.index.isin(s["tail"].index)
+    )
+    frame.attrs |= {key: v for key, v in s.items() if key != "tail"}
+    return fig, frame
+
+
 # The extras by file stem; K1 runs only when its inputs are given.
 EXTRAS = (
     ("extra_k1_fundamental_law", fundamental_law),
     ("extra_capacity", capacity),
     ("extra_2026_sub_period", sub_period),
+    ("extra_cvar_tail", cvar_tail),
 )

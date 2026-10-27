@@ -49,7 +49,7 @@ STAGES, NEEDS = ("tests", "designs", "brake"), {"brake": "designs"}
 # Designs at a time (FIAM_WORKERS), each worker holding one context.
 WORKERS = int(os.environ.get("FIAM_WORKERS", "2"))
 # The exam's commit, pinned once it has run; later stages read it.
-EXAM_AT = None
+EXAM_AT = "54960e72e27a"
 # Tables beyond the gates' stamp that step 7 reads.
 TABLES = ("taq_daily", "options_daily", "crsp_daily", "crsp_monthly", "dsf", "panel",
           "short_interest", "sec_13f", "sec_13f_reports", "events", "sec_insiders")  # fmt: skip

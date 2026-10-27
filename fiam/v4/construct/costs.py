@@ -157,3 +157,28 @@ class Hooks:
         x, _ = self.at(d)
         rate = x["borrow"].reindex(shorts.index).fillna(x["borrow"].max())
         return shorts * rate / SESSIONS
+
+
+# A finished run's hooks replayed: each close sees only its known rows.
+class Replay(Hooks):
+    # The finished hooks, added back one formation at a time.
+    def __init__(self, done: Hooks):
+        super().__init__()
+        self.done = done
+
+    # Formations through the next session, as the live run had them.
+    def upto(self, d) -> None:
+        nxt = data.shift([d], 1).iloc[0]
+        for k in sorted(self.done.frames):
+            if k <= nxt and k not in self.frames:
+                self.add(k, self.done.frames[k], self.done.planned[k])
+
+    # A day's costs from the rows known by that close.
+    def costs(self, d, moved: pd.Series) -> pd.Series:
+        self.upto(d)
+        return super().costs(d, moved)
+
+    # A session's borrow from the formation in force that day.
+    def borrow(self, d, shorts: pd.Series) -> pd.Series:
+        self.upto(d)
+        return super().borrow(d, shorts)
