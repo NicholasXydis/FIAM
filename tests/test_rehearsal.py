@@ -94,6 +94,17 @@ def test_daily_rows_keep_clocks(cal):
     assert all(pd.Timestamp(x["date"][1]) <= rehearsal.SEAL for x in seen)
 
 
+# A table's own "source" column (the exits table has one) is kept.
+def test_daily_rows_keep_a_source_column(cal):
+    src = data.sessions("2017-02-01", "2017-02-28")
+    dsf = pd.DataFrame({"permno": 7, "date": src, "source": "crsp"})
+    w = rehearsal.World({DAY("2021-01-31"): DAY("2017-01-31")})
+    w.real = sealed({"dsf": dsf})
+    got = w.rows("dsf", ["source"], None, {"date": (DAY("2021-01-04"), DAY("2021-01-08"))})
+    assert len(got) == 5 and set(got["source"]) == {"crsp"}
+    assert not {"_s", "_t", "_src"} & set(got.columns)
+
+
 # The reader adds synthetic rows only past the seal, and lets go after.
 def test_reader_swaps_in_and_out(cal, monkeypatch):
     feb = data.sessions("2017-02-01", "2017-02-28")

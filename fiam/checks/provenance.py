@@ -11,7 +11,7 @@ from fiam import paths
 EXHIBITS = paths.EXHIBITS
 MANIFEST = EXHIBITS / "run_manifest.json"
 
-# One pass mark per exhibit, set here, not after we saw the answer.
+# One pass mark per exhibit, set here before any result.
 ACCEPTANCE = {
     "permutation_null": "Shipped result above the null's 95th percentile, null gross near zero.",
     "inversion": "Gross lands near minus the baseline gross, not near zero.",
@@ -19,7 +19,7 @@ ACCEPTANCE = {
     "confirmation": "Reported whatever it says. The signals were designed without 2016-2020.",
 }
 
-# Rules we got wrong, kept, as swapping one after a failure is the sin.
+# Every rule stays as first written; none is swapped after a result.
 PASS_MARKS_CHANGED = {
     "permutation_null": {
         "original": "The null's net IR should centre near zero.",

@@ -290,3 +290,43 @@ def test_enforce_skips_a_gone_name():
     w = pd.Series({1: 0.02, 2: -0.02, 3: 0.01})
     out, unplaced = after.enforce(w, {9: 0.5, 1: 0.5}, pd.Series(0.05, index=w.index))
     assert unplaced["gone"] == {9: 0.5} and out.index.equals(w.index)
+
+
+# A remote server's model file is named alike from Windows or Unix.
+def test_served_name_reads_windows_paths():
+    from fiam.agents import harness
+
+    name = harness.MODELS["gemma"][1]
+    assert harness.served_name(f"C:\\Code\\Forkfiam\\models\\{name}") == name
+    assert harness.served_name(f"/Users/x/models/{name}") == name
+    assert harness.served_name(None) == ""
+
+
+# Shares split the placebos; part 1 alone takes A0's twin, A1 and A2.
+def test_arm_shares_cover_every_arm_once():
+    from fiam.v4.desk import run
+
+    names = ["A0_replay", "A1", "A2", *(f"P1_{s}" for s in run.arms.PLACEBO_SEEDS)]
+    mac, pc = run.share(names, (1, 2), 5), run.share(names, (3, 4, 5), 5)
+    assert set(mac) | set(pc) == set(names) and not set(mac) & set(pc)
+    assert set(run.SPECIAL) <= set(mac) and len(pc) == 60
+
+
+# --fixed plans A0's twin and A1 alone, the same as the full arms do.
+def test_fixed_arms_need_no_answers():
+    from fiam.v4.desk import run
+
+    found = {(DAY("2019-03-04"), 1): {"earnings": 2}, (DAY("2019-03-05"), 2): {"loss": -3.4}}
+    seeds = run.arms.PLACEBO_SEEDS[:3]
+    alone = run.arm_plans(found, None, seeds)
+    full = run.arm_plans(found, {(DAY("2019-03-04"), 1): 0.5}, seeds)
+    assert list(alone) == ["A0_replay", "A1"] and len(full) == 3 + len(seeds)
+    assert all(full[a] == alone[a] for a in alone) and alone["A1"]
+
+
+# The cost gate prices risk at the winning design's own lambda.
+def test_gate_lambda_follows_the_ladder():
+    from fiam.v4.desk import run
+
+    assert run.risk_lambda(3.0, 12) == 0.75 and run.risk_lambda(3.0, 14) == 1.5
+    assert run.risk_lambda(3.0, 1) == 3.0 and run.risk_lambda(3.0, 13) == 3.0

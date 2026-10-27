@@ -13,6 +13,8 @@ LIMIT = 72
 DIRECTIVES = ("# fmt:", "# noqa", "# type:", "# pragma", "# ruff:")
 # Generated files carry their sources' comments and are checked there.
 SKIP = {"MAIN.py"}
+# A teammate's separate research tree keeps its own conventions.
+SKIP_UNDER = ("fiam/v4b/",)
 
 
 # Whether a stripped line is prose, not a shebang or a directive.
@@ -65,7 +67,8 @@ def python_files() -> list[Path]:
         cwd=ROOT,
         check=True,
     ).stdout.split()
-    return [ROOT / n for n in sorted(set(names)) if n not in SKIP and (ROOT / n).exists()]
+    keep = [n for n in sorted(set(names)) if n not in SKIP and not n.startswith(SKIP_UNDER)]
+    return [ROOT / n for n in keep if (ROOT / n).exists()]
 
 
 # Lists every break: uv run tools/comments.py [paths]

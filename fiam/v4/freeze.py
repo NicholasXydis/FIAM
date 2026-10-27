@@ -62,7 +62,7 @@ ITEMS = [
     ("the 2026 volume source (CA0065S, FINRA or off) with its test results", "fallbacks",
      ("volume", "volume_source_2026")),
     ("the return basis (lever D3)", None, ()),
-    ("the exam's four results and the chosen design (lever E1)", "designs",
+    ("the exam's results and the chosen design (lever E1)", "designs",
      ("designs", "winner", "reading")),
     ("the headline AI arm and its inputs", "decide", ()),
     ("v3's fifteen choices as re-decided (B2)", None, ()),

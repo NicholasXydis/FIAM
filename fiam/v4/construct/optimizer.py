@@ -53,6 +53,8 @@ class Settings:
     monthly_band: float = MONTHLY_BAND
     # Capped styles held at zero instead, as size and value (reading 17).
     neutral_styles: tuple = ()
+    # Design 15's jump screen on new entries (reading 23 (m)).
+    jump_screen: bool = False
 
 
 # Each name's long and short cap from its ADV (PLAN §3.1).
@@ -85,7 +87,8 @@ def ladder(s: Settings, initial: bool) -> list[tuple[str, Settings]]:
 
 
 # Each name's side and bounds from its alpha, holding and permissions.
-def bounds(x: pd.DataFrame, alpha: pd.Series, prev: pd.Series, nav: float, pool):
+def bounds(x: pd.DataFrame, alpha: pd.Series, prev: pd.Series, nav: float, pool,
+           screen: bool = False):  # fmt: skip
     pool_long, pool_short = pool if isinstance(pool, tuple) else (pool, pool)
     a, held = alpha.to_numpy(), prev.reindex(x.index).fillna(0.0).to_numpy()
     # A held name whose alpha turned keeps its side and may only shrink.
@@ -102,6 +105,10 @@ def bounds(x: pd.DataFrame, alpha: pd.Series, prev: pd.Series, nav: float, pool)
     inside = np.where(a > 0, pct > 1 - pool_long, pct <= pool_short)
     may_long = x["new_long"].to_numpy(bool) & known & ~crowded & inside & ~turned
     may_short = x["new_short"].to_numpy(bool) & known & ~squeezed & inside & ~turned
+    # The jump screen: no new short on up-jumps, no new long on down-jumps.
+    if screen:
+        may_long &= ~x["jumpy_down"].to_numpy(bool)
+        may_short &= ~x["jumpy_up"].to_numpy(bool)
     up, down = np.clip(held, 0, None), np.clip(held, None, 0)
     # No leave to add: stay or shrink, toward the cap as fast as allowed.
     hi_long = np.maximum(np.where(may_long, long_cap, np.minimum(up, long_cap)), up - room)
@@ -114,11 +121,11 @@ def bounds(x: pd.DataFrame, alpha: pd.Series, prev: pd.Series, nav: float, pool)
 
 
 # Each side's first pool letting 130 names take that side (reading 7).
-def start_pools(x, alpha, prev, nav: float) -> tuple:
+def start_pools(x, alpha, prev, nav: float, screen: bool = False) -> tuple:
     out = []
     for long_side in (True, False):
         for pool in POOLS:
-            _, lo, hi, *_ = bounds(x, alpha, prev, nav, pool)
+            _, lo, hi, *_ = bounds(x, alpha, prev, nav, pool, screen)
             # Allowed: may hold at least the 0.10% floor, as §8.3's candidates.
             allowed = int((hi >= FLOOR).sum()) if long_side else int((lo <= -FLOOR).sum())
             if allowed >= ALLOWED or pool == POOLS[-1]:
@@ -139,7 +146,7 @@ def floors(side, lo, hi, a):
 
 # Every rule but the gross: bounds, neutrality, styles, trading limits.
 def rules(w, x, prev, s: Settings, keep, pool, alpha, fixed: bool = True):
-    side, lo, hi, a, room = bounds(x, alpha, prev, s.nav, pool)
+    side, lo, hi, a, room = bounds(x, alpha, prev, s.nav, pool, s.jump_screen)
     if fixed:
         lo, hi = floors(side, lo, hi, a)
     if keep is not None:
@@ -240,7 +247,7 @@ def trimmed(w: pd.Series, keep, gross: float) -> pd.Series:
 
 # A formation's book, its log line and the settings it was solved at.
 def optimise(x, alpha, loadings, chol, spec, prev, s: Settings, initial: bool):
-    first = start_pools(x, alpha, prev, s.nav)
+    first = start_pools(x, alpha, prev, s.nav, s.jump_screen)
     pools = list(dict.fromkeys((max(first[0], p), max(first[1], p)) for p in POOLS))
     for step, setting in ladder(s, initial):
         for pool in pools:
@@ -256,6 +263,15 @@ def optimise(x, alpha, loadings, chol, spec, prev, s: Settings, initial: bool):
         if w is not None:
             w, how = finish(w, x, alpha, loadings, chol, spec, prev, setting, POOLS[-1])
             return w, f"gross {gross:.2f}{how}", setting
+    # Last, no cost budget: a book a shock left off neutral can return.
+    if last.cost_budget is not None and not prev.empty:
+        free = replace(last, cost_budget=None)
+        for gross in np.arange(s.gross, 0.995, -0.01):
+            setting = replace(free, gross=float(gross))
+            w = solve(x, alpha, loadings, chol, spec, prev, setting, pool=POOLS[-1])
+            if w is not None:
+                w, how = finish(w, x, alpha, loadings, chol, spec, prev, setting, POOLS[-1])
+                return w, f"no budget, gross {gross:.2f}{how}", setting
     return None, "infeasible", s
 
 

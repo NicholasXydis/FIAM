@@ -158,6 +158,18 @@ def test_largest_gross_is_feasible():
     assert optimizer.largest_gross(x, alpha, pd.Series(dtype=float), s, 0.5) is None
 
 
+# A book left net long by covers returns to neutral past a cost budget.
+def test_shocked_book_returns_to_neutral():
+    x, alpha, loadings, chol, spec = fake()
+    s = optimizer.Settings(gross=1.6, ridge=30, risk_lambda=0.5, style_cap=0.5, norm=0.001)
+    w, *_ = optimizer.optimise(x, alpha, loadings, chol, spec, pd.Series(dtype=float), s, True)
+    prev = w.where(w > 0, w * 0.4)
+    tight = optimizer.replace(s, cost_budget=1e-7)
+    got, step, used = optimizer.optimise(x, alpha, loadings, chol, spec, prev, tight, False)
+    assert prev.sum() > 0.4 and got is not None and step.startswith("no budget")
+    assert abs(got.sum()) < 1e-3 and used.cost_budget is None and used.participation
+
+
 # Lever A4: the blend moved onto every rule, nearer than the optimum.
 def test_partial_projection():
     x, alpha, loadings, chol, spec = fake()

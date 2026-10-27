@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import os
 import pickle
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -18,9 +19,11 @@ OUT = gates.ROOT / "out" / "v4" / "desk"
 STAGES = ("events", "cards", "answer", "cutoff", "arms", "decide")
 # The stage each one needs first; answers come back through the cache.
 NEEDS = {"cards": "events", "answer": "cards", "cutoff": "cards", "arms": "cards",
-         "decide": "arms"}  # fmt: skip
+         "decide": "cards"}  # fmt: skip
 # Arms replayed at once, each worker holding one context (about 7 GB).
-WORKERS = 2
+WORKERS = int(os.environ.get("FIAM_WORKERS", "2"))
+# Arms that replay where A0 ran: its bit-for-bit twin, A1 and A2.
+SPECIAL = ("A0_replay", "A1", "A2")
 # The model, its pinned build and server, and the declared cutoff.
 MODEL, BUILD, CUTOFF = "gemma", "b11132", "2025-01"
 META = dict(model_sha=harness.MODELS[MODEL][2], build=BUILD, server_args=harness.LONG_PROMPTS,
@@ -180,6 +183,11 @@ def frame_at(kept: dict, d):
     return start, kept[start]
 
 
+# The chosen design's risk aversion: the derived one times its ladder.
+def risk_lambda(base: float, k: int) -> float:
+    return base * exam.RISK.get(k, 1.0)
+
+
 # The book's weights at a close from A0's saved positions and NAV.
 def weights(pos: pd.DataFrame, daily: pd.DataFrame, d) -> pd.Series:
     g = pos[pos["date"] == d].set_index("permno")["value"]
@@ -187,9 +195,10 @@ def weights(pos: pd.DataFrame, daily: pd.DataFrame, d) -> pd.Series:
     return w[w.abs() > 1e-9]
 
 
-# The cost gate's inputs: lambda and each month's earnings variance.
+# The cost gate's inputs: the book's own lambda, earnings variance.
 def gate_inputs(head: str) -> tuple:
-    lam = json.loads(settings.SETTINGS.read_bytes())["settings"]["risk_lambda"]
+    base = json.loads(settings.SETTINGS.read_bytes())["settings"]["risk_lambda"]
+    lam = risk_lambda(base, chosen(head)[0])
     path_ev = path("earn_var", head, "parquet")
     if not path_ev.exists():
         ids, end = sorted(forecasts(head)["permno"].unique()), span()[0]
@@ -348,14 +357,15 @@ def gated(plan: dict, found: dict, kept: dict, pos, daily, lam: float, earn) -> 
             if passes(m, d, p, found.get((d, p), {}), kept, pos, daily, lam, earn)}  # fmt: skip
 
 
-# Each arm's shrinks through the gate, then replayed two at a time.
-def run_arms(head: str, seeds=arms.PLACEBO_SEEDS) -> dict:
-    with path("a0", head, "pkl").open("rb") as fh:
-        kept = pickle.load(fh)["kept"]
-    found = {(pd.Timestamp(e.split("|")[0]), int(e.split("|")[1])): t
-             for e, t in json.loads(path("events", head).read_text())["found"].items()}  # fmt: skip
-    daily = pd.read_parquet(path("a0_daily", head, "parquet"))
-    pos = pd.read_parquet(path("a0_positions", head, "parquet"))
+# This machine's share of the arms: A0's machine takes part 1's three.
+def share(names: list, parts: tuple, n: int) -> list:
+    p1 = sorted((a for a in names if a.startswith("P1_")), key=lambda a: int(a[3:]))
+    mine = [a for a in SPECIAL if 1 in parts and a in names]
+    return mine + [a for j in parts for a in p1[j - 1 :: n]]
+
+
+# The agent's shrink on every card; a missing answer stops the arms.
+def agent_shrinks(head: str) -> dict:
     desk = replay()
     rows = [json.loads(x) for x in path("cards", head, "jsonl").read_text().splitlines()]
     agent = {}
@@ -364,13 +374,32 @@ def run_arms(head: str, seeds=arms.PLACEBO_SEEDS) -> dict:
         agent[(pd.Timestamp(r["day"]), int(r["permno"]))] = shrink
     if desk.missing:
         raise SystemExit(f"{len(desk.missing)} answers missing: run the answer stage on Windows")
-    lam, earn = gate_inputs(head)
+    return agent
+
+
+# The arms' shrinks; with no agent, A0's twin and A1 alone (no answers).
+def arm_plans(found: dict, agent: dict | None, seeds) -> dict:
     # A0 replayed with no shrinks must equal A0 day for day (a test).
-    plans = {"A0_replay": {}, "A1": arms.shrinks(found, "A1"),
-             "A2": arms.shrinks(found, "A2", agent)}  # fmt: skip
-    plans |= {f"P1_{s}": arms.shrinks(found, "P1", agent, seed=s) for s in seeds}
+    plans = {"A0_replay": {}, "A1": arms.shrinks(found, "A1")}
+    if agent is not None:
+        plans |= {"A2": arms.shrinks(found, "A2", agent)}
+        plans |= {f"P1_{s}": arms.shrinks(found, "P1", agent, seed=s) for s in seeds}
+    return plans
+
+
+# Each arm's shrinks through the gate, then this share replayed.
+def run_arms(head: str, seeds=arms.PLACEBO_SEEDS, parts: tuple = (1,), n: int = 1,
+             fixed: bool = False) -> dict:  # fmt: skip
+    with path("a0", head, "pkl").open("rb") as fh:
+        kept = pickle.load(fh)["kept"]
+    found = {(pd.Timestamp(e.split("|")[0]), int(e.split("|")[1])): t
+             for e, t in json.loads(path("events", head).read_text())["found"].items()}  # fmt: skip
+    daily = pd.read_parquet(path("a0_daily", head, "parquet"))
+    pos = pd.read_parquet(path("a0_positions", head, "parquet"))
+    lam, earn = gate_inputs(head)
+    plans = arm_plans(found, None if fixed else agent_shrinks(head), seeds)
     plans = {arm: gated(plan, found, kept, pos, daily, lam, earn) for arm, plan in plans.items()}
-    names = list(plans)
+    names = share(list(plans), parts, n)
     chunks = [names[i::WORKERS] for i in range(WORKERS)]
     with ProcessPoolExecutor(WORKERS) as pool:
         jobs = [pool.submit(replay_arms, head, {a: plans[a] for a in c}, FINAL)
@@ -415,16 +444,23 @@ def replay_in(head: str, plans: dict) -> dict:
     holders = {e: pd.Series(dtype=float) for e in ctx.months}
     out = {}
     for arm, plan in plans.items():
+        # An arm replayed whole at this commit is kept; a restart resumes.
+        if path(f"arm_{arm}", head, "parquet").exists():
+            out[arm] = {"shrinks": len(plan), "resumed": True}
+            continue
         act = hook.Arm(made, plan, watch, trigger, overlays, brake)
         result = daily_book.run(holders, T0, end, costs=hooks.costs, borrow=hooks.borrow,
                                 hook=act, permnos=ids, unsealed=FINAL, strict=False)  # fmt: skip
         days = result.daily[["nav", "ret", "rf", "cost", "borrow"]]
-        days.to_parquet(path(f"arm_{arm}", head, "parquet"))
+        target = path(f"arm_{arm}", head, "parquet")
+        days.to_parquet(target.with_suffix(".tmp"))
+        target.with_suffix(".tmp").replace(target)
         # On the finals A1 and A2 keep every table: either may be the book.
         if FINAL and arm in ("A1", "A2"):
             for part in ("daily", "positions", "trades", "events", "ledger", "compliance"):
                 getattr(result, part).to_parquet(path(f"book_{arm}_{part}", head, "parquet"))
         out[arm] = {"shrinks": len(plan), "breach_days": int(len(daily_book.breaches(result)))}
+        print(f"arm {arm} done", flush=True)
         data._CACHE.clear()
     return out
 
@@ -435,6 +471,11 @@ def decision(head: str) -> dict:
     prefix = "final_arm_" if FINAL else "arm_"
     for f in OUT.glob(f"{prefix}*_{head[:12]}.parquet"):
         days[f.stem.removeprefix(prefix).removesuffix(f"_{head[:12]}")] = pd.read_parquet(f)
+    # Every arm of every share must be back before anything is decided.
+    expected = [*SPECIAL, *(f"P1_{s}" for s in arms.PLACEBO_SEEDS)]
+    gone = [a for a in expected if a not in days]
+    if gone:
+        raise SystemExit(f"{len(gone)} arms not replayed yet, first {gone[0]}: copy every share")
     replayed = days.pop("A0_replay", None)
     same = replayed is not None and replayed["ret"].equals(days["A0"]["ret"])
     after = "2020-12" if FINAL else "2017-01"
@@ -480,18 +521,28 @@ if __name__ == "__main__":
     # Step 8 runs on real data only once its rules are committed.
     if "## Step 8 rules" not in gates.PROTOCOL.read_text():
         raise SystemExit("commit the step 8 rules into the protocol first")
-    # The answer and cutoff stages split the cards by machine: --part 1/2.
+    # Answers and arms split by machine: --part 1/2, or 1,2/5 for arms.
     part = sys.argv[sys.argv.index("--part") + 1] if "--part" in sys.argv else "1/1"
-    i, n = (int(v) for v in part.split("/"))
-    split = stage in ("answer", "cutoff")
-    target = path(f"{stage}_part{i}of{n}" if split else stage, head)
+    who, n = part.split("/")
+    parts, n = tuple(int(v) for v in who.split(",")), int(n)
+    i = parts[0]
+    if len(parts) > 1 and stage != "arms":
+        raise SystemExit("only the arms stage takes several parts")
+    # --fixed: A0's twin and A1 alone, before any answer; arms resumes them.
+    fixed = "--fixed" in sys.argv
+    if fixed and (stage != "arms" or n > 1):
+        raise SystemExit("--fixed is for the arms stage on one machine")
+    split = stage in ("answer", "cutoff") or (stage == "arms" and n > 1)
+    name = "arms_fixed" if fixed else stage
+    target = path(f"{stage}_part{who.replace(',', '-')}of{n}" if split else name, head)
     if target.exists():
         raise SystemExit(f"{target.name} exists: each stage runs once per commit")
-    if stage == "arms" and not list(OUT.glob(path("answer_part*", head).name)):
+    if stage == "arms" and not fixed and not list(OUT.glob(path("answer_part*", head).name)):
         raise SystemExit("answer every part first at this commit")
     if stage in NEEDS and not path(NEEDS[stage], head).exists():
         raise SystemExit(f"run the {NEEDS[stage]} stage first at this commit")
-    work = {"events": events, "cards": build_cards, "arms": run_arms, "decide": decision,
+    work = {"events": events, "cards": build_cards, "decide": decision,
+            "arms": lambda h: run_arms(h, parts=parts, n=n, fixed=fixed),
             "answer": lambda h: answer(h, (i, n)),
             "cutoff": lambda h: cutoff(h, (i, n))}  # fmt: skip
     # The finals' stages read 2021-2026, so only after the unseal.

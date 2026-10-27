@@ -1,8 +1,0 @@
-cache/
-# Research outputs include private WRDS-derived data, holdings, and bulky files.
-# Curated aggregate evidence is kept separately in evidence/.
-out/
-__pycache__/
-external/elasso_download/
-
-.venv

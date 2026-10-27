@@ -102,7 +102,7 @@ def build(refresh: bool = False) -> Path:
     CACHE.mkdir(parents=True, exist_ok=True)
     marker = CACHE / "folds.parquet"
     stamp = CACHE / "fingerprint.txt"
-    # Rebuild if panel, predictors, screen or schedule change, or bugs ship.
+    # Rebuild if the panel, predictors, screen, schedule or code change.
     current = fingerprint()
     if (
         marker.exists()

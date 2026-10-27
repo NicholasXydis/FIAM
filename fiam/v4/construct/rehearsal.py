@@ -124,10 +124,12 @@ class World:
         span = (m["source"].min() - pd.Timedelta(days=7), m["source"].max())
         rows = self.real(name, columns, purpose, rest | {key: span})
         rows = rows.assign(_s=self.cal[np.maximum(self.index(rows[key]), 0)])
-        both = rows.merge(m[["target", "source"]], left_on="_s", right_on="source")
-        out = self.move(both, both["_s"], both["target"])
-        out[key] = out["target"] + (both[key] - both["_s"])
-        return out.drop(columns=["_s", "target", "source"])
+        # Private names, so a table's own "source" column is kept as is.
+        days = m[["target", "source"]].rename(columns={"target": "_t", "source": "_src"})
+        both = rows.merge(days, left_on="_s", right_on="_src")
+        out = self.move(both, both["_s"], both["_t"])
+        out[key] = out["_t"] + (both[key] - both["_s"])
+        return out.drop(columns=["_s", "_t", "_src"])
 
     # Each target month end's panel: the decision close's source rows.
     def panel(self, columns, purpose, where) -> pd.DataFrame:
@@ -285,7 +287,7 @@ class Planner(simulate.Planner):
             s = self.world.formation[eom]
             self.frames = {eom: book.month(s, prev, ctx.f, ctx.fr, ctx.scale, ctx.returns,
                                            ctx.history, ctx.holdings, ctx.z,
-                                           ctx.neutral)}  # fmt: skip
+                                           ctx.neutral, ctx.late)}  # fmt: skip
             data._CACHE.clear()
         return self.frames[eom]
 
@@ -333,7 +335,7 @@ def rehearse(head: str, seed: int = SEED) -> tuple:
         raise SystemExit("rehearsal 1 runs only while sealed: real 2021+ rows would mix in")
     pick = chosen(head)
     s = json.loads(settings.SETTINGS.read_bytes())
-    settings_at = exam.derived(s, names_max=pick["cap"], neutral_styles=pick["neutral"])
+    settings_at = exam.settings_for(pick["design"], s)
     ctx = book.Context(z=pick["z"], neutral=pick["neutral"])
     world, end = World(months(seed)), TARGET[1]
     with active(world):

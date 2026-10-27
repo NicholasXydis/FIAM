@@ -104,7 +104,7 @@ def log_vol(returns: pd.DataFrame, day, n: int) -> pd.Series:
     return np.log(sd * np.sqrt(21))
 
 
-# The 24 month ends before T's month, each once (review H, M1).
+# The 24 month ends before T's month, each once.
 def har_ends(T) -> list:
     end = pd.Timestamp(T) + pd.offsets.MonthEnd(0)
     return [end - pd.offsets.MonthEnd(k) for k in range(HAR_MONTHS, 0, -1)]

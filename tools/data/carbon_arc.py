@@ -259,9 +259,9 @@ def tickers(names: list[str]) -> list[dict]:
     return [{"carc_id": ids[n], "representation": "ticker"} for n in names]
 
 
-# One item's request: its tickers, full history, US, with its aggregate.
+# One item's request: its entities, full history to today, its area.
 def request(explorer, item: dict) -> dict:
-    entities = tickers(item["tickers"])
+    entities = item.get("entities") or tickers(item["tickers"])
     draft = explorer.build_framework(entities=entities, insight=item["insight"], filters={})
     chosen = {}
     for offer in explorer.collect_framework_filters(draft).get("filters", []):
@@ -269,11 +269,17 @@ def request(explorer, item: dict) -> dict:
         if offer["key"] == "date_resolution":
             step = item.get("step", "month")
             chosen["date_resolution"] = step if step in options else offer.get("default_value")
-        elif offer["key"] == "location_resolution" and "us" in options:
-            chosen["location_resolution"] = "us"
+        # US when offered, else the one area offered ("ww" for some).
+        elif offer["key"] == "location_resolution":
+            area = "us" if "us" in options else offer.get("default_value")
+            # No area offered and no default leaves the filter unset.
+            if area is not None:
+                chosen["location_resolution"] = area
+        # The full range, never past today: a future end quotes 0.0.
         elif offer.get("select_type") == "date-range" and offer.get("table_earliest_date"):
             span = {"start_date": offer["table_earliest_date"][:10]}
-            chosen[offer["key"]] = span | {"end_date": offer["table_latest_date"][:10]}
+            end = min(offer["table_latest_date"][:10], stamp()[:10])
+            chosen[offer["key"]] = span | {"end_date": end}
     aggregate = item.get("aggregate")
     return explorer.build_framework(entities, item["insight"], chosen, aggregate)
 

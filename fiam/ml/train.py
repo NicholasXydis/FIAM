@@ -102,7 +102,7 @@ def fit_lgbm(fold: dict, cols: list[str]) -> pd.DataFrame:
     return predictions(fold, model.predict(fold["test"][cols].to_numpy()))
 
 
-# Same net each fold, with batch-norm and dropout as 147 inputs overfit.
+# Same net each fold, batch-norm and dropout to regularise 147 inputs.
 def network(n_features: int) -> nn.Module:
     layers, prev = [], n_features
     for width in HIDDEN:

@@ -20,8 +20,8 @@ V2_TRIALS = ROOT / "out" / "v2" / "trials.csv"
 GATES_AT = "fa169bf9301a"
 SIX = ("short_interest", "red_flags", "insiders", "lazy_prices", "best_ideas", "customer_momentum")
 LATE = ("options_flow", "earnings_premium")
-# The exam's seven runs (design 3 is 1's book) and the desk's arms.
-DESIGNS = (1, 2, 4, 5, 6, 7, 8)
+# The exam's runs (design 3 is 1's book) and the desk's arms.
+DESIGNS = (1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 SEEDS = range(20261800, 20261900)
 ARMS = ("A0", "A1", "A2", *(f"P1_{s}" for s in SEEDS))
 # The derived settings' grids (PLAN §8.3, §8.4, §8.8) as step 7 runs.
@@ -57,7 +57,7 @@ def gate_rows() -> list[dict]:
         found = set()
         for path in (p for p in files if p.exists()):
             done = json.loads(path.read_text())
-            # A gate with no fit (customer momentum failed its check) is kept.
+            # A gate with no fit (customer momentum) still counts in the family.
             for name, res in done[stage]["gates"].items():
                 status = "not built" if "failed" in res else "run"
                 rows.append(row(f"gate {name}", "gate", "2015-2020", done["stamp"]["run_utc"],
@@ -123,7 +123,7 @@ def days(path: Path) -> int:
     return int(pq.ParquetFile(path).metadata.num_rows)
 
 
-# The seven exam designs and the desk arms, by file name and day count.
+# The exam designs and the desk arms, by file name and day count.
 def book_rows() -> list[dict]:
     rows = []
     for k in DESIGNS:

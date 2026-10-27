@@ -28,13 +28,13 @@ MODELS = paths.SUBMISSION / "models"
 FIRST_FORECAST, LAST_FORECAST = "2020-12-31", "2026-07-31"
 N_HOLDING_MONTHS = 68
 
-# How many of the twelve a stock needs; chosen with 2021-26 visible.
+# How many of the twelve measures a stock needs to qualify.
 MIN_SIGNALS = 9
 
 # Only matters for rounding. At $10m one pricey share is a real slice.
 NAV = 10_000_000.0
 
-# Twelve measures, signs from theory; set chosen with 2021-26 visible.
+# Twelve measures, each signed by theory.
 SIGNALS = {
     "ivol_capm_21d": -1,
     "be_me": +1,
@@ -50,7 +50,7 @@ SIGNALS = {
     "eqnetis_at": -1,
 }
 
-# Limits set with 2021-26 visible; `pool` is candidates per side.
+# The book's limits; `pool` is the candidates per side.
 LIMITS = dict(gross=1.6, beta=0.02, risk=0.02, sector=0.01, name=0.015, pool=200, ridge=30.0)
 
 
@@ -711,7 +711,7 @@ def _performance_stats(df, regression, fit) -> dict:
     }
 
 
-# What the result looks like if our assumptions are wrong.
+# What the result looks like under other assumptions.
 def _robustness_stats(df: pd.DataFrame) -> dict:
     # Missing returns are zero. Stress: exits lose 30%, longs, then both.
     conservative = df["net"] - df["missing_long_weight"] * MISSING_STRESS

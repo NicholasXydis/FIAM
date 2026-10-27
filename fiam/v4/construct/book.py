@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from fiam.v4 import data, gates, sources
-from fiam.v4.construct import costs, crowding, inputs, optimizer, risk, screens
+from fiam.v4.construct import costs, crowding, inputs, jumps, optimizer, risk, screens
 
 OUT = Path(__file__).resolve().parents[3] / "out" / "v4" / "construct"
 # The first book needs 24 months of factor returns (PLAN §8.4).
@@ -41,7 +41,7 @@ def crash_cap(T) -> float:
 FORECASTS = gates.ROOT / "out" / "v4" / "forecast" / "forecasts_9f47207c568b.parquet"
 
 
-# The pinned forecasts file (review H, M8), never "the latest one".
+# The pinned forecasts file, never "the latest one".
 def forecasts() -> pd.DataFrame:
     return pd.read_parquet(FORECASTS)
 
@@ -90,7 +90,7 @@ def align(alpha: pd.Series, x: pd.DataFrame, neutral=()) -> pd.Series:
 
 # One formation's frame with risk, cost inputs, screens and alpha.
 def month(eom, prev, f, fr, scale: float, returns, history=None, holdings=None, z="z",
-          neutral=()):  # fmt: skip
+          neutral=(), late=None):  # fmt: skip
     held_long, held_short = prev.index[prev > 0], prev.index[prev < 0]
     x = inputs.formation(eom, held_long, held_short)
     T = x["T"].iloc[0]
@@ -104,6 +104,12 @@ def month(eom, prev, f, fr, scale: float, returns, history=None, holdings=None, 
     x["crowded"] = False if c is None else crowding.crowded(x.index, holdings, T, c)
     for b in ("welch", "dimson", "beta_60m"):
         x[b] = x[b].fillna(x[b].median())
+    # Jumps on returns known at T: after 2025 the dsf's raw ones (23 (m)).
+    known = returns.loc[returns.index <= T].iloc[-(jumps.YEAR + jumps.WINDOW + 1) :]
+    if late is not None and not late.empty:
+        raw = late.loc[(late.index > data.CRSP_END) & (late.index <= T)]
+        known = pd.concat([known.loc[known.index <= data.CRSP_END], raw])
+    x = x.join(jumps.flags(jumps.counts(known, data.market_daily(known.index), T, x.index)))
     cov = risk.covariance(fr, eom)
     loadings = risk.design(x).reindex(columns=cov.columns, fill_value=0.0)
     vol = risk.har(returns, x["T"].iloc[0]).reindex(x.index)
@@ -174,7 +180,8 @@ def build(settings_at, ctx: "Context", log=None, diagnostics: bool = False, fram
     prev, books, info = pd.Series(dtype=float), {}, []
     for k, eom in enumerate(ctx.months):
         x, alpha, loadings, cov, spec = month(eom, prev, f, fr, scale, returns, ctx.history,
-                                              ctx.holdings, ctx.z, ctx.neutral)  # fmt: skip
+                                              ctx.holdings, ctx.z, ctx.neutral,
+                                              ctx.late)  # fmt: skip
         s = settings_at(eom, x, ctx.caps[eom])
         # The ridge acts on alpha in z units: alpha over scale x median vol.
         s = replace(s, norm=scale * float(np.sqrt(spec).median()))

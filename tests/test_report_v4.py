@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fiam.v4.report import holdings, table_9_1
+from fiam.v4.report import holdings, table_9_1, vs_market
 
 # Twelve daily returns, two a month from January to June 2021.
 RETS = [0.10, -0.05, -0.20, 0.10, 0.05, 0.05, 0.02, 0.02, -0.03, 0.01, 0.04, -0.01]
@@ -397,3 +397,30 @@ def test_write_csv(tmp_path):
     own = pd.read_csv(tmp_path / "weights_own.csv", dtype=str, keep_default_na=False)
     assert list(arcana.columns) == holdings.WEIGHTS
     assert list(own.columns) == holdings.WEIGHTS + holdings.OWN
+
+
+# The market exhibit: seven measures, the fund's CAGR by hand.
+def test_vs_market_shape_and_cagr():
+    daily, _, _, bench = tiny()
+    got = vs_market.table(daily, bench, bench * 0.5).set_index("measure")
+    assert list(got.columns) == ["fund", "sp500_price", "market_total", "blend"]
+    month, _ = by_hand()
+    cagr = (np.prod([1 + m for m in month]) ** 2 - 1) * 100
+    assert got.loc["Annual return, compounded (%)", "fund"] == pytest.approx(cagr)
+    assert len(got) == 7 and not got.isna().any().any()
+
+
+# A fund that is the market: beta and correlation 1, the blend the same.
+def test_vs_market_blend_of_the_same_path():
+    daily, _, _, bench = tiny()
+    got = vs_market.table(daily, bench, bench).set_index("measure")
+    assert got.loc["Beta to the market", "fund"] == pytest.approx(1.0)
+    assert got.loc["Correlation with the market", "fund"] == pytest.approx(1.0)
+    assert got["blend"].to_numpy() == pytest.approx(got["fund"].to_numpy())
+
+
+# A missing market day stops the exhibit instead of skipping it.
+def test_vs_market_missing_day():
+    daily, _, _, bench = tiny()
+    with pytest.raises(ValueError, match="misses a day"):
+        vs_market.table(daily, bench, bench.iloc[1:])

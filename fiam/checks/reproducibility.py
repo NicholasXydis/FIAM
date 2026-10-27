@@ -134,7 +134,7 @@ def carry_in_uses_prior_month():
     return 0 < call < assign, f"called at line {call + 1}, updated at line {assign + 1}"
 
 
-# Train ends before validation, validation before test, or we cheat.
+# Train ends before validation and validation before test, no overlap.
 @check("model folds are strictly ordered in time")
 def ml_folds_do_not_overlap():
     if not folds():

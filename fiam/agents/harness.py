@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable
 
 from fiam import paths
@@ -97,7 +97,7 @@ MODELS = {
     ),
 }
 
-# Repeatable, not correct: one prompt gives one answer, right or wrong.
+# Repeatable by design: one prompt always gives the same answer.
 SEED, TEMPERATURE = 42, 0.0
 CONTEXT, PORT = 65536, 8081
 # Models trained on shorter windows get their own context length.
@@ -232,6 +232,11 @@ def model_file(model: str) -> Path:
     return fetch(f"https://huggingface.co/{repo}/resolve/main/{name}", target, sha)
 
 
+# A served model file's name, from a Windows or a Unix path alike.
+def served_name(path: str | None) -> str:
+    return PureWindowsPath(path or "").name if "\\" in (path or "") else Path(path or "").name
+
+
 # A llama-server at pinned settings, started and stopped around runs.
 class Server:
     # The model this server will load, resolved for a rehearsal.
@@ -260,7 +265,7 @@ class Server:
             raise RuntimeError(f"nothing answers at FIAM_LLM_URL={REMOTE}")
         if running:
             # Checked by file name; a remote file's hash cannot be checked here.
-            if Path(running["model_path"]).name != MODELS[self.name][1]:
+            if served_name(running["model_path"]) != MODELS[self.name][1]:
                 raise RuntimeError(f"{self.url} serves another model; stop it first")
             return self
         binary = server_binary()

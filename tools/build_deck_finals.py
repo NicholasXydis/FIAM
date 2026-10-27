@@ -533,7 +533,7 @@ def final(deck, f: dict, m: dict) -> None:
     finish(page, notes("final", f), steps)
 
 
-# Where it struggles: weak IR years beside the crisis replays.
+# The IR year by year beside the crisis replays.
 def losses(deck, f: dict, m: dict) -> None:
     subtitle = "After all costs, with 2016 to 2020 as the pre-test"
     page = D.slide(deck, "Where It Struggles, and Why", subtitle, section("Risk", True))

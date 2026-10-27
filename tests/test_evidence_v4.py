@@ -186,7 +186,7 @@ def test_ledger_counts(tree):
     assert ((rows["kind"] == "setting") & (rows["status"] == "run")).sum() == 7
     # No void log kept: the grids as run, base plus 6, 5, 4 and 2.
     assert ((rows["kind"] == "setting") & (rows["status"] != "run")).sum() == 18
-    assert by[("exam", "run")] == 2 and by[("exam", "not run")] == 5
+    assert by[("exam", "run")] == 2 and by[("exam", "not run")] == 12
     # A0, A1, one P1 seed ran; the replay is no arm; A2, 99 seeds left.
     assert by[("desk", "run")] == 3 and by[("desk", "not run")] == 100
     assert not rows["name"].str.contains("replay").any()
@@ -212,7 +212,7 @@ def test_counts_and_csv(tree, monkeypatch):
     rows = pd.read_csv(tree["evidence"] / "trials_v4.csv")
     assert got["v4"] == (rows["status"] != "not run").sum() == 5 + 1 + 3 + 7 + 18 + 2 + 3
     assert got["v1_v3"] == 3 and got["v4_v1_v3"] == got["v4"] + 3
-    assert got["all"] == got["v4"] + 1916 and got["v4_not_run"] == 2 + 5 + 100
+    assert got["all"] == got["v4"] + 1916 and got["v4_not_run"] == 2 + 12 + 100
 
 
 # The older count reads names only: past fits, runs, configs, Andrew.

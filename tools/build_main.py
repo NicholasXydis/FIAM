@@ -19,6 +19,7 @@ LEAVE_OUT = (
     ".env.example",
     "docs/PLAN.md",
     "docs/TEAM.md",
+    "fiam/v4b/",
 )
 # Deck builders, so run.py --finals-pack works from MAIN.py alone.
 CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}

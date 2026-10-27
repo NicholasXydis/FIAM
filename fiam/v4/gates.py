@@ -31,11 +31,11 @@ PROTOCOL = ROOT / "versions" / "v4" / "protocol.md"
 CHAR_LIST = ROOT / "data" / "organisers" / "factor_char_list.csv"
 # The stages in their order; each later one needs the earlier at HEAD.
 STAGES = ("check", "power", "controls", "gates")
-# The known-by check's formations (review E's months), no return read.
+# The known-by check's formations, with no return read.
 TIMING_MONTHS = pd.to_datetime(["2016-12-31", "2018-06-30", "2020-03-31"])
 # Tables a signal reads by date, not by publication: never cut.
 UNCUT = {"links", "panel", "labels"}
-# The family of six, in build order; customer momentum failed its check.
+# The family of six, in build order, customer momentum included.
 SIGNALS = {
     "short_interest": short_interest,
     "red_flags": edgar_flags,

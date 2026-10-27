@@ -484,7 +484,7 @@ def test_plan_starts_after_the_close(monkeypatch):
     assert 200 not in seen["held"].index and len(seen["held"]) == 249
 
 
-# In 2026 the trigger beta reads an open month's days raw (review M).
+# In 2026 the trigger beta reads an open month's days raw.
 def test_trigger_beta_open_month_is_raw(monkeypatch):
     days = pd.bdate_range("2025-06-02", "2026-01-15")
     m = pd.Series(np.random.default_rng(2).normal(0, 0.01, len(days)), index=days)
@@ -499,9 +499,53 @@ def test_trigger_beta_open_month_is_raw(monkeypatch):
     assert got[7] > plain[7]
 
 
-# Seven exam runs; an exact tie goes to the neutral twin, then fewer.
+# Fourteen exam runs; an exact tie goes to the neutral twin, then fewer.
 def test_exam_designs_and_ties():
-    assert set(exam.DESIGNS) == {1, 2, 4, 5, 6, 7, 8}
+    assert set(exam.DESIGNS) == {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+    assert set(exam.SIMPLER) == set(exam.DESIGNS) | {3}
     runs = {k: {"ir": 0.2} for k in (1, 6, 2, 7, 5, 8)}
     assert exam.winner(runs) == 6
     assert exam.DESIGNS[8] == ("z", 220, exam.TILTS)
+
+
+# The risk ladder keeps every setting but the risk aversion it scales.
+def test_risk_ladder_scales_only_lambda():
+    s = {"settings": {"risk_lambda": 3.0, "ridge": 30.0, "style_cap": 0.5, "sector_band": 0.01,
+                      "beta_band": 0.0, "neutral_band": 0.0, "cost_budget": 0.001,
+                      "participation": 0.1, "nav": 1e9, "gross": 1.0, "norm": 1.0},
+         "a4_rate": 0.4, "margin": 0.08}  # fmt: skip
+    base, half, quarter = (exam.settings_for(k, s)(None, None, 1.7678) for k in (1, 9, 10))
+    assert half.risk_lambda == 1.5 and quarter.risk_lambda == 0.75 and base.risk_lambda == 3.0
+    assert half.ridge == base.ridge and half.names_max == base.names_max == 480
+    assert exam.settings_for(11, s)(None, None, 1.7678).names_max == 220
+    assert exam.winner({k: {"ir": 0.2} for k in (1, 9, 10)}) == 1
+    bold, light, twin = (exam.settings_for(k, s)(None, None, 1.7678) for k in (12, 13, 14))
+    assert bold.names_max == 220 and bold.risk_lambda == 0.75
+    assert light.cost_budget == 0.0005 and light.risk_lambda == 3.0 and base.cost_budget == 0.001
+    assert twin.neutral_styles == exam.TILTS and twin.risk_lambda == 1.5
+    assert exam.winner({k: {"ir": 0.2} for k in (12, 13, 14)}) == 14
+
+
+# The brake is tested on the winner's own days; design 3 reads 1's.
+def test_brake_reads_the_winner():
+    assert exam.governed(12) == 12 and exam.governed(3) == 1 and exam.governed(None) == 1
+
+
+# A finished design is reused only when its settings are the same.
+def test_design_reused_only_for_the_same_settings(tmp_path, monkeypatch):
+    calls = []
+
+    # A stand-in design that records each real run.
+    def fake(settings_at, z, keep_as, neutral):
+        calls.append(keep_as)
+        return {"ir": 0.1, "daily": pd.DataFrame({"x": [1.0]})}
+
+    monkeypatch.setattr(exam, "OUT", tmp_path)
+    monkeypatch.setattr(exam, "design", fake)
+    monkeypatch.setattr(exam, "settings_for", lambda k, s: None)
+    s = {"settings": {"risk_lambda": 3.0}}
+    exam.design_job(1, s, "abc123")
+    exam.design_job(1, s, "abc123")
+    assert len(calls) == 1
+    exam.design_job(1, {"settings": {"risk_lambda": 2.0}}, "abc123")
+    assert len(calls) == 2

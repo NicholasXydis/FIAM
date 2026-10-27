@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import pickle
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -22,9 +23,15 @@ BRAKE_DAYS, BRAKE_T = 21, 2.0
 # The hurdle: the bill plus 4% a year (PDF p6), and the exam's end.
 PREMIUM, END = 0.04, pd.Timestamp("2020-12-31")
 # Tie order: SYY-10 alone, then neutral before capped, broad before few.
-SIMPLER = (4, 6, 3, 1, 7, 2, 8, 5)
+SIMPLER = (4, 6, 3, 1, 7, 2, 8, 5, 14, 9, 13, 11, 10, 12, 15)
 # Design 2's name cap: every ridge gave 480 names (reading 14).
 CONCENTRATED = 275
+# The risk ladder: designs at a fraction of the derived risk aversion.
+RISK = {9: 0.5, 10: 0.25, 11: 0.5, 12: 0.25, 14: 0.5}
+# The cost-light design: the derived monthly cost budget, halved.
+COST = {13: 0.5}
+# The jump-screened design: design 1 with reading 23 (m)'s screen.
+JUMP = {15}
 # The exam's halves, reported beside it and never deciding (reading 20).
 PERIODS = {"2017-2018": ("2017-01", "2018-12"), "2019-2020": ("2018-12", "2020-12")}
 # The styles the neutral designs hold at zero (reading 17).
@@ -32,13 +39,15 @@ TILTS = ("high_ivol", "liquidity")
 # Each run: forecast, name cap, styles at 0 (design 3 is 1's book).
 DESIGNS = {1: ("z", 480, ()), 2: ("z", CONCENTRATED, ()), 5: ("z", 220, ()),
            6: ("z", 480, TILTS), 7: ("z", CONCENTRATED, TILTS), 8: ("z", 220, TILTS),
-           4: ("z_syy", 480, ())}  # fmt: skip
+           9: ("z", 480, ()), 10: ("z", 480, ()), 11: ("z", 220, ()),
+           12: ("z", 220, ()), 13: ("z", 480, ()), 14: ("z", 480, TILTS),
+           15: ("z", 480, ()), 4: ("z_syy", 480, ())}  # fmt: skip
 # Events and returns: overlays 2015 on; returns read from 2014-12.
 EVENTS_FROM, RETURNS_FROM = pd.Timestamp("2015-02-01"), pd.Timestamp("2014-12-01")
 # The stages, each once per commit; the brake needs the designs' days.
 STAGES, NEEDS = ("tests", "designs", "brake"), {"brake": "designs"}
-# Designs run two at a time, each worker holding one context (~7 GB).
-WORKERS = 2
+# Designs at a time (FIAM_WORKERS), each worker holding one context.
+WORKERS = int(os.environ.get("FIAM_WORKERS", "2"))
 # The exam's commit, pinned once it has run; later stages read it.
 EXAM_AT = None
 # Tables beyond the gates' stamp that step 7 reads.
@@ -188,13 +197,33 @@ def design(settings_at, z: str = "z", keep_as=None, neutral=()) -> dict:
                                    "plans": plans, "daily": result.daily[keep]}  # fmt: skip
 
 
-# One design in a worker; its settings are built there, not pickled.
+# One design in a worker; a design finished at this commit is reused.
 def design_job(k: int, s: dict, head: str) -> tuple:
-    z, cap, neutral = DESIGNS[k]
-    settings_at = derived(s, names_max=cap, neutral_styles=neutral)
-    out = design(settings_at, z, f"{k}_{head[:12]}", neutral)
+    done = OUT / f"exam_design_{k}_{head[:12]}.json"
+    sha = hashlib.sha256(json.dumps(s, sort_keys=True).encode()).hexdigest()
+    # Reused only when it was made from these very settings.
+    if done.exists() and json.loads(done.read_text()).get("settings_sha256") == sha:
+        return k, json.loads(done.read_text())
+    z, _, neutral = DESIGNS[k]
+    out = design(settings_for(k, s), z, f"{k}_{head[:12]}", neutral) | {"settings_sha256": sha}
     out.pop("daily").to_parquet(OUT / f"exam_daily_{k}_{head[:12]}.parquet")
-    return k, out
+    # Written last and whole, so a stopped run never leaves half a design.
+    part = done.with_suffix(".tmp")
+    part.write_text(json.dumps(out, default=str))
+    part.replace(done)
+    print(f"design {k} done", flush=True)
+    return k, json.loads(done.read_text())
+
+
+# A design's settings: name cap, held styles, risk aversion, cost cap.
+def settings_for(k: int, s: dict):
+    _, cap, neutral = DESIGNS[k]
+    kw = {"risk_lambda": s["settings"]["risk_lambda"] * RISK.get(k, 1.0)}
+    if k in COST:
+        kw["cost_budget"] = s["settings"]["cost_budget"] * COST[k]
+    if k in JUMP:
+        kw["jump_screen"] = True
+    return derived(s, names_max=cap, neutral_styles=neutral, **kw)
 
 
 # The highest IR among designs with no breach; a tie to the simpler.
@@ -203,6 +232,11 @@ def winner(results: dict) -> int | None:
     if not clean:
         return None
     return max(clean, key=lambda k: (round(results[k]["ir"], 12), -SIMPLER.index(k)))
+
+
+# The design whose days test the brake: the winner, 3 as 1's book.
+def governed(won) -> int:
+    return 1 if won in (None, 3) else int(won)
 
 
 # The gates' stamp plus the settings, the forecasts and step 7's tables.
@@ -253,7 +287,10 @@ if __name__ == "__main__":
         best = runs.get(out["winner"])
         out["reading"] = "stop: every design broke a limit" if best is None else reading(best)
     else:
-        out["brake"] = brake(pd.read_parquet(OUT / f"exam_daily_1_{head[:12]}.parquet"))
+        won = json.loads((OUT / f"exam_designs_{head[:12]}.json").read_text())["winner"]
+        k = governed(won)
+        days = pd.read_parquet(OUT / f"exam_daily_{k}_{head[:12]}.parquet")
+        out["brake"] = brake(days) | {"design": k}
     path.write_text(json.dumps(out, indent=1, default=str))
     print(json.dumps({k: v for k, v in out.items() if k not in ("designs", "stamp")},
                      indent=1, default=str))  # fmt: skip

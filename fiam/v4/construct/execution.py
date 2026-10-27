@@ -146,7 +146,7 @@ class Execution:
         # Exits go exactly to 0; every other name works off its plan.
         out = f.target.reindex(names).fillna(0.0) == 0
         step = f.remaining.reindex(names).fillna(0.0).where(~out, -held).clip(-room, room)
-        # A plan never crosses zero: past it, the name only closes (review M).
+        # A plan never crosses zero: past it, the name only closes.
         cross = (held != 0) & (held * (held + step) < 0)
         step[cross] = -held[cross]
         for _ in range(3):
@@ -392,7 +392,7 @@ class TriggerBeta:
         days = self.returns.index[self.returns.index <= pd.Timestamp(d)][-BETA_DAYS:]
         rf = data.rf_daily(days, by=d)
         stock = self.returns.reindex(index=days, columns=list(names))
-        # In 2026 an open month has no δ yet: its days stay raw (review M).
+        # In 2026 an open month has no δ yet: its days stay raw.
         d = pd.Timestamp(d)
         if len(self.late) and d > data.CRSP_END:
             month = days[days.to_period("M") == d.to_period("M")]

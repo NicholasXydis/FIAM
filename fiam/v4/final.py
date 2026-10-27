@@ -22,7 +22,7 @@ from fiam.v4.construct import (
     simulate,
 )
 from fiam.v4.forecast import dataset, grid
-from fiam.v4.report import holdings, table_9_1
+from fiam.v4.report import holdings, table_9_1, vs_market
 
 OUT = gates.ROOT / "out" / "v4" / "final"
 # Each stage once per commit, in order, all after the unseal.
@@ -106,6 +106,9 @@ def forecasts(head: str) -> dict:
     c = choices()
     refit = grid.walk(grid.Table(sources.characteristics()), c["chosen"], c["members"])
     both, gap = joined(pd.read_parquet(book.FORECASTS), refit)
+    # The models are exact only on the machine that fitted them (the Mac).
+    if not gap == 0.0:
+        raise SystemExit(f"the refit misses the blind 2020-12 forecast by {gap}: wrong machine")
     both.to_parquet(path("forecasts", head, "parquet"), index=False)
     return {"rows": len(both), "formations": int(both["eom"].nunique()),
             "last": f"{both['eom'].max():%Y-%m-%d}",
@@ -132,7 +135,7 @@ class Context(book.Context):
 
 # The style factor returns from 2015 to the finals' last formation.
 def factor_returns() -> pd.DataFrame:
-    target = OUT / "factor_returns_final.parquet"
+    target = OUT / f"factor_returns_to_{LAST:%Y-%m}.parquet"
     if not target.exists():
         frames = {e: inputs.formation(e) for e in data.month_ends("2015-01-31", LAST)}
         risk.factor_returns(frames).to_parquet(target)
@@ -145,9 +148,9 @@ def final_book(head: str) -> dict:
     read = lambda stage: json.loads((book.OUT / f"exam_{stage}_{tag}.json").read_text())  # noqa: E731
     designs, tests, brake = read("designs"), read("tests"), read("brake")
     k = 1 if designs["winner"] == 3 else int(designs["winner"])
-    z, cap, neutral = exam.DESIGNS[k]
+    z, _, neutral = exam.DESIGNS[k]
     s = json.loads(settings.SETTINGS.read_bytes())
-    settings_at = exam.derived(s, names_max=cap, neutral_styles=neutral)
+    settings_at = exam.settings_for(k, s)
     on = {"long": tests["overlays"]["red_flags"]["passes"],
           "short": tests["overlays"]["insider_buys"]["passes"]}  # fmt: skip
     events = exam.overlay_events(FIRST, END) if any(on.values()) else {}
@@ -207,7 +210,16 @@ def report(head: str) -> dict:
         out[f"{name}_rows"], out[f"{name}_unresolved"] = len(file), len(lost)
     file, lost = holdings.positions_file(positions, b["ledger"], ids, daily)
     holdings.write_csv(file, path("arcana_positions", head, "csv"), holdings.POSITIONS)
-    return out | {"positions_rows": len(file), "positions_unresolved": len(lost)}
+    out |= {"positions_rows": len(file), "positions_unresolved": len(lost)}
+    # The market table last: a missing market day is noted, never fatal.
+    try:
+        beside = vs_market.table(daily, inputs.sp500(daily.index),
+                                 data.market_daily(daily.index))  # fmt: skip
+        beside.to_csv(path("vs_market", head, "csv"), index=False)
+        out["vs_market"] = "written"
+    except ValueError as err:
+        out["vs_market"] = f"not written: {err}"
+    return out
 
 
 # python -m fiam.v4.final labels | forecasts | book | report, unsealed.

@@ -148,7 +148,7 @@ def exposures(name: str) -> dict:
     )
 
 
-# Equal-weight naive books like final v3, each a trial in the ledger.
+# Simple equal-weight books like final v3, each a trial in the ledger.
 def naive(kind: str, capital: float) -> dict:
     tag = f"{capital:.0e}".replace("+0", "")
     final = data.read(v2.OUT / final_name(capital) / "record" / "holdings.parquet")

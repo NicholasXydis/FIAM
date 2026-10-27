@@ -39,7 +39,7 @@ ITEMS = {
     "item_801_other_event": "8.01",
 }
 
-# Word counts, a crude tone gauge for research. No book signal uses it.
+# Word counts, a simple tone gauge for research. No book signal uses it.
 TERMS = {
     "text_negative": r"\b(?:loss|losses|decline|impair(?:ed|ment)|restatement|investigation"
     r"|litigation|default|bankruptcy)\b",

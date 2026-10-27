@@ -1,5 +1,6 @@
 # Books through the daily engine, each planned at its decision close.
 
+import os
 from dataclasses import replace
 
 import numpy as np
@@ -49,13 +50,16 @@ class Planner:
         if eom not in self.frames:
             self.frames = {eom: book.month(eom, prev, ctx.f, ctx.fr, ctx.scale, ctx.returns,
                                            ctx.history, ctx.holdings, ctx.z,
-                                           ctx.neutral)}  # fmt: skip
+                                           ctx.neutral, ctx.late)}  # fmt: skip
             data._CACHE.clear()
         return self.frames[eom]
 
     # At T's close: the book after T's trades, the optimiser, lever A4.
     def plan(self, T, held_book, held: pd.Series | None = None):
         ctx, eom = self.ctx, self.decision[T]
+        # A heartbeat line a formation, for the long-run watchdog.
+        if os.environ.get("FIAM_PROGRESS"):
+            print(f"planning {pd.Timestamp(T):%Y-%m-%d}", flush=True)
         nav = held_book.cash + sum(held_book.values.values())
         prev = pd.Series(held_book.values, dtype=float) / nav if held is None else held
         prev = prev[prev.abs() > 1e-12]
@@ -75,7 +79,7 @@ class Planner:
         if w is None:
             w, step = prev, "held"
         else:
-            # Lever A4 at the settings the optimum was solved at (review M).
+            # Lever A4 at the settings the optimum was solved at.
             w = book.partial(w, prev, x, used, alpha)
         trade = w.reindex(x.index).fillna(0.0) - prev.reindex(x.index).fillna(0.0)
         self.info.append({"T": T, "eom": eom, "names": len(w), "step": step,
