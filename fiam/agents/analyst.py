@@ -101,7 +101,7 @@ def probe(server: H.Server, texts: pd.DataFrame) -> dict:
     )
 
 
-# Runs the local model on each chosen stock-month, then the leak probe.
+# Runs the local model on each chosen stock-month, then the name probe.
 def main() -> None:
     texts = data.research("filing_text", ["document_id", *data.KEYS, "excerpt"])
     if texts is None:

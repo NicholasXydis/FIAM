@@ -1,4 +1,4 @@
-# The live X-ray, piece 6: an earnings preview card per big holding.
+# The live X-ray: an earnings preview card per big holding.
 
 import argparse
 import gzip
@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from fiam.alt.common import CREDIT
 from fiam.v4 import clock, data, sources
 from fiam.v4 import links as link_table
 from fiam.v4.desk.agents import SHRINKS
@@ -24,7 +25,7 @@ ROOT = sources.ROOT
 SNAPSHOT = sources.DATA / "carbon_arc" / "snapshot_1"
 CATALOGUE = sources.DATA / "carbon_arc" / "catalogue"
 OUT = ROOT / "out" / "alt" / "xray"
-# The three owned activity series, by dataset id (PLAN §12.4 piece 6).
+# The three owned activity series, by dataset id.
 SERIES = {"card_spend": "CA0056", "foot_traffic": "CA0060", "web_traffic": "CA0030"}
 LABELS = {"card_spend": "Card spend", "foot_traffic": "Foot traffic", "web_traffic": "Web traffic"}
 BENZINGA = "CA0035"
@@ -46,24 +47,22 @@ WEIGHTS = {"card_spend": 2, "foot_traffic": 1, "web_traffic": 1}
 TRIM = {"low": 0.75, "medium": 0.5}
 # Holdings carded by default.
 TOP = 10
-# Labels for books the plan names (PLAN §12.4).
+# Display labels for known book files.
 BOOK_LABELS = {"september_final.csv": "v3 book, September 2026"}
-# The credit Carbon Arc's terms ask for (PLAN §12.5).
-CREDIT = "Based in part on Carbon Arc data"
 # Where each card's ticker came from, in words.
 TICKER_NOTES = {
     "book": "Ticker as the book file gives it",
     "none": "No ticker in the book and the dated links after 2020 stay sealed until the "
     "unseal, so no Carbon Arc or news match",
 }
-# Why the NOAA headwind waits (protocol.md, the weather exhibit).
+# Why the NOAA weather headwind is skipped for now.
 WEATHER_SKIPPED = (
     "Skipped. The protocol defines the headwind (drought for farm and food industries, "
     "temperature for utilities and a warm winter for retail, footprint weighted) but no NOAA "
     "climate table is registered and the footprint and industry codes after 2020 stay sealed "
     "until the unseal, so a read now would rest on stale inputs"
 )
-# I/B/E/S is shown only, never used (PLAN §1.2, B20, B27).
+# I/B/E/S is shown only, never used in a read or a trim.
 IBES_NOTE = (
     "Shown with its date only. It feeds neither the read nor the trim (PLAN 1.2, B20, B27) "
     "and I/B/E/S ends 2025-12"

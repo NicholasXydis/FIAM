@@ -1,4 +1,4 @@
-# The PDF's eight required exhibits (PLAN §4.4, PDF p21).
+# The PDF's eight required exhibits (PDF p21).
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,7 +36,7 @@ def active_return(x: Inputs):
     subtitle = f"{x.period} · after all modelled costs · strategy less T-bill + 4%"
     c.style(top, "Cumulative Active Return Over T-bill + 4%", "Percentage points",
             dates=True, subtitle=subtitle)  # fmt: skip
-    # The S&P 500 faint, for context only (PLAN §4.4).
+    # The S&P 500 faint, for context only.
     for col, label, colour, width, extra in [
         ("sp500", "S&P 500", MARKET, 1.2, dict(dashes=(4, 3), alpha=0.45)),
         ("benchmark", "T-bill + 4%", BENCH, 1.6, {}),

@@ -60,7 +60,7 @@ def check_august(books: dict) -> float:
     return float((both.iloc[:, 0] - both.iloc[:, 1]).abs().max())
 
 
-# A book frozen as CSV with its SHA-256, so any later change is visible.
+# A book frozen as CSV with its SHA-256, so any later change shows.
 def write(book: pd.DataFrame, path) -> str:
     FROZEN.mkdir(exist_ok=True)
     book.to_csv(path, index=False, lineterminator="\n")
@@ -114,7 +114,7 @@ def crowd_scores() -> pd.Series | None:
     return pd.Series(X.crowd_score(month).to_numpy(), index=month["permno"])
 
 
-# v1 from shipped code, checked on August; v2, v3 or final from fiam.v2.
+# The shipped book, checked on August, or a switched book by its name.
 def main(which: str = "v1") -> None:
     if which in ("v2", "v3", "final"):
         from functools import partial

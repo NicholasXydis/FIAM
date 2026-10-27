@@ -79,13 +79,13 @@ def summary(part: pd.DataFrame, misses: int = MISSES) -> dict:
     out = {"rows": len(part), "mapped": int(part["permno"].notna().sum()), "matched": len(hit)}
     out["within_0_5pct"] = int((rel <= TIGHT).sum())
     out["within_2pct"] = int((rel <= LOOSE).sum())
-    out["share_within_0_5pct"] = common_share(out["within_0_5pct"], len(hit))
-    out["share_within_2pct"] = common_share(out["within_2pct"], len(hit))
+    out["share_within_0_5pct"] = common.share(out["within_0_5pct"], len(hit))
+    out["share_within_2pct"] = common.share(out["within_2pct"], len(hit))
     out["median_abs_rel_diff"] = None if hit.empty else round(float(rel.median()), 6)
     out["median_abs_diff_usd"] = None if hit.empty else round(float(hit["diff"].abs().median()))
     # The best of every sales tag, to tell a tag choice from a real miss.
     if "rel_any_tag" in hit:
-        out["share_within_0_5pct_any_tag"] = common_share(
+        out["share_within_0_5pct_any_tag"] = common.share(
             int((hit["rel_any_tag"] <= TIGHT).sum()), len(hit)
         )
     worst = hit.assign(size=rel).sort_values("size", ascending=False).head(misses)
@@ -123,11 +123,6 @@ def misses(part: pd.DataFrame) -> list[dict]:
         row["any_tag_within_0_5pct"] = bool(r["rel_any_tag"] <= TIGHT)
         out.append(row)
     return out
-
-
-# A share as a rounded float, or None when there is nothing to share.
-def common_share(part: int, whole: int) -> float | None:
-    return round(part / whole, 4) if whole else None
 
 
 # Days from the table's last data date to the pull, overall and by firm.

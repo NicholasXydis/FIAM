@@ -1,4 +1,4 @@
-# Piece 4, customer voice (Huang 2018): an exhibit, never traded.
+# Customer voice (Huang 2018): an exhibit, never traded.
 
 import gzip
 import json
@@ -22,7 +22,7 @@ LAG = (
     "each month's rating is usable from the first NYSE session after its month end (CA0052 "
     "is published T + 1 Days), so it enters the next month end's formation"
 )
-# Protocol thresholds: 20 reviews in the month, 100 in the 12 before.
+# Thresholds: 20 reviews in the month, 100 in the 12 before.
 MIN_MONTH, MIN_TRAIL, TRAIL = 20, 100, 12
 # A month's Spearman needs at least ten rated names with a label.
 MIN_NAMES = 10
@@ -31,7 +31,7 @@ WINDOWS = {
     "amazon": ("2016-01-31", "2020-12-31"),
     "ca0052": ("2015-01-31", "2020-12-31"),
 }
-# CA0052 months averaging under one star are zero-coded (A14 rule).
+# CA0052 months averaging under one star are zero-coded.
 ZERO_CODED = 1.0
 # Legal-form words dropped from the end of a company name to match.
 SUFFIXES = {

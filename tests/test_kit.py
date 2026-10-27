@@ -103,7 +103,7 @@ def test_a_damaged_kit_is_refused(repo, capsys):
     assert "damaged on the kit" in capsys.readouterr().out
 
 
-# A wrong hash in the manifest is caught the same way.
+# A mismatched hash in the manifest is caught the same way.
 def test_a_hash_mismatch_is_refused(repo):
     folder, fresh = exported(repo), repo.parent / "fresh"
     state = json.loads((folder / kit.MANIFEST).read_text())
@@ -219,7 +219,7 @@ def test_kit_and_status_agree_on_what_stays_home():
     assert home == set(kit.SKIP)
 
 
-# Doctor names the fix when LightGBM's OpenMP runtime is missing.
+# Doctor says how to get LightGBM's OpenMP runtime when it is missing.
 def test_doctor_names_the_openmp_fix(monkeypatch):
     import builtins
 

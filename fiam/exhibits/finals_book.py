@@ -1,4 +1,4 @@
-# Any v2 run as the committee pack in out/finals/<run>/ (finals.md).
+# Any saved run as the committee pack in out/finals/<run>/.
 
 import os
 import shutil
@@ -48,7 +48,7 @@ def write(run: Path) -> Path:
     return target
 
 
-# The pack and performance charts as for v1, but in the finals folder.
+# The pack and performance charts as for the submission, in this folder.
 def main(run: str) -> None:
     target = write(Path(run))
     env = os.environ | {"FIAM_OUT": str(target)}

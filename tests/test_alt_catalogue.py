@@ -1,4 +1,4 @@
-# Piece 10's catalogue screen on a small synthetic catalogue.
+# The catalogue screen on a small synthetic catalogue.
 
 import json
 

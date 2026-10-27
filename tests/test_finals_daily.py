@@ -1,4 +1,4 @@
-# The v4 engine (PLAN §18 step 5): the book, universe, betas, inputs.
+# The daily engine: the book, universe, betas, inputs.
 
 import numpy as np
 import pandas as pd
@@ -368,7 +368,7 @@ def test_formations_keep_their_own_day(monkeypatch):
         book(fake, monkeypatch, {"2019-02-16": {1: 0.1}, "2019-02-17": {1: 0.2}})
 
 
-# Orders are sized on the previous close's NAV (PLAN §9.1).
+# Orders are sized on the previous close's NAV.
 def test_orders_are_sized_on_the_previous_close(monkeypatch):
     fake = Fake()
     fake.stock(1, ret=0.01)
@@ -770,7 +770,7 @@ def test_real_delisting_is_booked_once():
     assert kinds.count("exit") == 1 and "crsp_mark" not in kinds
 
 
-# Counts only (§1.3): no 2021+ glitch or long gap on a universe stock.
+# Counts only: no 2021+ glitch or long gap on a universe stock.
 @pytest.mark.skipif(not HAVE_DATA, reason="no data folder")
 def test_real_2021_on_glitches_miss_the_universe():
     import pyarrow.dataset as ds
@@ -821,14 +821,14 @@ def test_real_dropped_stocks_are_marked_and_sold(permno):
     assert out.positions[out.positions["date"] == end].empty
 
 
-# v3's stored 2016-2020 holdings replay within tolerance, same day.
+# The stored 2016-2020 check holdings replay within tolerance, same day.
 @pytest.mark.skipif(not HAVE_DATA, reason="no data folder")
 def test_real_v3_replay_within_tolerance():
     from fiam.v4 import replay
 
     if not (replay.V3 / "holdings.parquet").exists():
         pytest.skip("no v3 check holdings")
-    # Only v3's 2016-2020 check folder, never its 2021+ record.
+    # Only the 2016-2020 check folder, never a 2021+ record.
     assert replay.V3.name == "check" and max(replay.targets()) <= pd.Timestamp("2020-11-30")
     summary, both, _ = replay.compare(0)
     assert summary["months"] == 60

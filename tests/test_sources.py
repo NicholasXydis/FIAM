@@ -1,4 +1,4 @@
-# The registry's bans, blind mode and leak traps (§1.2, §1.3, B14, B19).
+# The registry's bans, blind mode and look-ahead traps.
 
 from pathlib import Path
 
@@ -83,7 +83,7 @@ def test_never_sources_are_refused(clean, name):
         sources.read(name)
 
 
-# A planted one-month-ahead feature is caught by the join check (B19).
+# A planted one-month-ahead feature is caught by the join check.
 def test_planted_future_feature_is_caught(clean):
     cal = clean
     eom = pd.Series(pd.to_datetime(["2020-11-30", "2020-12-31"]))
@@ -95,7 +95,7 @@ def test_planted_future_feature_is_caught(clean):
         clock.assert_known_before(planted, formation, "planted")
 
 
-# Shuffled folds and labels overlapping a fit are refused (B14).
+# Shuffled folds and labels overlapping a fit are refused.
 def test_no_shuffle_and_no_overlapping_labels():
     from sklearn.model_selection import KFold, TimeSeriesSplit
 
@@ -120,7 +120,7 @@ def test_real_clean_tables_hold_no_banned_field():
             assert not set(source.banned) & set(ds.dataset(path).schema.names), name
 
 
-# Short interest is one exchange series that switches once (A10).
+# Short interest is one exchange series that switches once.
 def test_real_short_interest_is_one_exchange_series():
     path = sources.DATA / "v4" / "clean" / "short_interest.parquet"
     if not path.exists():
@@ -132,7 +132,7 @@ def test_real_short_interest_is_one_exchange_series():
     assert not s.duplicated(["permno", "settlement"]).any()
 
 
-# Fields banned everywhere (§1.2) appear in no clean table (L4).
+# Fields banned everywhere appear in no clean table.
 def test_real_clean_tables_hold_no_globally_banned_field():
     import pyarrow.dataset as ds
 
@@ -146,7 +146,7 @@ def test_real_clean_tables_hold_no_globally_banned_field():
             assert not always & set(ds.dataset(path).schema.names), name
 
 
-# Blind reads of the links show no period ending after the seal (M4).
+# Blind reads of the links show no period ending after the seal.
 def test_real_links_hide_ends_after_the_seal():
     path = sources.DATA / "v4" / "clean" / "links.parquet"
     if not path.exists():
@@ -155,7 +155,7 @@ def test_real_links_hide_ends_after_the_seal():
     assert not (pd.to_datetime(got["valid_to"]) > pd.Timestamp("2020-12-31 23:59:59")).any()
 
 
-# Only declared labels carry next month's return (M4, B19), on 2019.
+# Only declared labels carry next month's return, on 2019.
 def test_real_panel_has_no_hidden_next_month_return():
     path = sources.DATA / "v4" / "clean" / "panel.parquet"
     if not path.exists():
@@ -178,7 +178,7 @@ def test_footprint_weights():
     assert sources.footprint_weights(None, "") == {}
 
 
-# No row public after the seal comes back from any step 4 table (§1.3).
+# No row public after the seal comes back from any text or map table.
 @pytest.mark.skipif(not (sources.DATA / "v4" / "clean" / "sections").exists(), reason="no data")
 def test_real_step4_tables_hide_rows_after_the_seal():
     for name, cols, purpose in [
@@ -261,13 +261,13 @@ def test_raw_text_tables_are_read_only_by_their_builders():
         assert '"text" / "annual"' not in source and "five02.parquet" not in source, path
 
 
-# Only the registry, builders and count tools open data files (M6).
+# Only the registry, builders and count tools open data files.
 def test_only_allowed_v4_modules_open_data_files():
     allowed = {"sources.py", "links.py", "exits.py", "agreement.py", "fallbacks.py"}
     allowed |= {"hand_checks.py", "kit.py", "text.py", "vintage.py", "fema.py"}
-    # The replay reads only v3's stored 2016-2020 check files (step 5).
+    # The replay reads only the stored 2016-2020 check files.
     allowed |= {"replay.py"}
-    # The step 6 builders read the extracts and CRSP's types to clean them.
+    # The table builders read the extracts and CRSP's types to clean them.
     allowed |= {"compustat.py", "thirteen_f.py"}
     # The final run reads its own outputs and the labels it rebuilt.
     allowed |= {"final.py"}
@@ -287,7 +287,7 @@ def test_registered_sources_keep_their_early_bans():
             assert set(fields) <= set(sources.REGISTRY[name].banned), name
 
 
-# Step 6 tables: their bans refuse reads and sealed labels never load.
+# SEC and Compustat tables: bans refuse reads, sealed labels never load.
 def test_step6_bans_and_sealed_labels(tmp_path, monkeypatch):
     monkeypatch.setattr(sources, "CLEAN", tmp_path)
     for name, col, why in (("sec_facts", "frame", None), ("compustat_quarterly", "dldte", "twin")):
@@ -310,7 +310,7 @@ def test_step6_bans_and_sealed_labels(tmp_path, monkeypatch):
     )
     got = sources.read("labels", ["label"], purpose="label")
     assert got["permno"].tolist() == [1]
-    # Labels and restated Compustat refuse any other purpose (audit M2).
+    # Labels and restated Compustat refuse any other purpose.
     with pytest.raises(sources.NotForBacktest):
         sources.read("labels", ["label"])
     for name in ("compustat_quarterly", "compustat_annual"):

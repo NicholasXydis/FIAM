@@ -131,7 +131,7 @@ def compustat(book: pd.DataFrame) -> pd.DataFrame:
 # The first source agreeing on ticker and name, best-dated first.
 def verdict(row) -> str:
     ticker, name = symbol(row["TICKER"]), row["COMPANY NAME"]
-    # An SEC-dated name fix is confirmed, even where CRSP has the typo.
+    # An SEC-dated name correction counts, even where CRSP has the typo.
     if (row.get("PERMNO"), name) in {(fix[0], fix[3]) for fix in P.LABEL_FIXES}:
         return "EDGAR, dated correction"
     if row["eom"] <= CRSP_END:

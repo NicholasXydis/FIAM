@@ -68,7 +68,7 @@ STEPS = [
     ("fiam.exhibits.labels", "checking every label against CRSP, 8-K filings and EDGAR"),
 ]
 
-# Charts, docs and audit last, after any agent writes what they show.
+# Charts, docs and checks last, after any agent writes what they show.
 REPORT = [
     ("fiam.agents.harness export", "writing the agents' tool definitions"),
     ("fiam.checks.provenance", "recording which run wrote each artifact"),
@@ -392,7 +392,7 @@ def run(steps: list, env: dict, official: bool, fresh: bool) -> list[tuple[str, 
         took = time.monotonic() - started
         if code != 0:
             done.append((doing, "FAILED", took))
-            # Outside official runs a failed audit is reported and later checks run.
+            # Outside official runs a failed check is reported and later steps run.
             if official or not command.startswith("fiam.checks.reproducibility"):
                 say(f"\n{command} failed, stopping here.")
                 return done
@@ -492,7 +492,7 @@ def data_command(rest: list[str]) -> int:
     return 2
 
 
-# The finals verb; only its unseal is built so far (step 10).
+# The finals verb: lifts blind mode once, with --unseal.
 def finals(args: list[str]) -> int:
     if "--unseal" not in args:
         print("finals runs once blind mode is lifted:  uv run run.py finals --unseal")
@@ -513,7 +513,7 @@ def finals(args: list[str]) -> int:
 def main() -> int:
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
-    # LightGBM's OpenMP from the kit when this machine lacks it (B9).
+    # LightGBM's OpenMP from the kit when this machine lacks it.
     from fiam import openmp
 
     openmp.preload()
@@ -594,7 +594,7 @@ def main() -> int:
             if execute(module, env):
                 return 1
         deck = [sys.executable, str(ROOT / "tools" / "build_deck_finals.py"), "--pdf"]
-        # The deck shows final v3 (v2_amendment_3.md) once its pack exists.
+        # The deck shows the `final` book once its pack exists.
         evidence = ROOT / "out" / "v2" / "evidence.json"
         report = json.loads(evidence.read_text()) if evidence.exists() else {}
         name = report.get("v3", {}).get("final", {}).get("name")
@@ -667,7 +667,7 @@ def main() -> int:
     steps += (AGENT_STEPS if agents else []) + report
     done = run(steps, env, official, fresh)
     passed = summary(done)
-    # A finished run is compared, even when the audit flagged something.
+    # A finished run is compared, even when a check flagged something.
     if not official and len(done) == len(steps):
         execute("fiam.checks.compare", env)
         say("\nResults are in out/.")

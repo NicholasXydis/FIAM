@@ -1,4 +1,4 @@
-# Step 9 pre-freeze evidence on synthetic frames only.
+# Pre-freeze evidence on synthetic frames only.
 
 import json
 
@@ -136,7 +136,7 @@ def test_selftest_flags_only():
     assert out["book"]["names_held"] == 2
 
 
-# A fake tree of step 6 and 7 results, names and counts only.
+# A fake tree of gate, forecast and construction results, counts only.
 @pytest.fixture
 def tree(tmp_path, monkeypatch):
     dirs = {k: tmp_path / k for k in ("gates", "forecast", "construct", "desk", "evidence")}
@@ -205,7 +205,7 @@ def test_ledger_void_log(tree):
     assert not rows["status"].str.contains("not kept").any()
 
 
-# The three counts and the CSV: v4 run, v1-v3 rows, and every fit.
+# The three counts and the CSV: new runs, older rows and every fit.
 def test_counts_and_csv(tree, monkeypatch):
     monkeypatch.setattr(ev, "older_fits", lambda: 1916)
     got = ev.run_ledger()

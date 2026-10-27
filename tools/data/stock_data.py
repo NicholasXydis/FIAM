@@ -62,7 +62,7 @@ TABLES = {
     "compustat_quarterly": {"files": ["fundamentals_quarterly.csv"], "drop": COMPUSTAT_TODAY},
     "compustat_annual": {"files": ["fundamentals_annual.csv"], "drop": COMPUSTAT_TODAY},
     "compustat_financials": {"files": ["financials_annual.csv"], "drop": COMPUSTAT_TODAY},
-    # Header CUSIPs for the dated pre-2015 link only, never a signal (4A+).
+    # Header CUSIPs for the dated pre-2015 link only, never a signal.
     "compustat_ids": {"files": ["fundamentals_quarterly.csv"],
                       "keep": ["gvkey", "cusip", "datadate"]},
     "wrds_ratios": {"files": ["ratios_monthly.csv"]},

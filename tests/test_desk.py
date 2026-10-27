@@ -1,4 +1,4 @@
-# Step 8's desk on synthetic data: triggers, cards, agents, arms, rules.
+# The desk on synthetic data: triggers, cards, agents, arms, rules.
 
 import numpy as np
 import pandas as pd
@@ -159,7 +159,7 @@ def test_memory_questions_are_closed():
     assert asks[0][1]["properties"]["choice"]["enum"] == ["A", "B"]
 
 
-# A trigger's extra variance: earnings, vol jump and loss add (rule b).
+# A trigger's extra variance: earnings, vol jump and loss add.
 def test_extra_variance():
     from fiam.v4.desk import run
 

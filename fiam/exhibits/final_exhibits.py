@@ -1,4 +1,4 @@
-# Final v3's exhibits (docs/protocols/final_exhibits.md): edge and risk.
+# The chosen book's exhibits: where its edge comes from, and its risk.
 
 import json
 import sys
@@ -18,13 +18,13 @@ from fiam.exhibits import september as S
 
 OUT = v2.OUT / "final_exhibits"
 NAIVE = ("naive_equal_model", "naive_equal_holdings", "favourites_held")
-# Random books (section 1.1): draws, seed, top-N stocks, monthly swaps.
+# Random books: draws, seed, top-N stocks, monthly swaps.
 DRAWS, SEED, LARGEST, REPLACE = 1000, 42, 500, 0.1
-# Published haircuts on a backtested information ratio (section 2).
+# Published haircuts on a backtested information ratio.
 HAIRCUTS = dict(mclean_pontiff_2016=0.26, harvey_liu_2015=0.50)
 
 
-# Final v3's run name at a capital level.
+# The chosen book's run name at a capital level.
 def final_name(capital: float = 1e7) -> str:
     return v2.Settings(v2.final_three(), capital).name
 
@@ -148,7 +148,7 @@ def exposures(name: str) -> dict:
     )
 
 
-# Simple equal-weight books like final v3, each a trial in the ledger.
+# Simple equal-weight books on the chosen book's names, each a trial.
 def naive(kind: str, capital: float) -> dict:
     tag = f"{capital:.0e}".replace("+0", "")
     final = data.read(v2.OUT / final_name(capital) / "record" / "holdings.parquet")
@@ -156,7 +156,7 @@ def naive(kind: str, capital: float) -> dict:
     favoured = favourites(final) if kind == "favourites_held" else None
     started = time.time()
 
-    # The month's names by kind, equal within each side to final v3's gross.
+    # The month's names by kind, equal per side at the chosen book's gross.
     def optimize(month: pd.DataFrame, previous) -> pd.Series | None:
         target = targets.get(month["eom"].iloc[0])
         if target is None or not len(target):
@@ -216,7 +216,7 @@ def naive(kind: str, capital: float) -> dict:
     return out
 
 
-# Final v3's most-held names (section 1.3): top net longs and shorts.
+# The chosen book's most-held names: top net longs and shorts.
 def favourites(held: pd.DataFrame) -> tuple[list, list]:
     months = held.groupby("eom")
     n_long = round(float(months["weight"].apply(lambda w: (w > 0).sum()).mean()))
@@ -227,7 +227,7 @@ def favourites(held: pd.DataFrame) -> tuple[list, list]:
     return longs, shorts
 
 
-# Section 1.1: random books of the 500 largest, paying final v3's costs.
+# Random books of the 500 largest, paying the chosen book's costs.
 def null(name: str) -> dict:
     held = data.read(v2.OUT / name / "record" / "holdings.parquet")
     book = pd.read_csv(v2.OUT / name / "record" / "returns.csv", parse_dates=["forecast_eom"])
@@ -294,7 +294,7 @@ def null(name: str) -> dict:
     )
 
 
-# Section 1.2: final v3 run unchanged on the 500 largest stocks a month.
+# The chosen book run unchanged on the 500 largest stocks a month.
 def large() -> dict:
     out = {}
     for cap in (1e7, 1e9):
@@ -303,7 +303,7 @@ def large() -> dict:
     return out
 
 
-# Section 2: final v3's live IR at each size after published haircuts.
+# The chosen book's IR at each size after published haircuts.
 def projection() -> dict:
     scored = json.loads((v2.OUT / "evidence.json").read_text(encoding="utf-8"))["v3"]
     out = {}

@@ -33,7 +33,7 @@ PAGES = v2.OUT
 CAPS = ["$1M", "$10M", "$100M", "$500M", "$1B", "$5B"]
 BOOKS = {"v1": OURS, "v2": ALT, "v2a": "#2E8B57", "v2-pass": "#B07D2B", "v3": "#8A7FB5"}
 BOOKS["final v3"] = INK
-# Charted books: submitted, two benchmarks and the one we present.
+# Charted books: shipped, two benchmarks and the chosen one.
 SHOWN = ("v1", "v2", "v2-pass", "final v3")
 # What each book is called on a slide.
 LABELS = {
@@ -94,7 +94,7 @@ def capacity() -> None:
     save(fig, "capacity")
 
 
-# v3 vs benchmarks by size: IR, beta, drawdown, vol (v2_amendment_2.md).
+# The chosen book by fund size: IR, beta, drawdown and volatility.
 def final_book() -> None:
     scored = load(PAGES / "evidence.json").get("v3", {})
     sizes = [c for c in v2.CAPITALS if f"{c:.0e}".replace("+0", "") in scored]
@@ -164,7 +164,7 @@ def network() -> None:
     save(fig, "crowd_network")
 
 
-# The copycat test on the book the deck shows, else the submitted one.
+# The copycat test on the book the deck shows, else the shipped one.
 def copycat_test() -> dict:
     from fiam.report.animation import our_run
 
@@ -199,7 +199,7 @@ def copycats() -> None:
     save(fig, "copycats")
 
 
-# Today's books through past crises: same-name replays, v1 against v2.
+# Today's books through past crises: same-name replays of both books.
 def crises() -> None:
     stress = load(PAGES / "stress.json")
     rows = stress.get("v1", {}).get("crises", {})
@@ -314,7 +314,7 @@ def receipt() -> None:
     (FIGURES / "receipt.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
 
 
-# Final v3 forecast vol and top names' risk share (final_exhibits.md).
+# The chosen book's forecast vol and top names' share of risk.
 def final_risk() -> None:
     path = FINAL / "risk_months.csv"
     if not path.exists():
@@ -347,7 +347,7 @@ def final_risk() -> None:
     save(fig, "final_risk")
 
 
-# Final v3's exposure per unit of gross to each style, month by month.
+# The chosen book's exposure per unit of gross to each style, monthly.
 def final_exposures() -> None:
     path = FINAL / "style_exposures.csv"
     if not path.exists():
@@ -369,7 +369,7 @@ def final_exposures() -> None:
     save(fig, "final_exposures")
 
 
-# Final v3 among 1,000 random lookalike books (final_exhibits.md 1.1).
+# The chosen book among 1,000 random lookalike books.
 def edge_null() -> None:
     path = FINAL / "null_irs.csv"
     report = load(FINAL / "report.json").get("null", {})
@@ -386,7 +386,7 @@ def edge_null() -> None:
     save(fig, "edge_null")
 
 
-# Every benchmark on one axis, what the money made, market to final v3.
+# Every benchmark on one axis, what the money made, market to ours.
 def ladder_rows() -> list[tuple]:
     report = load(FINAL / "report.json")
     if not report.get("null"):
@@ -450,7 +450,7 @@ def edge_ladder() -> None:
     save(fig, "edge_ladder")
 
 
-# What the optimizer adds: final v3 vs equal weights on score and names.
+# What the optimizer adds: the chosen book vs equal weights.
 def naive() -> None:
     report = load(FINAL / "report.json").get("naive", {})
     if not report:

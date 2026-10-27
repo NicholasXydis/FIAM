@@ -249,7 +249,7 @@ def placebo_lab() -> None:
         weight="bold",
         color=OURS,
     )
-    # Above the tallest bar, as beside the line overlapped the distribution.
+    # Above the tallest bar, clear of the distribution.
     left.annotate(
         f"Shuffled {null['gross_annual_mean']:+.2%}",
         xy=(null["gross_annual_mean"] * 100, 1.02),

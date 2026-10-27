@@ -1,4 +1,4 @@
-# Shared inputs, style, labels and checks for the v4 exhibits.
+# Shared inputs, style, labels and checks for the exhibits.
 
 import re
 import textwrap
@@ -21,7 +21,7 @@ OURS, BENCH, MARKET, NEG = charts.OURS, charts.BENCH, charts.MARKET, charts.NEG
 ALT, MUTED, INK, WIDE = charts.ALT, charts.MUTED, charts.INK, charts.WIDE
 # Rule lines (limits and floors) in ink, thin and dashed.
 RULE = dict(color=INK, linewidth=0.9, dashes=(5, 3), alpha=0.7)
-# On-screen copy bans em and en dashes, colons and semicolons (rule 6).
+# On-screen copy bans em and en dashes, colons and semicolons.
 FORBIDDEN = re.compile("[—–:;]")
 # A list of three or more with a comma before "and" or "or".
 OXFORD = re.compile(r",[^,]*, (?:and|or)\b")
@@ -195,7 +195,7 @@ def clean(text) -> str:
     return re.sub(r"\s+", " ", re.sub("[:;]", " ", text)).strip()
 
 
-# "TICKER, Full Company Name" for each name, as last held (PLAN §4.4).
+# "TICKER, Full Company Name" for each name, as last held.
 def labels(ids: pd.DataFrame, when: pd.DataFrame) -> pd.DataFrame:
     keep = ids[["date", "permno", "ticker", "name"]].astype({"permno": "int64"})
     keep = keep.sort_values("date", kind="stable")

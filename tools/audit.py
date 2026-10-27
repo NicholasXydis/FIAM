@@ -1,4 +1,4 @@
-# Read-only data audit (PLAN §6.8); from 2021 on counts and dates only.
+# Read-only data audit; from 2021 on it reads counts and dates only.
 
 import gzip
 import json
@@ -12,7 +12,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[1]
-# The repo root on the path, so the v4 checks read the registry's rules.
+# The repo root on the path, so the checks read the registry's rules.
 sys.path.insert(0, str(ROOT))
 DATA = ROOT / "data"
 X = DATA / "v4" / "extracts"
@@ -192,7 +192,7 @@ def daily(gone: pd.Series) -> None:
     )
 
 
-# The bundle: labels kept apart, filings dated, the v1 layers.
+# The data bundle: labels kept apart, filings dated, its layers.
 def bundle() -> None:
     src = "bundle"
     b = DATA / "fiam_v1"
@@ -218,7 +218,7 @@ def bundle() -> None:
     short_lag(b)
 
 
-# v1's short interest layer, filed under settlement with no lag.
+# The bundle's short interest layer, filed under settlement, no lag.
 def short_lag(b: Path) -> None:
     layer = pd.read_parquet(b / "short_interest_monthly_research_only.parquet")
     layer = layer.dropna(subset=["short_interest"])
@@ -409,7 +409,7 @@ def short_interest() -> None:
     days = pd.DatetimeIndex(pd.to_datetime(extract("crsp_market_daily", ["dlycaldt"])["dlycaldt"]))
     for name in ("short_interest", "short_interest_legacy"):
         s = extract(name, ["gvkey", "iid", "datadate", "available_date"])
-        # The current file is stock-lending demand, never used (A10).
+        # The current file is stock-lending demand, never used.
         name = "short_interest_lending (unused)" if name == "short_interest" else name
         settle, ready = pd.to_datetime(s["datadate"]), pd.to_datetime(s["available_date"])
         inside = ready <= days[-1]
@@ -823,7 +823,7 @@ def agreement(p: pd.DataFrame) -> None:
     )
 
 
-# The v4 link table: ordered periods, one value per stock at a time.
+# The dated link table: ordered periods, one value per stock at a time.
 def v4_links() -> None:
     lk = pd.read_parquet(DATA / "v4" / "links.parquet")
     s = pd.to_datetime(lk["valid_from"])
@@ -849,7 +849,7 @@ def v4_links() -> None:
     note("info", "v4 links", "panel stock-months with each id", json.dumps(shares))
 
 
-# The v4 exits: one row per stock, date and source, each stamped.
+# The exits table: one row per stock, date and source, each stamped.
 def v4_exits() -> None:
     ex = pd.read_parquet(CLEAN / "exits.parquet")
     dupes = int(ex.duplicated(["permno", "exit_date", "source"]).sum())
@@ -885,7 +885,7 @@ def v4_clean() -> None:
         stamp = pd.to_datetime(f["available_at"], utc=True).dt.tz_localize(None)
         sealed = int((stamp > sources.SEAL.tz_localize(None)).sum())
         note("info", f"v4 {name}", "rows public after 2020 (sealed, counts)", f"{sealed:,}")
-        # Link periods and the bill rate carry no close by design (§6.3).
+        # Link periods and the bill rate carry no close, by design.
         if source.use in ("links", "benchmark"):
             note("info", f"v4 {name}", "no first close by design", source.use)
             continue
@@ -920,7 +920,7 @@ def v4_clean() -> None:
         zero(skipped, f"v4 {name}", "an earlier close after the stamp", "fail", "re-date")
 
 
-# v4 short interest: one source a date, public 8 sessions on (A10).
+# Short interest: one source a date, public 8 sessions on.
 def v4_short_interest() -> None:
     from fiam.v4 import sources
 
@@ -988,7 +988,7 @@ def finra() -> None:
     note("info", "finra volume", "not used: failed its 2015-2020 check (§6.5)", f"{len(v):,} rows")
 
 
-# Every card's input hashes against the files on disk (final audit 11).
+# Every card's input hashes against the files on disk.
 def v4_cards() -> None:
     import hashlib
 

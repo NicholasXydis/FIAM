@@ -1,4 +1,4 @@
-# Risk dashboard and evidence tests for any book, per docs/protocols.
+# Risk dashboard and evidence tests for any book.
 
 import numpy as np
 import pandas as pd

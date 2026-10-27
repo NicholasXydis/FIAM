@@ -1,4 +1,4 @@
-# All v2 learns from data up to 2020, fitted once and saved in frozen/.
+# Every number fiam.v2 learns from data up to 2020, saved in frozen/.
 
 import json
 import sys
@@ -58,16 +58,16 @@ def learned(universe: pd.DataFrame) -> pd.Series:
     return pd.Series(table["beta_hat"].reindex(key).to_numpy(), index=universe.index)
 
 
-# Decisions held 2015-02 to 2020-12: every v2 number is fitted on these.
+# Decisions held 2015-02 to 2020-12: every frozen number fits on these.
 FIT = ("2015-01-31", "2020-11-30")
 
 
-# v1's cross-section in the fitting years, residual vol as return scale.
+# The shipped cross-section in the fitting years, residual vol as scale.
 def fit_universe() -> pd.DataFrame:
     return P.build_signal(P.screen(P.load_panel(("ivol_capm_252d",)), *FIT))
 
 
-# Pooled rank correlation of v1's score and next month's neutral return.
+# Pooled rank correlation of the composite with next neutral return.
 def information_coefficient(df: pd.DataFrame) -> float:
     both = pd.DataFrame(dict(score=df["signal"], residual=P.neutralize(df, df["ret_exc_lead1m"])))
     return float(both.dropna().corr(method="spearman").iloc[0, 1])
@@ -85,7 +85,7 @@ def autocorrelation(df: pd.DataFrame) -> dict:
     return out
 
 
-# lambda in cost = lambda x trade^2, fitted to v1's fitting-year trades.
+# lambda in cost = lambda x trade^2, fitted to shipped-book trades.
 def quadratic_cost(df: pd.DataFrame) -> float:
     from fiam import v2
 
@@ -138,7 +138,7 @@ def freeze_params() -> None:
     )
 
 
-# IC per v2_amendment_1.md: monthly Spearman, signal vs neutral return.
+# IC as monthly Spearman of each signal against the neutral return.
 def freeze_ic_monthly() -> None:
     from fiam import v2
 
@@ -152,7 +152,7 @@ def freeze_ic_monthly() -> None:
     print(f"cross-sectional IC {monthly.mean():.4f} over {len(monthly)} months")
 
 
-# Daily S&P 500 returns for v1's daily beta (FRED, from 2016-09-26).
+# Daily S&P 500 returns for the daily beta (FRED, from 2016-09-26).
 def market_daily() -> pd.Series:
     from fiam import benchmarks as B
 
@@ -200,7 +200,7 @@ def realized(df: pd.DataFrame) -> pd.Series:
     return pd.Series(target.reindex(key).to_numpy(), index=df.index)
 
 
-# v2's hedge beta: learned or Welch, whichever better fits next month.
+# The hedge beta: learned or Welch, whichever better fits next month.
 def freeze_beta_fix() -> None:
     from fiam import v2
 
@@ -235,7 +235,7 @@ def freeze_beta_fix() -> None:
     print(f"beta errors {errors}; chosen {choice}; calibration {a:+.3f} + {b:.3f} x learned")
 
 
-# Risk lambda set on 2017 to match v1's ridge penalty (risk.md, v2.md).
+# Risk lambda set on 2017 to match the shipped book's ridge penalty.
 def freeze_risk_lambda() -> None:
     from fiam import v2
 
@@ -255,7 +255,7 @@ def freeze_risk_lambda() -> None:
     print(f"risk lambda {penalty / model:.4f} from {held['eom'].nunique()} months of 2017")
 
 
-# v3's cost and vol numbers from v2-pass at $10M (v2_amendment_2.md).
+# Cost budget and vol target from the `shorts` book at $10M, to 2020.
 def freeze_v3() -> None:
     from fiam import v2
 
@@ -283,7 +283,7 @@ def freeze_v3() -> None:
     print(f"cost budget {trading.mean():.5f} a month; volatility target {np.median(vols):.4f}")
 
 
-# Final v3's risk error and gross cap from v2-pass (v2_amendment_3.md).
+# Risk forecast error and gross cap from the `shorts` book at $10M.
 def freeze_final() -> None:
     from fiam import stats, v2
 

@@ -1,4 +1,4 @@
-# AI Crowd Lab amendment 1, exploratory; nothing here enters v1 or v2.
+# AI Crowd Lab insights, exploratory; nothing here feeds any book.
 
 import json
 import sys
@@ -23,19 +23,19 @@ FLOWS = (1e9, 10e9, 50e9)
 DRAWS, SEED = 10_000, 42
 
 
-# v1's book in the crowds' months: weight and side by month and name.
+# The shipped book in the crowds' months: weight and side by name.
 def our_book(capital: str = "1e7") -> pd.DataFrame:
     held = E.load(f"v1@{capital}", "record")[1]
     return held.assign(side=np.sign(held["weight"]))
 
 
-# Crowd months: v1's signal and the cost model's volatility and volume.
+# Crowd months: the shipped signal and the cost model's vol and volume.
 def market() -> pd.DataFrame:
     df = E.frame("record", frozenset())
     return df[df["eom"] >= L.FIRST][["eom", "permno", "signal", "rvol_21d", "dolvol_126d"]]
 
 
-# 1. Copycats buying v1's longs and shorting its shorts, over base rate.
+# 1. Copycats buying our longs and shorting our shorts, over base rate.
 def copycat_test(picks: pd.DataFrame, book: pd.DataFrame, frame: pd.DataFrame) -> dict:
     df = picks.merge(book[["eom", "permno", "side"]], on=["eom", "permno"], how="left")
     df["side"] = df["side"].fillna(0.0)
@@ -78,7 +78,7 @@ def copycat_test(picks: pd.DataFrame, book: pd.DataFrame, frame: pd.DataFrame) -
     return out
 
 
-# 2. v1's cost if copycat money follows: square-root impact, bp a month.
+# 2. Our cost if copycat money follows: square-root impact, bp a month.
 def capacity_tax(picks: pd.DataFrame, frame: pd.DataFrame) -> dict:
     g = picks[picks["strategy"] == "v1"]
     votes = g.groupby(["eom", "permno"])[["picked", "shorted"]].mean()
@@ -192,7 +192,7 @@ def network(retail: pd.DataFrame) -> dict:
     )
 
 
-# crowd.md item 6: our names in each crowd's top tenth; chance is 10%.
+# Our names in each crowd's top tenth; chance alone gives 10%.
 def overlap(crowds: dict, book: pd.DataFrame) -> dict:
     out = {}
     for name, picks in crowds.items():
@@ -210,7 +210,7 @@ def overlap(crowds: dict, book: pd.DataFrame) -> dict:
     return out
 
 
-# A run's overlap and copycat test vs the crowds (final_exhibits.md).
+# One run's overlap and copycat test against the crowds.
 def book(name: str) -> None:
     crowds, frame = X.crowds(), market()
     held = E.load(name, "record")[1]
@@ -223,7 +223,7 @@ def book(name: str) -> None:
     print(json.dumps(report[f"book {name}"], default=float)[:1500])
 
 
-# Every amendment 1 exhibit in one report, printed short for the log.
+# Every insight exhibit in one report, printed short for the log.
 def main() -> None:
     crowds = X.crowds()
     frame, book = market(), our_book()

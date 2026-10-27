@@ -117,7 +117,7 @@ def money(x) -> str:
     return f"${x / 1e9:.1f}B" if abs(x) >= 1e9 else f"${x / 1e6:.0f}M"
 
 
-# Facts for capacity, the crowd insights, v2a and the desk, same form.
+# Facts for capacity, crowd insights, the Grinold variant and the desk.
 def more() -> dict:
     cap, ins = load(v2.OUT / "capacity.json"), load(v2.OUT / "crowd_insights.json")
     crowd, ev = load(v2.OUT / "crowd_lab.json"), load(v2.OUT / "evidence.json")
@@ -195,7 +195,7 @@ def more() -> dict:
     return f | final(ev, books, at) | compute(lines)
 
 
-# What each of v3's parts does, in a sentence's words.
+# What each extra part does, in a sentence's words.
 WORDS = dict(
     size="trades more slowly as the fund grows",
     lowvol="drops a hidden bet on calm stocks",
@@ -210,7 +210,7 @@ NOUNS = dict(
 )
 
 
-# v3 (v2_amendment_2.md): part verdicts and figures at each fund size.
+# The parts book: part verdicts and figures at each fund size.
 def final(ev: dict, books: dict, at) -> dict:
     verdicts = ev.get("verdicts", {})
     judged = [p for p in v2.PARTS if p in verdicts]
@@ -249,7 +249,7 @@ def final(ev: dict, books: dict, at) -> dict:
     return f | final_three(ev, books, at, shown)
 
 
-# What each final v3 rule and fix does, in words (v2_amendment_3.md).
+# What each of the chosen book's rules does, in words.
 FINAL_WORDS = dict(
     zerobeta="holds its beta at zero",
     target10="aims at 10% volatility with a risk forecast that corrects itself",
@@ -259,7 +259,7 @@ FINAL_WORDS = dict(
 FINAL_NOUNS = dict(riskcap="risk-sized positions", adaptive="adaptive signal weights")
 
 
-# Final v3's figures by fund size, fix verdicts and wins over the rest.
+# The chosen book's figures by size, rule verdicts and wins over others.
 def final_three(ev: dict, books: dict, at, shown: dict) -> dict:
     verdicts = ev.get("verdicts", {})
     chosen = ev.get("v3", {}).get("final", {}).get("switches", [])
@@ -284,12 +284,12 @@ def final_three(ev: dict, books: dict, at, shown: dict) -> dict:
     f["fv3_dollars_5bn"] = money(dollars) if dollars is not None else "-"
     others = ("v1", "v2", "v2-pass", "v3")
     f |= wins(ev.get("v3", {}), "final v3", others, "fv3")
-    # For the deck: final v3 vs the submitted book and the two benchmarks.
+    # For the deck: the chosen book vs the shipped book and benchmarks.
     f |= wins(ev.get("v3", {}), "final v3", ("v1", "v2", "v2-pass"), "fd")
     return f | final_exhibits(ev)
 
 
-# Final v3's own exhibits, as listed in final_exhibits.md.
+# The chosen book's own figures: crises, crowding, edge and risk.
 def final_exhibits(ev: dict) -> dict:
     name = ev.get("v3", {}).get("final", {}).get("name")
     if not name:
@@ -330,7 +330,7 @@ def final_exhibits(ev: dict) -> dict:
     ) | edge(exhibits)
 
 
-# Edge checks (final_exhibits.md): random books, favourites, large caps.
+# Edge checks: random books, favourites, large caps.
 def edge(exhibits: dict) -> dict:
     null = exhibits.get("null", {})
     naive = exhibits.get("naive", {})
@@ -405,7 +405,7 @@ def compute(decisions: int) -> dict:
     )
 
 
-# finals.md: smallest fund where v2's IR passes v1's, in log capital.
+# Smallest fund where the switched book's IR passes the shipped one's.
 def crossover(books: dict) -> float | None:
     one = {r["capital"]: r["information_ratio"] for r in books.get("v1", {}).get("record", [])}
     two = {r["capital"]: r["information_ratio"] for r in books.get("v2", {}).get("record", [])}

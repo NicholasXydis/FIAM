@@ -1,4 +1,4 @@
-# Piece 10: the Carbon Arc catalogue screen, from documentation only.
+# The Carbon Arc catalogue screen, from documentation only.
 
 import json
 import re
@@ -10,7 +10,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 CATALOGUE = ROOT / "data" / "carbon_arc" / "catalogue"
 OUT = ROOT / "out" / "alt" / "catalogue"
-# History labelled from this date covers the 2017-2020 window (§1.3).
+# History labelled from this date covers the 2017-2020 window.
 START_BY = pd.Timestamp("2017-01-01")
 MONTHS = {
     m: i + 1
@@ -163,7 +163,7 @@ def snippet(text: str, m: re.Match) -> str:
     return " ".join(text[start:end].split())
 
 
-# The four answers of PLAN §12 for one asset, each with its evidence.
+# The four screening answers for one asset, each with its evidence.
 def four_answers(info_text: str, facts: dict) -> dict:
     cls, firm = facts["columns"], facts["firm_key"]
     lag, added, first = facts["lag_days"], facts["date_added"], facts["history_start"]

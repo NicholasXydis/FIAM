@@ -1,4 +1,4 @@
-# The B1 notice rule: county names, statewide aid, never mitigation.
+# The FEMA notice rule: county names, statewide aid, never mitigation.
 
 from fiam.v4 import fema
 

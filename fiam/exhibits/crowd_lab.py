@@ -261,7 +261,7 @@ def overlap(a: pd.DataFrame, b: pd.DataFrame) -> float:
     return len(sa & sb) / len(sa | sb) if sa | sb else float("nan")
 
 
-# What-if books (crowd.md item 5) vs the plain one, no pass or fail.
+# What-if books against the plain one, reported with no pass or fail.
 def what_if() -> dict:
     out = {}
     for folder in sorted(v2.OUT.glob("*crowd_*@1e7/*")):
@@ -319,7 +319,7 @@ def book(name: str) -> None:
     print(json.dumps({k: v for k, v in report.items() if k.startswith(name)}, default=float))
 
 
-# Every crowd.md measure on answers so far, and the crowd model frozen.
+# Every crowd measure on answers so far, and the crowd model frozen.
 def main() -> None:
     report = dict(protocol="docs/protocols/crowd.md")
     live = crowds()

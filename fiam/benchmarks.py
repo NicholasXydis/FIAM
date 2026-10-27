@@ -17,7 +17,7 @@ BENCH = Path("data/benchmarks")
 SOURCES = BENCH / "sources.json"
 FRENCH = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
 
-# Fed H.10 daily FX for finals_global.md, 12 per file, FRED's limit.
+# Fed H.10 daily FX for the global book, 12 per file, FRED's limit.
 FX = (
     "DEXCAUS", "DEXJPUS", "DEXUSEU", "DEXUSUK", "DEXUSAL", "DEXUSNZ", "DEXSZUS", "DEXCHUS",
     "DEXHKUS", "DEXINUS", "DEXKOUS", "DEXMXUS", "DEXBZUS", "DEXDNUS", "DEXNOUS", "DEXSDUS",

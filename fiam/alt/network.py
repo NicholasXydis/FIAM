@@ -1,4 +1,4 @@
-# Piece 3, the network map: hidden concentration in any book (live).
+# The network map: hidden concentration in any book (live).
 
 import argparse
 import gzip
@@ -13,7 +13,7 @@ from fiam.alt import coverage
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "out" / "alt" / "network"
 BOOK = ROOT / "frozen" / "september_final.csv"
-# The v3 September book is formed at the August close (PLAN §3.2).
+# The September book is formed at the August close.
 BOOK_DATE = pd.Timestamp("2026-08-31")
 CA0043B = ROOT / "data" / "carbon_arc" / "snapshot_1" / "CA0043B_11676.json.gz"
 # CA0043B's insight, whose free entity list holds its company names.

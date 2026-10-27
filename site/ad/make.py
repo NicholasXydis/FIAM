@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["imageio-ffmpeg==0.6.0"]
 # ///
-# Builds the whole ad, from its page to the films in deck/ and a review.
+# Builds the whole ad: its page, the films in deck/, then a check.
 import os
 import re
 import subprocess
@@ -153,5 +153,5 @@ for shape, (suffix, size, level) in SHAPES.items():
     )
     print(f"wrote {final}, {final.stat().st_size / 1e6:.1f} MB")
     made.append(final)
-# Reviews the first film made, 16:9 when it is: voice, beats, motion.
+# Checks the first film made, 16:9 when it is: voice, beats, motion.
 run("uv", "run", "ad/review.py", made[0])

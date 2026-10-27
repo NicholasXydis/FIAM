@@ -9,10 +9,10 @@ from fiam.v2 import V2
 
 ROOT = Path(__file__).resolve().parent.parent
 FOLDER = ROOT / "versions"
-# The switches final v3 runs with, the book the round-one site presents.
+# The switches of the book the round-one site presents.
 V3_SWITCHES = ("brake", "shorts", "size", "target10", "voltarget", "zerobeta")
 V3_RUN = "+".join(V3_SWITCHES)
-# Each version: its code, protocols, frozen files and results.
+# Each version: its code, documents, frozen files and results.
 VERSIONS = {
     "v1": {
         "title": "Round one, the submitted book",

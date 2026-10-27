@@ -31,7 +31,7 @@ OUT = AD / "review"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-# Stops with the fix when a file the review reads is missing.
+# Stops, saying what makes it, when a file this script reads is missing.
 def need(path):
     if not path.is_file():
         sys.exit(f"review.py: {path} is missing; pnpm media video makes it")

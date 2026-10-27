@@ -27,7 +27,7 @@ def bundle(tmp_path, monkeypatch):
 
 # Features never hold next month's return; the panel joins it on keys.
 def test_features_never_carry_the_label_and_panel_joins_it(bundle, monkeypatch):
-    # The v1 reader unsealed, as v1-v3 runs read it (v4 seals it, M6).
+    # The bundle reader with blind mode off, so every year reads.
     monkeypatch.delenv("FIAM_BLIND", raising=False)
     assert "ret_exc_lead1m" not in bundle.features(["prc"])
     panel = bundle.panel(["prc", "ret_exc_lead1m"])
@@ -133,7 +133,7 @@ def test_filing_excerpt_is_masked():
     assert "Securities Act of 1933" == build.excerpt("Item 1.01 Securities Act of 1933", {})[10:]
 
 
-# Under FIAM_BLIND=1 the v1 reader drops 2021+ rows and labels (§1.3).
+# Under FIAM_BLIND=1 the bundle reader drops 2021+ rows and labels.
 def test_blind_mode_seals_the_v1_reader(bundle, monkeypatch):
     monkeypatch.setenv("FIAM_BLIND", "1")
     keys = pd.DataFrame(

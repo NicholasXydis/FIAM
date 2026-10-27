@@ -1,4 +1,4 @@
-# The customer voice exhibit (piece 4) on synthetic stores and labels.
+# The customer voice exhibit on synthetic stores and labels.
 
 import numpy as np
 import pandas as pd

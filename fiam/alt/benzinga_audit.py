@@ -1,4 +1,4 @@
-# Piece 9: Benzinga CA0035 rows against SEC filings (PLAN §12.4).
+# Benzinga CA0035 event rows checked against SEC filings.
 
 import gzip
 import json
@@ -6,6 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from fiam.alt.common import share
 
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "data" / "carbon_arc" / "snapshot_1"
@@ -22,7 +24,7 @@ WINDOW = 5
 SEAL_DAY = pd.Timestamp("2020-12-31")
 # The chance rate: the same rows and firms, labels moved back 26 weeks.
 PLACEBO_WEEKS = 26
-# The A6 clock may run up to 5 hours late (PLAN §6.3): a sensitivity.
+# The filing clock may run up to 5 hours late: a sensitivity test.
 EARLY_HOURS = 5
 GROUPS = ("all", "listed", "departed", "unmapped")
 
@@ -243,11 +245,6 @@ def match(rows: pd.DataFrame, filings: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-# A share as a rounded float, or None when there is nothing to share.
-def share(part, whole) -> float | None:
-    return round(float(part) / float(whole), 4) if whole else None
-
-
 # A table cell as plain JSON: numbers as numbers, gaps as None.
 def plain(value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -394,7 +391,7 @@ def audit(rows, sessions, filings, permno, departed, covered) -> pd.DataFrame:
     rows["lookahead"] = rows["matched"] & (rows["first_public"] > end)
     rows["lookahead_t1"] = rows["matched"] & (rows["first_public"] > end_t1)
     rows["lookahead_nearest"] = rows["matched"] & (rows["nearest_public"] > end)
-    # A6 reads some UTC digits as Eastern, up to 5 hours late: the bound.
+    # The clock reads some UTC digits as Eastern, up to 5 hours late.
     early = rows["first_public"] - pd.Timedelta(hours=EARLY_HOURS)
     rows["lookahead_early"] = rows["matched"] & (early > end)
     # The placebo: labels 26 weeks earlier, the same firms and kinds.

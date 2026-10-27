@@ -54,7 +54,7 @@ def info_sets() -> list[list[str]]:
     return sets
 
 
-# v1's eligible stocks each month, every characteristic a 0-100 rank.
+# The shipped book's eligible stocks each month, traits as 0-100 ranks.
 def universe() -> pd.DataFrame:
     chars = P.characteristics()
     frame = P.screen(P.load_panel(tuple(c for c in chars if c not in P.SIGNALS)), FIRST, LAST)
@@ -171,7 +171,7 @@ def ask(server, agent: dict, card: pd.DataFrame, number: int, month, names: dict
     return row
 
 
-# Replay check (honesty.md): 2% of saved answers re-asked live, by seed.
+# Replay check: 2% of saved answers asked again live, chosen by seed.
 def rerun(log: str, agents: list[dict], share: float = 0.02) -> None:
     frame, names = universe(), labels()
     saved = [json.loads(x) for x in (H.RUNS / f"{log}.jsonl").read_text("utf-8").splitlines()]
@@ -204,7 +204,7 @@ def copycat(minutes: float | None = None) -> None:
     run_crowd("crowdlab_copycat", copycat_agents(), minutes)
 
 
-# Memorization check (crowd.md 3): 10% of cards re-asked, ranks moved.
+# Memorization check: 10% of cards asked again with the ranks moved.
 def perturbed(log: str, agents: list[dict], share: float = 0.10) -> None:
     frame, names = universe(), labels()
     saved = [json.loads(x) for x in (H.RUNS / f"{log}.jsonl").read_text("utf-8").splitlines()]
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     if task == "perturbed":
         perturbed("crowdlab_retail", retail_agents())
     elif task == "quick":
-        # Finals day (crowd.md level 1): a few retail agents, newest months.
+        # Finals day: a few retail agents on the newest months.
         env, everyone = os.environ, retail_agents()
         n = int(env.get("FIAM_AGENTS", 6))
         agents = everyone[:: max(1, len(everyone) // n)][:n]

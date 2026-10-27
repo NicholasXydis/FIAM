@@ -1,4 +1,4 @@
-# Writes every v4 exhibit from the final run's tables, once unsealed.
+# Writes every exhibit from the final run's tables, once unsealed.
 
 import json
 from pathlib import Path
@@ -7,7 +7,7 @@ import matplotlib
 
 from fiam.exhibits_v4 import common, extras, required
 
-# How each exhibit reads a PLAN definition the PDF leaves open.
+# How each exhibit reads a definition the PDF leaves open.
 READINGS = {
     "exhibit_1_active_return": "active = strategy cumulative return less the T-bill + 4% "
     "cumulative return, in points; the daily hurdle compounds to the table's monthly bill + 4%",

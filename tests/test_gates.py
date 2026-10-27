@@ -1,4 +1,4 @@
-# The step 6 gate machinery and the five signals on synthetic data.
+# The gate machinery and the five signals on synthetic data.
 
 import dataclasses
 import json
@@ -176,7 +176,7 @@ def test_red_flag_window(monkeypatch):
     assert np.isnan(got[5])
 
 
-# Every sign, window and bar is the protocol's (step 4 checklist).
+# Every sign, window and bar holds its written value.
 def test_signs_windows_and_bars_match_the_protocol():
     signs = {m: m.SIGN for m in gates.SIGNALS.values()}
     assert signs == {short_interest: -1, edgar_flags: -1, insiders: 1, lazy_prices: 1,

@@ -1,4 +1,4 @@
-# The step 6 models on synthetic data: bans, signs, purge, end to end.
+# The forecast models on synthetic data: bans, signs, purge, end to end.
 
 import json
 
@@ -12,7 +12,7 @@ from fiam.v4.forecast import dataset, grid, models
 CHARS = ["o_score", "gp_at", "ret_12_1", "noa_at", "z1", "z2"]
 
 
-# A has-data flag or a cost offered as an input is refused (§1.2).
+# A has-data flag or a cost offered as an input is refused.
 def test_flags_and_costs_are_refused():
     assert dataset.check_inputs([*CHARS, "syy", "sue_forecast"], CHARS)
     for bad in ("has_data", "cost_bps", "o_score_missing", "borrow_rate"):
@@ -140,7 +140,7 @@ def test_fits_only_see_public_labels(monkeypatch):
 # A SUE target not yet public at the cut changes no fit's target rank.
 def test_sue_rank_ignores_unpublished_targets(monkeypatch):
     t = fake_table(monkeypatch)
-    # 2018-10's other targets are public by the cut, so a leak would show.
+    # 2018-10's other targets are public by the cut, so look-ahead shows.
     late = (t.x["eom"] == pd.Timestamp("2018-10-31")) & (t.x["permno"] % 2 == 0)
     t.x.loc[late, "sue_public"] = pd.Timestamp("2019-03-31")
     before = grid.sue_column(t, "universe", 7, 20)

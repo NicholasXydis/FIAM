@@ -1,4 +1,4 @@
-# Dated exits (PLAN §6.4): CRSP groups and the 2026 SEC-form rule.
+# Dated exits: CRSP groups and the 2026 SEC-form rule.
 
 import pandas as pd
 

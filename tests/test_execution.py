@@ -1,4 +1,4 @@
-# Step 7's execution, screens and exam rules on synthetic data.
+# Execution, screens and exam rules on synthetic data.
 
 import numpy as np
 import pandas as pd
@@ -146,7 +146,7 @@ def test_crash_cap(monkeypatch):
     assert book.crash_cap(days[-1]) == pytest.approx(2 / 1.21)
 
 
-# The exam: the highest IR wins, a tie to the simpler; PLAN's reading.
+# The exam: the highest IR wins, and a tie goes to the simpler design.
 def test_exam_rules():
     runs = {1: {"ir": 0.3}, 2: {"ir": 0.3}, 3: {"ir": 0.3}, 4: {"ir": 0.1}}
     assert exam.winner(runs) == 3
@@ -175,7 +175,7 @@ def test_cover_during_spill_is_not_rebought():
         b.values = (w * 1e9).to_dict()
 
 
-# The exam reads the derived settings: margin d and lever A4's speed.
+# The exam reads the derived settings: margin d and the a4_rate speed.
 def test_exam_reads_derived_settings():
     keys = {"gross": 0.0, "ridge": 30.0, "risk_lambda": 0.5, "style_cap": 0.3,
             "sector_band": 0.02, "cost_budget": 0.001, "speed": 1.0, "norm": 1.0}  # fmt: skip
@@ -283,7 +283,7 @@ def test_squeeze_escalates_once():
     assert w.get(200, 0.0) == 0.0 and not hook.pending
 
 
-# The volume trigger counts only when the stock has risen (reading 11).
+# The volume trigger counts only when the stock has risen.
 def test_volume_trigger_needs_a_rise():
     days = pd.bdate_range("2019-01-01", periods=140)
     w = object.__new__(execution.SqueezeWatch)
@@ -425,7 +425,7 @@ def test_spill_never_crosses_zero():
     assert w.get(3, 0.0) >= 0.0
 
 
-# A book-wide fix with tiny moves counts toward the plan, not ending it.
+# A tiny book-wide re-hedge counts toward the plan, not ending it.
 def test_book_wide_fix_keeps_the_plan():
     f = formation(n=250, gross=1.6, adv=3e7)
     hook = execution.Execution({DAY("2019-02-01"): f})

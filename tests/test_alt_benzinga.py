@@ -1,4 +1,4 @@
-# Piece 9's Benzinga vs SEC audit on synthetic rows and filings.
+# The Benzinga vs SEC audit on synthetic rows and filings.
 
 import gzip
 import json

@@ -1,4 +1,4 @@
-# The one clock (PLAN §6.3) on the NYSE calendar alone, no data folder.
+# The one clock on the NYSE calendar alone, no data folder.
 
 import numpy as np
 import pandas as pd
@@ -157,7 +157,7 @@ def test_projected_earnings_dates():
     assert out.loc[("B", 2024, 2), "basis"] == "none"
 
 
-# The 2020-10 label ends 2020-12-01; 2020-11's reaches 2021 (§1.3).
+# The 2020-10 label ends 2020-12-01; 2020-11's reaches 2021.
 def test_label_window_refuses_the_seal():
     cal = clock.calendar(pd.bdate_range("2020-09-01", "2021-02-26"))
     start, end = clock.label_window(pd.Timestamp("2020-10-31"), 1, cal)

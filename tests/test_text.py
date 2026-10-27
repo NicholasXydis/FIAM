@@ -1,4 +1,4 @@
-# The step 4 text rules (protocol.md text section) on small texts.
+# The filing text rules on small texts.
 
 import pandas as pd
 
@@ -205,7 +205,7 @@ def test_property_states_read_names_and_codes():
     assert text.property_states(doc) == ["WI", "IN", "MS", "TX"]
 
 
-# K5 strips any spelling of "forward-looking" statements or information.
+# Boilerplate is stripped in any spelling of "forward-looking".
 def test_boilerplate_catches_spelling_variants():
     for line in (
         "These forward looking statements are risky.",

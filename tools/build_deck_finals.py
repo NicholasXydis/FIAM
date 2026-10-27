@@ -16,7 +16,7 @@ from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches
 
 ROOT = Path(__file__).resolve().parents[1]
-# Repo root on sys.path, so fiam and deck 1's helpers always import.
+# Repo root on sys.path, so fiam and build_deck's helpers always import.
 sys.path.insert(0, str(ROOT))
 
 from fiam import paths  # noqa: E402
@@ -45,7 +45,7 @@ PEOPLE = (
 )
 MEMBERS = "  ·  ".join(PEOPLE)
 SCHOOLS = "Concordia University  ·  McGill University"
-# Deck 1's footer, and ours with the team's name in it.
+# build_deck's footer, and ours with the team's name in it.
 FOOTERS = (
     "FIAM  ·  McGill-FIAM Asset Management Hackathon 2026",
     f"{TEAM}  ·  McGill-FIAM Asset Management Hackathon 2026 Finals",
@@ -228,7 +228,7 @@ def pillars(page, ideas) -> list:
     return stagger(row, "rise", 0, 450)
 
 
-# A chart fit to its box, from out/figures or, for the book, deck 1's.
+# A chart fit to its box, from out/figures or build_deck's for the book.
 def chart(page, name: str, at, book: bool = False):
     path = (D.FIGURES if book else FIGURES) / f"{name}.png"
     if not path.exists():
@@ -487,7 +487,7 @@ def neutral(deck, f: dict, m: dict) -> None:
     finish(page, words, steps, film=film)
 
 
-# Dollars and IR by fund size, where v1 peaks and stops, final at $5B.
+# Dollars and IR by fund size: the first book's peak and stop, then $5B.
 def capacity(deck, f: dict, m: dict) -> None:
     subtitle = "Dollars earned and IR by fund size, after all costs"
     page = D.slide(deck, "How Much Money Can It Run?", subtitle, section("Capacity", True))
@@ -502,7 +502,7 @@ def capacity(deck, f: dict, m: dict) -> None:
     finish(page, notes("capacity", f), steps, film=film)
 
 
-# Final v3 (v2_amendment_3.md) against v1, v2 and v2-pass by fund size.
+# The final book against the first book and two others by fund size.
 def final(deck, f: dict, m: dict) -> None:
     every = f["fd_best_sharpe"] == f["fd_sizes"]
     heading = "One Book for Every Fund Size, $10M to $5B" if every else "The Book We Present"
@@ -562,7 +562,7 @@ def edge(deck, f: dict, m: dict) -> None:
     dark(deck, "Every backtest looks good.", "Is the edge", "REAL?", notes("edge", f))
 
 
-# Final v3 among 1,000 random large-cap books (final_exhibits.md 1.1).
+# The final book among 1,000 random large-cap books.
 def monkeys(deck, f: dict, m: dict) -> None:
     subtitle = "Long-short books of the 500 largest stocks, with our size, holdings and costs"
     page = D.slide(
@@ -580,7 +580,7 @@ def monkeys(deck, f: dict, m: dict) -> None:
     finish(page, notes("monkeys", f), steps, film=film)
 
 
-# Every benchmark on one axis, and the live outlook (final_exhibits.md).
+# Every benchmark on one axis, and the live outlook.
 def ladder(deck, f: dict, m: dict) -> None:
     subtitle = "IR at $10M after all costs, 2021 to August 2026"
     page = D.slide(deck, "Every Benchmark We Could Think Of", subtitle, section("The edge", True))
@@ -629,7 +629,7 @@ def crowd_page(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Final v3's risk, name by name (final_exhibits.md).
+# The final book's risk, name by name.
 def risk_slide(deck, f: dict, m: dict) -> None:
     subtitle = "Every month, name by name, from our risk model"
     page = D.slide(deck, "Where the Risk Sits", subtitle, section("Risk", True))
@@ -644,7 +644,7 @@ def risk_slide(deck, f: dict, m: dict) -> None:
     finish(page, notes("risk", f), [(pic, "wipe", 0)] + stagger(row, "zoom", 1300, 300))
 
 
-# Final v3's bets by month, told by the explainer, every number checked.
+# The final book's bets by month, told by the explainer, all checked.
 def exposures_slide(deck, f: dict, m: dict) -> None:
     subtitle = "Exposure to five styles, every month"
     page = D.slide(deck, "What It Bets On, Month by Month", subtitle, section("Risk", True))
@@ -845,7 +845,7 @@ def receipt(deck, f: dict, m: dict) -> None:
     finish(page, notes("receipt", f), steps)
 
 
-# Today's finals-rules book from real data only (finals_global.md).
+# Today's finals-rules book, from runs on real data only.
 def today(deck, f: dict, m: dict) -> None:
     runs = sorted((V2 / "finals").glob("*.json"), key=lambda p: p.stat().st_mtime)
     real = [load(p) for p in runs]
@@ -1057,7 +1057,7 @@ def method(deck, f: dict, m: dict) -> None:
                 f"{f['rules']} of last year's limits found, each quoted",
             ),
         ]
-        # Deck 1's crowd row counts v1's longs; the finals deck says whose.
+        # build_deck's crowd row counts the first book's longs, so it says so.
         crowd = D.architecture().replace("of our longs are", "of the first book's longs are")
         table = crowd + "\n" + "\n".join("| " + " | ".join(r) + " |" for r in extra)
         below = D.table(page, table, Inches(5.45), Inches(2.55), Inches(7.28), 8, 0.23)
@@ -1140,13 +1140,13 @@ def costs_page(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Pages 4 to 7 of the brief: deck 1's committee pack for final v3.
+# Pages 4 to 7 of the brief: build_deck's committee pages, final book.
 def committee(deck, f: dict, m: dict) -> None:
     for page in (returns_page, years_page, beta_page, costs_page):
         page(deck, f, m)
 
 
-# Brief page 8: deck 1's discussion, plus what crowd and capacity add.
+# Brief page 8: build_deck's discussion, plus crowd and capacity.
 def discussion(deck, f: dict, m: dict) -> None:
     try:
         lines = D.discussion(R, m)
@@ -1156,7 +1156,7 @@ def discussion(deck, f: dict, m: dict) -> None:
             f"Expectations: IR {perf['information_ratio']:.2f} with beta "
             f"{perf['beta_realized']:+.2f} over the full period."
         ]
-    # Deck 1's page numbers point at its own appendix, not this deck's.
+    # build_deck's page numbers point at its own appendix, so they go.
     lines = [re.sub(r" \(pages? [\d, and-]+\)", "", line) for line in lines]
     lines = [line for line in lines if not line.startswith("Next:")]
     lines += [
@@ -1180,7 +1180,7 @@ def discussion(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Appendix: each fix's own pre-2021 test, then the edge tests.
+# Appendix: each change's own pre-2021 test, then the edge tests.
 def evidence(deck, f: dict, m: dict) -> None:
     verdicts = load(V2 / "evidence.json").get("verdicts", {})
     rows = ["| Fix | Its own pre-2021 test |", "|---|---|"]
@@ -1219,7 +1219,7 @@ def evidence(deck, f: dict, m: dict) -> None:
     finish(page)
 
 
-# Deck 1's prompts, then the finals agents' own, as the brief asks.
+# build_deck's prompts, then the finals agents' own, as the brief asks.
 def prompts(deck, f: dict, m: dict) -> None:
     from fiam.agents import crowd_lab, rules_reader
 

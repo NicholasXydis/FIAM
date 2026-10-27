@@ -1,4 +1,4 @@
-# SEC 13F holdings: forms, lines, units and CUSIP matches (step 6).
+# SEC 13F holdings: forms, lines, units and CUSIP matches.
 
 import zipfile
 
@@ -53,7 +53,7 @@ def test_read_zip_keeps_holdings_lines_only(tmp_path):
     assert log["option_lines_dropped"] == 1 and log["principal_lines_dropped"] == 1
     h1 = lines[lines["ACCESSION_NUMBER"] == "h1"].set_index("CUSIP")
     assert h1.loc["111111111", "VALUE"] == 150.0 and "222222222" not in h1.index
-    # Shared-discretion shares are kept apart from sole ones (step 7).
+    # Shared-discretion shares are kept apart from sole ones.
     assert h1.loc["111111111", "SOLE"] == 1000.0 and h1.loc["111111111", "SSHPRNAMT"] == 1500.0
     # A filing already read from another zip is skipped, never doubled.
     again, _ = thirteen_f.read_zip(tmp_path / "2019q1_form13f.zip", {"h1"}, {})

@@ -130,7 +130,7 @@ def catalogue(limit: int | None = None) -> int:
         "insights": lambda d: every_insight(data, d),
     }
     for n, ds in enumerate(ids[:limit], 1):
-        # Insight lists saved before paging was fixed are fetched again.
+        # Insight lists holding fewer items than their total are fetched again.
         stale = OUT / ds / "insights.json"
         if stale.exists():
             old = json.loads(stale.read_text(encoding="utf-8"))

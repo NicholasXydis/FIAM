@@ -129,7 +129,7 @@ def main(source: str, name: str) -> dict:
     return report
 
 
-# Finals drill (finals.md): rules, draft mandate, v1 and v2, all timed.
+# Finals drill: rules, draft mandate, then each finals book, all timed.
 def drill(source: str) -> None:
     from fiam import v2
 

@@ -1,4 +1,4 @@
-# Does the model read the filing or recall the company? (honesty*.md)
+# Does the model read the filing or recall the company it masks?
 
 import hashlib
 import json
@@ -78,7 +78,7 @@ def sample() -> pd.DataFrame:
     return pd.concat(out, ignore_index=True).sort_values("document_id", ignore_index=True)
 
 
-# The protocol's four texts, the fifth condition repeats the masked.
+# Four texts: masked, named, reversed, dated; a fifth repeats masked.
 def conditions(row: pd.Series) -> dict:
     masked = row["excerpt"]
     later = (row["filing_date"] + pd.DateOffset(years=1)).strftime("%B %d, %Y")

@@ -1,4 +1,4 @@
-# Step 7 construction on synthetic data: rules, costs, alignment, drift.
+# Book construction on synthetic data: rules, costs, alignment, drift.
 
 import numpy as np
 import pandas as pd
@@ -111,7 +111,7 @@ def test_dollar_costs_by_hand():
     impact_1 = 0.02 * np.sqrt(4e6 / 1e7) * 1e6
     impact_2 = 0.02 * np.sqrt(1e6 / 1e7) * 1e6
     fee = costs.SEC_FEE * 1e6 + min(costs.TAF * shares, costs.TAF_CAP)
-    # Commission 0.5 cents a share, the protocol's written figure.
+    # Commission is 0.5 cents a share.
     assert got[1] == pytest.approx(0.005 * shares + 1000 + impact_1)
     assert got[2] == pytest.approx(fee + 0.005 * shares + 1000 + impact_2)
 
@@ -129,7 +129,7 @@ def test_conservative_fill():
     assert got.loc[1:20].equals(x)
 
 
-# Borrow tiers: 0.3% under 5%, then 1%, 3% and 8% (checklist).
+# Borrow tiers: 0.3% under 5%, then 1%, 3% and 8%.
 def test_borrow_tiers():
     got = inputs.borrow_tier(pd.Series([0.0, 0.049, 0.05, 0.1, 0.2, 0.5])).tolist()
     assert got == [0.003, 0.003, 0.01, 0.03, 0.08, 0.08]
@@ -170,7 +170,7 @@ def test_shocked_book_returns_to_neutral():
     assert abs(got.sum()) < 1e-3 and used.cost_budget is None and used.participation
 
 
-# Lever A4: the blend moved onto every rule, nearer than the optimum.
+# A partial step: the blend moved onto every rule, nearer than optimum.
 def test_partial_projection():
     x, alpha, loadings, chol, spec = fake()
     s = optimizer.Settings(gross=1.6, ridge=30, risk_lambda=0.5, style_cap=0.5, norm=0.001)
@@ -242,7 +242,7 @@ def test_with_delta(monkeypatch):
     assert got.loc[days[-1], 8] > got.loc[days[0], 8]
 
 
-# A side's pool widens until 130 names may take it (reading 7).
+# A side's pool widens until 130 names may take it.
 def test_short_pool_widens_until_130():
     x, alpha, *_ = fake(n=2000)
     x["adv_cost"] = x["dolvol_126d"] = 1e9

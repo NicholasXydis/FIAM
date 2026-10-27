@@ -1,4 +1,4 @@
-# The dated link table (PLAN §6.7) on tiny synthetic inputs.
+# The dated link table on tiny synthetic inputs.
 
 import json
 
@@ -82,7 +82,7 @@ def test_cik_decisions_apply_and_unsettled_stocks_fail(tmp_path):
         )
 
 
-# An undated SEC id starts at its filer's first filing, never 1900 (H4).
+# An undated SEC id starts at its filer's first filing, never 1900.
 def test_undated_cik_starts_at_the_first_filing(tmp_path):
     pd.DataFrame({"permno": [1], "cik": [None], "cik_compustat": [30]}).to_parquet(
         tmp_path / "map.parquet"

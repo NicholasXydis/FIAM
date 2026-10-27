@@ -1,4 +1,4 @@
-# The step 10 freeze and unseal, on a scratch git repo with fake paths.
+# The freeze and unseal, on a scratch git repo with fake paths.
 
 import hashlib
 import json
@@ -252,11 +252,19 @@ def test_unsealed_follows_the_log(repo, monkeypatch):
     assert sources.unsealed() is False
 
 
-# On the real repo's paths blind mode is on: no unseal log exists.
-def test_real_repo_is_sealed(monkeypatch):
+# The real repo is sealed, or unsealed by one line naming the freeze.
+def test_real_repo_seal_is_sound(monkeypatch):
     monkeypatch.setattr(sources, "UNSEAL_CACHE", None)
-    assert not (freeze.ROOT / "frozen" / "v4" / "unseal.log").exists()
-    assert sources.unsealed() is False
+    log = freeze.ROOT / "frozen" / "v4" / "unseal.log"
+    # Sealed: blind mode holds. Unsealed: one line naming the freeze.
+    if not log.exists():
+        assert sources.unsealed() is False
+        return
+    lines = log.read_text().splitlines()
+    assert len(lines) == 1
+    parts = lines[0].split()
+    assert len(parts) == 3
+    assert parts[2] == freeze.digest(freeze.ROOT / "frozen" / "v4" / "v4.sha256")
 
 
 # run.py finals --unseal calls the unseal and reports a refusal.

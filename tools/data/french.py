@@ -1,25 +1,19 @@
-# French's daily factor files as archived before 2021, receipted (B23).
+# French's daily factor files as archived before 2021, receipted.
 
-import base64
 import hashlib
 import json
 import sys
 
-from _shared import ROOT, fetch, receipts, stamp
+from _shared import ROOT, archive_digest, fetch, receipts, stamp
 
 OUT = ROOT / "data" / "benchmarks" / "french_archive"
 USAGE = "uv run run.py --data french archive | verify"
 SITE = "mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
 FILES = ("F-F_Research_Data_5_Factors_2x3_daily_CSV.zip", "F-F_Momentum_Factor_daily_CSV.zip")
 CDX = "http://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,digest&filter=statuscode:200"
-# Copies captured before 2021 only; the newest decides (protocol.md).
+# Copies captured before 2021 only; the newest decides.
 BEFORE = "20201231"
 PACE = 1.0
-
-
-# The archive's own content fingerprint: SHA-1 in base 32.
-def archive_digest(body: bytes) -> str:
-    return base64.b32encode(hashlib.sha1(body).digest()).decode()
 
 
 # Every pre-2021 capture of one file: (timestamp, digest), oldest first.

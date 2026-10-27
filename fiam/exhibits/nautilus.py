@@ -138,7 +138,7 @@ def prices(permnos: list) -> pd.DataFrame:
     return 100 * (1 + wide.fillna(0.0)).cumprod()
 
 
-# One book's monthly replay against its ledger, by protocol tolerances.
+# One book's monthly replay against its ledger, within set tolerances.
 def replay(name: str) -> dict:
     folder = v2.OUT / name / "record"
     held = data.read(folder / "holdings.parquet")
@@ -228,7 +228,7 @@ def replay(name: str) -> dict:
     )
 
 
-# Replays named runs (v1 and v2 at $10M by default) beside earlier ones.
+# Replays named runs, shipped and switched at $10M by default, to file.
 def main(names: list[str]) -> None:
     path = OUT / "check.json"
     report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

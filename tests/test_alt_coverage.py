@@ -12,7 +12,7 @@ def ent(carc_id: int, name: str, rep: str) -> dict:
     return {"carc_id": carc_id, "carc_name": name, "entity_representation_name": rep}
 
 
-# Dated link rows in the shape of the v4 links table.
+# Dated link rows in the shape of the links table.
 def links(rows: list[tuple]) -> pd.DataFrame:
     frame = pd.DataFrame(rows, columns=["permno", "kind", "value", "valid_from", "valid_to"])
     frame["valid_from"] = pd.to_datetime(frame["valid_from"])

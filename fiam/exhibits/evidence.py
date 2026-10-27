@@ -1,4 +1,4 @@
-# The protocol's verdicts: each v2 member's test and v2 against v1.
+# Each switch's pass or fail test, and the switched book vs shipped.
 
 import json
 from functools import cache
@@ -47,7 +47,7 @@ def market(window: str) -> pd.Series:
     return bm["mkt_rf_crsp" if window == "check" else "mkt_rf"]
 
 
-# A window's universe with v1's or v2's signal, built once.
+# A window's universe with the shipped or switched signal, built once.
 @cache
 def frame(window: str, on: frozenset) -> pd.DataFrame:
     return v2.universe(WINDOWS[window], v2.Settings(on, 1e7, M.V1), v2.params())
@@ -66,13 +66,13 @@ def weight_correlation(a: pd.DataFrame, b: pd.DataFrame) -> float:
     return float(np.mean(out)) if out else float("nan")
 
 
-# Each member's test at the capital levels docs/protocols/v2.md names.
+# Each switch's test at every capital level, against the shipped book.
 def verdicts() -> dict:
     caps = {c: f"{c:.0e}".replace("+0", "") for c in v2.CAPITALS}
     base = {c: load(f"v1@{tag}", "check") for c, tag in caps.items()}
     out = {}
 
-    # The cost-aware member's test, shared by grinold (v2_amendment_1.md).
+    # The cost-aware switch's test, also used for the grinold switch.
     for member in ("costs", "grinold"):
         runs = {c: load(f"{member}@{tag}", "check") for c, tag in caps.items()}
         if not all(runs.values()):
@@ -110,7 +110,7 @@ def verdicts() -> dict:
     cheaper = all(liq[c][2]["cost_annual"] < base[c][2]["cost_annual"] for c in (1e9, 5e9))
     out["liquidity"] = dict(cap_binds=binds, cheaper_at_1b_and_5b=cheaper, passed=binds and cheaper)
 
-    # Risk sizing 2017-20 (model from 2017-01): vol per unit gross vs v1's.
+    # Risk sizing 2017-20 (model from 2017-01): vol a unit gross vs shipped.
     def vol(run: tuple) -> float:
         b = run[0][run[0]["forecast_eom"] >= "2016-12-31"]
         return float(b["gross"].std() * np.sqrt(12) / b["gross_exposure"].mean())
@@ -143,7 +143,7 @@ def sharpe(net: pd.Series) -> float:
     return float(net.mean() / net.std() * np.sqrt(12))
 
 
-# Each v3 part alone on v2-pass against v2-pass (v2_amendment_2.md).
+# Each extra part alone on the passing-switch book, against that book.
 def parts(members: dict) -> dict:
     base = v2.passing(members)
     ref = {c: load(v2.Settings(base, c).name, "check") for c in v2.CAPITALS}
@@ -214,7 +214,7 @@ def scorecard(record: pd.DataFrame, check: dict) -> dict:
     return out
 
 
-# Final v3's two fixes, each alone on its base at $10M (v2_amendment_3).
+# The two tested rules, each alone on `base_three` at $10M.
 def final_parts(verdicts: dict) -> dict:
     base = v2.base_three(verdicts)
     ref = load(v2.Settings(base, 1e7).name, "check") if base else None
@@ -244,7 +244,7 @@ def final_parts(verdicts: dict) -> dict:
     return out
 
 
-# Final v3's daily path at $10M, 2021-25: risk and gross against 200%.
+# The chosen book's daily path at $10M, 2021-25: risk, gross vs 200%.
 def final_daily(chosen: frozenset | None) -> dict:
     run = load(v2.Settings(chosen, 1e7).name, "record") if chosen else None
     if run is None:
@@ -264,7 +264,7 @@ def final_daily(chosen: frozenset | None) -> dict:
     )
 
 
-# v3 vs v1 and v2-pass at each capital, 2021-26: bootstrap, DSR, scores.
+# The parts and chosen books vs the rest by capital: bootstrap, DSR.
 def final_book(verdicts: dict, counts: dict) -> dict:
     final = v2.final(verdicts)
     if final is None:
@@ -389,14 +389,14 @@ def shuffled_ic(seed: int = 42) -> dict:
     return dict(mean=float(ics.mean()), t=float(t), passed=bool(abs(t) < 2))
 
 
-# v2 minus v1 at $10M: bootstrapped monthly net, cost and beta gaps.
+# Switched minus shipped at $10M: bootstrapped net, cost, beta gaps.
 def versus(window: str) -> dict:
     a, b = load("v1@1e7", window)[0], load("v2@1e7", window)[0]
     f = pd.DataFrame(
         dict(d=b["net"] - a["net"], c=b["cost"] - a["cost"], a=a["net"], b=b["net"])
     ).assign(m=market(window).reindex(a.index))
 
-    # v2's market beta minus v1's, both fitted on the same months.
+    # The switched book's market beta minus the shipped one's, same months.
     def beta_gap(g: pd.DataFrame) -> float:
         x = np.column_stack([np.ones(len(g)), g["m"]])
         fit = np.linalg.lstsq(x, g[["b", "a"]].to_numpy(), rcond=None)[0]
@@ -409,7 +409,7 @@ def versus(window: str) -> dict:
     )
 
 
-# Monthly dashboard and neutrality tests, v1 and v2 at $10M, by window.
+# Monthly dashboard and neutrality tests, both books at $10M, by window.
 def comparison() -> dict:
     out = {}
     for window in WINDOWS:
@@ -425,7 +425,7 @@ def comparison() -> dict:
     return out
 
 
-# v1 and v2 books at $10M with their daily stock returns and the market.
+# Base and switched books at $10M, their daily stock returns, market.
 @cache
 def daily_inputs() -> tuple[dict, pd.DataFrame, pd.Series]:
     held = {(n, w): load(f"{n}@1e7", w)[1] for n in ("v1", "v2") for w in WINDOWS}
@@ -437,13 +437,13 @@ def daily_inputs() -> tuple[dict, pd.DataFrame, pd.Series]:
     return held, returns, f.set_index(pd.to_datetime(f["date"]))["mktrf"]
 
 
-# Daily risk at $10M, v1 and v2: Dimson beta, VaR, CVaR, concentration.
+# Daily risk at $10M, both books: Dimson beta, VaR, CVaR, concentration.
 def daily() -> dict:
     held, returns, mkt = daily_inputs()
     return {f"{n} {w}": stats.daily_risk(h, returns, mkt) for (n, w), h in held.items()}
 
 
-# Warning signs (risk.md 4, exhibit only): when each fired, next 3m net.
+# Warning signs, shown only: when each fired, and the next 3 months net.
 def warning_signs(name: str) -> dict:
     held, returns, mkt = daily_inputs()
     book = pd.concat([load(f"{name}@1e7", w)[0] for w in WINDOWS]).sort_index()
@@ -541,7 +541,7 @@ def regimes(name: str) -> dict:
     return out
 
 
-# Annual cost by component, v1 against v2, each capital and window.
+# Annual cost by component, shipped vs switched, by capital, window.
 def waterfall() -> dict:
     out = {}
     for c in v2.CAPITALS:
@@ -574,12 +574,12 @@ def spreads() -> dict:
     }
 
 
-# Builds every v2 verdict and exhibit into out/v2/evidence.json.
+# Builds every switch verdict and exhibit and writes evidence.json.
 def main() -> None:
     report = dict(protocol="docs/protocols/v2.md, evidence.md", verdicts=verdicts())
     counts = trial_counts()
     report["trials"] = counts
-    # Over the T-bill as protocol and metric define it, +4% hurdle beside.
+    # Deflated Sharpe over the T-bill, and over the +4% hurdle beside it.
     report["deflated_sharpe"] = {
         f"{name} {kind}{tag}": P.deflated_sharpe(
             load(f"{name}@1e7", "record")[0]["net"] - hurdle, counts[kind]

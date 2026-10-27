@@ -1,4 +1,4 @@
-# The extra exhibits (PLAN §13.6): K1, capacity, 2026, the tail.
+# The extra exhibits: K1, capacity, 2026 and the tail.
 
 import math
 
@@ -103,7 +103,7 @@ def capacity(x: Inputs):
     plan["year"] = pd.DatetimeIndex(plan["first"]).year
     p = x.positions[x.positions["date"].isin(x.holding_days)]
     p = c.as_of(p, x.adv, "adv")
-    # Days to exit: the position over 10% of its ADV (PLAN §10.2).
+    # Days to exit: the position over 10% of its ADV.
     p["exit_days"] = p["value"].abs() / (SPILL_ADV * p["adv"])
     p["year"] = pd.DatetimeIndex(p["date"]).year
     ev = x.events
@@ -177,7 +177,7 @@ def variant(x: Inputs, days: pd.DatetimeIndex) -> pd.DataFrame | None:
     return b.reindex(days)
 
 
-# 2026 as its own sub-period beside the full window (PLAN §13.6).
+# 2026 as its own sub-period beside the full window.
 def sub_period(x: Inputs):
     d, before = x.d, c.before_costs(x)
     days = d.index[d.index.year == SUB_YEAR]

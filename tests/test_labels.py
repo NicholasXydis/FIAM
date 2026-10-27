@@ -1,4 +1,4 @@
-# Step 6 labels, ranks and SYY-10 on a fake market (protocol step 6).
+# Labels, ranks and SYY-10 on a fake market.
 
 import numpy as np
 import pandas as pd
@@ -187,7 +187,7 @@ def test_real_labels_are_public_by_the_seal():
     assert one["eom"].max() <= pd.Timestamp("2020-10-31")
 
 
-# The ten SYY-10 parts and signs are exactly PLAN §7.1's table.
+# The ten SYY-10 parts and signs are exactly the written table.
 def test_syy_parts_match_the_plan():
     assert syy.PARTS == {
         "o_score": -1, "chcsho_12m": -1, "eqnetis_at": -1, "oaccruals_at": -1, "noa_at": -1,

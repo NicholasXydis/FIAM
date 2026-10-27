@@ -1,4 +1,4 @@
-# As-filed EPS and SUE, cleaned Compustat and the SYY rebuild (step 6).
+# As-filed EPS and SUE, cleaned Compustat and the SYY rebuild.
 
 import numpy as np
 import pandas as pd
@@ -124,7 +124,7 @@ def test_sue_scale_needs_six_prior_quarters():
 def test_real_apple_sue_after_its_split():
     s = sources.read("sue", ["sue", "scale", "n_prior"], purpose="label")
     row = s[(s["permno"] == 14593) & (s["end"].between("2015-03-20", "2015-04-05"))]
-    # Both audits rebuilt it by hand at 1.622; unadjusted it would be 0.51.
+    # Rebuilt by hand it is 1.622; unadjusted it would be 0.51.
     assert len(row) == 1 and row["sue"].iloc[0] == pytest.approx(1.622, abs=0.002)
 
 

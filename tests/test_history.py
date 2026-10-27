@@ -55,7 +55,7 @@ def test_latest_row_public_by_each_day():
     assert np.isnan(got.loc[0, "at"]) and got.loc[1, "at"] == 1.0 and got.loc[2, "at"] == 2.0
 
 
-# The B17 helper is a rank correlation over at least 31 stocks.
+# The Spearman helper needs at least 31 stocks.
 def test_spearman_needs_thirty_stocks():
     a = pd.DataFrame({"x": np.arange(40.0), "y": np.arange(40.0) ** 3})
     assert history.spearman(a) == 1.0

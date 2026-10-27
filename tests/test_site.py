@@ -1,4 +1,4 @@
-# Site data matches final v3's files, so no number on screen can drift.
+# Site data matches the final book's pack, so no number can drift.
 
 import json
 

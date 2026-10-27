@@ -1,19 +1,18 @@
 # NOAA's free climate and storm records, saved once with receipts.
 
-import base64
 import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 
-from _shared import ROOT, check, data_root, fetch, receipts, stamp
+from _shared import ROOT, archive_digest, check, data_root, fetch, receipts, stamp
 
 OUT = ROOT / "data" / "noaa"
 CLIMDIV = "https://www.ncei.noaa.gov/monitoring-content/data/us/climdiv/monthly/current/"
 STORMS = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
 USAGE = "uv run run.py --data noaa climdiv | storms | archive | verify"
-# Pre-2021 Internet Archive copies for the B23 check (protocol.md).
+# Pre-2021 Internet Archive copies for the vintage check.
 CDX = "http://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,original,digest"
 CDX += "&matchType=prefix&to=20201231&filter=statuscode:200"
 STORM_COPIES = "www1.ncdc.noaa.gov/pub/data/swdi/stormevents/csvfiles/StormEvents_details"
@@ -88,11 +87,6 @@ def storms() -> int:
     guides = listed(page, r"[A-Za-z0-9_-]*[Ff]ormat[A-Za-z0-9_.-]*\.(?:pdf|docx?|txt)")
     print(f"{len(names)} yearly files listed", flush=True)
     return save(STORMS, names + guides, OUT / "storms")
-
-
-# The archive's own content fingerprint: SHA-1 in base 32.
-def archive_digest(body: bytes) -> str:
-    return base64.b32encode(hashlib.sha1(body).digest()).decode()
 
 
 # Captures to fetch: storm years 2000-2020 and the two climate kinds.

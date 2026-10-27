@@ -90,7 +90,7 @@ def this_run() -> dict | None:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-# Each transcript's model and SHA-256, so a rehearsal is never mistaken.
+# Each transcript's model and SHA-256, so a rehearsal is told apart.
 def agents() -> dict:
     out = {}
     for path in sorted((EXHIBITS / "agents").glob("*.jsonl")):
@@ -124,7 +124,7 @@ def main() -> None:
         acceptance_rules=ACCEPTANCE,
         pass_marks_changed=PASS_MARKS_CHANGED,
         book=section(book, fingerprint(["fiam", "run.py", "requirements.txt"])),
-        # A book-only run keeps the last ML section, so the audit sees its age.
+        # A book-only run keeps the last ML section, so the checks see its age.
         ml=dict(
             **section(ML_ARTIFACTS, fingerprint(ML_CODE)), command=(this_run() or {}).get("command")
         )

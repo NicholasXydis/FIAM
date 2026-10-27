@@ -14,7 +14,7 @@ OUT = paths.EXHIBITS / "wrds.json"
 # Signals only reports move. book replaces be_me, which moves on price.
 ACCOUNTING = ["at_gr1", "niq_su", "ope_be", "o_score", "gp_at", "noa_gr1a", "eqnetis_at", "book"]
 
-# Declared in the plan first: above this early share, lag and rebuild.
+# Above this early share the check fails and says to lag and rebuild.
 EARLY_LIMIT = 0.01
 
 PERIODS = {"2016_2020": (2016, 2020), "2021_2025": (2021, 2025), "2026": (2026, 2026)}

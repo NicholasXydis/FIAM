@@ -87,7 +87,7 @@ def signal(spend: pd.DataFrame, matches: pd.DataFrame) -> pd.DataFrame:
     return growth.drop(columns="month")
 
 
-# The protocol's test: spend minus sales growth on next sales surprise.
+# The test: spend minus sales growth on the next sales surprise.
 def test(growth: pd.DataFrame) -> dict:
     panel = data.features(["saleq_gr1", "saleq_su"])
     frame = growth.merge(panel, on=data.KEYS)

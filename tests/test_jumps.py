@@ -1,4 +1,4 @@
-# The jump screen (reading 23 (m)) on synthetic returns: no later day.
+# The jump screen on synthetic returns: no later day.
 
 import numpy as np
 import pandas as pd

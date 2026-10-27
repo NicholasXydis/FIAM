@@ -1,4 +1,4 @@
-# The two late signals (reading 18) on synthetic rows, and Holm over 8.
+# The two late signals on synthetic rows, and Holm over 8.
 
 import pandas as pd
 import pytest

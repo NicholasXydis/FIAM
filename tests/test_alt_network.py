@@ -1,4 +1,4 @@
-# The network map (piece 3) on synthetic books, filings and links.
+# The network map on synthetic books, filings and links.
 
 import numpy as np
 import pandas as pd

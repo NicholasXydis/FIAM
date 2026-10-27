@@ -1,4 +1,4 @@
-# Rules as a file: v1's by default, or a finals mandate, checked first.
+# Rules as a file: the shipped book's by default, or a finals mandate.
 
 import json
 from dataclasses import asdict, dataclass, fields
@@ -34,7 +34,7 @@ class Mandate:
     countries: tuple = ("USA",)
     country_cap: float | None = None
     vol_budget: float | None = None
-    # Final v3's realized annual vol (v2_amendment_3.md); None keeps 10%.
+    # Annual vol the risk target aims at; None keeps 10%.
     vol_target: float | None = None
     # Widest net the rules allow either way; the book still targets `net`.
     net_band: float | None = None

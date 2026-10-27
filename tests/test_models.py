@@ -84,7 +84,7 @@ def test_analyst_verdicts_from_the_evaluation_never_teach():
     assert learned.taught(verdicts)["eom"].tolist() == [pd.Timestamp("2020-10-31")]
 
 
-# A teacher never trains on a label first known inside its test year .
+# A teacher never trains on a label first known inside its test year.
 def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
     teachers = importlib.import_module("fiam.ml.teachers")
     months = pd.date_range("2016-01-01", "2018-12-01", freq="MS")

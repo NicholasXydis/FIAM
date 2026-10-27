@@ -1,4 +1,4 @@
-# The live X-ray (piece 6) on synthetic data: clocks, reads, trims.
+# The live X-ray on synthetic data: clocks, reads, trims.
 
 import gzip
 import html

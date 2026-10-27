@@ -106,7 +106,7 @@ def check(realized: pd.Series, predicted: pd.Series) -> dict:
     return out
 
 
-# Factor returns frozen once, then predicted vs realized for v1 and v2.
+# Factor returns frozen once, then predicted vs realized vol per book.
 def main() -> None:
     from fiam import v2
 

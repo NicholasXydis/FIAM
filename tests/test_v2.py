@@ -1,4 +1,4 @@
-# v2 and finals mechanics on synthetic data. No data, model or network.
+# fiam.v2 and finals mechanics on synthetic data. No data or network.
 
 import json
 from pathlib import Path
@@ -13,7 +13,7 @@ from fiam import stats, v2
 from fiam.agents import honesty, rules_reader
 
 
-# A thousand names with v1's inputs and a price, as test_mechanics does.
+# A thousand names with the book's inputs and a price (test_mechanics).
 @pytest.fixture
 def month():
     rng = np.random.default_rng(0)
@@ -30,7 +30,7 @@ def month():
     )
 
 
-# With every switch off, v2 chooses exactly what v1 chooses.
+# With every switch off, the optimizer matches book.optimize_month.
 def test_v2_off_is_v1(month):
     mine = v2.optimize(month, None, v2.Settings())
     theirs = P.optimize_month(month)
@@ -57,7 +57,7 @@ def test_long_only_keeps_its_name_limit(month):
     assert (weights >= 0).all() and weights.sum() == pytest.approx(1.0, abs=0.005)
 
 
-# A net target survives whole shares; v1's repair pulls it to zero.
+# A net target survives whole shares; the plain repair pulls it to zero.
 def test_net_target_survives_whole_shares(month):
     rules = M.Mandate(
         name="t",
@@ -112,7 +112,7 @@ def quoted(month):
     )
 
 
-# v3 sizing keeps the budget and caps, held names never grow on a flip.
+# Sizing keeps the budget and caps; held names never grow on a flip.
 def test_size_part_keeps_budget_caps_and_held_sides(quoted, monkeypatch):
     monkeypatch.setattr(v2, "params", lambda: dict(cost_budget=0.002))
     settings = v2.Settings(frozenset({"size", "lowvol"}), 1e8)
@@ -158,7 +158,7 @@ def test_brake_path():
     v2.BRAKE.clear()
 
 
-# Final v3: hedge beta within +/-0.005, name caps shrunk by volatility.
+# Zero beta within +/-0.005, and name caps shrunk by volatility.
 def test_zero_beta_and_risk_caps(quoted):
     month = quoted.assign(vol_scale=np.where(np.arange(1000) % 2 == 0, 1 / 3, 1.0))
     weights = v2.optimize(month, None, v2.Settings(frozenset({"zerobeta", "riskcap"})))
@@ -277,7 +277,7 @@ def test_crowd_overlap_counts_our_longs_among_favourites():
     assert out["shorts_in_favourites"] == pytest.approx(0.0)
 
 
-# v2a names itself; v2-pass reads the verdicts, grinold replacing costs.
+# V2A names itself; passing() reads the verdicts, grinold over costs.
 def test_v2a_and_v2_pass(tmp_path, monkeypatch):
     assert v2.Settings(v2.V2A).name == "v2a@1e7"
     verdicts = dict(shorts=dict(passed=True), grinold=dict(passed=True), costs=dict(passed=True))

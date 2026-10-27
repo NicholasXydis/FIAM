@@ -1,4 +1,4 @@
-# Scores the docs/protocols/honesty.md tests from the saved calls only.
+# Scores the honesty tests from the saved calls only.
 
 import json
 from pathlib import Path
@@ -74,7 +74,7 @@ def flip_gap(df: pd.DataFrame) -> float:
     return float((df["reversed"] != df["masked"]).mean() - (df["repeat"] != df["masked"]).mean())
 
 
-# Scores every test and writes out/v2/honesty.json.
+# Scores every test and writes honesty.json.
 def main() -> None:
     df = table()
     out = dict(filings=df["side"].value_counts().to_dict(), minimum_detectable_gap=MDE)

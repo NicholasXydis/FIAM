@@ -43,7 +43,7 @@ START = "2012-01-01"
 EXITS = {"25", "25-NSE", "15-12B", "15-12G", "15-15D"}
 INSIDERS = {"4", "4/A"}
 OFFERINGS = {"424B1", "424B2", "424B3", "424B4", "424B5", "S-1", "S-3"}
-# A new filer taking over listed shares, the CIK decisions' dates (L6).
+# A new filer taking over listed shares, the CIK decisions' dates.
 SUCCESSION = {"8-K12B", "8-K12G3", "8-A12B"}
 FORMS_START = "2006-01-01"
 # The gap between requests across threads; SEC allows ten a second.
@@ -198,7 +198,7 @@ def thirteen_f() -> int:
     return data_sets(F13, r"/files/[^\"]+_form13f\.zip", OUT / "13f")
 
 
-# The Forms 3, 4 and 5 data sets from 2006q1 (§11, step 3b).
+# The Forms 3, 4 and 5 data sets from 2006q1.
 def insiders() -> int:
     return data_sets(INSIDER_PAGE, INSIDER_FILES, OUT / "insiders")
 
@@ -222,7 +222,7 @@ def link() -> int:
             name=("company_name", "last"),
         )
     )
-    # The v4 extract, never the v1 bundle's copy (§1.2; same values, H4).
+    # The raw WRDS extract, never the bundle's copy; the values match.
     comp = pd.read_parquet(ROOT / "data" / "v4" / "extracts" / "compustat_quarterly.parquet")
     comp = comp[["gvkey", "datadate", "cik"]].dropna(subset=["cik"]).sort_values("datadate")
     by_gvkey = comp.groupby("gvkey")["cik"].last()
@@ -376,7 +376,7 @@ def submission_dates(ciks: list[int]) -> pd.DataFrame:
     return out
 
 
-# Every SEC id a panel stock may file under, both sources (fix B12).
+# Every SEC id a panel stock may file under, from both sources.
 def panel_ciks(firms: pd.DataFrame) -> list[int]:
     found = pd.concat([firms[c] for c in ("cik", "cik_compustat", "cik_8k") if c in firms])
     more = OUT / "cik_candidates.parquet"
@@ -464,12 +464,12 @@ def forms() -> int:
     return 0
 
 
-# Every panel firm's annual reports and red-flag 8-Ks, gzipped (A2).
+# Every panel firm's annual reports and red-flag 8-Ks, gzipped.
 def docs() -> int:
     table = pd.read_parquet(OUT / "filings.parquet")
     pick = table["form"].isin(ANNUAL) | ((table["form"] == "8-K") & table["red_flag"])
     want = table[pick & (table["document"] != "")].copy()
-    # Only filers linked to a stock, inside the link's dates (audit 3).
+    # Only filers linked to a stock, inside the link's dates.
     lk = pd.read_parquet(ROOT / "data" / "v4" / "links.parquet")
     lk = lk[lk["kind"] == "cik"].assign(cik=lambda d: pd.to_numeric(d["value"]).astype("int64"))
     when = pd.to_datetime(want["filing_date"])

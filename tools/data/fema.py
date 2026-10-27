@@ -1,4 +1,4 @@
-# OpenFEMA declarations and the Federal Register sample (B1), receipted.
+# OpenFEMA declarations and the Federal Register sample, receipted.
 
 import hashlib
 import io
@@ -18,7 +18,7 @@ DATASETS = {
     "FemaWebDeclarationAreas": "v1",
 }
 REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
-# The sample fixed in protocol.md before the check ran.
+# The sample, fixed before the check ran.
 SEED, SIZE, FIRST, LAST = 20261023, 100, "1994-01-01", "2020-12-31"
 # Notices for every major disaster the exhibit and live flags can use.
 NOTICES_FROM = "2012-01-01"
@@ -135,7 +135,7 @@ def federal() -> int:
     return 0
 
 
-# Every major disaster's notices from 2012 on, the B1 rule's clock.
+# Every major disaster's notices from 2012 on, the notice rule's clock.
 def notices() -> int:
     s = pd.read_csv(
         OUT / "DisasterDeclarationsSummaries.csv",

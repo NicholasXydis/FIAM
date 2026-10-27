@@ -1,4 +1,4 @@
-# Capacity exhibits (protocols/capacity.md): break-even, gaps, stress.
+# Capacity exhibits: break-even size, gaps to the shipped book, stress.
 
 import json
 import sys
@@ -16,7 +16,7 @@ TAGS = {c: f"{c:.0e}".replace("+0", "") for c in v2.CAPITALS}
 STRESS = ("impact_half", "taq_spreads")
 
 
-# Books by run-name prefix, adding v2-pass and v3 once verdicts exist.
+# Each book's run-name prefix; later books join once verdicts exist.
 def books() -> dict:
     out = {"v1": "v1", "v2": "v2", "v2a": "v2a"}
     if (v2.OUT / "evidence.json").exists():
@@ -27,7 +27,7 @@ def books() -> dict:
         chosen = v2.final_three()
         if chosen is not None:
             out["final v3"] = v2.Settings(chosen).name.split("@")[0]
-            # The risk dial (v2_amendment_3.md): reported beside it, never chosen.
+            # The chosen book at three risk targets, shown beside it, never picked.
             for vol in (6, 8, 12):
                 out[f"final v3 at {vol}%"] = f"risk{vol}_" + out["final v3"]
     return out
@@ -64,7 +64,7 @@ def break_even(rows: list[dict]) -> float | str:
     return "above $5B"
 
 
-# Book minus v1 at $1B and $5B, net 2021-2026, by stationary bootstrap.
+# Book minus the shipped book at $1B and $5B, net 2021-2026, bootstrap.
 def gaps(prefix: str) -> dict:
     out = {}
     for cap in (1e9, 5e9):
@@ -87,7 +87,7 @@ def taq_ratios() -> dict:
     return {str(k): float(v) for k, v in both.groupby("size_grp")["ratio"].median().items()}
 
 
-# One stress scenario, this process only: v1's method and v2, 2021-2026.
+# One stress scenario in this process: shipped and switched, 2021-2026.
 def stress(scenario: str) -> None:
     if scenario == "impact_half":
         C.IMPACT_Y = 0.5

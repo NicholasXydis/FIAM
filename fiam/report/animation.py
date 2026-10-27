@@ -1,4 +1,4 @@
-# AI Crowd Lab film, saved answers only (crowd_amendment_1.md item 8).
+# AI Crowd Lab film, drawn from saved answers only.
 
 from pathlib import Path
 
@@ -50,7 +50,7 @@ def fade(t: float, start: float, length: float = 0.8) -> float:
     return float(ease((t - start) / length))
 
 
-# The film's book: final v3 at $10M once it has crowd results, else v1.
+# The film's book: the chosen one at $10M with crowd data, else shipped.
 def our_run() -> str:
     final = load(v2.OUT / "evidence.json").get("v3", {}).get("final", {}).get("name")
     run = f"{final}@1e7" if final else ""

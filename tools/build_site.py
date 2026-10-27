@@ -1,4 +1,4 @@
-# The site's data and the ad's crises, from final v3's pack. Read only.
+# Site data and the ad's crises from the final book's pack. Read only.
 
 import csv
 import json

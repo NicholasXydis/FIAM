@@ -1,4 +1,4 @@
-# OpenMP runtimes for LightGBM on fresh machines (fix B9), receipted.
+# OpenMP runtimes for LightGBM on fresh machines, receipted.
 
 import hashlib
 import io

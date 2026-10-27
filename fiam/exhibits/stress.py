@@ -19,7 +19,7 @@ OUT = Path("out") / "v2" / "stress.json"
 FACTORS = ["mktrf", "smb", "hml", "rmw", "cma", "umd"]
 CAPITALS = (1e7, 1e8, 1e9, 5e9)
 
-# Seventeen crises from market events, and the scenarios (stress.md).
+# Seventeen crises from market events, and the stress scenarios.
 CRISES = {
     "Dot-com peak crash": ("2000-03-10", "2000-04-14"),
     "September 11": ("2001-09-10", "2001-09-21"),
@@ -83,7 +83,7 @@ def episode_returns() -> pd.DataFrame | None:
     return out
 
 
-# The September books, v1, v2, v3 and final v3, as weights by permno.
+# The saved September books, as weights by permno.
 def books() -> dict:
     out = {}
     for name, path in (("v1", S.V1), ("v2", S.V2), ("v3", S.V3), ("final v3", S.FINAL)):
@@ -92,7 +92,7 @@ def books() -> dict:
     return out
 
 
-# One factor table from our WRDS extract; stops with the fix if absent.
+# One factor table from our WRDS extract; stops with how to get it.
 def extract(name: str) -> pd.DataFrame:
     path = data.EXTRACTS / f"{name}.parquet"
     if not path.exists():
@@ -205,7 +205,7 @@ def liquidity(weights: pd.Series, info: pd.DataFrame, beta: pd.Series) -> dict:
     return out
 
 
-# Runs every test on each book and writes out/v2/stress.json.
+# Runs every test on each book and writes stress.json.
 def main() -> None:
     panel = episode_returns()
     factors = factor_daily()

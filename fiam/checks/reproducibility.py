@@ -77,7 +77,7 @@ def target_not_reshifted():
     return not bad, f"found {bad}" if bad else "clean"
 
 
-# The rules name 147 predictors. "All numeric columns" is the easy leak.
+# Only the 147 named predictors; other numeric columns may hold answers.
 @check("every signal is in factor_char_list.csv")
 def predictors_are_listed():
     used = signal_names()
@@ -111,7 +111,7 @@ def missing_returns_booked_flat():
     return weight > 0, f"{weight:.4f} weight-months booked flat, a stated assumption"
 
 
-# A ticker fixed from a later month is look-ahead in the holdings file.
+# A ticker corrected from a later month is look-ahead in the holdings.
 @check("labels come from the decision month or earlier")
 def labels_are_backward_only():
     book = paths.holdings()
@@ -153,7 +153,7 @@ def ml_folds_do_not_overlap():
     return not bad, f"overlapping: {bad}" if bad else f"{len(folds())} folds, no overlap"
 
 
-# A rank or fill over the whole sample leaks later months into earlier.
+# A rank or fill over the whole sample lets later months shape earlier.
 @check("model features are ranked within the month only")
 def ml_transform_is_within_month():
     lines = (PACKAGE / "ml" / "dataset.py").read_text(encoding="utf-8").splitlines()

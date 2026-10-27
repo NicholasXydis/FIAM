@@ -1,4 +1,4 @@
-# The v4 exhibits on synthetic tables: files, punctuation, hand checks.
+# The exhibits on synthetic tables: files, punctuation, hand checks.
 
 import math
 

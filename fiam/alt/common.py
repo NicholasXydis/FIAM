@@ -5,11 +5,11 @@ import pandas as pd
 
 from fiam.v4 import sources
 
-# The last day a sealed run may read (PLAN §1.3).
+# The last day a sealed run may read.
 CUTOFF = pd.Timestamp("2020-12-31")
 # The one line a run past the cutoff prints while the seal holds.
 WAITS = "Waits for the unseal, a run past 2020-12-31 is refused while the data stay sealed"
-# The credit Carbon Arc's terms ask for (PLAN §12.5).
+# The credit Carbon Arc's terms ask for.
 CREDIT = "Based in part on Carbon Arc data"
 # A quarter is 80 to 125 days, a year 350 to 380, nine months 250-290.
 QUARTER, YEAR, NINE = (80, 125), (350, 380), (250, 290)
@@ -61,6 +61,11 @@ def yoy(frame: pd.DataFrame, value: str) -> pd.Series:
     with np.errstate(divide="ignore", invalid="ignore"):
         out = np.where(before > 0, now / before - 1, np.nan)
     return pd.Series(out, index=frame.index)
+
+
+# A share as a rounded float, or None when there is nothing to share.
+def share(part, whole) -> float | None:
+    return round(float(part) / float(whole), 4) if whole else None
 
 
 # Pearson correlation and count over pairs present in both, or None.

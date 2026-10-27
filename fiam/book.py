@@ -63,7 +63,7 @@ MARKET_NAME = "S&P 500 price index (FRED SP500), excludes dividends"
 # Shumway's performance-delisting loss, a stress on missing returns.
 MISSING_STRESS = 0.30
 
-# Names SEC filer records contradict: PERMNO, wrong, valid from, right.
+# Panel names that SEC filer records correct: PERMNO, old, from, new.
 LABEL_FIXES = [
     # EDGAR CIK 766829, a typo.
     (54199, "H20 AMERICA", "2025-05-01", "H2O AMERICA"),
@@ -511,7 +511,7 @@ def fill_labels(holdings: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
     filled["backfilled"] = filled["TICKER"].isna()
     filled["TICKER"] = filled["TICKER"].fillna(filled["ticker"])
     filled["COMPANY_NAME"] = filled["COMPANY_NAME"].fillna(filled["company_name"])
-    # A fix applies only after SEC recorded the name, so none reads ahead.
+    # A correction applies only after SEC recorded the name, never before.
     for permno, wrong, since, right in LABEL_FIXES:
         hit = filled["PERMNO"].eq(permno) & filled["COMPANY_NAME"].eq(wrong)
         filled.loc[hit & (filled["eom"] >= since), "COMPANY_NAME"] = right

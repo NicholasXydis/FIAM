@@ -20,7 +20,7 @@ SHORT_FROM = pd.Timestamp("2021-06-01")
 # The consolidated daily file starts 2018-08-01, venue files before it.
 CONSOLIDATED_FROM = pd.Timestamp("2018-08-01")
 VENUES = ("FNYX", "FNSQ", "FNRA")
-# The 2015-2020 check, and 2026 with its six-month lead-in (PLAN §6.5).
+# The 2015-2020 check, and 2026 with its six-month lead-in.
 WINDOWS = (("2015-01-01", "2020-12-31"), ("2025-06-01", "2026-09-30"))
 # Candidate 2026 settlement days around mid-month and month end.
 PROBE_DAYS = (*range(10, 21), *range(24, 32))

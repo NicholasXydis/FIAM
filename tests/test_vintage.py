@@ -1,4 +1,4 @@
-# The B23 vintage check's age shares and lag L on small inputs.
+# The vintage check's age shares and lag L on small inputs.
 
 import pandas as pd
 

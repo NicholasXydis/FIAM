@@ -1,4 +1,4 @@
-# The data passport (PLAN §12.4 piece 7): what can be backtested.
+# The data passport: which bought datasets can be backtested.
 
 import gzip
 import json
@@ -21,7 +21,7 @@ REFETCH = "snapshot_1_refetch"
 SNAPSHOTS = ("snapshot_1", "snapshot_2")
 # Rows dated on or after this are the sealed years: counted, never read.
 SEAL = pd.Timestamp("2021-01-01")
-# The six named failures (PLAN §12.4) by CRSP PERMNO, plus aliases.
+# Six named retail failures by CRSP PERMNO, plus aliases.
 NAMED = {
     "Sears": (89757, ["Sears"]),
     "Bon-Ton": (76847, ["Bon-Ton"]),

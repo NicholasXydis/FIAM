@@ -22,7 +22,7 @@ EXTRACTS = ROOT / "data" / "v4" / "extracts"
 CORE = (FEATURES, LABELS, FILINGS, MANIFEST)
 KEYS = ["permno", "eom"]
 TARGET = "ret_exc_lead1m"
-# v4 runs set FIAM_BLIND=1, so this reader seals 2021+ too (PLAN §1.3).
+# Under FIAM_BLIND=1 this reader drops rows with eom after this month.
 SEAL_EOM = pd.Timestamp("2020-12-31")
 
 # The organizer readme's SHA-256s. The manifest records what was built.
@@ -57,7 +57,7 @@ def read(path: Path, columns: list[str] | None = None, filters=None) -> pd.DataF
     return frame
 
 
-# Whether this is a v4 run under blind mode (set by its entry point).
+# Whether blind mode is on, which withholds rows after SEAL_EOM.
 def blind() -> bool:
     return os.environ.get("FIAM_BLIND") == "1"
 
@@ -111,7 +111,7 @@ def checksum_mismatches() -> list[str]:
     return [n for n, digest in PUBLISHED.items() if sources.get(n, {}).get("sha256") != digest]
 
 
-# Stops with the fix if the bundle is incomplete, labelled or misdated.
+# Stops with the remedy if the bundle is missing, labelled or misdated.
 def validate() -> dict:
     missing = [p.name for p in CORE if not p.is_file()]
     if missing:

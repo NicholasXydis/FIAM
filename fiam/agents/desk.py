@@ -13,11 +13,11 @@ from fiam.agents import harness as H
 
 OUT = v2.OUT / "desk.json"
 MEMO = v2.OUT / "pm_memo.md"
-# Final v3's desk (final_exhibits.md): same agents on our book, apart.
+# The same desk run on the `final` book, saved to its own files.
 FINAL_OUT, FINAL_MEMO = v2.OUT / "desk_final.json", v2.OUT / "pm_memo_final.md"
 
 
-# Each test's source: v1's submission, or final v3's pack and runs.
+# Each test's source: the shipped book, or the chosen book's pack.
 def sources(book: str) -> dict:
     stress = json.loads((v2.OUT / "stress.json").read_text(encoding="utf-8"))
     crowd = json.loads((v2.OUT / "crowd_lab.json").read_text(encoding="utf-8"))
@@ -208,14 +208,14 @@ def memo(server: H.Server, facts: dict, path: Path = MEMO) -> dict:
     # List numbering is layout, not a claim, so it is left out of the check.
     claims = plain(re.sub(r"(?m)^\s*\d+[.)]\s", "", text))
     unsupported = [n for n in critic.numbers(claims) if not critic.supported(n, seen)]
-    # Fails closed: no memo, and no older memo left to be mistaken for it.
+    # Fails closed: the old memo goes first, so a failure leaves none.
     path.unlink(missing_ok=True)
     if not unsupported:
         path.write_text(text + "\n", encoding="utf-8")
     return dict(written=not unsupported, unsupported_numbers=unsupported[:10])
 
 
-# September v1's top ten from their ranks, unbacked numbers dropped.
+# A September book's top ten from their ranks, unbacked numbers dropped.
 def september(server: H.Server, held: Path | None = None) -> dict:
     from fiam import book as P
     from fiam import data
@@ -253,7 +253,7 @@ def september(server: H.Server, held: Path | None = None) -> dict:
     return dict(explained=out, dropped=dropped)
 
 
-# Final v3's bets from yearly style exposures. Unbacked numbers drop it.
+# The book's bets from yearly style exposures. Unbacked numbers drop it.
 def factor_story(server: H.Server, by_year: dict) -> dict:
     table = "\n".join(
         f"{year}: " + ", ".join(f"{style} {value:+.2f}" for style, value in row.items())
@@ -271,7 +271,7 @@ def factor_story(server: H.Server, by_year: dict) -> dict:
     return dict(story=text if not unsupported else "", unsupported_numbers=unsupported[:10])
 
 
-# Every agent on final v3's book, written beside v1's desk.
+# Every desk agent on the `final` book, saved beside the main desk.
 def final(part: str = "all") -> None:
     from fiam.exhibits import september as S
 
@@ -302,7 +302,7 @@ def final(part: str = "all") -> None:
     print(json.dumps({k: v for k, v in report.items() if k != "registry"}, indent=1, default=float))
 
 
-# Runs the desk parts for v1 and writes desk.json and the PM memo.
+# Runs the desk on the shipped book: desk.json and the PM memo.
 def main(part: str = "all") -> None:
     registry = tests()
     report = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}

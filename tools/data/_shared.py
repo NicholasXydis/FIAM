@@ -1,5 +1,6 @@
 # Helpers the data tools share; standard library only, any env runs it.
 
+import base64
 import hashlib
 import json
 import os
@@ -50,6 +51,11 @@ def fingerprint(path: Path) -> str:
         return hashlib.file_digest(fh, "sha256").hexdigest()
 
 
+# The archive's own content fingerprint: SHA-1 in base 32.
+def archive_digest(body: bytes) -> str:
+    return base64.b32encode(hashlib.sha1(body).digest()).decode()
+
+
 # The current time in UTC, as every receipt records it.
 def stamp() -> str:
     return datetime.now(UTC).isoformat()
@@ -79,7 +85,7 @@ def fetch(url: str, headers: dict | None = None, pace: float = 0.0) -> bytes:
     raise last
 
 
-# Checks each named file's SHA-256; returns the names that are wrong.
+# Checks each named file's SHA-256; returns the names that differ.
 def check(folder: Path, expected: dict[str, str]) -> list[str]:
     bad = []
     for name, digest in expected.items():
