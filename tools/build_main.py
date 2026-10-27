@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# What git ships except tests, tools, the site and the two plan files.
+# What git ships except tests, tools, the site and two docs files.
 LEAVE_OUT = (
     "tests/",
     "tools/",

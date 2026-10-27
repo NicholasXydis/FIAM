@@ -278,7 +278,7 @@ def import_from(source_path: Path) -> None:
             print("  WRDS conversion failed; the run continues without WRDS.")
 
 
-# Bundle zip for a teammate with its SHA-256; never commit or submit it.
+# Bundle zip with its SHA-256 for sharing; never commit or submit it.
 def export_data() -> int:
     if not BUNDLE.is_dir():
         print(f"No bundle at {BUNDLE} to export.")

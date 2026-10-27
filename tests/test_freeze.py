@@ -27,7 +27,7 @@ def put(root, name, body):
     return path
 
 
-# Commits the frozen folder, as the leader does before the unseal.
+# Commits the frozen folder, as is done before the unseal.
 def commit_frozen(root):
     git(root, "add", "frozen")
     git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "freeze")

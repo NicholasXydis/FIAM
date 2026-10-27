@@ -46,7 +46,7 @@ function sample(lines: Line[], width: number, step: number) {
   return out;
 }
 
-// The opening: the team's name in particles and the three key numbers.
+// The opening: the name in particles and the three key numbers.
 export class Intro extends Scene {
   name = "QUARCC Purple · FIAM";
   summary = "Who we are and the three numbers that matter.";

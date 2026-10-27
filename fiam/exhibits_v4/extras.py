@@ -24,7 +24,7 @@ TAIL, BINS, TAIL_SIZE = 0.05, 13, (12.13, 4.2)
 BACK = dict(facecolor="white", alpha=0.85, edgecolor="none", pad=1.5)
 
 
-# A frame drawn as a plain table on an axis, team colours.
+# A frame drawn as a plain table on an axis, in the shared colours.
 def draw_table(ax, frame: pd.DataFrame, size: float = 9.0) -> None:
     ax.axis("off")
     t = ax.table(cellText=frame.to_numpy(), colLabels=list(frame.columns),

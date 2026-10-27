@@ -322,7 +322,7 @@ VOICING = {
     "A": (["A1", "E2"], ["C#3", "E3"], ["A3", "C#4", "E4"], ["A4", "C#5"]),
     "Em": (["E2", "B2"], ["G3", "B3"], ["E4", "G4", "B4"], ["E5", "G5"]),
 }
-# Violin melody notes, keyed by the bar of PLAN they sound over.
+# Violin melody notes, keyed by the bar they sound over.
 MELODY = {10: "A5", 11: "F#5", 12: "G5", 13: "A5", 18: "D5", 19: "C#5", 20: "B4", 21: "A4"}
 for i, (name, size, busy) in enumerate(PLAN):
     at = MUSIC + i * 4 * BEAT

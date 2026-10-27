@@ -83,7 +83,7 @@ export class Chrome {
     const overview = button(`${GRID}`, "Every scene (O)", () => this.toggleOverview());
     overview.append(this.counter);
     const help = button("?", "Keys (?)", () => this.toggleHelp());
-    // The team's names top left, on screens wide enough for one line.
+    // Member names top left, on screens wide enough for one line.
     const brand = h(
       "header",
       { class: "brand" },

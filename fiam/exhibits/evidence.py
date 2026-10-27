@@ -16,7 +16,7 @@ from fiam import mandate as M
 
 OUT = v2.OUT / "evidence.json"
 EXP = Path("research") / "exp" / "results"
-# Andrew's trials 2 to 5 and his gate reruns, none with saved returns.
+# Trials 2 to 5 run outside this code, with their gate reruns.
 ANDREW_TRIALS = 5
 WINDOWS = {"check": v2.CHECK, "record": v2.RECORD}
 PARTS = ("cost_commission", "cost_spread", "cost_impact", "cost_borrow", "cost_financing")

@@ -28,6 +28,7 @@ SI = "short_interest"
 BASE = final.OUT
 SUE_BACKUP = BASE / "sue_sealed.parquet"
 CARD_BACKUP = BASE / "sue_card_sealed.json"
+CARD = sources.CARDS / "sue.json"
 PINNED = BASE / "sue_targets_sealed.parquet"
 # Months between refits for each cadence, and the two sets of limits.
 CADENCES = {"yearly": 12, "quarterly": 3}
@@ -139,6 +140,9 @@ def labels(head: str) -> dict:
     table = joined(old, rebuilt)
     table.to_parquet(clean, index=False)
     data._CACHE.clear()
+    # The card states the joined table, the one every later stage reads.
+    card = json.loads(CARD.read_text())
+    CARD.write_text(json.dumps(card | {"rows_out": len(table)}, indent=1))
     out["sue_rebuild"] = {"rows": made["rows_out"]} | same_before(old, rebuilt)
     return out | {"sue_rows": len(table)} | same_before(old, table)
 
@@ -412,10 +416,13 @@ if __name__ == "__main__":
         if not where(need, need_args, head).exists():
             raise SystemExit(f"run {need} {' '.join(need_args)} first at this commit")
     target.parent.mkdir(parents=True, exist_ok=True)
+    # The stamp names the forecasts file these stages read.
+    if stage in ("early", "book", "report"):
+        book.FORECASTS = where("forecasts", args[:1], head, "parquet")
     out = {"stage": stage, "args": list(args)}
     out |= {"stamp": exam.stamp(head, settings.SETTINGS.read_bytes()), "changes": changes()}
     out |= WORK[stage](head, *args)
     target.write_text(json.dumps(out, indent=1, default=str))
     print(json.dumps({k: v for k, v in out.items() if k != "stamp"}, indent=1, default=str))
-    # A broken PDF limit stops the run (PLAN §9.3).
+    # A broken PDF limit ends the run with exit code 1.
     sys.exit(1 if out.get("breach_days") else 0)

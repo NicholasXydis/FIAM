@@ -215,7 +215,7 @@ def test_counts_and_csv(tree, monkeypatch):
     assert got["all"] == got["v4"] + 1916 and got["v4_not_run"] == 2 + 12 + 100
 
 
-# The older count reads names only: past fits, runs, configs, Andrew.
+# The older count reads names only: past fits, runs, configs, trials.
 def test_older_fits(tmp_path):
     exp = tmp_path / "exp"
     exp.mkdir()

@@ -191,7 +191,7 @@ export class Tags {
   }
 }
 
-// The last card: the logo and name as it is said, then line and team.
+// The last card: the logo and name as it is said, then line and names.
 export class End {
   el: HTMLElement;
   private parts: [HTMLElement, number][];

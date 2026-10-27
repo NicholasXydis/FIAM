@@ -45,7 +45,7 @@ PEOPLE = (
 )
 MEMBERS = "  ·  ".join(PEOPLE)
 SCHOOLS = "Concordia University  ·  McGill University"
-# build_deck's footer, and ours with the team's name in it.
+# build_deck's footer, and ours with the fund's name in it.
 FOOTERS = (
     "FIAM  ·  McGill-FIAM Asset Management Hackathon 2026",
     f"{TEAM}  ·  McGill-FIAM Asset Management Hackathon 2026 Finals",
@@ -291,7 +291,7 @@ def agent(page, i: int, at, size: float):
     )
 
 
-# The title slide: our line, team and schools over sixty investors.
+# The title slide: our line, names and schools over sixty investors.
 def title(deck, f: dict, m: dict) -> None:
     lines = [
         "Market neutral. Hedged by machine learning. Watched by an AI crowd.",

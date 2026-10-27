@@ -13,7 +13,7 @@ LIMIT = 72
 DIRECTIVES = ("# fmt:", "# noqa", "# type:", "# pragma", "# ruff:")
 # Generated files carry their sources' comments and are checked there.
 SKIP = {"MAIN.py"}
-# A teammate's separate research tree keeps its own conventions.
+# The separate fiam/v4b research tree keeps its own conventions.
 SKIP_UNDER = ("fiam/v4b/",)
 
 

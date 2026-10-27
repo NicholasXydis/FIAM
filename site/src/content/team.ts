@@ -8,7 +8,7 @@ export interface Person {
   focus?: string[];
 }
 
-// The team in page order; add each detail once the person confirms it.
+// Members in page order; each detail is added once confirmed.
 export const PEOPLE: Person[] = [
   { name: "Nicholas Xydis", photo: "/people/nicholas-xydis.webp" },
   { name: "Yohannah Ilieva", photo: "/people/yohannah-ilieva.webp" },

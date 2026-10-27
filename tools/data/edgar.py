@@ -382,7 +382,7 @@ def panel_ciks(firms: pd.DataFrame) -> list[int]:
     more = OUT / "cik_candidates.parquet"
     if more.exists():
         found = pd.concat([found, pd.read_parquet(more)["cik"]])
-    # Every filer the leader's decisions name is indexed too.
+    # Every filer the saved CIK decisions name is indexed too.
     path = OUT.parent / "v4" / "cik_decisions.json"
     chosen = json.loads(path.read_text())["stocks"] if path.exists() else {}
     decided = [link[0] for entry in chosen.values() for link in entry["links"]]

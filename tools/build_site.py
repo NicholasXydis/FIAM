@@ -1,9 +1,14 @@
 # Site data and the ad's crises from the final book's pack. Read only.
 
+import argparse
 import csv
 import json
+import math
+import re
 import sys
 from pathlib import Path
+
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 # The repo root on the path, so crisis windows import fiam from any cwd.
@@ -39,6 +44,20 @@ FAMILIES = {
     "safe": "Is it safe?",
 }
 CAPACITY = {"v1": "First book", "v2": "Built for size", "v2-pass": "Short rule only"}
+# The revised strategy's pick files and the hurdle's yearly premium.
+V4 = ROOT / "out" / "v4" / "final"
+PREMIUM = 0.04
+# Days in the rolling beta's window, and the cost ladder's rungs.
+BETA_DAYS = 252
+RUNGS = (1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0)
+# Row 21 books fees, spread and impact as one, put under this part.
+TRADING_PART = "impact"
+# Each year's cards and the monthly column each compounds.
+YEAR_COLUMNS = {"strategy": "ret", "benchmark": "hurdle", "market": "market"}
+# The comparison file's row for the fund's correlation with the market.
+CORRELATION = "Correlation with the market"
+# A signed decimal number inside a table cell.
+NUMBER = r"[-+]?\d+(?:\.\d+)?"
 
 
 # A JSON file from the pack or out/v2, as a dict.
@@ -356,8 +375,6 @@ def honesty(metrics: dict, pack: dict, desk: dict) -> dict:
 
 # Each replayed crisis beside the value-weighted US market's move.
 def crises() -> list[dict]:
-    import pandas as pd
-
     from fiam.exhibits.stress import CRISES
 
     daily = pd.read_parquet(CACHE, columns=["date", "ret", "cap"]).dropna()
@@ -449,15 +466,320 @@ def build(folder: Path = PACK) -> dict:
     )
 
 
+# The newest pick file in a folder, by when it was last written.
+def newest_pick(folder: Path = V4) -> Path:
+    picks = sorted(folder.glob("pick_*.json"), key=lambda p: p.stat().st_mtime)
+    if not picks:
+        raise SystemExit(f"No pick file in {folder}: run tools/revised.py pick first.")
+    return picks[-1]
+
+
+# The headline folder and its commit from a pick, refused unless final.
+def headline_folder(pick: Path) -> tuple[Path, str]:
+    got = load(pick)
+    if got.get("final") is not True:
+        todo = ", ".join(got.get("next", [])) or "none listed"
+        raise SystemExit(f"{pick.name} is not final, so no headline yet. Still to run: {todo}.")
+    return Path(got["headline"]), pick.stem.removeprefix("pick_")
+
+
+# The headline folder's five files, refused if any is missing.
+def v4_files(folder: Path, commit: str) -> dict[str, Path]:
+    files = {
+        "table": folder / f"table_9_1_{commit}.csv",
+        "vs_market": folder / f"vs_market_{commit}.csv",
+        "daily": folder / f"daily_7_{commit}.parquet",
+        "positions": folder / f"positions_7_{commit}.parquet",
+        "names": folder / f"arcana_weights_monthly_{commit}_own.csv",
+    }
+    missing = [p.name for p in files.values() if not p.exists()]
+    if missing:
+        raise SystemExit(f"{folder} lacks {', '.join(missing)}.")
+    return files
+
+
+# Every number in a table cell, in order.
+def numbers(cell: str) -> list[float]:
+    return [float(x) for x in re.findall(NUMBER, cell)]
+
+
+# A cell's first number, as -1.39 in "-1.39 (0.44); at 100% gross".
+def first(cell: str) -> float:
+    got = numbers(cell)
+    if not got:
+        raise ValueError(f"no number in {cell!r}")
+    return got[0]
+
+
+# A "value (s.e.)" cell as its value and standard error.
+def with_se(cell: str) -> tuple[float, float]:
+    got = re.match(rf"\s*({NUMBER})\s*\(({NUMBER})\)", cell)
+    if not got:
+        raise ValueError(f"no value and s.e. in {cell!r}")
+    return float(got[1]), float(got[2])
+
+
+# The number after a word, as CAGR in "arithmetic -3.57, CAGR -3.80".
+def labelled(cell: str, label: str) -> float:
+    got = re.search(rf"\b{re.escape(label)}\s+({NUMBER})", cell)
+    if not got:
+        raise ValueError(f"no {label} in {cell!r}")
+    return float(got[1])
+
+
+# The 23-row table as each row's cells, keyed by row number.
+def table_rows(path: Path) -> dict[int, dict]:
+    return {int(x["row"]): x for x in rows(path)}
+
+
+# The fund's column of the comparison with the market, by measure.
+def vs_market(path: Path) -> dict[str, float]:
+    return {x["measure"]: float(x["fund"]) for x in rows(path)}
+
+
+# Yearly return over the hurdle before rounding, from row 3's means.
+def active_annual(t: dict[int, dict]) -> float:
+    fund = labelled(t[3]["strategy"], "arithmetic")
+    return (fund - labelled(t[3]["benchmark"], "arithmetic")) / 100
+
+
+# Trading and borrow costs a year as fractions, rows 21 and 22.
+def cost_parts(t: dict[int, dict]) -> tuple[float, float]:
+    return float(t[21]["strategy"]) / 100, float(t[22]["strategy"]) / 100
+
+
+# The month's bill as TB3MS / 1200, its first daily rate x 252 / 12.
+def monthly_bill(rf_daily: pd.Series) -> pd.Series:
+    month = pd.DatetimeIndex(rf_daily.index).to_period("M")
+    return (rf_daily * 252 / 12).groupby(month).first()
+
+
+# Each month's fund return, bill and hurdle, the endowment row dropped.
+def fund_months(daily: pd.DataFrame) -> pd.DataFrame:
+    d = daily.iloc[1:]
+    month = pd.DatetimeIndex(d.index).to_period("M")
+    bill = monthly_bill(d["rf"])
+    ret = (1 + d["ret"]).groupby(month).prod() - 1
+    return pd.DataFrame({"ret": ret, "bill": bill, "hurdle": bill + PREMIUM / 12})
+
+
+# The S&P 500's daily closes from the benchmarks file, blanks dropped.
+def sp500() -> pd.Series:
+    close = {
+        x["observation_date"]: float(x["SP500"])
+        for x in rows(ROOT / "data" / "benchmarks" / "SP500.csv")
+        if x["SP500"] not in ("", ".")
+    }
+    out = pd.Series(close, dtype=float)
+    out.index = pd.to_datetime(out.index)
+    return out.sort_index()
+
+
+# The S&P 500's return in each month, last close to last close.
+def market_months(close: pd.Series, months: pd.PeriodIndex) -> pd.Series:
+    last = close.groupby(pd.DatetimeIndex(close.index).to_period("M")).last()
+    got = (last / last.shift(1) - 1).reindex(months)
+    if got.isna().any():
+        raise SystemExit("The S&P 500 series misses a month of the run.")
+    return got
+
+
+# Growth of $1 a month at a time, starting at 1.
+def growth(monthly: pd.Series) -> list[float]:
+    return [1.0] + [r(x) for x in (1 + monthly).cumprod()]
+
+
+# $1 in the fund, the hurdle and the S&P 500, and their monthly moves.
+def race_v4(m: pd.DataFrame, market: pd.Series) -> dict:
+    return dict(
+        book=growth(m["ret"]),
+        hurdle=growth(m["hurdle"]),
+        market=growth(market),
+        market_monthly=[r(x) for x in market],
+        book_monthly=[r(x) for x in m["ret"]],
+    )
+
+
+# Each calendar year's fund, hurdle and market returns, compounded.
+def years_v4(m: pd.DataFrame, market: pd.Series) -> dict:
+    both = m.assign(market=market.to_numpy())
+    out = {}
+    for year, part in both.groupby(both.index.year):
+        got = {k: float((1 + part[c]).prod() - 1) for k, c in YEAR_COLUMNS.items()}
+        active = got["strategy"] - got["benchmark"]
+        out[str(year)] = {k: r(v) for k, v in got.items()} | {
+            "active": r(active),
+            "months": len(part),
+        }
+    return out
+
+
+# The fund's rolling beta to the S&P 500 and a zero-beta noise band.
+def rolling_beta(excess: pd.Series, market: pd.Series, days: int = BETA_DAYS) -> pd.DataFrame:
+    both = pd.concat({"y": excess, "x": market}, axis=1, join="inner").dropna()
+    y, x = both["y"], both["x"]
+    beta = y.rolling(days).cov(x) / x.rolling(days).var()
+    slope = y.cov(x) / x.var()
+    residual = (y - y.mean() - slope * (x - x.mean())).std()
+    band = 1.96 * residual / (x.rolling(days).std() * math.sqrt(days - 1))
+    return pd.DataFrame({"beta": beta, "band": band}).dropna()
+
+
+# Each month's last rolling beta and band, and the share outside it.
+def beta_v4(daily: pd.DataFrame, close: pd.Series, old: dict) -> dict:
+    d = daily.iloc[1:]
+    got = rolling_beta(d["ret"] - d["rf"], close.pct_change().dropna())
+    ends = got.groupby(pd.DatetimeIndex(got.index).to_period("M")).last()
+    outside = float((ends["beta"].abs() > ends["band"]).mean()) if len(ends) else 0.0
+    return old | dict(
+        rolling={
+            str(k): [r(b, 3), r(n, 3)] for k, b, n in zip(ends.index, ends["beta"], ends["band"])
+        },
+        outside_noise=r(outside, 3),
+    )
+
+
+# The latest ticker and name of each PERMNO in the Arcana weights file.
+def names_v4(path: Path) -> dict[int, tuple[str, str]]:
+    cols = ["Date", "Ticker", "PERMNO", "Name"]
+    own = pd.read_csv(path, usecols=cols, dtype=str, keep_default_na=False)
+    own = own.replace("", pd.NA).sort_values("Date", kind="stable")
+    last = own.groupby("PERMNO")[["Ticker", "Name"]].last().fillna("")
+    return {
+        int(p): (str(t).removesuffix(" US Equity"), str(n))
+        for p, t, n in zip(last.index, last["Ticker"], last["Name"])
+    }
+
+
+# Each month's book on its last positions date, in 0.001% units.
+def holdings_v4(positions: pd.DataFrame, nav: pd.Series, names: dict, months: list[str]) -> dict:
+    p = positions.assign(date=pd.to_datetime(positions["date"]))
+    p = p[p["value"] != 0]
+    month = p["date"].dt.to_period("M").astype(str)
+    p = p.assign(month=month)[p["date"] == p["date"].groupby(month).transform("max")]
+    p = p.assign(weight=p["value"] / p["date"].map(nav) * 100)
+    order = sorted(int(x) for x in p["permno"].unique())
+    index = {permno: i for i, permno in enumerate(order)}
+    book = []
+    for m in months:
+        part = p[p["month"] == m].sort_values("permno")
+        flat = []
+        for permno, weight in zip(part["permno"], part["weight"]):
+            flat += [index[int(permno)], int(round(float(weight) * 1000))]
+        book.append(flat)
+    known = [names.get(permno, ("", "")) for permno in order]
+    return dict(ticker=[t for t, _ in known], name=[n.title() for _, n in known], book=book)
+
+
+# The headline measures from the table, the comparison and the months.
+def headline_v4(
+    t: dict[int, dict], vs: dict[str, float], m: pd.DataFrame, daily: pd.DataFrame, old: dict
+) -> dict:
+    alpha, alpha_se = with_se(t[5]["strategy"])
+    beta, beta_se = with_se(t[6]["strategy"])
+    net = active_annual(t) + PREMIUM
+    days = daily.iloc[1:]
+    best, worst = m["ret"].idxmax(), m["ret"].idxmin()
+    return old | dict(
+        ir=r(first(t[23]["strategy"]), 3),
+        ir_gross=r(float(t[9]["strategy"]), 3),
+        net=r(net),
+        gross=r(net + sum(cost_parts(t))),
+        cagr=r(labelled(t[3]["strategy"], "CAGR") / 100),
+        vol=r(float(t[4]["strategy"]) / 100),
+        sharpe=r(float(t[8]["strategy"]), 3),
+        drawdown=r(float(t[11]["strategy"]) / 100),
+        alpha=r(alpha / 100),
+        alpha_t=r(alpha / alpha_se, 2),
+        beta=r(beta, 3),
+        beta_se=r(beta_se, 3),
+        correlation=r(vs[CORRELATION], 3),
+        hit=r((m["ret"] > m["hurdle"]).mean(), 3),
+        positions=r(labelled(t[14]["strategy"], "avg"), 1),
+        longs=r(days["n_long"].mean(), 1),
+        shorts=r(days["n_short"].mean(), 1),
+        turnover=r(labelled(t[17]["strategy"], "without") / 100 / 12, 3),
+        cumulative=r(float(t[2]["strategy"]) / 100),
+        best_month=dict(month=str(best), value=r(m["ret"][best])),
+        worst_month=dict(month=str(worst), value=r(m["ret"][worst])),
+    )
+
+
+# Gross and net above cash, the five parts and the cost ladder.
+def costs_v4(t: dict[int, dict], old: dict) -> dict:
+    trading, borrow = cost_parts(t)
+    total, active = trading + borrow, active_annual(t)
+    tracking = float(t[10]["strategy"]) / 100
+    even = 1 + active / total
+    parts = dict.fromkeys(old["parts"], 0.0) | {TRADING_PART: r(trading, 5), "borrow": r(borrow, 5)}
+    return old | dict(
+        gross=r(active + PREMIUM + total),
+        net=r(active + PREMIUM),
+        parts=parts,
+        total=r(total, 5),
+        break_even_multiple=r(even, 3),
+        break_even_cost=r(even * total),
+        ladder=[
+            dict(
+                multiple=k,
+                cost=r(k * total),
+                active=r(active - (k - 1) * total),
+                ir=r((active - (k - 1) * total) / tracking, 3),
+            )
+            for k in RUNGS
+        ],
+    )
+
+
+# The site data with its headline keys refilled from a v4 folder.
+def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
+    f = v4_files(folder, commit)
+    t, daily = table_rows(f["table"]), pd.read_parquet(f["daily"])
+    m = fund_months(daily)
+    market = market_months(close, m.index)
+    months = [str(p) for p in m.index]
+    # The predicted beta has no v4 source, so its months must line up.
+    if len(base["beta"]["exante"]) != len(months):
+        raise SystemExit(f"beta.exante has {len(base['beta']['exante'])} months, v4 {len(months)}.")
+    return base | dict(
+        book=folder.name,
+        code=commit,
+        window=f"{months[0]} to {months[-1]}",
+        months=months,
+        headline=headline_v4(t, vs_market(f["vs_market"]), m, daily, base["headline"]),
+        years=years_v4(m, market),
+        race=race_v4(m, market),
+        beta=beta_v4(daily, close, base["beta"]),
+        stocks=holdings_v4(
+            pd.read_parquet(f["positions"]), daily["nav"], names_v4(f["names"]), months
+        ),
+        costs=costs_v4(t, base["costs"]),
+    )
+
+
+# The pack folder, the v4 switch and any pick file, from the arguments.
+def options(args: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Writes the site's data files.")
+    parser.add_argument("pack", nargs="?", type=Path, default=PACK)
+    parser.add_argument("--v4", action="store_true", help="headline keys from the v4 pick")
+    parser.add_argument("--pick", type=Path, help="this pick file, not the newest")
+    return parser.parse_args(args)
+
+
 # Both files need the pack and crisis cache, which the results kit sets.
 def main(args: list[str]) -> None:
-    folder = Path(args[0]) if args else PACK
-    for path in (folder, CACHE):
+    opts = options(args)
+    use_v4 = opts.v4 or opts.pick is not None
+    picked = headline_folder(opts.pick or newest_pick()) if use_v4 else None
+    for path in (opts.pack, CACHE):
         if not path.exists():
             raise SystemExit(f"No {path}: uv run run.py --import fiam_results.zip first.")
+    data = build(opts.pack)
+    if picked:
+        data = v4(data, *picked, sp500())
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    for out, data in ((OUT, build(folder)), (CRASHES, crises())):
-        out.write_text(json.dumps(data, separators=(",", ":")) + "\n", encoding="utf-8")
+    for out, made in ((OUT, data), (CRASHES, crises())):
+        out.write_text(json.dumps(made, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"wrote {out.relative_to(ROOT)}: {out.stat().st_size / 1024:.0f} KB")
 
 

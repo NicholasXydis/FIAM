@@ -16,7 +16,7 @@ from fiam.report import charts
 from fiam.v4 import daily_book
 from fiam.v4.report import table_9_1
 
-# The team's colours, sizes and look, never redefined here.
+# The shared colours, sizes and look, never redefined here.
 OURS, BENCH, MARKET, NEG = charts.OURS, charts.BENCH, charts.MARKET, charts.NEG
 ALT, MUTED, INK, WIDE = charts.ALT, charts.MUTED, charts.INK, charts.WIDE
 # Rule lines (limits and floors) in ink, thin and dashed.
@@ -25,7 +25,7 @@ RULE = dict(color=INK, linewidth=0.9, dashes=(5, 3), alpha=0.7)
 FORBIDDEN = re.compile("[—–:;]")
 # A list of three or more with a comma before "and" or "or".
 OXFORD = re.compile(r",[^,]*, (?:and|or)\b")
-# PNG at the team's resolution and SVG beside it, for the deck.
+# PNG at the shared resolution and SVG beside it, for the deck.
 DPI = 220
 # A Bloomberg ticker's suffix, dropped from the "TICKER, Name" label.
 SUFFIX = " US Equity"
@@ -242,7 +242,7 @@ def save(fig, frame: pd.DataFrame, out: Path, name: str) -> list[Path]:
     return paths
 
 
-# The team's look on one axis, with an optional grey subtitle.
+# The shared look on one axis, with an optional grey subtitle.
 def style(ax, title: str, ylabel: str = "", dates: bool = False, subtitle: str = "") -> None:
     charts.style(ax, title, ylabel, dates=dates, subtitle=subtitle)
 

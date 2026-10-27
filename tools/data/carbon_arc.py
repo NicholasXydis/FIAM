@@ -296,7 +296,7 @@ def connect(seconds: int = 300):
     return CarbonArcClient(key)
 
 
-# Prices a spec's items into a plan file for the leader, buying nothing.
+# Prices a spec's items into a plan file for approval, buying nothing.
 def plan(spec_path: str, client=None) -> int:
     client = client or connect()
     if client is None:
