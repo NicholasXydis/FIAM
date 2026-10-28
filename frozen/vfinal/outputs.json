@@ -1,0 +1,33 @@
+{
+ "run_at": "eab2349a0ce1",
+ "headline": "out/vfinal/final/revised_quarterly_loose",
+ "files": {
+  "out/vfinal/final/early_quarterly_loose_eab2349a0ce1.json": "5a2f7df89303e28e027b1280fe750ce6036e4434f7eebf4fe1f264e679a93601",
+  "out/vfinal/final/early_quarterly_loose_eab2349a0ce1.parquet": "0df90a61ad1009c7f8aaedae6c05b8d086096740cce1915d0cfb0ef6e112f698",
+  "out/vfinal/final/early_quarterly_tight_eab2349a0ce1.json": "d67aa447af45655dffd2cc26cd1aeb455e369c8a8c245e5fe8068bce49d41bd5",
+  "out/vfinal/final/early_quarterly_tight_eab2349a0ce1.parquet": "b473e2f27d096b1fc5be94a2e662ac0f60d423d1ed6ce960de69766311211484",
+  "out/vfinal/final/forecasts_quarterly_eab2349a0ce1.json": "e17c5c438f16cf1e2d02ec7ccb5fa535b3428d4d6ac53bc29246afc2c0777b4f",
+  "out/vfinal/final/forecasts_quarterly_eab2349a0ce1.parquet": "cd1a00871a068b7be08081dc8a0ab7dce55ea8fb4228a356a76c12e7b2f45ea6",
+  "out/vfinal/final/forecasts_yearly_eab2349a0ce1.json": "ae7d01750c79326df952706b2355ab73db24a2bdbf3939fea7823322b99bf3e5",
+  "out/vfinal/final/forecasts_yearly_eab2349a0ce1.parquet": "9de7d996e7117c0c315ba38c724af1998b9619e174992f6533a4f2d2a0fc32b7",
+  "out/vfinal/final/labels_eab2349a0ce1.json": "4d07bf5355663ad0bc2dbe3bbd508b348ed6ea4299e1fdda4d8b97af8fcf91ea",
+  "out/vfinal/final/pick_eab2349a0ce1.json": "13f78010015aac9d56d0e3fe9fa16c8a0897e0c1a8dbd69ad9323036f688ce8d",
+  "out/vfinal/final/revised_quarterly_loose/arcana_positions_eab2349a0ce1.csv": "cfe0181d6e4359a66e55adeb56e0848f746f593da7f302139a464d9aa11d442b",
+  "out/vfinal/final/revised_quarterly_loose/arcana_weights_daily_eab2349a0ce1.csv": "a463b1099001206d4241660583994c0d9da0c55bb1288b3e4aa18a3131620761",
+  "out/vfinal/final/revised_quarterly_loose/arcana_weights_monthly_eab2349a0ce1.csv": "993817dc79c526fefa4737ea31d139c9da3152eebcf5ec43a370f7da67a9585c",
+  "out/vfinal/final/revised_quarterly_loose/book_eab2349a0ce1.json": "a1a3fc8b1c06d40b1306865f9459c748e7124057e7b7e089dc579723775ee38e",
+  "out/vfinal/final/revised_quarterly_loose/compliance_7_eab2349a0ce1.parquet": "122511805d06777634e3f20632d1cf39eca788f5b85aa491e33b3f7e0e9f3fc8",
+  "out/vfinal/final/revised_quarterly_loose/daily_7_eab2349a0ce1.parquet": "e9821b9b0f351b1a4fc2b0f8c339605d5fa7b24abe476d1440a827f6955f3b78",
+  "out/vfinal/final/revised_quarterly_loose/events_7_eab2349a0ce1.parquet": "048e2d051eff85358199cef89c346be3de9dc4314a264ab117f36afb0e8b5ecf",
+  "out/vfinal/final/revised_quarterly_loose/forecasts_eab2349a0ce1.parquet": "cd1a00871a068b7be08081dc8a0ab7dce55ea8fb4228a356a76c12e7b2f45ea6",
+  "out/vfinal/final/revised_quarterly_loose/ledger_7_eab2349a0ce1.parquet": "b3b9037a75fa2f14802081190070f9e80a970cc04bcb3ae43d65f02b383438ea",
+  "out/vfinal/final/revised_quarterly_loose/plans_7_eab2349a0ce1.pkl": "15940b0a8b0f66f0aa30ad674b961658b582791b812917a049e32a97f8b173a0",
+  "out/vfinal/final/revised_quarterly_loose/positions_7_eab2349a0ce1.parquet": "4f43528f28b0b964d36e51779bf7d8dc471ceea7ec21850358ce3c89163ef43a",
+  "out/vfinal/final/revised_quarterly_loose/report_eab2349a0ce1.json": "3d920fef0dd850f3e302b987e47139777e4f63a58c75be834377d336b4993368",
+  "out/vfinal/final/revised_quarterly_loose/table_9_1_eab2349a0ce1.csv": "a8c36fdadf25b2699dafc4e9ac99ebe25db5c8a6f39724f5ef713b0ddc2b100a",
+  "out/vfinal/final/revised_quarterly_loose/trades_7_eab2349a0ce1.parquet": "538d589e7f0dcf48d736df39c0b243836b4f9d0bcf4e73eefa69d694198c5878",
+  "out/vfinal/final/revised_quarterly_loose/unresolved_daily_eab2349a0ce1.csv": "48a439a94be4fc1ee91a1552fa55e97dc9dbc6ceebb9aef3d2d2e7d2bc0fa0cc",
+  "out/vfinal/final/revised_quarterly_loose/unresolved_monthly_eab2349a0ce1.csv": "42beeabe60e15e89a4510b795cb847246f6c2ff1f682e7295035d9351cbfa402",
+  "out/vfinal/final/revised_quarterly_loose/vs_market_eab2349a0ce1.csv": "2f073204d61fdcbda1dca1da65b98a294e114c036df9a67fb41ac35972a1ba0c"
+ }
+}
