@@ -14,7 +14,7 @@ from matplotlib.colors import to_rgba, to_rgba_array  # noqa: E402
 from fiam import data  # noqa: E402
 from fiam.agents import crowd_lab as L  # noqa: E402
 from fiam.agents import harness as H  # noqa: E402
-from fiam.paths import ARCHIVE  # noqa: E402
+from fiam.paths import RESEARCH  # noqa: E402
 from fiam.paths import read_json as load  # noqa: E402
 
 OUT = Path("out") / "figures" / "ai_crowd.mp4"
@@ -51,12 +51,11 @@ def fade(t: float, start: float, length: float = 0.8) -> float:
     return float(ease((t - start) / length))
 
 
-# The film's book: the chosen one at $10M with crowd data, else shipped.
+# The film's book: the one at $10M with crowd data, else the shipped.
 def our_run() -> str:
-    final = load(ARCHIVE / "evidence.json").get("v3", {}).get("final", {}).get("name")
-    run = f"{final}@1e7" if final else ""
-    insights = load(ARCHIVE / "crowd_insights.json")
-    return run if run and f"book {run}" in insights else "v1@1e7"
+    insights = load(RESEARCH / "crowd_insights.json")
+    books = [k.removeprefix("book ") for k in insights if k.startswith("book ")]
+    return next((b for b in books if b.endswith("@1e7")), "v1@1e7")
 
 
 # All the film shows from saved answers: one month, its votes, our book.
@@ -65,9 +64,9 @@ def gather() -> dict:
     month = max(set(retail["eom"]) & set(copy["eom"]))
     retail, copy = retail[retail["eom"] == month], copy[copy["eom"] == month]
     run = our_run()
-    held = data.read(ARCHIVE / run / "record" / "holdings.parquet")
-    crowd = load(ARCHIVE / "crowd_lab.json")
-    insights = load(ARCHIVE / "crowd_insights.json")
+    held = data.read(RESEARCH / run / "record" / "holdings.parquet")
+    crowd = load(RESEARCH / "crowd_lab.json")
+    insights = load(RESEARCH / "crowd_insights.json")
     tests = insights.get(f"book {run}", insights)
     net = insights.get("network", {})
     logs = ("crowdlab_retail", "crowdlab_copycat")

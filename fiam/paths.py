@@ -18,7 +18,7 @@ METRICS = SUBMISSION / "metrics.json"
 # Small frozen inputs, so git holds them. Relative like cache/.
 FROZEN = Path("frozen")
 # Saved research runs and their exhibits, read and written in place.
-ARCHIVE = Path("out") / "v2"
+RESEARCH = Path("out") / "research"
 
 # Small-run switch: slow steps shrink, so the chain tests in minutes.
 SMOKE = os.environ.get("FIAM_SMOKE") == "1"

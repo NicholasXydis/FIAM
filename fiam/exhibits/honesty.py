@@ -10,7 +10,7 @@ from fiam import benchmarks, data, paths
 from fiam.agents import harness as H
 from fiam.agents import honesty as A
 
-OUT = paths.ARCHIVE / "honesty.json"
+OUT = paths.RESEARCH / "honesty.json"
 REPS, SEED = 10_000, 42
 # Set before any result: the gap 250 per side detects at 80% power.
 MDE = 0.125

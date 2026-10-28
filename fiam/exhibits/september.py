@@ -118,7 +118,7 @@ def main() -> None:
     book = table(*books[DECISION][:2])
     digest = write(book, V1)
     trades = trade_list(books, crowd_scores())
-    trades.to_csv(paths.ARCHIVE / "trade_list_v1.csv", index=False)
+    trades.to_csv(paths.RESEARCH / "trade_list_v1.csv", index=False)
     gross, net = book["weight"].abs().sum(), book["weight"].sum()
     print(f"September v1: {len(book)} names, gross {gross:.3f}, net {net:+.4f}, {digest[:16]}")
 

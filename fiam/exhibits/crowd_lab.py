@@ -15,9 +15,12 @@ from fiam.agents import crowd_lab as L
 from fiam.paths import FROZEN
 
 EMULATOR = FROZEN / "crowd_emulator.json"
-OUT = paths.ARCHIVE / "crowd_lab.json"
+OUT = paths.RESEARCH / "crowd_lab.json"
 HISTORICAL = paths.EXHIBITS / "agents" / "crowd_picks.parquet"
 CROWD_SIZES = (10e9, 50e9, 100e9)
+# The plain book and its what-if runs, a crowd arm alone or copied.
+PLAIN = paths.RESEARCH / "v1@1e7"
+WHAT_IFS = ("crowd_*@1e7", "copycat+crowd_*@1e7")
 
 
 # Each crowd's picks by agent and stock-month, with shorts for copycats.
@@ -264,11 +267,11 @@ def overlap(a: pd.DataFrame, b: pd.DataFrame) -> float:
 # What-if books against the plain one, reported with no pass or fail.
 def what_if() -> dict:
     out = {}
-    for folder in sorted(paths.ARCHIVE.glob("*crowd_*@1e7/*")):
+    found = (f for pattern in WHAT_IFS for f in paths.RESEARCH.glob(f"{pattern}/*"))
+    for folder in sorted(found):
         if not (folder / "stats.json").exists():
             continue
-        plain = paths.ARCHIVE / ("v2@1e7" if folder.parent.name.startswith("v2") else "v1@1e7")
-        for book in (folder, plain / folder.name):
+        for book in (folder, PLAIN / folder.name):
             net = pd.read_csv(book / "returns.csv")["net"]
             s = json.loads((book / "stats.json").read_text())
             out[f"{book.parent.name} {book.name}"] = dict(
@@ -277,7 +280,7 @@ def what_if() -> dict:
                 turnover=s["turnover"],
                 overlap_with_plain=overlap(
                     data.read(book / "holdings.parquet"),
-                    data.read(plain / folder.name / "holdings.parquet"),
+                    data.read(PLAIN / folder.name / "holdings.parquet"),
                 ),
             )
     return out
@@ -288,7 +291,7 @@ def exposures(names: tuple, scored: pd.DataFrame, factor: pd.Series) -> dict:
     out = {}
     for name in names:
         for window in ("check", "record"):
-            folder = paths.ARCHIVE / name / window
+            folder = paths.RESEARCH / name / window
             if not (folder / "returns.csv").exists():
                 continue
             book = pd.read_csv(folder / "returns.csv", parse_dates=["holding_month"])
@@ -338,7 +341,7 @@ def main() -> None:
     votes = {name: consensus(p) for name, p in live.items()}
     votes["historical"] = consensus(hist)
     saved = pd.concat([v.assign(crowd=k) for k, v in votes.items()], ignore_index=True)
-    saved.to_parquet(paths.ARCHIVE / "crowd_consensus.parquet", index=False)
+    saved.to_parquet(paths.RESEARCH / "crowd_consensus.parquet", index=False)
     targets = [v for k, v in votes.items() if k in ("retail", "historical")]
     model = fit_emulator(frame, pd.concat(targets, ignore_index=True))
     FROZEN.mkdir(exist_ok=True)
@@ -348,9 +351,9 @@ def main() -> None:
     scored["crowd_score"] = crowd_score(frame)
     factor = crowd_factor(scored)
     scored[[*data.KEYS, "crowd_score"]].to_parquet(
-        paths.ARCHIVE / "crowd_scores.parquet", index=False
+        paths.RESEARCH / "crowd_scores.parquet", index=False
     )
-    report |= exposures(("v1@1e7", "v2@1e7"), scored, factor)
+    report |= exposures((PLAIN.name,), scored, factor)
     report["what_if"] = what_if()
     OUT.write_text(json.dumps(report, indent=1, default=float) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "emulator"}, indent=1, default=float))

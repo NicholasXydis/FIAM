@@ -176,14 +176,25 @@ def test_final_pick_gives_folder_and_commit(tmp_path):
     assert b.headline_folder(pick) == (tmp_path / "revised", COMMIT)
 
 
-# The newest pick is the one written last; none at all is refused.
+# The newest pick with its crises file wins; none at all is refused.
 def test_newest_pick(tmp_path):
     with pytest.raises(SystemExit, match="No pick file"):
         b.newest_pick(tmp_path)
-    old, new = tmp_path / "pick_aaaaaaaaaaaa.json", tmp_path / "pick_bbbbbbbbbbbb.json"
-    for path, when in ((new, 2_000_000_000), (old, 1_000_000_000)):
-        path.write_text("{}", encoding="utf-8")
-        os.utime(path, (when, when))
+    picks = {}
+    for commit, when in (("aaaaaaaaaaaa", 1_000_000_000), ("bbbbbbbbbbbb", 2_000_000_000)):
+        folder = tmp_path / f"revised_{commit}"
+        folder.mkdir()
+        pick = tmp_path / f"pick_{commit}.json"
+        pick.write_text(json.dumps({"final": True, "headline": str(folder)}), encoding="utf-8")
+        os.utime(pick, (when, when))
+        picks[commit] = (pick, folder / f"crises_{commit}.json")
+    with pytest.raises(SystemExit, match="crises file"):
+        b.newest_pick(tmp_path)
+    (old, old_crises), (new, new_crises) = picks["aaaaaaaaaaaa"], picks["bbbbbbbbbbbb"]
+    old_crises.write_text("{}", encoding="utf-8")
+    assert b.crises_file(new) == new_crises
+    assert b.newest_pick(tmp_path) == old
+    new_crises.write_text("{}", encoding="utf-8")
     assert b.newest_pick(tmp_path) == new
 
 

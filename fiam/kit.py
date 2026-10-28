@@ -12,7 +12,7 @@ MANIFEST = "kit_manifest.json"
 PARTS = (
     "research",
     "cache/agents",
-    "out/v2",
+    "out/research",
     "cache/stress_daily.parquet",
     "frozen",
     "out/finals",

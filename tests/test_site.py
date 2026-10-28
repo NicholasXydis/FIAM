@@ -14,7 +14,7 @@ SITE = build_site.OUT
 @pytest.fixture(scope="module")
 def site():
     if not SITE.exists():
-        pytest.skip("no site data; uv run tools/build_site.py --v4 writes it")
+        pytest.skip("no site data; uv run tools/build_site.py writes it")
     return json.loads(SITE.read_text(encoding="utf-8"))
 
 

@@ -10,13 +10,14 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from fiam import book as P
+from fiam import paths
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / "out" / "vfinal"
 GATES, FORECAST, CONSTRUCT = BASE / "gates", BASE / "forecast", BASE / "construct"
 DESK, OUT = BASE / "desk", BASE / "evidence"
 # The older runs' folder, relative to the root, and their ledger.
-OLDER_OUT = Path("out") / "v2"
+OLDER_OUT = paths.RESEARCH
 OLDER_TRIALS = ROOT / OLDER_OUT / "trials.csv"
 # The six gates' run and the two late gates.
 GATES_AT = "fa169bf9301a"

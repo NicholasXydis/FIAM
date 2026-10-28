@@ -21,7 +21,7 @@ LEAVE_OUT = (
     "docs/TEAM.md",
 )
 # Deck builders, so the decks build from MAIN.py alone.
-CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}
+CARRIED_TOOLS = {"tools/build_deck.py", "tools/motion.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
 # Ignores later packages, so a new release never changes a rerun.

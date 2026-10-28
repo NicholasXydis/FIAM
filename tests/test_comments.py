@@ -37,7 +37,7 @@ def test_checker_finds_each_break():
 # Versions, citations, people and history fail; outside names pass.
 def test_checker_finds_banned_words():
     bad = {
-        "# Built as v3 did.": "a version name",
+        "# Built as v1 did.": "a version name",
         "# The v4b grid.": "a version name",
         "# The rule (PLAN §8.3).": "a document citation",
         "# As the protocol says.": "a document citation",
