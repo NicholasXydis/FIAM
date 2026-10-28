@@ -62,4 +62,4 @@ Python, LightGBM, PyTorch, scikit-learn, CVXPY and uv. Gemma, Qwen and Pythia ru
 
 <br>
 
-Nicholas Xydis · Yohannah Ilieva · Andrew Koumoudjian · Nicolas Romero · Nokto Lapointe
+Nicholas Xydis, Team Leader and AI & Research · Yohannah Ilieva, Risk Management · Andrew Koumoudjian, Portfolio Construction · Nicolas Romero, Data & Finance · Nokto Lapointe, Machine Learning

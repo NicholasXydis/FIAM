@@ -4,7 +4,7 @@ This is our whole project in plain English. The detailed rules and the list of w
 
 ## The team
 
-Nicholas Xydis is Team Leader and leads AI and Research. Nicolas Romero covers Data and Finance. Nokto Lapointe covers Machine Learning. Andrew Koumoudjian covers Portfolio Construction. Yohannah Ilieva covers Risk.
+Nicholas Xydis is Team Leader and leads AI and Research. Nicolas Romero covers Data and Finance. Nokto Lapointe covers Machine Learning. Andrew Koumoudjian covers Portfolio Construction. Yohannah Ilieva covers Risk Management.
 
 ## The challenge
 

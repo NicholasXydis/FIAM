@@ -106,7 +106,7 @@ The rules and what is left to do, written so an AI agent can execute it exactly.
    - Relocked (98 files, outputs unchanged, verify passes); 672 tests pass.
 2. **[LEADER] Commit:** "feat: make MAIN.py check the final fund and add fiam compare". [DONE] a6fe867 (sweep and docs).
 3. **[DONE] PC settings:** Run unattended on, Windows Update paused to 2026-11-11, never sleeps on AC. The reboot test is optional (only the live AI demo needs the PC).
-4. **[me] Lean kit:** `uv run fiam export --skip weights-gemma,weights` after the final commit, with no job writing. Then restore into an empty folder on the Mac, check every SHA-256, and run `fiam doctor`.
+4. **[DONE 2026-10-28 01:10] Lean kit:** `uv run fiam export --skip weights-gemma,weights` at 3dd8d1e: 57.4 GB, 240,850 files in 19 parts, `repo.bundle` written; the weights parts from earlier exports stay on the stick. Mac restore test from a fresh bundle clone in `~/FIAM_restore_test` running.
 5. **[me] Mac tests:** ways 1, 2 and 3 from the fresh restore; way 4 overnight, then `fiam compare` (expected identical).
 6. **[me] PC tests:** the leader moves the stick; sync to the final commit by bundle; restore to F:; ways 1, 2 and 3; way 4 overnight, then `fiam compare` (expected close, not identical; report the gap).
 7. **[me] Deck v5** (agent building), 16 main and 6 appendix:
