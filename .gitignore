@@ -126,3 +126,7 @@ Desktop.ini
 # Root notes stay local except README.md; plans are in docs.
 /*.md
 !/README.md
+
+# The plan files stay on this machine and in the USB kit.
+/docs/PLAN.md
+/docs/TEAM.md
