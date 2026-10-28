@@ -365,6 +365,21 @@ def test_audit_records_results_and_finds_members(tmp_path):
         assert audit.member(zf, "SUBMISSION.TSV") == "2013q2_form13f/SUBMISSION.tsv"
 
 
+# MAIN.py's header names the four ways and every rerun stage only.
+def test_main_py_header_is_the_final_fund():
+    from fiam.vfinal import cli
+
+    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    text = build.description()
+    for args in [*cli.RERUN, ("pick",)]:
+        assert f"#   {' '.join(args)} " in text, args
+    for way in ("uv run fiam setup", "uv run fiam verify", "uv run fiam rerun", "fiam compare"):
+        assert way in text, way
+    assert "v1" not in text and "submission" not in text
+
+
 # MAIN.py never carries the two plan files, though git tracks them.
 def test_main_py_leaves_out_the_plan_files(monkeypatch):
     spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")

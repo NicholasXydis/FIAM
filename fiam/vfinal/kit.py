@@ -22,6 +22,8 @@ from fiam import kit as results
 ROOT = Path(__file__).resolve().parents[2]
 NAME = "fiam_finals"
 MANIFEST = "MANIFEST.json"
+# The repository at HEAD as one git bundle, cloned with git clone.
+BUNDLE = "repo.bundle"
 LOCAL = ROOT / "out" / "kit"
 HASHES = LOCAL / "hashes.json"
 RECORD = ROOT / "data" / "KIT.json"
@@ -107,6 +109,8 @@ With a clone of the repo
   1. Install uv (https://docs.astral.sh/uv) or from installers/<your machine>/.
   2. In the clone:  uv run run.py setup     (finds this USB by itself)
   3. uv run run.py doctor   says what is missing and how to fix it.
+  No clone and no internet: git clone <this fiam_finals folder>/repo.bundle FIAM
+  makes one from the commit the kit was exported at (git log -1 names it).
 
 Without a clone
   1. Copy MAIN.py from here into an empty folder on the computer. Never run it on the USB.
@@ -350,6 +354,33 @@ def main_py(folder: Path) -> None:
         copy(built, folder / "MAIN.py")
 
 
+# One git command in the repository, never raising on a refusal.
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+
+
+# HEAD as a git bundle beside the parts; the path, or None if git fails.
+def repo_bundle(folder: Path) -> Path | None:
+    top = git("rev-parse", "--show-toplevel").stdout.strip()
+    if not top or Path(top).resolve() != ROOT.resolve():
+        print(f"No {BUNDLE}: {ROOT} is not a git clone")
+        return None
+    branch = git("symbolic-ref", "-q", "--short", "HEAD").stdout.strip()
+    target = folder / BUNDLE
+    temp = target.with_name(target.name + ".part")
+    made = git("bundle", "create", str(temp), "HEAD", *([branch] if branch else []))
+    if made.returncode:
+        temp.unlink(missing_ok=True)
+        print(f"No {BUNDLE}: git bundle failed ({made.stderr.strip()[:200]})")
+        return None
+    temp.replace(target)
+    head = git("rev-parse", "--short=12", "HEAD").stdout.strip()
+    dirty = git("status", "--porcelain").stdout.strip()
+    note = ", without the uncommitted changes here" if dirty else ""
+    print(f"{BUNDLE}: commit {head}{note}. Clone: git clone {target} FIAM")
+    return target
+
+
 # The installers and caches made here, as (file, kit name).
 def extras() -> list[tuple[Path, str]]:
     found = [p for e in EXTRAS if (LOCAL / e).is_dir() for p in (LOCAL / e).rglob("*")]
@@ -446,12 +477,14 @@ def export(folder: Path, dry: bool = False, skip: set[str] = frozenset()) -> int
             copy(path, folder / name)
         state["extras"][name] = {"size": path.stat().st_size, "sha256": sha}
     main_py(folder)
+    if repo_bundle(folder):
+        state["extras"][BUNDLE] = {"sha256": digest(folder / BUNDLE)}
     (folder / "LICENSES.md").write_text(LICENSES, encoding="utf-8")
     (folder / "README.txt").write_text(README, encoding="utf-8")
     state["extras"]["MAIN.py"] = {"sha256": digest(folder / "MAIN.py")}
     save(folder, state)
     # Anything else in the folder is reported and left alone.
-    own = {*EXTRAS, "parts", MANIFEST, "MAIN.py", "LICENSES.md", "README.txt"}
+    own = {*EXTRAS, "parts", MANIFEST, "MAIN.py", BUNDLE, "LICENSES.md", "README.txt"}
     for path in sorted(folder.iterdir()):
         if path.name not in own and not path.name.startswith("._"):
             print(f"Not part of the kit, left alone: {path.name}")

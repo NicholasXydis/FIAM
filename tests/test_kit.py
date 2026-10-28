@@ -36,6 +36,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(kit, "hf_home", lambda: tmp_path / "hf")
     monkeypatch.setattr(results, "PARTS", ("frozen",))
     monkeypatch.setattr(kit, "main_py", lambda folder: (folder / "MAIN.py").write_text("x"))
+    monkeypatch.setattr(kit, "repo_bundle", lambda folder: None)
     return root
 
 
@@ -255,3 +256,35 @@ def test_left_out_names_data_no_part_holds(tmp_path):
     (tmp_path / "data" / "new").mkdir()
     (tmp_path / "data" / "new" / "b.csv").write_text("2")
     assert kit.left_out([tmp_path / "data" / "kept"], tmp_path) == {"data/new": 1}
+
+
+# The kit's repo.bundle clones back to the same commit and branch.
+def test_repo_bundle_clones(tmp_path, monkeypatch):
+    import subprocess
+
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    # One git command, failing the test if git refuses it.
+    def run(*args, cwd=root):
+        return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
+
+    run("init", "-q", "-b", "main")
+    (root / "run.py").write_text("print('hi')\n")
+    run("add", "run.py")
+    run("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "one")
+    monkeypatch.setattr(kit, "ROOT", root)
+    folder = tmp_path / "USB" / kit.NAME
+    folder.mkdir(parents=True)
+    assert kit.repo_bundle(folder) == folder / kit.BUNDLE
+    run("clone", "-q", str(folder / kit.BUNDLE), "FIAM", cwd=tmp_path)
+    assert (tmp_path / "FIAM" / "run.py").read_text() == "print('hi')\n"
+    branch = run("branch", "--show-current", cwd=tmp_path / "FIAM").stdout.strip()
+    assert branch == "main"
+
+
+# Outside a git clone no bundle is written and the export goes on.
+def test_repo_bundle_outside_git(tmp_path, monkeypatch):
+    monkeypatch.setattr(kit, "ROOT", tmp_path)
+    assert kit.repo_bundle(tmp_path) is None
+    assert not (tmp_path / kit.BUNDLE).exists()

@@ -1,0 +1,49 @@
+{
+ "source": "dsf",
+ "use": "backtest",
+ "raw": {
+  "organisers/dsf_mini_from_2014.csv": "a486f94aad1a94a320b577d17aee74a5df60f139fe0f23e67d0c1ed85f0f8ac8"
+ },
+ "rows_out": 12175448,
+ "key": [
+  "permno",
+  "date"
+ ],
+ "ids": "permno",
+ "clock": "market",
+ "banned_dropped": [],
+ "restricted": {
+  "prc": [
+   "gap_ratio"
+  ]
+ },
+ "labels": {},
+ "rules": {
+  "prc_inf": 2694,
+  "ret_null": 6550,
+  "abs_ret_over_50pct": 7695,
+  "duplicate_keys": 0,
+  "rows_without_first_close": 0
+ },
+ "rows_by_year": {
+  "2014": 938341,
+  "2015": 949553,
+  "2016": 923207,
+  "2017": 902320,
+  "2018": 901468,
+  "2019": 905830,
+  "2020": 911884,
+  "2021": 1026707,
+  "2022": 1105111,
+  "2023": 1040137,
+  "2024": 986229,
+  "2025": 929617,
+  "2026": 655044
+ },
+ "answers": {
+  "history_start": "2014-01-02",
+  "lag": "that day's close",
+  "vintage": "price-only CRSP DlyRetx; prc split-adjusted to today (banned, B10)",
+  "coverage": "the panel's stocks; no delisting-return days (A13)"
+ }
+}

@@ -1,120 +1,44 @@
-# One command for everything; uv run run.py --help lists every option.
+# One command for the final fund; uv run run.py --help lists options.
 
-import ast
-import hashlib
-import importlib
 import importlib.util
-import json
 import os
-import platform
 import shutil
 import subprocess
 import sys
 import tempfile
-import time
-import zipfile
 from pathlib import Path
 
-HELP = """uv run run.py [options]
-  no data in data/     checks the submitted holdings and returns against the brief
-  with data            builds the data bundle once, rebuilds the book into out/, compares it
-  --official           rewrites submission/ (needs the WRDS tables)
-  --ml                 retrains every model        --agents   runs the local-LLM agents
-  --all                --ml and --agents, in order, resuming where a stopped run left off
-  --smoke              every step on a small slice, a rehearsal of --all in minutes
-  --fresh              reruns finished slow steps  --import <folder or fiam_v1.zip>
-  --export-data        zips the data bundle into fiam_v1.zip for a teammate
-  --crowd-quick        a short live AI crowd on the newest months (needs a GPU or FIAM_LLM_URL):
-                       --agents N, --months M, --minutes T
-  --rules <txt or pdf> rules -> a draft mandate in mandates/ for a person to approve (GPU)
-  --export-results     zips agent answers, research runs and frozen inputs into fiam_results.zip
-                       (--import takes either zip, and can be given twice)
+HELP = """uv run run.py [verb]   (MAIN.py passes its arguments here)
+  no verb              checks the final fund's carried results in final/: every PDF
+                       rule on every day, the headline recomputed from daily.csv and
+                       the FRED series, and the code against the lock, in seconds.
+                       With the organisers' files in data/organisers/ or beside
+                       MAIN.py it also checks their SHA-256 against our receipts and
+                       replays our daily stock P&L on their daily returns
+  check, rerun, stage, whatif, compare, lock, verify, audit
+                       the final fund's verbs, the same as uv run fiam <verb>;
+                       uv run fiam help lists them
+  setup [kit]          restores the finals kit from the USB, missing files only, then doctor
+  doctor [--deep]      checks Python, packages, data, the kit's files, settings and the AI link
+  export [folder]      writes the finals kit and repo.bundle to the USB, rewriting only
+                       parts that changed; --dry-run shows sizes, --skip PART,PART leaves
+                       parts out
+  installers, caches   uv, Node and pnpm for every machine; this machine's offline packages
   --data status        every data source: files, sizes, USB budget, licence (data/INVENTORY.json)
-  --data verify        every saved file against its receipt, and the organizer's checksums
+  --data verify        every saved file against its receipt, and the organisers' checksums
   --data rebuild <source> <verb ...>   rebuilds into a scratch folder and compares with ours
   --data <source> <verb ...>   one data tool: edgar, noaa, stock, carbon or amazon, e.g.
                        --data carbon plan <spec> (prices, buys nothing); carbon buy and rebuy
-                       spend tokens, so the leader runs them; --data amazon fetch [category]
-  setup [kit]          restores the finals kit from the USB, missing files only, then doctor
-  doctor [--deep]      checks Python, packages, data, the kit's files, settings and the AI link
-  export [folder]      writes the finals kit to the USB, rewriting only parts that changed;
-                       --dry-run shows sizes, --skip PART,PART leaves parts out
-  installers, caches   uv, Node and pnpm for every machine; this machine's offline packages
-  check, rerun, stage, whatif, lock, verify, audit
-                       the final version's verbs, the same as uv run fiam <verb>;
-                       uv run fiam help lists them"""
+                       spend tokens, so the leader runs them; --data amazon fetch [category]"""
 
-# The final version's verbs, passed to fiam/vfinal/cli.py as given.
-FINAL_VERBS = ("check", "rerun", "stage", "whatif", "lock", "verify", "audit")
-
-# The book and what reads it, in order; each step runs with python -m.
-STEPS = [
-    ("fiam.data", "checking the data bundle"),
-    ("fiam.costs", "calibrating spreads to CRSP quotes and borrow to short interest"),
-    ("fiam.book", "building the portfolio"),
-    ("fiam.exhibits.pack", "sub-periods, costs, risk and signal attribution"),
-    ("fiam.exhibits.daily_risk", "marking the book every trading day, with stress tests"),
-    ("fiam.exhibits.implementation", "cost sensitivities, capacity and liquidity"),
-    ("fiam.checks.wrds_checks", "checking exits, returns, market and report dates on WRDS"),
-    ("fiam.exhibits.confirmation", "running the same book on 2016-2020"),
-    ("fiam.exhibits.config_log", "writing the ledger of everything we tried"),
-    ("fiam.exhibits.labels", "checking every label against CRSP, 8-K filings and EDGAR"),
-]
-
-# Charts, docs and checks last, after any agent writes what they show.
-REPORT = [
-    ("fiam.agents.harness export", "writing the agents' tool definitions"),
-    ("fiam.checks.provenance", "recording which run wrote each artifact"),
-    ("fiam.report.charts", "drawing the performance charts"),
-    ("fiam.report.research_charts", "drawing the research charts"),
-    ("fiam.checks.reproducibility", "auditing for look-ahead and survivorship"),
-    ("fiam.checks.verify", "checking the book against the brief's rules"),
-]
-
-# Agents run before the models, as the crowd score feeds the scorer.
-CROWD_STEPS = [
-    ("fiam.agents.harness prepare", "downloading and checking the agents' models, once"),
-    ("fiam.agents.crowd", "crowd agent: where AI assistants would buy, 60 months of 2016-2020"),
-    ("fiam.agents.triage", "triage agent: labels 6,000 masked 8-Ks from 2015-2018"),
-]
-
-# Models, then comparison and research controls; each reads the last.
-ML_STEPS = [
-    ("fiam.ml.dataset", "building the training folds"),
-    ("fiam.ml.text", "FinBERT reads every masked 8-K, once; a stopped run resumes"),
-    ("fiam.ml.triage", "the triage labels learned from the text, applied to every filing"),
-    ("fiam.ml.teachers", "teachers: daily beta, crowding and revisions, learned year by year"),
-    ("fiam.ml.crowd", "learning where the agents invest, for every month to 2026"),
-    ("fiam.agents.analyst", "analyst agent: material filings in the composite's tails"),
-    ("fiam.ml.analyst", "the analyst's pre-2021 verdicts learned from the text, every month"),
-    ("fiam.ml.scorer", "scorer: learning to rank what a neutral book earns, five seeds"),
-]
-
-# Model comparison and research controls; a smoke rehearsal skips them.
-RESEARCH_STEPS = [
-    ("fiam.ml.train", "fitting ElasticNet, LightGBM and NN3, then scoring each into a book"),
-    ("fiam.ml.summary", "decile tables and the model numbers"),
-    ("fiam.ml.oos_r2", "measuring out-of-sample R-squared for every method"),
-    ("fiam.exhibits.placebo_lab", "running the permutation and falsification controls"),
-]
-
-# The local-model agents that read the finished book.
-AGENT_STEPS = [
-    ("fiam.agents.critic", "devil's-advocate agent on the second vendor's model"),
-    ("fiam.agents.critic --repeat", "the devil's advocate again, to prove the run repeats"),
-    ("fiam.agents.explainer", "explainer: why the book held its biggest winners and losers"),
-]
+# The final fund's verbs, passed to fiam/vfinal/cli.py as given.
+FINAL_VERBS = ("check", "rerun", "stage", "whatif", "compare", "lock", "verify", "audit")
+# The finals kit's verbs, passed to fiam/vfinal/kit.py as given.
+KIT_VERBS = ("setup", "doctor", "export", "installers", "caches")
 
 ROOT = Path(__file__).resolve().parent
-STAMPS, OUT, LOG = (
-    Path("cache/steps.json"),
-    Path("out"),
-    Path("cache/run.log"),
-)
-# This run's command and step statuses so far, for the provenance step.
-THIS_RUN = Path("cache/this_run.json")
 
-# Organizer files; the first three build the bundle every step reads.
+# Organizer files; the first three build the bundle --import feeds.
 REQUIRED = [
     "chars_final_with_names.parquet",
     "8k_20150101_20260831_identified.parquet",
@@ -125,10 +49,9 @@ ORGANIZER = [*REQUIRED, "readme.md"]
 # The bundle, found as fiam/data.py finds it, and the files it needs.
 BUNDLE = Path(os.environ.get("FIAM_DATA_DIR") or ROOT / "data" / "fiam_v1").expanduser()
 CORE = ["features_monthly.parquet", "labels_monthly.parquet", "filings.parquet", "manifest.json"]
-EXITS = BUNDLE / "wrds" / "exits.parquet"
 
-PACKAGES = ["pandas", "numpy", "pyarrow", "scipy", "cvxpy", "statsmodels", "matplotlib"]
-ML_PACKAGES = ["sklearn", "lightgbm", "torch"]
+# What the carried check reads; uv brings them all.
+PACKAGES = ["pandas", "numpy", "pyarrow", "statsmodels"]
 # Carbon Arc's SDK, pinned, with nothing published after the cutoff.
 CARBON_SDK, CARBON_CUTOFF = "carbonarc==1.1.19", "2026-10-14T00:00:00Z"
 # DuckDB for the Amazon reviews, in its own environment, same cutoff.
@@ -146,79 +69,15 @@ DATA_TOOLS = {
     "openmp": ("openmp.py", None, "openmp"),
 }
 
-# Data steps read; large files keyed on size and date, small on bytes.
-DATA = [*(BUNDLE / name for name in CORE), EXITS, Path("data/benchmarks/sources.json")]
 
-# An agent's inputs beyond code: its prompt, model and exhibits.
-AGENT_READS = {
-    "fiam.agents.critic": [
-        "prompts/agents/critic.md",
-        "submission/holdings.csv",
-        "submission/metrics.json",
-        "submission/exhibits/pack.json",
-        "submission/exhibits/confirmation.json",
-        "submission/exhibits/analyst_learned.json",
-    ],
-    "fiam.agents.triage": ["prompts/agents/triage.md"],
-    "fiam.agents.analyst": ["prompts/agents/analyst.md"],
-}
-
-
-# The file behind a module name, fiam.ml.train to fiam/ml/train.py.
-def source(module: str) -> Path:
-    return Path(*module.split(".")).with_suffix(".py")
-
-
-# Each local module a step reaches, so a change in any reruns the step.
-def closure(module: str) -> list[Path]:
-    seen, todo = set(), [source(module)]
-    while todo:
-        path = todo.pop()
-        if path in seen or not path.exists():
-            continue
-        seen.add(path)
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("fiam"):
-                todo += [source(f"{node.module}.{a.name}") for a in node.names]
-                todo.append(source(node.module))
-    return sorted(seen)
-
-
-# A hash of a step's inputs; unchanged means its outputs still hold.
-def stamp(command: str) -> str:
-    module = command.split()[0]
-    digest = hashlib.sha256(command.encode())
-    reads = [*closure(module), *DATA, *map(Path, AGENT_READS.get(module, []))]
-    for path in reads:
-        if not path.exists():
-            digest.update(f"{path} missing".encode())
-        elif path.stat().st_size > 50_000_000:
-            digest.update(f"{path} {path.stat().st_size} {path.stat().st_mtime_ns}".encode())
-        else:
-            digest.update(path.read_bytes())
-    return digest.hexdigest()
-
-
-# Package and OpenMP checks that fail in a second, not ten minutes in.
-def ready(ml: bool) -> bool:
-    missing = [p for p in PACKAGES + (ML_PACKAGES if ml else []) if not importlib.util.find_spec(p)]
-    if missing == ["torch"] and platform.system() == "Darwin":
-        print("PyTorch 2.14 needs Apple silicon and macOS 14, so --ml cannot run on this Mac.")
-        print("Everything else can:  uv run run.py")
-        return False
+# The packages the carried check needs, named if any is missing.
+def ready() -> bool:
+    missing = [p for p in PACKAGES if not importlib.util.find_spec(p)]
     if missing:
         print(f"Missing Python packages: {', '.join(missing)}.")
         print("Run it with uv, which installs them:  uv run run.py")
         print("Or install them yourself:             python -m pip install -r requirements.txt")
-        return False
-    if ml:
-        try:
-            importlib.import_module("lightgbm")
-        except OSError:
-            print("LightGBM cannot load OpenMP. Fix: uv run run.py setup (part weights)")
-            print("or on macOS:  brew install libomp")
-            return False
-    return True
+    return not missing
 
 
 # Unpacks a bundle zip, refusing it whole if any entry lands outside it.
@@ -270,22 +129,6 @@ def import_from(source_path: Path) -> None:
             print("  WRDS conversion failed; the run continues without WRDS.")
 
 
-# Bundle zip with its SHA-256 for sharing; never commit or submit it.
-def export_data() -> int:
-    if not BUNDLE.is_dir():
-        print(f"No bundle at {BUNDLE} to export.")
-        return 1
-    target = ROOT / "fiam_v1.zip"
-    with zipfile.ZipFile(target, "w", zipfile.ZIP_STORED) as zf:
-        for path in sorted(BUNDLE.rglob("*")):
-            if path.is_file():
-                zf.write(path, path.relative_to(BUNDLE.parent))
-    digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    print(f"wrote {target.name}: {target.stat().st_size / 1e9:.2f} GB, SHA-256 {digest}")
-    print("Share it privately, only with people our WRDS access covers. It is gitignored.")
-    return 0
-
-
 # The bundle, built once from the organizer's files in data/ if missing.
 def bundle() -> bool:
     if all((BUNDLE / name).is_file() for name in CORE):
@@ -300,19 +143,6 @@ def bundle() -> bool:
     return subprocess.run(build, env=child_env()).returncode == 0
 
 
-# The labels' SEC records, unpacked once from the pinned archive.
-def unpack_edgar() -> None:
-    archive = Path("data/edgar_cache.zip")
-    target, partial = Path("cache/edgar"), Path("cache/unpacking")
-    if archive.exists() and not target.exists():
-        shutil.rmtree(partial, ignore_errors=True)
-        from fiam import paths
-
-        paths.safe_unzip(archive, partial)
-        (partial / "edgar").rename(target)
-        shutil.rmtree(partial)
-
-
 # The steps' environment: one maths thread, so no OpenMP clash on macOS.
 def child_env(extra: dict | None = None) -> dict:
     env = os.environ | {"PYTHONUTF8": "1", "PYTHONPATH": str(ROOT)} | (extra or {})
@@ -321,98 +151,6 @@ def child_env(extra: dict | None = None) -> dict:
         env.setdefault(name, "1")
     env.setdefault("PYTHONHASHSEED", "0")
     return env
-
-
-# Keeps Windows and macOS awake during a long run, released on exit.
-def keep_awake() -> None:
-    if os.name == "nt":
-        import ctypes
-
-        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
-    elif platform.system() == "Darwin" and shutil.which("caffeinate"):
-        subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
-
-
-# Only out/'s book resets to official, so skipped steps keep its values.
-def seed_out() -> None:
-    shutil.rmtree(OUT / "submission", ignore_errors=True)
-    shutil.copytree("submission", OUT / "submission", dirs_exist_ok=True)
-
-
-# Prints to screen and cache/run.log, to read an overnight run next day.
-def say(text: str) -> None:
-    print(text, flush=True)
-    with LOG.open("a", encoding="utf-8") as fh:
-        fh.write(text + "\n")
-
-
-# One step, streamed to the screen and the log, returning its exit code.
-def execute(command: str, env: dict) -> int:
-    with subprocess.Popen(
-        [sys.executable, "-m", *command.split()],
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    ) as process:
-        for line in process.stdout:
-            say(line.rstrip("\n"))
-    return process.returncode
-
-
-# Runs steps in order, stops at a failure, skips unchanged slow steps.
-def run(steps: list, env: dict, official: bool, fresh: bool) -> list[tuple[str, str, float]]:
-    slow = {c for c, _ in CROWD_STEPS + ML_STEPS + RESEARCH_STEPS + AGENT_STEPS}
-    stamps = json.loads(STAMPS.read_text(encoding="utf-8")) if STAMPS.exists() else {}
-    done, reran = [], False
-    record = dict(command=" ".join(["uv run run.py", *sys.argv[1:]]), steps={})
-    for command, doing in steps:
-        THIS_RUN.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
-        started = time.monotonic()
-        current = stamp(command) if command in slow else None
-        if current and official and not fresh and not reran and stamps.get(command) == current:
-            say(f"\n[{doing}] unchanged, skipped")
-            done.append((doing, "skipped", 0.0))
-            record["steps"][command] = "skipped, unchanged since the run that made it"
-            continue
-        reran = reran or command in slow
-        say(f"\n[{doing}]")
-        code = execute(command, env)
-        took = time.monotonic() - started
-        if code != 0:
-            done.append((doing, "FAILED", took))
-            # Outside official runs a failed check is reported and later steps run.
-            if official or not command.startswith("fiam.checks.reproducibility"):
-                say(f"\n{command} failed, stopping here.")
-                return done
-            continue
-        done.append((doing, "done", took))
-        record["steps"][command] = "ran"
-        if current and official:
-            stamps[command] = current
-            STAMPS.parent.mkdir(exist_ok=True)
-            STAMPS.write_text(json.dumps(stamps, indent=2), encoding="utf-8", newline="\n")
-    return done
-
-
-# The morning summary: each step, its time, and whether anything failed.
-def summary(done: list[tuple[str, str, float]]) -> bool:
-    say("\nSummary")
-    for doing, status, took in done:
-        say(f"  {status:<8} {took / 60:6.1f} min  {doing}")
-    failed = any(status == "FAILED" for _, status, _ in done)
-    say("Everything passed." if not failed else "A step failed; see above.")
-    return not failed
-
-
-# The value after a flag, or None if the flag is absent or bare.
-def value(args: list[str], flag: str) -> str | None:
-    if flag not in args:
-        return None
-    position = args.index(flag) + 1
-    return args[position] if position < len(args) and not args[position].startswith("--") else None
 
 
 # One data tool; one needing its own package runs in an isolated env.
@@ -453,7 +191,7 @@ def data_command(rest: list[str]) -> int:
     return 2
 
 
-# Reads the options, then runs every step they ask for, in order.
+# Reads the verb and runs it; no verb checks the carried results.
 def main() -> int:
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
@@ -461,111 +199,31 @@ def main() -> int:
     from fiam import openmp
 
     openmp.preload()
-    LOG.parent.mkdir(exist_ok=True)
-    LOG.write_text("", encoding="utf-8")
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
     args = sys.argv[1:]
     # Kit verbs run before any data check, so a bare clone can use them.
-    if args[:1] and args[0] in ("setup", "doctor", "export", "installers", "caches"):
+    if args[:1] and args[0] in KIT_VERBS:
         from fiam.vfinal import kit
 
         return kit.main(args)
-    # The final version's verbs answer before any data check.
     if args[:1] and args[0] in FINAL_VERBS:
         from fiam.vfinal import cli
 
         return cli.main(args)
-    if "-h" in args or "--help" in args:
+    if args[:1] in (["-h"], ["--help"], ["help"]):
         print(HELP)
         return 0
-    if "--export-data" in args:
-        return export_data()
     if "--data" in args:
         return data_command(args[args.index("--data") + 1 :])
-    everything = "--all" in args
-    ml, agents = everything or "--ml" in args, everything or "--agents" in args
-    if not ready(ml):
+    if args:
+        print(f"Unknown option {args[0]}. The options are:\n{HELP}")
+        return 2
+    if not ready():
         return 1
-    # Imports first, so one command can add data or results, then use them.
-    for position, flag in enumerate(args):
-        if flag != "--import":
-            continue
-        if position + 1 >= len(args):
-            print(
-                "--import needs a folder or fiam_v1.zip, e.g.  uv run run.py --import ~/Downloads"
-            )
-            return 1
-        import_from(Path(args[position + 1]).expanduser())
-    if "--crowd-quick" in args:
-        extra = {}
-        for flag in ("--agents", "--months", "--minutes"):
-            if flag in args and args.index(flag) + 1 < len(args):
-                extra[f"FIAM_{flag[2:].upper()}"] = args[args.index(flag) + 1]
-        return execute("fiam.agents.crowd_lab quick", child_env(extra))
-    if "--rules" in args:
-        if not value(args, "--rules"):
-            print("--rules needs the rules as text or PDF, e.g.  --rules finals_rules.pdf")
-            return 1
-        source = Path(value(args, "--rules")).expanduser().resolve()
-        command = [sys.executable, "-m", "fiam.agents.rules_reader", str(source)]
-        code = subprocess.run(command, env=child_env()).returncode
-        if not code:
-            print(f"Check mandates/{source.stem}_draft.json against the rules by hand.")
-        return code
-    if "--export-results" in args:
-        from fiam import kit
+    from fiam.vfinal import carried
 
-        digest = kit.export()
-        print(f"wrote {kit.NAME}, SHA-256 {digest}. Private: it holds WRDS-derived results.")
-        return 0
-    fresh, smoke = "--fresh" in args, "--smoke" in args
-    official = "--official" in args and not smoke
-
-    # No data: check what is submitted, which needs nothing but this repo.
-    if not bundle():
-        if official or ml or agents:
-            print("--official, --ml and --agents rebuild the book, which needs the data bundle or")
-            print("the organizer's files. Add them with:  uv run run.py --import <folder or zip>")
-            return 1
-        print("No organizer data in data/, so checking the submitted files only.")
-        print("To rebuild the book: uv run run.py --import <folder with the organizer's files>\n")
-        return execute("fiam.checks.verify", child_env())
-
-    if official and not EXITS.exists():
-        print("--official needs the WRDS exports. Add them with: uv run run.py --import <folder>")
-        return 1
-    keep_awake()
-    unpack_edgar()
-    extra = {"FIAM_SMOKE": "1"} if smoke else {}
-    if official:
-        say("Official run: rewrites submission/.")
-        env = child_env({"FIAM_OFFICIAL": "1"})
-    else:
-        wrds = "with WRDS" if EXITS.exists() else "without WRDS, so provisional"
-        say(f"Rebuilding into out/, {wrds}. The committed results are not touched.")
-        try:
-            seed_out()
-        except PermissionError, shutil.Error:
-            # Windows locks a file another program has open, a CSV in Excel say.
-            print("A file in out/ is open in another program. Close it, then run again.")
-            return 1
-        env = child_env({"FIAM_OUT": str(OUT), **extra})
-
-    # The manifest records the model section only on a run that rebuilt it.
-    report = [(f"{c} --ml" if ml and c == "fiam.checks.provenance" else c, d) for c, d in REPORT]
-    # The analyst is an agent among model steps, skipped without --agents.
-    learning = [s for s in ML_STEPS if agents or not s[0].startswith("fiam.agents.")]
-    models = learning + ([] if smoke else RESEARCH_STEPS)
-    steps = (CROWD_STEPS if agents else []) + (models if ml else []) + STEPS
-    steps += (AGENT_STEPS if agents else []) + report
-    done = run(steps, env, official, fresh)
-    passed = summary(done)
-    # A finished run is compared, even when a check flagged something.
-    if not official and len(done) == len(steps):
-        execute("fiam.checks.compare", env)
-        say("\nResults are in out/.")
-    return 0 if passed else 1
+    return carried.main(ROOT)
 
 
 if __name__ == "__main__":

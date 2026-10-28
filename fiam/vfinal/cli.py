@@ -20,11 +20,14 @@ HELP = """uv run fiam <verb>
   whatif <name> [commit] [early]
                             one in-sample what-if book (commit defaults to HEAD)
   whatif summary [commit]   every finished what-if's key rows in one table
+  compare [commit]          compares a rerun's headline outputs at commit
+                            (default HEAD) with the locked run, by content
   lock [commit]             hashes the code, settings and pinned files, and
                             records the digests of the headline run at commit
   verify                    checks the lock, then the headline outputs it records
   audit                     compares the headline outputs with the lock's record
-  export [folder]           writes the finals kit to the USB (--dry-run, --skip)
+  export [folder]           writes the finals kit and repo.bundle to the USB
+                            (--dry-run, --skip)
   setup [kit]               restores the finals kit from the USB, then doctor
   doctor [--deep]           checks Python, packages, data, the kit and the AI link
   help                      this list
@@ -44,6 +47,15 @@ RERUN = [
 ]
 # Stages rerun only when pick still lists them as needed.
 IF_NEEDED = {"forecasts yearly", "early quarterly tight"}
+# What each stage does, as MAIN.py's header lists them.
+WHAT = {
+    "labels": "the sealed labels, and the as-filed SUE table rebuilt to 2026-08",
+    "forecasts": "return models refit from 2017 on the cadence, forecasts to 2026-07",
+    "early": "the limits on 2017-2020, blind, scored as the exam",
+    "book": "the 2021-2026 book from US$1bn, every PDF limit checked each day",
+    "report": "the 23-row table, the Arcana files and the market comparison",
+    "pick": "cadence by pre-2021 IC, limits by pre-2021 IR; names the headline",
+}
 # The pick a rerun must reproduce.
 HEADLINE = ("quarterly", "loose")
 # The checks run by check, each a command from the repository root.
@@ -172,6 +184,10 @@ def main(args: list[str]) -> int:
         return whatif(rest)
     if verb in ("lock", "verify", "audit"):
         return lock_verbs(verb, rest)
+    if verb == "compare" and len(rest) <= 1:
+        from fiam.vfinal import compare
+
+        return compare.compare(*rest)
     if verb in ("export", "setup", "doctor"):
         from fiam.vfinal import kit
 

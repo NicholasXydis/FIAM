@@ -269,6 +269,8 @@ def test_only_allowed_modules_open_data_files():
     allowed |= {"compustat.py", "thirteen_f.py"}
     # The final run, the headline and the what-ifs read their own outputs.
     allowed |= {"final.py", "headline.py", "whatif.py"}
+    # The checks after the lock read final/, out/ and the organisers' files.
+    allowed |= {"carried.py", "compare.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):

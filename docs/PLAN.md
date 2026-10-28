@@ -99,15 +99,13 @@ The rules and what is left to do, written so an AI agent can execute it exactly.
 ## 3. What is left, in order
 
 ### Tonight
-1. **[me] vfinal-only MAIN.py** (agent building in a worktree). The 4 ways:
-   - (1) `uv run MAIN.py` alone checks every rule on the carried `final/` results, recomputes the headline and checks the code against the lock;
-   - (2) with the organisers' files it also recomputes our stock P&L from their daily returns;
-   - (3) clone + USB, then `uv run fiam setup` and `uv run fiam verify`;
-   - (4) clone + USB, then `uv run fiam rerun` and `uv run fiam compare`.
-   
-   The export also writes `repo.bundle`. Then review and apply the patch, relock, run every check (pytest, ruff, format, comments, `pnpm check`, `fiam verify`, doctor) and rebuild MAIN.py.
-2. **[LEADER] Commit.** Suggested titles: "feat: drop the retired v2 and v3 code" (the sweep, relock, docs), then "feat: make MAIN.py prove the final fund".
-3. **[LEADER] PC settings:** Tailscale tray icon, Preferences, Run unattended ON; Windows Update, Pause for 1 week. **[me]** Reboot test over SSH: the Mac must reach the PC again with no login.
+1. **[DONE 2026-10-28 00:20] vfinal-only MAIN.py** (19.4 MB, 244 files).
+   - Way 1 alone: 22 of 22 checks (every rule, the headline recomputed exactly, 90 of 90 code files match the lock).
+   - Way 2 with the organisers' files: 30 of 30 (their checksums; our stock P&L replayed on their returns to the cent on 1,349 of 1,349 fully priced days; the $224k gap sits on 2 null-return name-days the engine prices from the price ratio).
+   - `uv run fiam compare`, `repo.bundle` in the export, results carried in `final/` (6.2 MB, rebuilt byte-identical by `tools/final_results.py`).
+   - Relocked (98 files, outputs unchanged, verify passes); 672 tests pass.
+2. **[LEADER] Commit:** "feat: make MAIN.py check the final fund and add fiam compare". [DONE] a6fe867 (sweep and docs).
+3. **[DONE] PC settings:** Run unattended on, Windows Update paused to 2026-11-11, never sleeps on AC. The reboot test is optional (only the live AI demo needs the PC).
 4. **[me] Lean kit:** `uv run fiam export --skip weights-gemma,weights` after the final commit, with no job writing. Then restore into an empty folder on the Mac, check every SHA-256, and run `fiam doctor`.
 5. **[me] Mac tests:** ways 1, 2 and 3 from the fresh restore; way 4 overnight, then `fiam compare` (expected identical).
 6. **[me] PC tests:** the leader moves the stick; sync to the final commit by bundle; restore to F:; ways 1, 2 and 3; way 4 overnight, then `fiam compare` (expected close, not identical; report the gap).

@@ -108,37 +108,51 @@ def script_header() -> str:
     return "\n".join(f"# {line}".rstrip() for text in lines for line in text.splitlines())
 
 
-# The process, in the words run.py already uses for each step.
+# The four ways to check the final fund, in MAIN.py's header.
+WAYS = """#   1. MAIN.py alone:  uv run MAIN.py
+#      checks every PDF rule on every day of the carried book in final/, recomputes the
+#      headline (IR, Sharpe, beta, drawdown, CAGR, ending value) from final/daily.csv and the
+#      public FRED series, and checks the code against the lock in frozen/vfinal/. Seconds.
+#   2. MAIN.py with the organisers' files in data/organisers/ (or beside MAIN.py):  uv run MAIN.py
+#      does the same, then checks their SHA-256 against our receipts, replays our daily stock
+#      P&L on their daily returns and checks the shorts' market caps at each formation. It does
+#      not rebuild the fund, which needs our other data, carried only by the USB kit.
+#   3. A clone and the USB kit:  git clone <the repository> FIAM, or offline
+#      git clone <USB>/fiam_finals/repo.bundle FIAM, then in FIAM
+#      uv run fiam setup     restores the kit's data and results, then doctor
+#      uv run fiam verify    the lock, then every headline output it records
+#   4. A clone and the USB kit, rebuilt from the data:
+#      uv run fiam rerun     every headline stage at this commit, in the order below
+#      uv run fiam compare   the rerun against the locked run, file by file"""
+
+
+# The header: the fund, the four ways, run.py's help and the stages.
 def description() -> str:
+    sys.path.insert(0, str(ROOT))
+    from fiam.vfinal import cli
+
     run = (ROOT / "run.py").read_text(encoding="utf-8")
     usage = run.split('HELP = """')[1].split('"""')[0]
     header = "\n".join(f"#   {line}" for line in usage.splitlines())
-    step = r'\("(fiam\.[\w.]+)[^"]*", "([^"]+)"\)'
-    blocks = [
-        ("with --agents", "CROWD_STEPS = ["),
-        ("with --ml", "ML_STEPS = ["),
-        ("with --ml", "RESEARCH_STEPS = ["),
-        ("", "STEPS = ["),
-        ("with --agents", "AGENT_STEPS = ["),
-        ("", "REPORT = ["),
-    ]
-    listed = []
-    for flag, start in blocks:
-        block = run[run.index(start) : run.index("]\n\n", run.index(start))]
-        for script, what in re.findall(step, block):
-            listed.append(f"#   {what:<66} {script}" + (f"  ({flag})" if flag else ""))
+    stages = [*(" ".join(args) for args in cli.RERUN), "pick"]
+    listed = [f"#   {name:<23} {cli.WHAT[name.split()[0]]}" for name in stages]
+    extra = ", ".join(sorted(cli.IF_NEEDED))
+    listed.insert(-1, f"#   {'':<23} then, only if pick still needs them: {extra}")
     return (
-        "# MAIN.py: McGill-FIAM Asset Management Hackathon 2026, market-neutral US equity book.\n"
+        "# MAIN.py: McGill-FIAM Asset Management Hackathon 2026, QUARCC Purple's final fund,\n"
+        "# vfinal: market-neutral US equities from US$1bn, compounding, 2021-01 to 2026-08.\n"
         "#\n# Run:  pip install uv, then  uv run MAIN.py   (uv brings Python and the packages)\n"
-        "#   With nothing beside it: checks our holdings and returns against the brief.\n"
-        "#   With the organizer's three data files beside it: rebuilds the book, a few minutes.\n"
         "#   Run it from the folder that holds MAIN.py. On Windows, if uv is not found:\n"
         "#   py -m uv run MAIN.py\n"
-        "#   It writes the project's code beside itself to run. It holds no organizer data\n"
-        "#   and no raw WRDS data. It does carry our own outputs (holdings, returns, exhibits,\n"
-        "#   the learned betas and borrow tiers the book reads) and public FRED and Kenneth\n"
-        "#   French series, so every number can be checked offline.\n"
-        "#\n" + header + "\n#\n# The steps, in order:\n" + "\n".join(listed) + "\n"
+        "#   It writes the project's code and our carried results (final/) beside itself, then\n"
+        "#   runs run.py with the same arguments. It holds no organisers' data and no raw WRDS\n"
+        "#   data. It does carry the public FRED and Kenneth French series, so every number\n"
+        "#   can be checked offline.\n"
+        "#\n# Four ways to check the fund:\n" + WAYS + "\n"
+        "#\n# run.py's options, the same for MAIN.py:\n" + header + "\n"
+        "#\n# The headline stages uv run fiam rerun runs, in order (fiam/vfinal/cli.py):\n"
+        + "\n".join(listed)
+        + "\n"
     )
 
 
