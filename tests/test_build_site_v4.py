@@ -1,5 +1,6 @@
 # The site's headline source on small synthetic result files.
 
+import ast
 import csv
 import json
 import os
@@ -35,6 +36,7 @@ CELLS = {
     4: ("Annualised volatility (%)", "7.8", "0.56"),
     5: ("Alpha vs S&P 500 (%, s.e.)", "-6.25 (3.18)", "n/a"),
     6: ("Beta monthly (s.e.)", "-0.056 (0.041)", "n/a"),
+    7: ("Beta daily (s.e.)", "-0.031 (0.012)", "n/a"),
     8: ("Sharpe ratio", "-0.8794", "undefined, constant excess"),
     9: ("IR vs T-bill + 4%, before costs", "-1.1904", "n/a"),
     10: ("Tracking error (%)", "7.775", "n/a"),
@@ -145,14 +147,12 @@ def write_pick(folder: Path, headline: Path, final: bool) -> Path:
     return pick
 
 
-# The bundled site data, its predicted betas cut to the synthetic run.
+# The bundled site data, as the site reads it.
 @pytest.fixture(scope="module")
 def base() -> dict:
     if not SITE.exists():
         pytest.skip("no bundled site data")
-    data = json.loads(SITE.read_text(encoding="utf-8"))
-    months = len(b.fund_months(daily_frame()))
-    return data | {"beta": data["beta"] | {"exante": data["beta"]["exante"][:months]}}
+    return json.loads(SITE.read_text(encoding="utf-8"))
 
 
 # The headline output from a synthetic folder, as the JSON holds it.
@@ -256,7 +256,8 @@ def test_headline_reads_each_row(made):
     assert head["vol"] == 0.078
     assert head["alpha"] == -0.0625
     assert head["alpha_t"] == round(-6.25 / 3.18, 2)
-    assert (head["beta"], head["beta_se"]) == (-0.056, 0.041)
+    assert (head["beta"], head["beta_se"]) == (-0.031, 0.012)
+    assert (head["beta_monthly"], head["beta_monthly_se"]) == (-0.056, 0.041)
     assert head["drawdown"] == -0.2926
     assert head["correlation"] == -0.092
     assert head["positions"] == 273.0
@@ -267,17 +268,14 @@ def test_headline_reads_each_row(made):
     assert head["hit"] == round(float((m["ret"] > m["hurdle"]).mean()), 3)
 
 
-# Costs come from rows 21 and 22; the ladder scales them by k.
+# Costs are rows 21 and 22; returns and the hurdle are row 3's means.
 def test_costs_from_rows_21_and_22(made):
     c = made["costs"]
-    assert c["parts"] == dict(
-        commission=0.0, spread=0.0, impact=0.01284, borrow=0.00446, financing=0.0
-    )
+    assert c["parts"] == dict(trading=0.01284, borrow=0.00446)
     assert c["total"] == round(0.012844 + 0.004464, 5)
+    assert (c["net"], c["hurdle"]) == (-0.0357, 0.0727)
     assert c["gross"] == pytest.approx(c["net"] + c["total"], abs=1e-4)
-    one = c["ladder"][0]
-    assert one["multiple"] == 1.0 and one["ir"] == round(-0.1084 / 0.07775, 3)
-    assert c["break_even_multiple"] == round(1 - 0.1084 / (0.012844 + 0.004464), 3)
+    assert c["ir_gross"] == -1.19
 
 
 # Holdings are each month's last date, named from the Arcana file.
@@ -305,12 +303,62 @@ def test_rolling_beta_months(made):
     assert all(band > 0 for _, band in rolling.values())
 
 
-# A run whose months differ from the predicted betas is refused.
-def test_month_count_must_match(tmp_path, base):
-    write_folder(tmp_path / "revised")
-    short = base | {"beta": base["beta"] | {"exante": [0.0]}}
-    with pytest.raises(SystemExit, match="exante"):
-        b.v4(short, tmp_path / "revised", COMMIT, closes())
+# Months before the rolling beta show the beta measured so far.
+def test_beta_so_far_fills_the_months_before(made):
+    since, rolling = made["beta"]["since"], made["beta"]["rolling"]
+    assert since and min(since) == made["months"][0]
+    assert max(since) < min(rolling)
+    assert sorted(since) + sorted(rolling) == made["months"][: len(since) + len(rolling)]
+
+
+# The ten signals are syy.py's own parts and signs, by name.
+def test_signals_are_syy_parts():
+    text = (Path(b.ROOT) / "fiam" / "vfinal" / "signals" / "syy.py").read_text(encoding="utf-8")
+    tree = ast.parse(text)
+    parts = next(
+        ast.literal_eval(n.value)
+        for n in tree.body
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PARTS"
+    )
+    assert {c: s for c, s, _, _ in b.SIGNALS_FINAL} == parts
+    assert {f for _, _, f, _ in b.SIGNALS_FINAL} == set(b.FAMILIES_FINAL)
+
+
+# A what-if must carry the in-sample label and a plain name.
+def test_whatifs_need_label_and_name(tmp_path, monkeypatch):
+    folder = tmp_path / "whatif" / "styles_free"
+    write_folder(folder)
+    monkeypatch.setattr(b, "V4", tmp_path)
+    with pytest.raises(FileNotFoundError):
+        b.whatifs(COMMIT)
+    (folder / "LABEL.txt").write_text("not the strategy", encoding="utf-8")
+    with pytest.raises(SystemExit, match="unlabelled"):
+        b.whatifs(COMMIT)
+    (folder / "LABEL.txt").write_text(f"In-sample what-if: {b.IN_SAMPLE}.", encoding="utf-8")
+    got = b.whatifs(COMMIT)
+    assert [(x["key"], x["label"], x["ir"]) for x in got] == [
+        ("styles_free", b.WHATIFS["styles_free"], -1.39)
+    ]
+    other = tmp_path / "whatif" / "new_idea"
+    write_folder(other)
+    (other / "LABEL.txt").write_text(b.IN_SAMPLE, encoding="utf-8")
+    with pytest.raises(SystemExit, match="WHATIFS"):
+        b.whatifs(COMMIT)
+
+
+# The risk desk joins the agents once, however often the build runs.
+def test_risk_desk_is_the_eighth_agent():
+    seven = [dict(key=f"a{i}") for i in range(7)]
+    test = dict(none=-0.72, rule=-0.73, ai=-0.73, random=100, memory=True)
+    once = b.agents_v4(seven, dict(early=test, late=test))
+    assert len(once) == 8 and once[-1]["key"] == "desk"
+    crowd = [*seven[:6], dict(key="crowd")]
+    assert [a["key"] for a in b.agents_v4(crowd, dict(early=test, late=test))][-2:] == [
+        "desk",
+        "crowd",
+    ]
+    assert b.agents_v4(once, dict(early=test, late=test)) == once
+    assert b.minus(-0.734) == "−0.73" and b.minus(0.5, 1) == "0.5"
 
 
 # A value's shape: dict keys, list element shapes and leaf types.

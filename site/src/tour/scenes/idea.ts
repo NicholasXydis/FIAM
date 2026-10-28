@@ -17,16 +17,16 @@ const ARC_Y = 5.4;
 const STEPS = [
   { at: 0, caption: `${int(J.stocks)} US stocks`, chip: "All stocks" },
   { at: 1.9, caption: `${int(J.tradeable)} we can trade`, chip: "Tradeable" },
-  { at: 3.7, caption: "Twelve scores each", chip: "Scored" },
+  { at: 3.7, caption: "Ten signals and a forecast", chip: "Scored" },
   { at: 5.4, caption: "Ranked, worst to best", chip: "Ranked" },
   { at: 7.3, caption: `${J.longs} long, ${J.shorts} short`, chip: "Chosen" },
-  { at: 9.4, caption: "No net bet", chip: "Balanced" },
+  { at: 9.4, caption: "Beta near zero", chip: "Balanced" },
 ];
 
-// Twelve questions: how a real month's stocks become longs and shorts.
+// Ten questions: how a real month's stocks become longs and shorts.
 export class Idea extends Scene {
-  name = "Twelve questions, one score";
-  summary = `How ${int(J.stocks)} stocks become ${J.longs} longs and ${J.shorts} shorts in one real month.`;
+  name = "Ten questions, one forecast";
+  summary = `How ${int(J.tradeable)} stocks become ${J.longs + J.shorts} positions in one real month of the final book.`;
   private step = 0;
   private orbs: THREE.Vector3[] = [];
   private order: Int32Array;
@@ -42,7 +42,7 @@ export class Idea extends Scene {
   private chips: HTMLButtonElement[];
   private beam: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
 
-  // Lines the twelve orbs up by family on a shallow arc, with flows down.
+  // Lines the ten orbs up by family on a shallow arc, with flows down.
   constructor(w: World) {
     super(w);
     this.shot = { eye: [0, 1.6, 24], look: [0, 1.2, 0], drift: 0.7, shift: 0.07 };
@@ -63,7 +63,7 @@ export class Idea extends Scene {
     const centre = (xs[0] + xs[xs.length - 1]) / 2;
     for (const l of this.labels) l.at.x -= centre;
     this.orbs = xs.map(
-      (v, i) => new THREE.Vector3(v - centre, ARC_Y - Math.cos(((i + 0.5) / 12 - 0.5) * Math.PI) * 0.2, 0),
+      (v, i) => new THREE.Vector3(v - centre, ARC_Y - Math.cos(((i + 0.5) / xs.length - 0.5) * Math.PI) * 0.2, 0),
     );
     // A seeded shuffle ranks the stocks; each gets four random numbers.
     const r = seeded(21);
@@ -98,8 +98,8 @@ export class Idea extends Scene {
     this.group.add(this.beam);
     this.panel.append(
       ...header(
-        "Twelve questions, <em>one score</em>",
-        "Each month twelve signals score the stocks we can trade, signs set by theory first. We buy the best, short the worst, and take no net market or sector bet.",
+        "Ten questions, <em>one forecast</em>",
+        "Ten published signals, signs set by theory, feed a machine learning forecast. We buy the best stocks, short the worst and hold the fund's beta near zero.",
       ),
       stats(...Object.values(this.stats).map((s) => s.el)),
     );

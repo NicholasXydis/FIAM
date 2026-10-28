@@ -55,7 +55,7 @@ export class Universe extends Scene {
     this.panel.append(
       ...header(
         "Every stock, <em>month by month</em>",
-        "Stocks with the best signals rise to the long group, the worst sink to the short group, and the rest wait in the outer ring. Click any stock for its history.",
+        "Stocks with the best forecasts rise to the long group, the worst sink to the short group and the rest wait in the outer ring. Click any stock for its history.",
       ),
       stats(...Object.values(this.counts).map((s) => s.el)),
     );

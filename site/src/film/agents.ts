@@ -3,13 +3,16 @@ import { clamp, inOut, mix, out, ramp, seeded, smooth, span } from "../shared/ma
 import { Strip } from "./strip";
 import { C } from "../shared/palette";
 
-// Seven agents, trails of 40 points 0.024 s apart, and 160 filings.
-const COUNT = 7;
+// Eight agents, trails of 40 points 0.024 s apart, and 160 filings.
+const COUNT = 8;
+// The first seven share the turn; the eighth sits between 7th and 1st.
+const SPREAD = 7;
+const slot = (i: number) => (i < SPREAD ? i : SPREAD - 0.5);
 const TAIL = 40;
 const STEP = 0.024;
 const CARDS = 160;
 // Each agent's tint, gold, cyan, lilac or white.
-const TINTS = [C.gold, 0x9fe3f0, 0xb9a2ff, 0xffffff, C.gold, 0x9fe3f0, 0xb9a2ff];
+const TINTS = [C.gold, 0x9fe3f0, 0xb9a2ff, 0xffffff, C.gold, 0x9fe3f0, 0xb9a2ff, 0xffffff];
 // A full turn, and the axis each card spins about.
 const TAU = Math.PI * 2;
 const FORWARD = new THREE.Vector3(0, 0, 1);
@@ -52,7 +55,7 @@ function page() {
   return t;
 }
 
-// Seven agents as lights that read filings, argue, then form one ring.
+// Eight agents as lights that read filings, argue, then form one ring.
 export class Agents {
   group = new THREE.Group();
   // Where each agent is now, read by the book and the name tags.
@@ -63,7 +66,7 @@ export class Agents {
   private lights: THREE.PointLight[] = [];
   private trails: Strip[] = [];
   private beams: Strip[] = [];
-  // The ring through all seven, and the pulse it sends out.
+  // The ring through all eight, and the pulse it sends out.
   private ring = new Strip(COUNT + 1, C.gold, 1.6, 2.2);
   private pulse = new Strip(97, C.gold, 2.4, 1.6);
   // Scratch points for one trail.
@@ -141,10 +144,10 @@ export class Agents {
     const tilt = (0.3 + 0.55 * ((i * 0.618) % 1)) * (1 - read * 0.7);
     const angle = i * 2.4 + t * (0.95 + 0.11 * i) * (i % 2 ? 1 : -1);
     this.v.set(Math.cos(angle) * r, 0, Math.sin(angle) * r).applyAxisAngle(this.x, tilt);
-    this.v.applyAxisAngle(this.y, (i * TAU) / COUNT);
+    this.v.applyAxisAngle(this.y, (slot(i) * TAU) / SPREAD);
     this.v.y += mix(0.9, 0.35, read);
     // Then all glide onto one level ring of radius 4.2, evenly spaced.
-    const a = (i * TAU) / COUNT + t * 0.22;
+    const a = (slot(i) * TAU) / SPREAD + t * 0.22;
     const k = inOut(ramp(t, this.times.ring, this.times.ring + 1.1));
     into.set(
       c.x + mix(this.v.x, Math.cos(a) * 4.2, k),
@@ -181,7 +184,7 @@ export class Agents {
     const argue = span(t, this.times.argue - 0.1, this.times.ring + 0.3, 0.25, 0.45);
     for (let i = 0; i < COUNT; i++) {
       const a = this.now[i];
-      const b = this.now[(i + 3) % COUNT];
+      const b = this.now[i < SPREAD ? (i + 3) % SPREAD : (i + 3) % COUNT];
       const flicker = 0.55 + 0.45 * Math.sin(t * 8 + i * 2.1);
       const points = [...Array(16)].map((_, k) => {
         const u = k / 15;
@@ -194,7 +197,7 @@ export class Agents {
       this.beams[i].viewport(size);
       this.beams[i].mesh.visible = argue > 0.01;
     }
-    // At verify the seven join in a gold ring.
+    // At verify the eight join in a gold ring.
     const joined = smooth(ramp(t, this.times.verify + 0.3, this.times.verify + 1.0)) * dim;
     this.ring.set([...this.now, this.now[0]], () => joined * 0.9);
     this.ring.viewport(size);
@@ -229,7 +232,7 @@ export class Agents {
       this.v
         .copy(this.spawn[i])
         .add(this.centre)
-        .lerp(this.now[i % COUNT], k);
+        .lerp(this.now[i % SPREAD], k);
       this.v.y += Math.sin(k * Math.PI) * 0.6;
       this.z.setFromAxisAngle(FORWARD, this.spin[i] * (1 - k));
       // Faces the camera, popping in, shrinking near the lens and on arrival.

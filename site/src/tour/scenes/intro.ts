@@ -49,10 +49,10 @@ function sample(lines: Line[], width: number, step: number) {
 // The opening: the name in particles and the three key numbers.
 export class Intro extends Scene {
   name = "QUARCC Purple · FIAM";
-  summary = "Who we are and the three numbers that matter.";
+  summary = "Who we are and the three ideas that matter.";
   private points: ReturnType<typeof sample> = [];
 
-  // Sets a slower gather and the panel with the three headline numbers.
+  // Sets a slower gather and the panel with the three headline ideas.
   constructor(w: World) {
     super(w);
     this.shot = { eye: [0, 0.4, 27], look: [0, 0.6, 0], drift: 0.6, shift: 0 };
@@ -65,12 +65,12 @@ export class Intro extends Scene {
       h(
         "p",
         { class: "body", "data-rise": true },
-        "Twelve published signals pick US stocks, machine learning keeps the book market neutral, and an AI crowd shows who crowds our trades.",
+        "Ten published signals and machine learning pick US stocks, code keeps the book market neutral and an AI crowd shows who crowds our trades.",
       ),
       stats(
-        stat(num(head.ir), "Information ratio after costs").el,
-        stat(num(head.sharpe), "Sharpe ratio after costs").el,
-        stat(pct(head.cagr), "Return a year after costs").el,
+        stat(num(head.beta), "Beta, market neutral").el,
+        stat(pct(head.vol), "Volatility").el,
+        stat(pct(head.drawdown), "Max drawdown").el,
       ),
     );
     this.controls.append(

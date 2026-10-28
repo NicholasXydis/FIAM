@@ -1,10 +1,10 @@
-# Site data matches the final book's pack, so no number can drift.
+# Site data matches the final fund's result files, number for number.
 
+import ast
 import json
 
 import pytest
 
-from fiam import book
 from tools import build_site
 
 SITE = build_site.OUT
@@ -14,28 +14,42 @@ SITE = build_site.OUT
 @pytest.fixture(scope="module")
 def site():
     if not SITE.exists():
-        pytest.skip("no site data; python3 tools/build_site.py writes it")
+        pytest.skip("no site data; uv run tools/build_site.py --v4 writes it")
     return json.loads(SITE.read_text(encoding="utf-8"))
 
 
-# Rebuilt from the pack, the data is exactly what the site bundles.
-def test_site_data_is_the_pack_as_exported(site):
-    if not build_site.PACK.is_dir():
-        pytest.skip("no final v3 pack; uv run run.py --import fiam_results.zip")
-    assert json.loads(json.dumps(build_site.build(), separators=(",", ":"))) == site
+# The pick named by the bundle's own code, else a skip.
+@pytest.fixture(scope="module")
+def picked(site):
+    pick = build_site.V4 / f"pick_{site['code']}.json"
+    if not pick.exists():
+        pytest.skip("no final pick; the vfinal results are not here")
+    folder, commit = build_site.headline_folder(pick)
+    return folder, commit
 
 
-# The headline figures are the pack's metrics, rounded and nothing else.
-def test_headline_matches_metrics(site):
-    if not build_site.PACK.is_dir():
-        pytest.skip("no final v3 pack")
-    perf = json.loads((build_site.PACK / "metrics.json").read_text())["performance"]
-    assert site["headline"]["ir"] == pytest.approx(perf["information_ratio"], abs=5e-4)
-    assert site["headline"]["net"] == pytest.approx(perf["return_net_annual"], abs=5e-5)
-    assert site["headline"]["beta"] == pytest.approx(perf["beta_realized"], abs=5e-4)
+# Rebuilt from the result files, the data is what the site bundles.
+def test_site_data_is_the_final_fund(site, picked):
+    if not build_site.PANEL.exists():
+        pytest.skip("no organisers' panel")
+    folder, commit = picked
+    pick = json.loads((build_site.V4 / f"pick_{site['code']}.json").read_text())
+    made = build_site.v4(site, folder, commit, build_site.sp500())
+    made = build_site.final(made, folder, commit, pick)
+    assert json.loads(json.dumps(made, separators=(",", ":"))) == site
 
 
-# $1 grows to the pack's own cumulative return, and the months line up.
+# The headline figures are the table's rows, rounded and nothing else.
+def test_headline_matches_the_table(site, picked):
+    folder, commit = picked
+    t = build_site.table_rows(folder / f"table_9_1_{commit}.csv")
+    assert site["headline"]["ir"] == build_site.first(t[23]["strategy"])
+    assert site["headline"]["beta"] == build_site.with_se(t[7]["strategy"])[0]
+    assert site["headline"]["beta_monthly"] == build_site.with_se(t[6]["strategy"])[0]
+    assert site["headline"]["drawdown"] == pytest.approx(float(t[11]["strategy"]) / 100, abs=5e-5)
+
+
+# $1 grows to the cumulative return, and the months line up.
 def test_growth_ends_at_the_cumulative_return(site):
     race = site["race"]
     assert len(race["book"]) == len(site["months"]) + 1
@@ -43,35 +57,47 @@ def test_growth_ends_at_the_cumulative_return(site):
     assert len(site["stocks"]["book"]) == len(site["months"])
 
 
-# The twelve measures and their signs are the book's own.
-def test_signals_are_the_books(site):
-    assert {s["code"]: s["sign"] for s in site["signals"]} == book.SIGNALS
+# The ten measures and their signs are SYY-10's own.
+def test_signals_are_syy_parts(site):
+    path = build_site.ROOT / "fiam" / "vfinal" / "signals" / "syy.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    parts = next(
+        ast.literal_eval(n.value)
+        for n in tree.body
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PARTS"
+    )
+    assert {s["code"]: s["sign"] for s in site["signals"]} == parts
 
 
-# Each month's holdings net to about zero, as the book does.
-def test_each_month_is_market_neutral_in_dollars(site):
+# Each month's book nets within the daily net range the table reports.
+def test_each_month_nets_within_the_table(site, picked):
+    folder, commit = picked
+    cell = build_site.table_rows(folder / f"table_9_1_{commit}.csv")[16]["strategy"]
+    low, high = build_site.labelled(cell, "min"), build_site.labelled(cell, "max")
     for flat in site["stocks"]["book"]:
-        net = sum(flat[1::2]) / 1000 / 100
-        assert abs(net) < 0.005
+        net = sum(flat[1::2]) / 1000
+        assert low - 1 <= net <= high + 1
 
 
-# The honesty scene's ledger adds up to the metrics' trial count.
+# The honesty scene's ledger adds up to its own totals.
 def test_attempts_add_up(site):
     honesty = site["honesty"]
     assert sum(f["attempts"] for f in honesty["families"]) == honesty["attempts"]
     assert sum(f["attempts"] for f in honesty["families"] if f["eligible"]) == honesty["eligible"]
+    assert honesty["ideas"] == 8 and honesty["ideas_passed"] == 0
 
 
-# The September book shown is frozen: dollar neutral at 160% gross.
-def test_september_book_is_neutral(site):
+# The book shown now is the one the X-ray and the crises replay.
+def test_book_now_is_the_replayed_book(site, picked):
+    folder, commit = picked
+    replay = json.loads((folder / f"crises_{commit}.json").read_text())
     weights = [w / 1e5 for _, _, w in site["september"]["book"]]
-    assert abs(sum(weights)) < 1e-3
-    assert sum(abs(w) for w in weights) == pytest.approx(1.6, abs=0.01)
-    assert {e["ticker"] for e in site["explained"]} <= {t for t, _, _ in site["september"]["book"]}
+    assert len(weights) == replay["names"] == site["september"]["xray"]["names"]
+    assert sum(abs(w) for w in weights) == pytest.approx(replay["gross"], abs=1e-3)
 
 
-# Ad crashes: the stress windows and replays, with a market move each.
-def test_crashes_match_the_stress_test():
+# Ad crashes: the stress windows and the final book's replays.
+def test_crashes_match_the_stress_test(picked):
     if not build_site.CRASHES.exists():
         pytest.skip("no crash data; uv run tools/build_site.py writes it")
     from fiam.exhibits.stress import CRISES
@@ -80,11 +106,11 @@ def test_crashes_match_the_stress_test():
     assert [(c["name"], c["first"], c["last"]) for c in crashes] == [
         (name, first, last) for name, (first, last) in CRISES.items()
     ]
-    stress = build_site.V2 / "stress.json"
-    if stress.exists():
-        replay = json.loads(stress.read_text())["final v3"]["crises"]
-        for c in crashes:
-            assert c["book"] == pytest.approx(replay[c["name"]]["loss"], abs=5e-5)
+    folder, commit = picked
+    replay = json.loads((folder / f"crises_{commit}.json").read_text())["crises"]
+    for c in crashes:
+        assert c["book"] == pytest.approx(replay[c["name"]]["loss"], abs=5e-5)
+        assert c["market"] == pytest.approx(replay[c["name"]]["market"], abs=5e-5)
     covid = next(c for c in crashes if c["name"].startswith("Covid"))
     assert covid["market"] < -0.3 < covid["book"]
 
@@ -96,7 +122,7 @@ def test_ad_voice_matches_the_data(site):
     data = site | {"crashes": json.loads(build_site.CRASHES.read_text(encoding="utf-8"))}
     lines = json.loads((build_site.ROOT / "site" / "ad" / "voice" / "lines.json").read_text())
     said = {key: " ".join(text) for key, text in lines.items()}
-    assert len(data["agents"]) == 7 and said["agents"].startswith("Seven AI agents")
+    assert len(data["agents"]) == 8 and said["agents"].startswith("Eight AI agents")
     filings = next(v for k, v in data["agents"][1]["facts"] if k == "Filings labelled")
     assert int(filings.replace(",", "")) >= 2000 and "thousands of filings" in said["agents"]
     crowd = data["crowd"]

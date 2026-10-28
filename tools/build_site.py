@@ -43,15 +43,71 @@ FAMILIES = {
     "rising": "Is it rising?",
     "safe": "Is it safe?",
 }
-CAPACITY = {"v1": "First book", "v2": "Built for size", "v2-pass": "Short rule only"}
 # The headline's pick files and the hurdle's yearly premium.
 V4 = ROOT / "out" / "vfinal" / "final"
 PREMIUM = 0.04
-# Days in the rolling beta's window, and the cost ladder's rungs.
+# The AI desk's two tests, the eight ideas' gates and the X-ray.
+DESK = {
+    "early": ROOT / "out" / "vfinal" / "desk" / "decide_ce5cbff850d2.json",
+    "late": ROOT / "out" / "vfinal" / "desk" / "final_decide_512e4bdd3a5e.json",
+}
+GATES = ROOT / "out" / "vfinal" / "gates" / "late_db36eb4b849a.json"
+XRAY = ROOT / "out" / "alt" / "xray" / "xray_2026-08-31.json"
+# The first strategy's commit, run once on 2021-2026, then revised.
+FIRST = "512e4bdd3a5e"
+# The organisers' panel, read only for its stocks per month.
+PANEL = ROOT / "data" / "organisers" / "chars_final_with_names.parquet"
+# The forecasts' months the universe average counts from.
+UNIVERSE_FROM = "2020-12-31"
+# The ten SYY-10 parts of fiam/vfinal/signals/syy.py, by question.
+SIGNALS_FINAL = [
+    ("gp_at", +1, "profitable", "Gross profit to assets"),
+    ("niq_at", +1, "profitable", "Return on assets"),
+    ("ret_12_1", +1, "rising", "12-month momentum"),
+    ("chcsho_12m", -1, "careful", "Net stock issues"),
+    ("eqnetis_at", -1, "careful", "Net equity issuance"),
+    ("at_gr1", -1, "careful", "Asset growth"),
+    ("ppeinv_gr1a", -1, "careful", "Investment growth"),
+    ("o_score", -1, "safe", "Distress risk (O-score)"),
+    ("oaccruals_at", -1, "real", "Operating accruals"),
+    ("noa_at", -1, "real", "Net operating assets"),
+]
+FAMILIES_FINAL = {
+    "profitable": "Is it profitable?",
+    "rising": "Is it rising?",
+    "careful": "Is it careful with its money?",
+    "safe": "Is it safe?",
+    "real": "Are its profits real?",
+}
+# Each what-if in plain words; one not listed here stops the build.
+WHATIFS = {
+    "styles_free": "Style limits lifted",
+    "names_220": "At most 220 names",
+    "vol_reliability": "Alpha scaled by past reliability",
+    "yearly_refits": "Yearly refits",
+    "budget_none": "No cost budget",
+    "sectors_wide": "Sector limits doubled",
+    "speed_0.5": "Trading half way to target",
+    "names_480": "At most 480 names",
+    "lambda_half": "Half the risk aversion",
+    "budget_half": "Half the cost budget",
+    "cap_3bn": "Only stocks of $3bn and up",
+    "speed_0.2": "Trading a fifth of the way",
+}
+# The words every what-if's label file must carry.
+IN_SAMPLE = "chosen with 2021-2026 visible"
+# Exhibit 1's daily S&P 500 path, and the 60/40 steps from the deck.
+EXHIBIT_1 = ROOT / "out" / "vfinal" / "exhibits_revised" / "exhibit_1_active_return.csv"
+SIXTY_FORTY = ROOT / "out" / "deck" / "sixty_forty_steps.json"
+# The comparison file's rows for volatility, and its S&P 500 column.
+VOLATILITY = "Annual volatility (%)"
+SP500 = "sp500_price"
+# Site keys the final fund no longer fills, dropped from the base.
+DROPPED = ("capacity", "explained", "factor_story")
+# Days in the rolling beta's window.
 BETA_DAYS = 252
-RUNGS = (1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0)
 # Row 21 books fees, spread and impact as one, put under this part.
-TRADING_PART = "impact"
+TRADING_PART = "trading"
 # Each year's cards and the monthly column each compounds.
 YEAR_COLUMNS = {"strategy": "ret", "benchmark": "hurdle", "market": "market"}
 # The comparison file's row for the fund's correlation with the market.
@@ -203,32 +259,6 @@ def edge(report: dict) -> dict:
         live_high=r(live["mclean_pontiff_2016"], 3),
         ladder=[dict(label=a, ir=r(b, 3), kind=c) for a, b, c in ladder],
     )
-
-
-# IR and dollars a year by fund size, for our book and three it beat.
-def capacity() -> dict:
-    books = load(V2 / "capacity.json")["books"]
-    out = []
-    for key, label in {**CAPACITY, "final v3": "Final book"}.items():
-        out.append(
-            dict(
-                key=key,
-                label=label,
-                break_even=books[key]["break_even"],
-                peak=books[key]["peak"],
-                rows=[
-                    dict(
-                        capital=x["capital"],
-                        ir=r(x["information_ratio"], 3),
-                        net=r(x["net_annual"]),
-                        cost=r(x["cost_annual"]),
-                        dollars=round(x["dollars"]),
-                    )
-                    for x in books[key]["record"]
-                ],
-            )
-        )
-    return dict(books=out)
 
 
 # Each retail persona and its client brief, from prompts/agents.
@@ -455,7 +485,6 @@ def build(folder: Path = PACK) -> dict:
         journey=load(ROOT / "out" / "figures" / "clips" / "journey.json"),
         costs=costs(pack, metrics),
         edge=edge(report),
-        capacity=capacity(),
         crowd=crowd(),
         agents=agents(desk),
         explained=desk["september"]["explained"],
@@ -480,7 +509,8 @@ def headline_folder(pick: Path) -> tuple[Path, str]:
     if got.get("final") is not True:
         todo = ", ".join(got.get("next", [])) or "none listed"
         raise SystemExit(f"{pick.name} is not final, so no headline yet. Still to run: {todo}.")
-    return Path(got["headline"]), pick.stem.removeprefix("pick_")
+    # The folder sits beside its pick, wherever the pick lives.
+    return pick.parent / Path(got["headline"]).name, pick.stem.removeprefix("pick_")
 
 
 # The headline folder's five files, refused if any is missing.
@@ -625,16 +655,29 @@ def rolling_beta(excess: pd.Series, market: pd.Series, days: int = BETA_DAYS) ->
     return pd.DataFrame({"beta": beta, "band": band}).dropna()
 
 
-# Each month's last rolling beta and band, and the share outside it.
-def beta_v4(daily: pd.DataFrame, close: pd.Series, old: dict) -> dict:
+# The fund's beta from its first day to each day, from its tenth on.
+def beta_so_far(excess: pd.Series, market: pd.Series, days: int = 10) -> pd.Series:
+    both = pd.concat({"y": excess, "x": market}, axis=1, join="inner").dropna()
+    y, x = both["y"], both["x"]
+    return (y.expanding(days).cov(x) / x.expanding(days).var()).dropna()
+
+
+# Each month's rolling beta and band, the share outside, and before.
+def beta_v4(daily: pd.DataFrame, close: pd.Series) -> dict:
     d = daily.iloc[1:]
-    got = rolling_beta(d["ret"] - d["rf"], close.pct_change().dropna())
+    excess, market = d["ret"] - d["rf"], close.pct_change().dropna()
+    got = rolling_beta(excess, market)
     ends = got.groupby(pd.DatetimeIndex(got.index).to_period("M")).last()
     outside = float((ends["beta"].abs() > ends["band"]).mean()) if len(ends) else 0.0
-    return old | dict(
+    # Months before the first full window show the beta measured so far.
+    early = beta_so_far(excess, market)
+    early = early.groupby(pd.DatetimeIndex(early.index).to_period("M")).last()
+    first = ends.index[0] if len(ends) else None
+    return dict(
         rolling={
             str(k): [r(b, 3), r(n, 3)] for k, b, n in zip(ends.index, ends["beta"], ends["band"])
         },
+        since={str(k): r(b, 3) for k, b in early.items() if first is None or k < first},
         outside_noise=r(outside, 3),
     )
 
@@ -676,7 +719,9 @@ def headline_v4(
     t: dict[int, dict], vs: dict[str, float], m: pd.DataFrame, daily: pd.DataFrame, old: dict
 ) -> dict:
     alpha, alpha_se = with_se(t[5]["strategy"])
-    beta, beta_se = with_se(t[6]["strategy"])
+    # The daily beta is the headline one; row 6's monthly sits beside it.
+    beta, beta_se = with_se(t[7]["strategy"])
+    monthly, monthly_se = with_se(t[6]["strategy"])
     net = active_annual(t) + PREMIUM
     days = daily.iloc[1:]
     best, worst = m["ret"].idxmax(), m["ret"].idxmin()
@@ -686,13 +731,15 @@ def headline_v4(
         net=r(net),
         gross=r(net + sum(cost_parts(t))),
         cagr=r(labelled(t[3]["strategy"], "CAGR") / 100),
-        vol=r(float(t[4]["strategy"]) / 100),
+        vol=r(float(t[4]["strategy"]) / 100, 5),
         sharpe=r(float(t[8]["strategy"]), 3),
         drawdown=r(float(t[11]["strategy"]) / 100),
         alpha=r(alpha / 100),
         alpha_t=r(alpha / alpha_se, 2),
         beta=r(beta, 3),
         beta_se=r(beta_se, 3),
+        beta_monthly=r(monthly, 3),
+        beta_monthly_se=r(monthly_se, 3),
         correlation=r(vs[CORRELATION], 3),
         hit=r((m["ret"] > m["hurdle"]).mean(), 3),
         positions=r(labelled(t[14]["strategy"], "avg"), 1),
@@ -705,29 +752,18 @@ def headline_v4(
     )
 
 
-# Gross and net above cash, the five parts and the cost ladder.
-def costs_v4(t: dict[int, dict], old: dict) -> dict:
+# Return a year before and after the two booked costs, and the hurdle.
+def costs_v4(t: dict[int, dict]) -> dict:
     trading, borrow = cost_parts(t)
-    total, active = trading + borrow, active_annual(t)
-    tracking = float(t[10]["strategy"]) / 100
-    even = 1 + active / total
-    parts = dict.fromkeys(old["parts"], 0.0) | {TRADING_PART: r(trading, 5), "borrow": r(borrow, 5)}
-    return old | dict(
-        gross=r(active + PREMIUM + total),
-        net=r(active + PREMIUM),
-        parts=parts,
-        total=r(total, 5),
-        break_even_multiple=r(even, 3),
-        break_even_cost=r(even * total),
-        ladder=[
-            dict(
-                multiple=k,
-                cost=r(k * total),
-                active=r(active - (k - 1) * total),
-                ir=r((active - (k - 1) * total) / tracking, 3),
-            )
-            for k in RUNGS
-        ],
+    net = labelled(t[3]["strategy"], "arithmetic") / 100
+    return dict(
+        gross=r(net + trading + borrow),
+        net=r(net),
+        hurdle=r(labelled(t[3]["benchmark"], "arithmetic") / 100),
+        parts={TRADING_PART: r(trading, 5), "borrow": r(borrow, 5)},
+        total=r(trading + borrow, 5),
+        ir_gross=r(float(t[9]["strategy"]), 3),
+        turnover=r(labelled(t[17]["strategy"], "build") / 100, 3),
     )
 
 
@@ -738,11 +774,6 @@ def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
     m = fund_months(daily)
     market = market_months(close, m.index)
     months = [str(p) for p in m.index]
-    # The predicted beta has no run source, so its months must line up.
-    if len(base["beta"]["exante"]) != len(months):
-        raise SystemExit(
-            f"beta.exante has {len(base['beta']['exante'])} months, the run {len(months)}."
-        )
     return base | dict(
         book=folder.name,
         code=commit,
@@ -751,36 +782,266 @@ def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
         headline=headline_v4(t, vs_market(f["vs_market"]), m, daily, base["headline"]),
         years=years_v4(m, market),
         race=race_v4(m, market),
-        beta=beta_v4(daily, close, base["beta"]),
+        beta=beta_v4(daily, close),
         stocks=holdings_v4(
             pd.read_parquet(f["positions"]), daily["nav"], names_v4(f["names"]), months
         ),
-        costs=costs_v4(t, base["costs"]),
+        costs=costs_v4(t),
     )
 
 
-# The pack folder, the headline switch and any pick file, from args.
+# A number with a true minus sign, as the site's own copy writes it.
+def minus(x: float, digits: int = 2) -> str:
+    return f"{'−' if x < 0 else ''}{abs(x):.{digits}f}"
+
+
+# One real month: all stocks, the forecast universe and the final book.
+def journey_v4(forecasts: Path, positions: pd.DataFrame) -> dict:
+    eoms = pd.to_datetime(pd.read_parquet(forecasts, columns=["eom"])["eom"])
+    per = eoms[eoms >= UNIVERSE_FROM].value_counts().sort_index()
+    last = per.index[-1]
+    panel = pd.to_datetime(pd.read_parquet(PANEL, columns=["eom"])["eom"])
+    p = positions.assign(date=pd.to_datetime(positions["date"]))
+    book = p[(p["date"] == p["date"].max()) & (p["value"] != 0)]
+    return dict(
+        month=f"{last:%B %Y}",
+        stocks=int((panel == last).sum()),
+        tradeable=int(per.iloc[-1]),
+        longs=int((book["value"] > 0).sum()),
+        shorts=int((book["value"] < 0).sum()),
+        average=r(per.mean(), 1),
+    )
+
+
+# Each replayed crisis with its dates, the market and the final book.
+def crises_v4(folder: Path, commit: str) -> list[dict]:
+    from fiam.exhibits.stress import CRISES
+
+    replay = load(folder / f"crises_{commit}.json")["crises"]
+    if list(replay) != list(CRISES):
+        raise SystemExit("The crises file and the stress windows differ.")
+    return [
+        dict(
+            name=name,
+            first=first,
+            last=last,
+            market=r(replay[name]["market"]),
+            book=r(replay[name]["loss"]),
+            coverage=r(replay[name]["coverage"], 2),
+        )
+        for name, (first, last) in CRISES.items()
+    ]
+
+
+# Every finished what-if: its label check and its table's measures.
+def whatifs(commit: str) -> list[dict]:
+    found = {}
+    for table in sorted(V4.glob(f"whatif*/*/table_9_1_{commit}.csv")):
+        key = table.parent.name
+        label = (table.parent / "LABEL.txt").read_text(encoding="utf-8")
+        if IN_SAMPLE not in label or key in found:
+            raise SystemExit(f"{table.parent} is unlabelled or repeated.")
+        if key not in WHATIFS:
+            raise SystemExit(f"Name the what-if {key} in WHATIFS first.")
+        t = table_rows(table)
+        found[key] = dict(
+            key=key,
+            label=WHATIFS[key],
+            ir=r(first(t[23]["strategy"]), 2),
+            ir_gross=r(float(t[9]["strategy"]), 2),
+            cagr=r(labelled(t[3]["strategy"], "CAGR") / 100),
+            drawdown=r(float(t[11]["strategy"]) / 100),
+        )
+    return sorted(found.values(), key=lambda x: -x["ir"])
+
+
+# The S&P 500's yearly volatility and worst daily fall, as fractions.
+def sp500_v4(vs: Path) -> dict:
+    vol = next(float(x[SP500]) for x in rows(vs) if x["measure"] == VOLATILITY)
+    level = 1 + pd.read_csv(EXHIBIT_1, usecols=["sp500"])["sp500"] / 100
+    return dict(vol=r(vol / 100, 5), drawdown=r((level / level.cummax() - 1).min(), 5))
+
+
+# 2022 for the S&P 500, bonds, a 60/40 and the fund, and the steps.
+def edge_v4(years: dict) -> dict:
+    if not SIXTY_FORTY.exists():
+        raise SystemExit(f"No {SIXTY_FORTY}: run the deck's 60/40 steps first.")
+    got = load(SIXTY_FORTY)
+    year = got["year_2022"]
+    return dict(
+        year_2022=dict(
+            sp500=years["2022"]["market"],
+            bonds=r(year["bonds"]),
+            sixty_forty=r(year["sixty_forty"]),
+            fund=years["2022"]["strategy"],
+        ),
+        steps=got["steps"],
+        window=got["window"],
+        source=got["source"],
+    )
+
+
+# The AI desk's tests: IR with no AI, the simple rule and the AI.
+def desk_v4() -> dict:
+    out = {}
+    for when, path in DESK.items():
+        got = load(path)
+        irs = got["irs"]
+        out[when] = dict(
+            none=r(irs["A0"], 2),
+            rule=r(irs["A1"], 2),
+            ai=r(irs["A2"], 2),
+            random=got["placebo"]["n"],
+            memory=got["memory_gate"]["passes"],
+        )
+    return out
+
+
+# The base's agents and the risk desk, the eighth, with its tests.
+def agents_v4(base: list[dict], desk: dict) -> list[dict]:
+    early, late = desk["early"], desk["late"]
+    risk = dict(
+        key="desk",
+        name="Risk desk",
+        model=MODELS["gemma"],
+        does="Proposes shrinking a position at a risky moment from a card with no name, "
+        "ticker or date. A devil's advocate argues back",
+        facts=[
+            ["Tested against", f"a fixed rule and {late['random']} random desks"],
+            ["IR 2017 to 2020", f"{minus(early['ai'])} with AI, {minus(early['none'])} without"],
+            [
+                "IR 2021 to 2026, first strategy",
+                f"{minus(late['ai'])} with AI, {minus(late['none'])} without",
+            ],
+            ["Result", "No help, so the fund runs without it"],
+        ],
+    )
+    others = [a for a in base if a["key"] != "desk"]
+    # The desk goes before the crowd, whose long label then fits.
+    at = next((i for i, a in enumerate(others) if a["key"] == "crowd"), len(others))
+    return [*others[:at], risk, *others[at:]]
+
+
+# The final book on its last day, largest first, and the X-ray's read.
+def now_v4(stocks: dict, months: list[str]) -> dict:
+    flat = stocks["book"][-1]
+    book = [[stocks["ticker"][i], stocks["name"][i], w] for i, w in zip(flat[::2], flat[1::2])]
+    book.sort(key=lambda x: -x[2])
+    x = load(XRAY)
+    cover = x["book_coverage"]
+    owned = ("card_spend", "foot_traffic", "web_traffic")
+    return dict(
+        decision=x["meta"]["as_of"],
+        month=months[-1],
+        book=book,
+        xray=dict(
+            names=cover["names"],
+            owned=max(cover[k]["names"] for k in owned),
+            benzinga=cover["benzinga_ever"]["names"],
+            benzinga_share=r(cover["benzinga_ever"]["share_of_gross"], 3),
+            top=len(x["cards"]),
+            keep=sum(c["suggestion"]["action"] == "keep" for c in x["cards"]),
+        ),
+    )
+
+
+# Every attempt: both strategies, the eight ideas and the what-ifs.
+def honesty_v4(pick: dict, head: dict, rows: list[dict]) -> dict:
+    first_ir = first(table_rows(V4 / f"table_9_1_{FIRST}.csv")[23]["strategy"])
+    holm = load(GATES)["late"]["holm"]
+    passed = sum(g["passes"] for g in holm.values())
+    checks = len(pick["ic_2017_2020"]) + len(pick["early_ir"])
+    better = sum(x["ir"] > r(head["ir"], 2) for x in rows)
+    families = [
+        dict(
+            what="The first strategy, frozen before any 2021 to 2026 result",
+            family="first",
+            eligible=True,
+            attempts=1,
+            verdict=f"Run once on 2021 to 2026, IR {minus(first_ir)} after costs, then revised",
+        ),
+        dict(
+            what="The revised strategy, its refits and limits settled on 2017 to 2020",
+            family="revised",
+            eligible=True,
+            attempts=checks,
+            verdict=f"Shipped, {pick['cadence']} refits and {pick['limits']} limits, "
+            f"IR {minus(head['ir'])} after costs",
+        ),
+        dict(
+            what="New ideas, each tested against a bar set in advance",
+            family="ideas",
+            eligible=False,
+            attempts=len(holm),
+            verdict=f"{passed} of {len(holm)} passed, so the fund runs on the published signals",
+        ),
+        dict(
+            what="What-ifs chosen with 2021 to 2026 visible",
+            family="whatifs",
+            eligible=False,
+            attempts=len(rows),
+            verdict=f"Never the headline, {better} of {len(rows)} did better in hindsight",
+        ),
+    ]
+    return dict(
+        attempts=sum(f["attempts"] for f in families),
+        eligible=sum(f["attempts"] for f in families if f["eligible"]),
+        ideas=len(holm),
+        ideas_passed=passed,
+        whatifs=len(rows),
+        families=families,
+    )
+
+
+# The final fund's scenes refilled on top of the headline keys.
+def final(data: dict, folder: Path, commit: str, pick: dict) -> dict:
+    f = v4_files(folder, commit)
+    rows = whatifs(commit)
+    desk = desk_v4()
+    head = data["headline"] | dict(breaches=load(folder / f"book_{commit}.json")["breach_days"])
+    forecasts = V4 / f"forecasts_{pick['cadence']}_{commit}.parquet"
+    kept = {k: v for k, v in data.items() if k not in DROPPED}
+    return kept | dict(
+        headline=head,
+        signals=[dict(code=c, sign=s, family=g, label=x) for c, s, g, x in SIGNALS_FINAL],
+        families=FAMILIES_FINAL,
+        journey=journey_v4(forecasts, pd.read_parquet(f["positions"])),
+        edge=edge_v4(data["years"]),
+        sp500=sp500_v4(f["vs_market"]),
+        crises=crises_v4(folder, commit),
+        desk=desk,
+        agents=agents_v4(data["agents"], desk),
+        september=now_v4(data["stocks"], data["months"]),
+        honesty=honesty_v4(pick, head, rows),
+    )
+
+
+# The pack folder, the headline switch, any pick file and a base file.
 def options(args: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Writes the site's data files.")
     parser.add_argument("pack", nargs="?", type=Path, default=PACK)
-    parser.add_argument("--v4", action="store_true", help="headline keys from the v4 pick")
+    parser.add_argument("--v4", action="store_true", help="the final fund from the pick")
     parser.add_argument("--pick", type=Path, help="this pick file, not the newest")
+    parser.add_argument("--base", type=Path, help="refill this site file, not the pack")
     return parser.parse_args(args)
 
 
-# Both files need the pack and crisis cache, which the results kit sets.
+# The final fund refills a base; with no pick both are the pack's.
 def main(args: list[str]) -> None:
     opts = options(args)
-    use_v4 = opts.v4 or opts.pick is not None
-    picked = headline_folder(opts.pick or newest_pick()) if use_v4 else None
-    for path in (opts.pack, CACHE):
+    use_v4 = opts.v4 or opts.pick is not None or opts.base is not None
+    pick = (opts.pick or newest_pick()) if use_v4 else None
+    needed = [] if opts.base else [opts.pack]
+    for path in needed + ([] if use_v4 else [CACHE]):
         if not path.exists():
             raise SystemExit(f"No {path}: uv run run.py --import fiam_results.zip first.")
-    data = build(opts.pack)
-    if picked:
-        data = v4(data, *picked, sp500())
+    data = load(opts.base) if opts.base else build(opts.pack)
+    if pick:
+        folder, commit = headline_folder(pick)
+        data = final(v4(data, folder, commit, sp500()), folder, commit, load(pick))
+    crashes = data["crises"] if pick else crises()
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    for out, made in ((OUT, data), (CRASHES, crises())):
+    for out, made in ((OUT, data), (CRASHES, crashes)):
         out.write_text(json.dumps(made, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"wrote {out.relative_to(ROOT)}: {out.stat().st_size / 1024:.0f} KB")
 

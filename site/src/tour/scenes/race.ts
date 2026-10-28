@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import * as THREE from "three";
-import { D, monthName, pct, signed, yearIndex } from "../../shared/data";
+import { D, monthName, num, pct, signed, yearIndex } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { glow, tube } from "../gl/shapes";
 import { h } from "../../shared/dom";
@@ -12,7 +12,7 @@ import { seeded } from "../../shared/math";
 // The race data, its points, the chart's x span, floor and back wall.
 const R = D.race;
 // Card captions: the whole run's edge and risk, or one year's returns.
-const WHOLE = ["Alpha a year", "Months over hurdle", "Volatility a year", "Worst drawdown"];
+const WHOLE = ["Volatility", "Months over hurdle", "Correlation to the S&P 500", "Worst drawdown"];
 const YEAR = ["Final book", "S&P 500", "Hurdle", "Above the hurdle"];
 const STEPS = R.book.length;
 const X0 = -9.5;
@@ -44,7 +44,7 @@ const hit = new THREE.Vector3();
 // The race: $1 in the book against market and hurdle, month by month.
 export class Race extends Scene {
   name = "The race";
-  summary = `$1 in January 2021 became $${R.book[STEPS - 1].toFixed(2)} after every cost.`;
+  summary = `Markets swung and we held level. $1 became $${R.book[STEPS - 1].toFixed(2)} after every cost, behind the hurdle.`;
   private lines: THREE.Mesh<THREE.TubeGeometry, THREE.ShaderMaterial>[] = [];
   private ends: Label[] = [];
   private cross: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
@@ -53,9 +53,8 @@ export class Race extends Scene {
   private year = "";
   private fired = false;
   private cards = YEAR.map((caption) => stat("", caption));
-  private callout: Label;
 
-  // Builds the three lines, axis labels, crosshair, glow and 2022 note.
+  // Builds the three lines, axis labels, crosshair and the 2022 glow.
   constructor(w: World) {
     super(w);
     this.shot = { eye: [2, 1.4, 24.5], look: [-0.4, -0.2, -1], drift: 0.6, shift: 0.1 };
@@ -82,18 +81,10 @@ export class Race extends Scene {
     this.ring = glow(C.orange, 6, 0);
     this.ring.userData.keep = true;
     this.group.add(this.cross, this.ring);
-    const crash = D.years["2022"];
-    this.callout = this.addLabel(
-      new Label(
-        `<span class="text-orange">2022</span> · S&amp;P 500 <b class="text-ink">${signed(crash.market)}</b> · Final book <b class="text-ink">${signed(crash.strategy)}</b>`,
-        [xAt(CRASH), yAt(R.book[CRASH]) + 2.3, 0],
-        "center",
-      ),
-    );
     this.panel.append(
       ...header(
-        `$1 became <em>$${R.book[STEPS - 1].toFixed(2)}</em>`,
-        "Our book after every modelled cost, against the S&P 500 and the brief's hurdle. Pick a year to see its returns.",
+        "Markets swung, <em>we held level</em>",
+        `After every cost $1 became $${R.book[STEPS - 1].toFixed(2)} while the S&P 500 swung. The fund trailed the hurdle, cash plus 4%, which reached $${R.hurdle[STEPS - 1].toFixed(2)}. Pick a year to see its returns.`,
       ),
       stats(...this.cards.map((s) => s.el)),
     );
@@ -114,11 +105,6 @@ export class Race extends Scene {
       l.small = { html: `${swatch(s.mark)}<b class="text-ink">$${R[s.key][STEPS - 1].toFixed(2)}</b>` };
       l.prio = 1;
     });
-    this.callout.prio = 2;
-    this.callout.small = {
-      html: `<span class="text-orange">2022</span> · S&amp;P 500 <b class="text-ink">${signed(crash.market)}</b><br>Final book <b class="text-ink">${signed(crash.strategy)}</b>`,
-      cls: "text-center",
-    };
     (this.controls.firstElementChild as HTMLElement).classList.add("row");
     const key = SERIES.map((s) => `<span>${swatch(s.mark)}${s.label.split(",")[0]}</span>`).join("");
     this.controls.append(h("p", { class: "small-only eyebrow gap-3", html: key }));
@@ -167,7 +153,7 @@ export class Race extends Scene {
     this.chips.forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === (year || "All years"))));
     if (!year) {
       const head = D.headline;
-      this.write([pct(head.alpha), pct(head.hit, 0), pct(head.vol), pct(head.drawdown)], WHOLE);
+      this.write([pct(head.vol), pct(head.hit, 0), num(head.correlation), pct(head.drawdown)], WHOLE);
       if (move) this.w.stage.frame(this.shot);
       return;
     }
@@ -195,7 +181,6 @@ export class Race extends Scene {
   // Draws the lines from January 2021, a shockwave at the 2022 crash.
   draw() {
     this.fired = false;
-    this.callout.shown = false;
     for (const l of this.ends) l.shown = false;
     this.timeline?.kill();
     const progress = { p: 0 };
@@ -222,12 +207,11 @@ export class Race extends Scene {
     this.ring.position.copy(at);
     gsap.fromTo(this.ring.scale, { x: 0.2, y: 0.2 }, { x: 2.4, y: 2.4, duration: 1.6, ease: "expo.out" });
     gsap.fromTo(this.ring.material.uniforms.uOpacity, { value: 2 }, { value: 0, duration: 1.8, ease: "power2.out" });
-    this.callout.shown = true;
   }
 
-  // Shows axis labels, holds the end labels and callout, and draws.
+  // Shows axis labels, holds the end labels, and draws.
   override enter() {
-    for (const l of this.labels) l.shown = !this.ends.includes(l) && l !== this.callout;
+    for (const l of this.labels) l.shown = !this.ends.includes(l);
     this.draw();
   }
 

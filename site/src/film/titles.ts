@@ -137,12 +137,19 @@ function pin(
   w: number,
   h: number,
   lift: string,
+  inside = false,
 ) {
   el.style.display = k > 0 ? "" : "none";
   if (!k || !at) return;
   pinned.copy(at).project(camera);
   el.style.opacity = k.toFixed(3);
-  el.style.transform = `translate(${((pinned.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((0.5 - pinned.y * 0.5) * h).toFixed(1)}px) translate(-50%, ${lift})`;
+  let x = (pinned.x * 0.5 + 0.5) * w;
+  // Inside keeps the whole label in frame, 2% of the width from the edge.
+  if (inside) {
+    const half = el.offsetWidth / 2 + w * 0.02;
+    x = Math.min(Math.max(x, half), w - half);
+  }
+  el.style.transform = `translate(${x.toFixed(1)}px, ${((0.5 - pinned.y * 0.5) * h).toFixed(1)}px) translate(-50%, ${lift})`;
 }
 
 // Small year marks that sit on the water where each shock began.
@@ -186,7 +193,7 @@ export class Tags {
   // Pins each role's name beside its agent, arriving 0.2 s apart.
   update(t: number, at: THREE.Vector3[], camera: THREE.Camera, w: number, h: number) {
     this.items.forEach((el, i) =>
-      pin(el, span(t, this.from + i * 0.2, this.to, 0.35, 0.5), at[i], camera, w, h, "-190%"),
+      pin(el, span(t, this.from + i * 0.2, this.to, 0.35, 0.5), at[i], camera, w, h, "-190%", h > w),
     );
   }
 }

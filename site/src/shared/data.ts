@@ -1,14 +1,4 @@
 import raw from "../data/fiam.json";
-import { mix } from "./math";
-
-// One fund size's results in the capacity table, capital in dollars.
-export interface Row {
-  capital: number;
-  ir: number;
-  net: number;
-  cost: number;
-  dollars: number;
-}
 
 // One AI agent as the tour shows it; facts are [label, value] pairs.
 interface Agent {
@@ -28,9 +18,37 @@ interface Family {
   verdict: string;
 }
 
+// A 60/40 with some of its bonds in the fund: points moved and results.
+interface Step {
+  fund: number;
+  cagr: number;
+  vol: number;
+  drawdown: number;
+}
+
+// One replayed crisis: its window and the market's and book's moves.
+interface Crisis {
+  name: string;
+  first: string;
+  last: string;
+  market: number;
+  book: number;
+  coverage: number;
+}
+
+// One test of the AI desk: IR with no AI, the fixed rule and the AI.
+interface DeskTest {
+  none: number;
+  rule: number;
+  ai: number;
+  random: number;
+  memory: boolean;
+}
+
 // The headline's single-number measures the tour shows.
 type Measure =
   | "ir"
+  | "ir_gross"
   | "net"
   | "gross"
   | "cagr"
@@ -39,11 +57,13 @@ type Measure =
   | "drawdown"
   | "alpha"
   | "beta"
+  | "beta_monthly"
   | "correlation"
   | "hit"
   | "positions"
   | "longs"
-  | "shorts";
+  | "shorts"
+  | "breaches";
 
 // Everything the site draws, as tools/build_site.py writes it.
 export interface Fiam {
@@ -54,29 +74,27 @@ export interface Fiam {
   headline: Record<Measure, number>;
   years: Record<string, { strategy: number; benchmark: number; market: number; active: number; months: number }>;
   race: { book: number[]; hurdle: number[]; market: number[]; market_monthly: number[]; book_monthly: number[] };
-  beta: { exante: number[]; rolling: Record<string, [number, number]> };
+  beta: { rolling: Record<string, [number, number]>; since: Record<string, number> };
   stocks: { ticker: string[]; name: string[]; book: number[][] };
   signals: { code: string; sign: number; family: string; label: string }[];
   families: Record<string, string>;
-  journey: { month: string; stocks: number; tradeable: number; longs: number; shorts: number };
+  journey: { month: string; stocks: number; tradeable: number; longs: number; shorts: number; average: number };
   costs: {
     gross: number;
     net: number;
+    hurdle: number;
     parts: Record<string, number>;
     total: number;
-    break_even_multiple: number;
-    ladder: { multiple: number; cost: number; active: number; ir: number }[];
+    ir_gross: number;
+    turnover: number;
   };
   edge: {
-    irs: number[];
-    draws: number;
-    final: number;
-    best: number;
-    mean: number;
-    beaten: number;
-    ladder: { label: string; ir: number; kind: string }[];
+    year_2022: { sp500: number; bonds: number; sixty_forty: number; fund: number };
+    steps: Step[];
+    window: string;
+    source: string;
   };
-  capacity: { books: { key: string; label: string; break_even: number | string; rows: Row[] }[] };
+  sp500: { vol: number; drawdown: number };
   crowd: {
     personas: { key: string; client: string }[];
     agents: number;
@@ -88,13 +106,20 @@ export interface Fiam {
     picks: number;
   };
   agents: Agent[];
-  explained: { ticker: string; side: string; why: string }[];
-  september: { decision: string; book: [string, string, number][] };
-  crises: Record<string, number>;
+  desk: { early: DeskTest; late: DeskTest };
+  september: {
+    decision: string;
+    month: string;
+    book: [string, string, number][];
+    xray: { names: number; owned: number; benzinga: number; benzinga_share: number; top: number; keep: number };
+  };
+  crises: Crisis[];
   honesty: {
     attempts: number;
     eligible: number;
-    dsr_eligible: number;
+    ideas: number;
+    ideas_passed: number;
+    whatifs: number;
     families: Family[];
   };
 }
@@ -136,15 +161,6 @@ export const num = (x: number, digits = 2) => (x < 0 ? "−" : "") + Math.abs(x)
 export const plus = (x: number, digits = 2) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(digits);
 // Whole numbers with thousands commas, as in 12,345.
 export const int = (x: number) => Math.round(x).toLocaleString("en-US");
-// Dollars as $2B or $1.5M, from $100,000 as $0.10M, below that whole.
-export const money = (x: number) =>
-  x >= 1e9
-    ? `$${+(x / 1e9).toFixed(1)}B`
-    : x >= 1e6
-      ? `$${+(x / 1e6).toFixed(1)}M`
-      : x >= 1e5
-        ? `$${(x / 1e6).toFixed(2)}M`
-        : `$${int(x)}`;
 // A "2021-03" month as "March 2021", or "Mar 2021" when short.
 export const monthName = (m: string, short = false) => {
   const name = MONTHS[+m.slice(5, 7) - 1]!;
@@ -183,14 +199,3 @@ export const weights = (stock: number): Float32Array => {
 
 // Index of a year's first month in D.months, or -1 if it has none.
 export const yearIndex = (year: string) => D.months.findIndex((m) => m.startsWith(year));
-
-// A capacity table read at any capital, log-scale between its rows.
-export const at = (rows: Row[], capital: number, key: keyof Row) => {
-  const x = Math.log10(capital);
-  const xs = rows.map((r) => Math.log10(r.capital));
-  if (x <= xs[0]!) return rows[0]![key];
-  for (let i = 1; i < rows.length; i++) {
-    if (x <= xs[i]!) return mix(rows[i - 1]![key], rows[i]![key], (x - xs[i - 1]!) / (xs[i]! - xs[i - 1]!));
-  }
-  return rows[rows.length - 1]![key];
-};

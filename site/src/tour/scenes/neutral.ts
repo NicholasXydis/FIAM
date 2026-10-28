@@ -95,10 +95,10 @@ export class Neutral extends Scene {
     this.panel.append(
       ...header(
         "The market tilts, <em>we stay level</em>",
-        "LightGBM predicts each stock's beta, and the optimizer holds ours at zero. The floor tilts with the S&P 500, the gyroscope only with our measured beta.",
+        "The optimizer holds the fund's beta near zero. The floor tilts with the S&P 500, the gyroscope only with the fund's measured beta.",
       ),
       stats(
-        stat(plus(head.beta), "Monthly beta").el,
+        stat(plus(head.beta), "Daily beta").el,
         stat(`${gained} of ${down.length}`, "Down months gained").el,
         // The share of the book's monthly moves the S&P 500 explains.
         stat(pct(head.correlation ** 2), "Explained by S&P").el,
@@ -157,7 +157,7 @@ export class Neutral extends Scene {
     const market = D.race.market_monthly[month];
     this.floor = clamp(market * TILT, -0.42, 0.42);
     const rolling = D.beta.rolling[m];
-    const beta = rolling ? rolling[0] : D.beta.exante[month];
+    const beta = rolling ? rolling[0] : (D.beta.since[m] ?? 0);
     this.target.set(this.floor * beta, 0);
     this.spin.y += this.floor * 0.6;
     if (move) this.w.sim.update(this.formation());
@@ -166,13 +166,13 @@ export class Neutral extends Scene {
     const needle = this.gauge.querySelector(".needle") as SVGGElement;
     gsap.to(needle, { rotation: clamp(beta, -0.5, 0.5) * 180, svgOrigin: "0 0", duration: 0.6, ease: "back.out(2)" });
     const band = this.gauge.querySelector(".band") as SVGPathElement;
-    // The noise band once a 12-month beta exists, else the predicted beta.
+    // The noise band once a 12-month beta exists, else the beta so far.
     if (rolling) {
       band.setAttribute("d", arc(-rolling[1], rolling[1]));
       this.note.innerHTML = `Rolling 12-month beta <b class="text-ink figure">${plus(beta)}</b>. The shaded arc is how far a truly zero-beta book with our risk could stray by chance, ±${num(rolling[1])}.`;
     } else {
       band.setAttribute("d", "");
-      this.note.innerHTML = `Predicted beta <b class="text-ink figure">${plus(beta, 3)}</b>. The 12-month measured beta starts in ${monthName(Object.keys(D.beta.rolling)[0], true)}.`;
+      this.note.innerHTML = `Beta since ${monthName(D.months[0]!)} <b class="text-ink figure">${plus(beta, 3)}</b>. The 12-month measured beta starts in ${monthName(Object.keys(D.beta.rolling)[0], true)}.`;
     }
   }
 

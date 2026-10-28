@@ -1,22 +1,26 @@
-import { book, D, MONTH_COUNT, monthName, prose, signed, weights } from "../../shared/data";
+import { book, D, int, MONTH_COUNT, monthName, signed, weights } from "../../shared/data";
 import { Formation } from "../gl/sim";
 import { h } from "../../shared/dom";
 import { corners, round } from "../layout";
-import { asButton, box, chip, finder, SideCard, spark, stat } from "../ui";
+import { asButton, box, finder, SideCard, spark, stat } from "../ui";
 import { C, dust, header, pick, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
-// The positions (weights stored in 100000ths of the fund) and reasons.
+// The positions, weights stored in 100000ths of the fund.
 const S = D.september.book.map(([ticker, name, w]) => ({ ticker, name: name || "Name not on file", weight: w / 1e5 }));
-const WHY = new Map(D.explained.map((e) => [e.ticker, e]));
-// August's tickers by side, so September can mark what is new.
-const AUGUST = new Map(book(MONTH_COUNT - 1).map((x) => [D.stocks.ticker[x.stock], Math.sign(x.weight)]));
-// Each pill's stocks: longs, shorts, or new since August by ticker.
+// The book's month, the record's last, and the month before it.
+const NOW = MONTH_COUNT - 1;
+// The month before's tickers by side, so the book can mark what is new.
+const BEFORE = new Map(book(NOW - 1).map((x) => [D.stocks.ticker[x.stock], Math.sign(x.weight)]));
+// Each pill's stocks: longs, shorts, or new since the month before.
 const GROUPS = {
   long: (i: number) => S[i].weight > 0,
   short: (i: number) => S[i].weight < 0,
-  fresh: (i: number) => !!S[i].ticker && AUGUST.get(S[i].ticker) !== Math.sign(S[i].weight),
+  fresh: (i: number) => !!S[i].ticker && BEFORE.get(S[i].ticker) !== Math.sign(S[i].weight),
 };
+// The Carbon Arc X-ray of the book, in one plain sentence.
+const X = D.september.xray;
+const XRAY = `The Carbon Arc card, foot and web data we own cover ${X.owned ? int(X.owned) : "none"} of its ${int(X.names)} names, so its ${int(X.top)} largest all read keep.`;
 type Group = keyof typeof GROUPS;
 // Each past stock by ticker; of two sharing one, the latest held wins.
 const PAST = new Map<string, number>();
@@ -30,35 +34,34 @@ function past(ticker: string, weight: number) {
   const w = weights(stock);
   const held = w.filter((v) => v !== 0).length;
   const side = Math.sign(weight);
-  // Walk back from August while it held the same side.
-  let start = MONTH_COUNT;
+  // Walk back from the book's month while it held the same side.
+  let start = NOW;
   while (start > 0 && Math.sign(w[start - 1] ?? 0) === side) start--;
   const months = `In the book ${held} of ${MONTH_COUNT} months`;
-  if (start < MONTH_COUNT) return `${months}, ${side > 0 ? "long" : "short"} since ${monthName(D.months[start]!)}.`;
-  let last = MONTH_COUNT - 1;
+  if (start < NOW) return `${months}, ${side > 0 ? "long" : "short"} since ${monthName(D.months[start]!)}.`;
+  let last = NOW - 1;
   while (last >= 0 && !w[last]) last--;
+  if (last < 0) return "New to the book this month.";
   return `New this month. ${months}, last in ${monthName(D.months[last]!)}.`;
 }
 
-// The first sentence of a written reason, short enough for a tooltip.
-const gist = (why: string) => prose(why).split(/(?<=\.)\s/)[0];
 // How far out the positions sit on their sphere, in scene units.
 const RADIUS = 5.2;
 
-// September's book: every position, the explainer's reasons for ten.
+// What the fund holds now: every position of the final book.
 export class September extends Scene {
-  name = "The book for September";
-  summary = "What the final book holds now, with the explainer's reasons for ten positions.";
+  name = "What the fund holds now";
+  summary = "Every position of the final book on its last day, with a Carbon Arc check.";
   private f = new Formation();
   private card: SideCard;
   private hovered = -1;
   // The pill pressed, whose stocks stay lit while the rest dim.
   private only: Group | null = null;
   private pills: HTMLElement[] = [];
-  // Search over September's positions; a pick opens its card.
+  // Search over the book's positions; a pick opens its card.
   private search = finder(
-    "NRDS",
-    "Not in the September book",
+    S[0]?.ticker ?? "",
+    "Not in the final book",
     S.map((s) => s.ticker),
     D.september.book.map((b) => b[1]),
     (i) => this.open(i),
@@ -73,8 +76,8 @@ export class September extends Scene {
     this.build();
     this.panel.append(
       ...header(
-        "The book for <em>September</em>",
-        "The same code, run one month past the record on data the backtest never saw. Longs sit above, shorts below, and gold ones come with a written reason.",
+        "What the fund <em>holds now</em>",
+        `The final book at the close of ${monthName(D.september.month)}. ${XRAY}`,
       ),
       stats(...this.pillsFor()),
     );
@@ -118,11 +121,10 @@ export class September extends Scene {
         const y = 0.14 + 0.86 * (1 - (k + 0.5) / list.length);
         const ring = Math.sqrt(1 - y * y);
         const a = k * GOLDEN;
-        const told = WHY.has(S[i].ticker);
         // Out of the pressed pill's group, a stock shrinks and dims.
         const lit = !this.only || GROUPS[this.only](i) ? 1 : 0;
-        const size = ((told ? 1.1 : 0.6) + Math.sqrt(Math.abs(S[i].weight) * 100) * 0.9) * (lit ? 1 : 0.6);
-        const color = told ? C.gold : up > 0 ? C.cyan : C.orange;
+        const size = (0.6 + Math.sqrt(Math.abs(S[i].weight) * 100) * 0.9) * (lit ? 1 : 0.6);
+        const color = up > 0 ? C.cyan : C.orange;
         f.put(
           i,
           Math.cos(a) * ring * RADIUS,
@@ -130,7 +132,7 @@ export class September extends Scene {
           Math.sin(a) * ring * RADIUS,
           -size,
           color,
-          (told ? 1.8 : 1.05) * (lit ? 1 : 0.18),
+          1.05 * (lit ? 1 : 0.18),
         );
       });
     place(longs, 1);
@@ -151,40 +153,17 @@ export class September extends Scene {
     return this.f;
   }
 
-  // Opens a position's card with its reason.
+  // Opens a position's card with its history.
   open(i: number) {
     const s = S[i];
-    const why = WHY.get(s.ticker);
     this.w.sim.m.uSelect.value = i;
     const side = s.weight > 0 ? "Long" : "Short";
-    // Every card shows the history, as slide 2 does; ten add the reason.
+    // Every card shows the history, as slide 2 does.
     const stock = s.ticker ? PAST.get(s.ticker) : undefined;
-    const chart = stock === undefined ? [] : [h("div", { html: spark(stock, MONTH_COUNT - 1) })];
+    const chart = stock === undefined ? [] : [h("div", { html: spark(stock, NOW) })];
     const story = h("p", { class: "text-[13px] text-ink-2" }, past(s.ticker, s.weight));
-    const reason = why ? [this.reason(why.why)] : [];
-    this.card.show(`${s.ticker || "No ticker"} · ${side} ${signed(s.weight, 2)}`, s.name, ...chart, story, ...reason);
-    if (why) {
-      this.card.el.append(
-        h(
-          "p",
-          { class: "text-[11px] text-ink-3" },
-          "Written by a local model from the facts it was shown, every number checked",
-        ),
-      );
-    }
+    this.card.show(`${s.ticker || "No ticker"} · ${side} ${signed(s.weight, 2)}`, s.name, ...chart, story);
     this.w.sound.tick(1.3, 0.7);
-  }
-
-  // The AI's reason as its first sentence, until Read all shows the rest.
-  private reason(text: string) {
-    const full = prose(text);
-    const p = h("p", { class: "text-[13.5px] text-ink leading-relaxed" }, gist(text));
-    if (p.textContent === full) return p;
-    const more = chip("Read all", () => {
-      p.textContent = full;
-      more.remove();
-    });
-    return h("div", { class: "flex flex-col items-start gap-2" }, p, more);
   }
 
   // Closes the card and clears the selection glow.
@@ -206,9 +185,7 @@ export class September extends Scene {
     this.w.sim.m.uHover.value = i;
     if (i < 0) return null;
     const s = S[i];
-    const why = WHY.get(s.ticker);
-    const told = why ? `<br>${gist(why.why)}<br><span class="text-gold">Click for the full reason</span>` : "";
-    return `<strong>${s.ticker || "No ticker"}</strong> <span class="muted">${s.name}</span><br>${s.weight > 0 ? "Long" : "Short"} ${signed(s.weight, 2)} of the fund${told}`;
+    return `<strong>${s.ticker || "No ticker"}</strong> <span class="muted">${s.name}</span><br>${s.weight > 0 ? "Long" : "Short"} ${signed(s.weight, 2)} of the fund`;
   }
 
   // Opens the position under the pointer, or closes the card.

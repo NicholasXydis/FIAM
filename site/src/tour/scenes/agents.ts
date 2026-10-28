@@ -24,10 +24,10 @@ const CORE = new THREE.Vector3(0, 0.3, 0);
 const tone = (key: string) =>
   key === "advocate" ? C.orange : key === "crowd" ? C.cyan : key === "explainer" ? C.gold : C.purple;
 
-// The AI desk: seven agents around the book, joined by flowing work.
+// The AI desk: eight agents around the book, joined by flowing work.
 export class Agents extends Scene {
   name = "The AI desk";
-  summary = "Seven local AI agents read, check and argue. None of them sets a position.";
+  summary = "Eight AI agents read, check and argue. None of them sets a position.";
   private nodes: THREE.Vector3[];
   private flow: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private card = box("w-[min(420px,calc(100vw-32px))] gap-2");
@@ -88,7 +88,7 @@ export class Agents extends Scene {
     this.panel.append(
       ...header(
         `${A.length} AI colleagues, <em>none trade</em>`,
-        "They read filings, check rules, argue and explain, all on our own machine. Names are hidden where memory could cheat, and code checks every number.",
+        `They work on our own machines. The AI risk desk, tested against a fixed rule and ${D.desk.late.random} random desks, did not help, so the fund runs without it.`,
       ),
     );
     this.controls.append(this.card);
@@ -153,17 +153,6 @@ export class Agents extends Scene {
     // Small screens fold the facts behind a Details chip.
     this.card.classList.remove("open");
     fold(this.card, head, [...this.card.children].slice(2), "Details");
-    // The explainer's card links on to the September book scene.
-    if (a.key === "explainer") {
-      this.card.append(
-        h(
-          "p",
-          { class: "text-[13px] text-ink-2 border-t border-line pt-2" },
-          "Its reasons for the September book are in the next scene.",
-        ),
-        chip("See the September book →", () => this.w.next()),
-      );
-    }
   }
 
   // Shows the agents' labels and the book's.

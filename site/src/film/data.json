@@ -1,0 +1,12 @@
+{
+  "original": {
+    "roles": ["Rules reader", "Triage", "Analyst", "Devil's advocate", "Memo writer", "Explainer", "AI crowd"],
+    "crowd": {
+      "agents": 30,
+      "copycats": 30
+    }
+  },
+  "final": {
+    "volatility": 7.451372115779015
+  }
+}

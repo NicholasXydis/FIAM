@@ -89,7 +89,7 @@ export class Finale extends Scene {
     this.panel.append(
       ...header(
         "Thank <em>you</em>",
-        "Theory picks the stocks, machine learning sets the hedge, and an AI crowd of our own making stress tests the book. Scan for our source code on GitHub.",
+        "Machine learning ranks the stocks, code enforces every rule and AI checks but never trades. Scan for our source code on GitHub.",
       ),
     );
     this.toggle = chip("Show the particles", () => this.print(!this.printed));

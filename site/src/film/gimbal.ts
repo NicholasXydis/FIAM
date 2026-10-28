@@ -141,8 +141,9 @@ export class Gimbal {
         color: 0xffffff,
       }),
     );
+    // The figure lies on the lower half of the dial, below the hub.
     this.figure.rotation.x = -Math.PI / 2;
-    this.figure.position.set(0, 0.084, -0.62);
+    this.figure.position.set(0, 0.084, 0.62);
     this.disc.add(this.hand, this.figure);
     this.hand.visible = this.figure.visible = false;
     this.outer.add(this.inner);
@@ -154,7 +155,7 @@ export class Gimbal {
   }
 
   // The dial as a gauge, its hand and figure counting up to value.
-  read(value: number, top: number, show: number, label = "") {
+  read(value: number, top: number, show: number, label = "", format = (v: number) => v.toFixed(2)) {
     this.hand.visible = this.figure.visible = show > 0;
     if (!show) return;
     // Show fades both in, and the hand turns 270 degrees at the top value.
@@ -162,7 +163,7 @@ export class Gimbal {
     for (const m of [this.figure.material, (this.hand.children[0] as THREE.Mesh).material as THREE.Material])
       m.opacity = show;
     // Redraws the figure and its label only when the text changes.
-    const text = value.toFixed(2);
+    const text = format(value);
     if (text + label === this.shown) return;
     this.shown = text + label;
     const g = this.ink;

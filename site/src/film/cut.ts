@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import crashes from "../data/crashes.json";
-import { agents, crowd, headline, journey } from "../data/fiam.json";
+import { BETA, CRASHES as crashes, INVESTORS, ROLES, SIGNALS, STOCKS } from "./data";
 import { TEAM } from "../content/credits";
 import words from "../../ad/voice/words.json";
 import { Gimbal } from "./gimbal";
@@ -32,12 +31,8 @@ export const real = (s: number) => s + HOLDS.filter((h) => s >= h.at).reduce((n,
 // The film's running time, the holds included.
 export const RUNTIME = LENGTH + HOLDS.reduce((n, h) => n + h.length, 0);
 
-// Figures the film reads from the data, stocks rounded down to 100s.
-export const ROLES = agents.map((a) => a.name);
-export const SHARPE = headline.sharpe;
-const BETA = headline.beta;
-const INVESTORS = crowd.agents + crowd.copycats;
-const STOCKS = Math.floor(journey.stocks / 100) * 100;
+// A beta to two places with a true minus sign.
+const signedBeta = (b: number) => `${b < 0 ? "−" : ""}${Math.abs(b).toFixed(2)}`;
 
 // Part starts, on 2 s bars at 120 BPM from the music, except dusk.
 export const AT = {
@@ -61,7 +56,7 @@ export const VOICE = [
   { key: "dont", at: 11.0 },
   { key: "neutral", at: 14.0, to: 2.1 },
   { key: "neutral", at: 18.2, from: 2.1 },
-  { key: "agents", at: 24.4 },
+  { key: "agents", at: 24.52 },
   { key: "crowd", at: 34.4 },
   { key: "crises", at: 41.9 },
   { key: "close", at: 50.0 },
@@ -121,7 +116,7 @@ export const TITLES: Title[] = [
     text: "Market *neutral.*",
     words: [said("neutral", "market"), said("neutral", "neutral")],
     eyebrow: [said("neutral", "Quark"), BRAND],
-    sub: [said("neutral", "neutral") + 0.5, `Beta ${BETA.toFixed(2)} to the market`],
+    sub: [said("neutral", "neutral") + 0.5, `Beta ${signedBeta(BETA)} to the market`],
     tone: "dark",
     place: "low",
   },
@@ -133,17 +128,17 @@ export const TITLES: Title[] = [
     words: ["Long", "the", "strongest", 0, "short", 10, "weakest"].map((w) =>
       w === 0 ? 0 : said("neutral", w as string | number),
     ),
-    eyebrow: [17.9, `12 signals · ${STOCKS.toLocaleString("en-US")} US stocks · every month`],
+    eyebrow: [17.9, `${SIGNALS} signals · ${STOCKS.toLocaleString("en-US")} US stocks · every month`],
     tone: "dark",
     place: "low",
   },
   {
-    at: said("agents", "Seven"),
+    at: said("agents", "Eight"),
     // Held into the next shot, gone on its second beat, so all of it reads.
     out: AT.crowd + 1.0,
-    text: "Seven AI *agents.* | They *read.* | They *challenge.* | They *verify.*",
+    text: "Eight AI *agents.* | They *read.* | They *challenge.* | They *verify.*",
     words: [
-      said("agents", "Seven"),
+      said("agents", "Eight"),
       said("agents", "AI"),
       said("agents", "agents"),
       0,
@@ -244,7 +239,7 @@ export const SOUNDS = [
   { at: AT.sea, kind: "whoosh", strength: 0.8 },
   ...SHOCKS.map((s) => ({ at: s.at, kind: "shock", strength: Math.min(1, s.amp * 3) })),
   { at: 46.2, kind: "count" },
-  { at: 47.6, kind: "land" },
+  { at: 48.3, kind: "land" },
   { at: AT.outro, kind: "resolve" },
   { at: END.name, kind: "sting" },
 ];
