@@ -10,12 +10,12 @@ from scipy import stats as st
 
 from fiam import book as P
 from fiam import costs as C
-from fiam import data, paths, stats, v2
+from fiam import data, paths, stats
 from fiam.agents import crowd_lab as L
-from fiam.freeze import FROZEN
+from fiam.paths import FROZEN
 
 EMULATOR = FROZEN / "crowd_emulator.json"
-OUT = v2.OUT / "crowd_lab.json"
+OUT = paths.ARCHIVE / "crowd_lab.json"
 HISTORICAL = paths.EXHIBITS / "agents" / "crowd_picks.parquet"
 CROWD_SIZES = (10e9, 50e9, 100e9)
 
@@ -264,10 +264,10 @@ def overlap(a: pd.DataFrame, b: pd.DataFrame) -> float:
 # What-if books against the plain one, reported with no pass or fail.
 def what_if() -> dict:
     out = {}
-    for folder in sorted(v2.OUT.glob("*crowd_*@1e7/*")):
+    for folder in sorted(paths.ARCHIVE.glob("*crowd_*@1e7/*")):
         if not (folder / "stats.json").exists():
             continue
-        plain = v2.OUT / ("v2@1e7" if folder.parent.name.startswith("v2") else "v1@1e7")
+        plain = paths.ARCHIVE / ("v2@1e7" if folder.parent.name.startswith("v2") else "v1@1e7")
         for book in (folder, plain / folder.name):
             net = pd.read_csv(book / "returns.csv")["net"]
             s = json.loads((book / "stats.json").read_text())
@@ -288,7 +288,7 @@ def exposures(names: tuple, scored: pd.DataFrame, factor: pd.Series) -> dict:
     out = {}
     for name in names:
         for window in ("check", "record"):
-            folder = v2.OUT / name / window
+            folder = paths.ARCHIVE / name / window
             if not (folder / "returns.csv").exists():
                 continue
             book = pd.read_csv(folder / "returns.csv", parse_dates=["holding_month"])
@@ -338,7 +338,7 @@ def main() -> None:
     votes = {name: consensus(p) for name, p in live.items()}
     votes["historical"] = consensus(hist)
     saved = pd.concat([v.assign(crowd=k) for k, v in votes.items()], ignore_index=True)
-    saved.to_parquet(v2.OUT / "crowd_consensus.parquet", index=False)
+    saved.to_parquet(paths.ARCHIVE / "crowd_consensus.parquet", index=False)
     targets = [v for k, v in votes.items() if k in ("retail", "historical")]
     model = fit_emulator(frame, pd.concat(targets, ignore_index=True))
     FROZEN.mkdir(exist_ok=True)
@@ -347,7 +347,9 @@ def main() -> None:
     scored = frame[[*data.KEYS, "ret_exc_lead1m", "vol_raw", "dolvol_raw"]].copy()
     scored["crowd_score"] = crowd_score(frame)
     factor = crowd_factor(scored)
-    scored[[*data.KEYS, "crowd_score"]].to_parquet(v2.OUT / "crowd_scores.parquet", index=False)
+    scored[[*data.KEYS, "crowd_score"]].to_parquet(
+        paths.ARCHIVE / "crowd_scores.parquet", index=False
+    )
     report |= exposures(("v1@1e7", "v2@1e7"), scored, factor)
     report["what_if"] = what_if()
     OUT.write_text(json.dumps(report, indent=1, default=float) + "\n", encoding="utf-8")

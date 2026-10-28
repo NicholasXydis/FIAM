@@ -5,12 +5,16 @@ from pathlib import Path
 
 import numpy as np
 
-from fiam import paths, v2
+from fiam import paths
 from fiam.agents import harness as H
 from fiam.agents import rules_reader
 from fiam.paths import read_json as load
 
 OUT = Path("out") / "qa.md"
+# The research book's risk parts, and the rules it then tested.
+PARTS = ("size", "lowvol", "voltarget", "brake")
+TESTED = ("riskcap", "adaptive")
+FINAL = ("zerobeta", "target10", *TESTED)
 PCT, INT, ONE, TWO, SIGNED = "{:.1%}", "{:,.0f}", "{:.1f}", "{:.2f}", "{:+.3f}"
 # AMD's board power for our RX 9070 XT, an upper bound on energy used.
 BOARD_WATTS = 304
@@ -27,11 +31,11 @@ def get(data: dict, keys: str, fmt: str = TWO) -> str:
 
 # Every number the answers quote, each from the file that holds it.
 def facts() -> dict:
-    m, ev = load(paths.METRICS), load(v2.OUT / "evidence.json")
-    crowd, stress = load(v2.OUT / "crowd_lab.json"), load(v2.OUT / "stress.json")
-    naut, desk = load(v2.OUT / "nautilus" / "check.json"), load(v2.OUT / "desk.json")
+    m, ev = load(paths.METRICS), load(paths.ARCHIVE / "evidence.json")
+    crowd, stress = load(paths.ARCHIVE / "crowd_lab.json"), load(paths.ARCHIVE / "stress.json")
+    naut, desk = load(paths.ARCHIVE / "nautilus" / "check.json"), load(paths.ARCHIVE / "desk.json")
     vol = load(Path("frozen") / "vol_check.json")
-    honesty = load(v2.OUT / "honesty.json")
+    honesty = load(paths.ARCHIVE / "honesty.json")
     book = crowd.get("v1@1e7 record", {})
     record = ev.get("comparison_at_10m", {}).get("record", {}).get("v1", {})
     losses = ev.get("weak_periods", {}).get("v1", {}).get("losses_2023_26", {})
@@ -119,8 +123,8 @@ def money(x) -> str:
 
 # Facts for capacity, crowd insights, the Grinold variant and the desk.
 def more() -> dict:
-    cap, ins = load(v2.OUT / "capacity.json"), load(v2.OUT / "crowd_insights.json")
-    crowd, ev = load(v2.OUT / "crowd_lab.json"), load(v2.OUT / "evidence.json")
+    cap, ins = load(paths.ARCHIVE / "capacity.json"), load(paths.ARCHIVE / "crowd_insights.json")
+    crowd, ev = load(paths.ARCHIVE / "crowd_lab.json"), load(paths.ARCHIVE / "evidence.json")
     books = cap.get("books", {})
 
     # One book's figure at one fund size, or None if it did not run there.
@@ -169,7 +173,7 @@ def more() -> dict:
         after_costs=get(ins, "before_costs/retail/net_ir"),
     )
     # Rules drills against hand-made references: 2026's first, then 2025's.
-    drills = load(v2.OUT / "drill.json")
+    drills = load(paths.ARCHIVE / "drill.json")
     latest = drills.get("rules_2026") or drills.get("case_2025") or {}
     f["drill"] = show(latest.get("minutes"), ONE)
     ran = latest.get("books", {})
@@ -213,7 +217,7 @@ NOUNS = dict(
 # The parts book: part verdicts and figures at each fund size.
 def final(ev: dict, books: dict, at) -> dict:
     verdicts = ev.get("verdicts", {})
-    judged = [p for p in v2.PARTS if p in verdicts]
+    judged = [p for p in PARTS if p in verdicts]
     f = dict(
         v3_parts=", ".join(
             f"{p}: {'pass' if verdicts[p].get('passed') else 'fail'}" for p in judged
@@ -263,8 +267,8 @@ FINAL_NOUNS = dict(riskcap="risk-sized positions", adaptive="adaptive signal wei
 def final_three(ev: dict, books: dict, at, shown: dict) -> dict:
     verdicts = ev.get("verdicts", {})
     chosen = ev.get("v3", {}).get("final", {}).get("switches", [])
-    passed = [p for p in v2.FINAL if p in chosen]
-    failed = [p for p in v2.TESTED if p in verdicts and not verdicts[p].get("passed")]
+    passed = [p for p in FINAL if p in chosen]
+    failed = [p for p in TESTED if p in verdicts and not verdicts[p].get("passed")]
     f = dict(
         fv3_rules=" and ".join(", ".join(FINAL_WORDS[p] for p in passed).rsplit(", ", 1)) or "-",
         fv3_dropped=" and ".join(", ".join(FINAL_NOUNS[p] for p in failed).rsplit(", ", 1))
@@ -295,14 +299,14 @@ def final_exhibits(ev: dict) -> dict:
     if not name:
         return {}
     run = f"{name}@1e7"
-    check = load(v2.OUT / run / "check" / "stats.json")
-    crowd = load(v2.OUT / "crowd_lab.json").get(f"{run} record", {})
-    insights = load(v2.OUT / "crowd_insights.json").get(f"book {run}", {})
-    exhibits = load(v2.OUT / "final_exhibits" / "report.json")
-    desk = load(v2.OUT / "desk_final.json")
+    check = load(paths.ARCHIVE / run / "check" / "stats.json")
+    crowd = load(paths.ARCHIVE / "crowd_lab.json").get(f"{run} record", {})
+    insights = load(paths.ARCHIVE / "crowd_insights.json").get(f"book {run}", {})
+    exhibits = load(paths.ARCHIVE / "final_exhibits" / "report.json")
+    desk = load(paths.ARCHIVE / "desk_final.json")
     naive = exhibits.get("naive", {})
     risk = exhibits.get("risk_table", {}).get("averages", {})
-    stress = load(v2.OUT / "stress.json").get("final v3", {})
+    stress = load(paths.ARCHIVE / "stress.json").get("final v3", {})
     return dict(
         fv3_covid=get(stress, "crises/Covid crash/loss", PCT),
         fv3_junk=get(stress, "crises/Junk rally, momentum crash/loss", PCT),

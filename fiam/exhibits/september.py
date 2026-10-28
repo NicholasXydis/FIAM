@@ -1,21 +1,16 @@
 # The September 2026 book, the shipped code one month past the record.
 
 import hashlib
-import sys
-from pathlib import Path
 
 import pandas as pd
 
 from fiam import book as P
 from fiam import costs as C
 from fiam import data, paths
-from fiam.freeze import FROZEN
+from fiam.paths import FROZEN
 
 DECISION = pd.Timestamp("2026-08-31")
 V1 = FROZEN / "september_v1.csv"
-V2 = FROZEN / "september_v2.csv"
-V3 = FROZEN / "september_v3.csv"
-FINAL = FROZEN / "september_final.csv"
 
 
 # The shipped universe plus one decision month, built like the record's.
@@ -114,34 +109,19 @@ def crowd_scores() -> pd.Series | None:
     return pd.Series(X.crowd_score(month).to_numpy(), index=month["permno"])
 
 
-# The shipped book, checked on August, or a switched book by its name.
-def main(which: str = "v1") -> None:
-    if which in ("v2", "v3", "final"):
-        from functools import partial
-
-        from fiam import v2
-
-        on = dict(v2=v2.V2, v3=v2.final(), final=v2.final_three())[which]
-        settings = v2.Settings(on)
-        frame = v2.universe((P.FIRST_FORECAST, str(DECISION.date())), settings, v2.params())
-        v2.reset()
-        optimize = partial(v2.optimize, settings=settings)
-        learns = partial(v2.observe, settings=settings) if which != "v2" else None
-        books = walk_to_september(frame, optimize, track=learns)
-        path = dict(v2=V2, v3=V3, final=FINAL)[which]
-    else:
-        books = walk_to_september(universe())
-        gap = check_august(books)
-        if gap > 1e-6:
-            raise SystemExit(f"August differs from the submitted holdings by up to {gap:.2e}")
-        path = V1
+# The shipped book, checked on August, frozen with its trade list.
+def main() -> None:
+    books = walk_to_september(universe())
+    gap = check_august(books)
+    if gap > 1e-6:
+        raise SystemExit(f"August differs from the submitted holdings by up to {gap:.2e}")
     book = table(*books[DECISION][:2])
-    digest = write(book, path)
+    digest = write(book, V1)
     trades = trade_list(books, crowd_scores())
-    trades.to_csv(Path("out") / "v2" / f"trade_list_{which}.csv", index=False)
+    trades.to_csv(paths.ARCHIVE / "trade_list_v1.csv", index=False)
     gross, net = book["weight"].abs().sum(), book["weight"].sum()
-    print(f"September {which}: {len(book)} names, gross {gross:.3f}, net {net:+.4f}, {digest[:16]}")
+    print(f"September v1: {len(book)} names, gross {gross:.3f}, net {net:+.4f}, {digest[:16]}")
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    main()

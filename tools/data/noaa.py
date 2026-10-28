@@ -6,7 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-from _shared import ROOT, archive_digest, check, data_root, fetch, receipts, stamp
+from _shared import ROOT, archive_digest, check, data_root, fetch, listed, receipts, stamp
 
 OUT = ROOT / "data" / "noaa"
 CLIMDIV = "https://www.ncei.noaa.gov/monitoring-content/data/us/climdiv/monthly/current/"
@@ -25,11 +25,6 @@ STORM_YEARS, CLIMATE_KINDS = range(2000, 2021), ("tmpcst", "pcpnst")
 KINDS = ("tmpcst", "pcpnst", "pdsist", "hddcst", "cddcst", "norm-tmpcst", "norm-pcpnst")
 PACE = 0.5
 FOLDERS = ("climdiv", "storms", "archive")
-
-
-# The file names a NOAA folder page links to, matching one pattern.
-def listed(page: str, pattern: str) -> list[str]:
-    return sorted(set(re.findall(rf'href="({pattern})"', page)))
 
 
 # The newest version of each kind, by the date at the end of its name.

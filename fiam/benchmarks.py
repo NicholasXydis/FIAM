@@ -64,24 +64,23 @@ def french(name: str, columns: list[str]) -> pd.DataFrame:
     return frame.set_index("month")[columns].astype(float) / 100
 
 
-# One Ken French daily file as decimals keyed on the trading day.
-def french_daily(name: str, columns: list[str]) -> pd.DataFrame:
-    with zipfile.ZipFile(pinned(name)) as archive:
-        raw = archive.read(archive.namelist()[0]).decode("latin1").splitlines()
-    rows = [r.split(",") for r in raw if r.strip()[:8].isdigit()]
-    rows = [r for r in rows if len(r) == len(columns) + 1 and len(r[0].strip()) == 8]
-    frame = pd.DataFrame(rows, columns=["ymd", *columns])
-    frame["date"] = pd.to_datetime(frame["ymd"].str.strip(), format="%Y%m%d")
-    return frame.set_index("date")[columns].astype(float) / 100
+# The S&P 500 price index close by trading day (FRED, from 2016-09-26).
+def sp500_close() -> pd.Series:
+    daily = pd.read_csv(pinned("SP500.csv"), parse_dates=["observation_date"]).dropna()
+    return daily.set_index("observation_date")["SP500"]
 
 
 # S&P 500 price index returns, month-end to month-end, no dividends.
 def sp500() -> pd.Series:
-    daily = pd.read_csv(pinned("SP500.csv"), parse_dates=["observation_date"]).dropna()
-    close = daily.set_index("observation_date")["SP500"].resample("ME").last()
+    close = sp500_close().resample("ME").last()
     returns = close.pct_change().dropna()
     returns.index = returns.index.to_period("M").to_timestamp()
     return returns.rename("sp500")
+
+
+# Daily S&P 500 returns, close to close.
+def market_daily() -> pd.Series:
+    return sp500_close().pct_change().dropna()
 
 
 # Cash rate, S&P 500 and CRSP market by holding month, each over cash.

@@ -8,7 +8,7 @@ from fiam import paths
 
 NAME = "fiam_results.zip"
 MANIFEST = "kit_manifest.json"
-# Git-ignored outputs: research runs, agent cache, out/v2, film, drafts.
+# Git-ignored outputs: research runs, agent cache, books, film, drafts.
 PARTS = (
     "research",
     "cache/agents",

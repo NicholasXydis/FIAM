@@ -18,27 +18,16 @@ from pathlib import Path
 HELP = """uv run run.py [options]
   no data in data/     checks the submitted holdings and returns against the brief
   with data            builds the data bundle once, rebuilds the book into out/, compares it
-  --official           rewrites submission/ and RESULTS.md (needs the WRDS tables)
+  --official           rewrites submission/ (needs the WRDS tables)
   --ml                 retrains every model        --agents   runs the local-LLM agents
   --all                --ml and --agents, in order, resuming where a stopped run left off
   --smoke              every step on a small slice, a rehearsal of --all in minutes
   --fresh              reruns finished slow steps  --import <folder or fiam_v1.zip>
   --export-data        zips the data bundle into fiam_v1.zip for a teammate
-  --v2                 runs v2 on both windows into out/v2/; --switch NAME (repeatable) runs
-                       one switch instead, --capital X sets the fund size (default 1e7)
   --crowd-quick        a short live AI crowd on the newest months (needs a GPU or FIAM_LLM_URL):
                        --agents N, --months M, --minutes T
-  --world <folder>     turns the finals data (any countries) into data/world/ once, then runs
-                       the steps after it on that data with the global switch on
-                       (--world fake: the rehearsal's two-country copy of our panel)
   --rules <txt or pdf> rules -> a draft mandate in mandates/ for a person to approve (GPU)
-  --finals <file>      checks a finals mandate, then runs final v3, v1's method and v2 under it;
-                       --window FIRST LAST and --capital X change the months and the fund size
-  --pack <run folder>  a finals book's committee pack: holdings, returns, metrics and charts
-  --finals-drill <txt> rules text -> draft mandate -> both books, timed (GPU or FIAM_LLM_URL)
-  --finals-pack        rebuilds the charts, Q&A, both finals decks and the PDF from the results
-                       (needs fiam_results.zip: --import fiam_results.zip --finals-pack)
-  --export-results     zips agent answers, v2 runs and frozen inputs into fiam_results.zip
+  --export-results     zips agent answers, research runs and frozen inputs into fiam_results.zip
                        (--import takes either zip, and can be given twice)
   --data status        every data source: files, sizes, USB budget, licence (data/INVENTORY.json)
   --data verify        every saved file against its receipt, and the organizer's checksums
@@ -78,7 +67,6 @@ REPORT = [
     ("fiam.checks.provenance", "recording which run wrote each artifact"),
     ("fiam.report.charts", "drawing the performance charts"),
     ("fiam.report.research_charts", "drawing the research charts"),
-    ("fiam.report.docs", "filling RESULTS.md"),
     ("fiam.checks.reproducibility", "auditing for look-ahead and survivorship"),
     ("fiam.checks.verify", "checking the book against the brief's rules"),
 ]
@@ -349,7 +337,6 @@ def keep_awake() -> None:
 def seed_out() -> None:
     shutil.rmtree(OUT / "submission", ignore_errors=True)
     shutil.copytree("submission", OUT / "submission", dirs_exist_ok=True)
-    shutil.copy2("RESULTS.md", OUT / "RESULTS.md")
 
 
 # Prints to screen and cache/run.log, to read an overnight run next day.
@@ -426,36 +413,6 @@ def value(args: list[str], flag: str) -> str | None:
         return None
     position = args.index(flag) + 1
     return args[position] if position < len(args) and not args[position].startswith("--") else None
-
-
-# Day options every finals step reads: world bundle, months, fund size.
-def day_env(args: list[str]) -> dict | None:
-    extra = {}
-    if "--world" in args:
-        given = value(args, "--world")
-        target = ROOT / "data" / ("world_fake" if given == "fake" else "world")
-        reuse = given == "fake" and (target / "features_monthly.parquet").exists()
-        if given and not reuse:
-            build = (
-                ["fake"] if given == "fake" else ["build", str(Path(given).expanduser().resolve())]
-            )
-            command = [sys.executable, "-m", "fiam.world", *build]
-            if subprocess.run(command, env=child_env()).returncode:
-                return None
-        if not (target / "features_monthly.parquet").exists():
-            print("--world needs the finals data once:  uv run run.py --world <folder>")
-            return None
-        extra["FIAM_DATA_DIR"] = str(target)
-    if "--window" in args:
-        position = args.index("--window")
-        months = args[position + 1 : position + 3]
-        if len(months) < 2:
-            print("--window needs two months, e.g.  --window 2021-01 2025-12")
-            return None
-        extra["FIAM_WINDOW"] = ",".join(months)
-    if value(args, "--capital"):
-        extra["FIAM_CAPITAL"] = value(args, "--capital")
-    return extra
 
 
 # One data tool; one needing its own package runs in an isolated env.
@@ -540,12 +497,6 @@ def main() -> int:
             )
             return 1
         import_from(Path(args[position + 1]).expanduser())
-    day = day_env(args)
-    if day is None:
-        return 1
-    if "--v2" in args:
-        names = [args[i + 1] for i, a in enumerate(args[:-1]) if a == "--switch"] or ["v2"]
-        return execute("fiam.v2 " + " ".join(names), child_env(day))
     if "--crowd-quick" in args:
         extra = {}
         for flag in ("--agents", "--months", "--minutes"):
@@ -558,53 +509,10 @@ def main() -> int:
             return 1
         source = Path(value(args, "--rules")).expanduser().resolve()
         command = [sys.executable, "-m", "fiam.agents.rules_reader", str(source)]
-        code = subprocess.run(command, env=child_env(day)).returncode
+        code = subprocess.run(command, env=child_env()).returncode
         if not code:
-            print(f"Check mandates/{source.stem}_draft.json against the rules, then run:")
-            print(f"  uv run run.py --finals mandates/{source.stem}_draft.json")
+            print(f"Check mandates/{source.stem}_draft.json against the rules by hand.")
         return code
-    if "--finals-drill" in args:
-        position = args.index("--finals-drill") + 1
-        if position >= len(args):
-            print("--finals-drill needs the rules as text, e.g. out/v2/inputs/case_2025.txt")
-            return 1
-        env = child_env({"FIAM_RULES": str(Path(args[position]).resolve())} | day)
-        return execute("fiam.agents.rules_reader drill", env)
-    if "--finals-pack" in args:
-        if not (ROOT / "out" / "v2" / "evidence.json").exists():
-            print("--finals-pack rebuilds the decks from our results, which this folder lacks.")
-            print("Add them first:  uv run run.py --import fiam_results.zip --finals-pack")
-            return 1
-        env = child_env({})
-        # Submitted charts redraw only with data, else the committed ones stand.
-        data = all((BUNDLE / name).is_file() for name in CORE)
-        modules = ["fiam.report.charts"] if data else []
-        for module in [*modules, "fiam.report.figures", "fiam.report.clips", "fiam.report.qa"]:
-            if execute(module, env):
-                return 1
-        deck = [sys.executable, str(ROOT / "tools" / "build_deck_finals.py"), "--pdf"]
-        # The deck shows the `final` book once its pack exists.
-        evidence = ROOT / "out" / "v2" / "evidence.json"
-        report = json.loads(evidence.read_text()) if evidence.exists() else {}
-        name = report.get("v3", {}).get("final", {}).get("name")
-        pack = ROOT / "out" / "finals" / f"{name}@1e7"
-        if name and (pack / "submission" / "metrics.json").exists():
-            env = child_env({"FIAM_OUT": str(pack)})
-        return subprocess.call(deck, env=env)
-    if "--finals" in args:
-        position = args.index("--finals") + 1
-        if position >= len(args):
-            print("--finals needs a mandate, e.g.  uv run run.py --finals mandates/case_2025.json")
-            return 1
-        env = child_env({"FIAM_MANDATE": str(Path(args[position]).resolve())} | day)
-        return execute("fiam.v2 finals", env)
-    if "--pack" in args:
-        if not value(args, "--pack"):
-            print("--pack needs a finals book's folder, e.g.  --pack out/v2/<run>/finals")
-            return 1
-        folder = Path(value(args, "--pack")).expanduser().resolve()
-        command = [sys.executable, "-m", "fiam.exhibits.finals_book", str(folder)]
-        return subprocess.run(command, env=child_env(day)).returncode
     if "--export-results" in args:
         from fiam import kit
 
@@ -613,9 +521,6 @@ def main() -> int:
         return 0
     fresh, smoke = "--fresh" in args, "--smoke" in args
     official = "--official" in args and not smoke
-    if "--world" in args:
-        print("The finals data is ready. Next:  uv run run.py --world --finals <mandate>")
-        return 0
 
     # No data: check what is submitted, which needs nothing but this repo.
     if not bundle():
@@ -634,7 +539,7 @@ def main() -> int:
     unpack_edgar()
     extra = {"FIAM_SMOKE": "1"} if smoke else {}
     if official:
-        say("Official run: rewrites submission/ and RESULTS.md.")
+        say("Official run: rewrites submission/.")
         env = child_env({"FIAM_OFFICIAL": "1"})
     else:
         wrds = "with WRDS" if EXITS.exists() else "without WRDS, so provisional"

@@ -14,7 +14,7 @@ import pandas as pd
 from fiam import book as P
 from fiam import data
 from fiam.agents import harness as H
-from fiam.freeze import FROZEN
+from fiam.paths import FROZEN
 
 LABELS = FROZEN / "characteristic_labels.json"
 SETS = FROZEN / "crowd_info_sets.json"

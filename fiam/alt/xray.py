@@ -48,7 +48,7 @@ TRIM = {"low": 0.75, "medium": 0.5}
 # Holdings carded by default.
 TOP = 10
 # Display labels for known book files.
-BOOK_LABELS = {"september_final.csv": "v3 book, September 2026"}
+BOOK_LABELS = {"september_final.csv": "Research book, September 2026"}
 # Where each card's ticker came from, in words.
 TICKER_NOTES = {
     "book": "Ticker as the book file gives it",

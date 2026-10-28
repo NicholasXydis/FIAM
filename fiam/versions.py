@@ -1,17 +1,13 @@
-# The four versions as recipes built from the code that defines them.
+# Each version as a recipe built from the code that defines it.
 
-import hashlib
 import json
 import sys
 from pathlib import Path
 
-from fiam.v2 import V2
+from fiam import paths
 
 ROOT = Path(__file__).resolve().parent.parent
 FOLDER = ROOT / "versions"
-# The switches of the book the round-one site presents.
-V3_SWITCHES = ("brake", "shorts", "size", "target10", "voltarget", "zerobeta")
-V3_RUN = "+".join(V3_SWITCHES)
 # Each version: its code, documents, frozen files and results.
 VERSIONS = {
     "v1": {
@@ -22,31 +18,6 @@ VERSIONS = {
         "protocols": ["docs/protocols/README.md"],
         "frozen": ["frozen/september_v1.csv"],
         "results": ["submission/holdings.csv", "submission/returns.csv", "submission/metrics.json"],
-    },
-    "v2": {
-        "title": "v2, the book with costs, persistence, beta, shorts and liquidity",
-        "status": "closed",
-        "code": ["fiam/v2.py"],
-        "switches": sorted(V2),
-        "command": "uv run run.py --v2",
-        "protocols": [
-            "docs/protocols/v2.md",
-            "docs/protocols/v2_amendment_1.md",
-            "docs/protocols/v2_amendment_2.md",
-        ],
-        "frozen": ["frozen/september_v2.csv", "frozen/v2_params.json"],
-        "results": [],
-    },
-    "v3": {
-        "title": "Final v3, the book the round-one site and deck present",
-        "status": "closed",
-        "code": ["fiam/v2.py"],
-        "switches": list(V3_SWITCHES),
-        "run": V3_RUN,
-        "command": "uv run run.py --v2 --switch final",
-        "protocols": ["docs/protocols/v2_amendment_3.md", "docs/protocols/final_exhibits.md"],
-        "frozen": ["frozen/september_v3.csv", "frozen/september_final.csv"],
-        "results": [],
     },
     "vfinal": {
         "title": "The final version, the finals book",
@@ -63,7 +34,7 @@ VERSIONS = {
 # A tracked file's SHA-256, or None for a folder or a file not made yet.
 def sha(relative: str) -> str | None:
     path = ROOT / relative.split(" ")[0]
-    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    return paths.sha256(path) if path.is_file() else None
 
 
 # One version's recipe, fingerprinting its frozen and result files.

@@ -1,17 +1,16 @@
 # Scores the honesty tests from the saved calls only.
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats as st
 
-from fiam import data, freeze
+from fiam import benchmarks, data, paths
 from fiam.agents import harness as H
 from fiam.agents import honesty as A
 
-OUT = Path("out") / "v2" / "honesty.json"
+OUT = paths.ARCHIVE / "honesty.json"
 REPS, SEED = 10_000, 42
 # Set before any result: the gap 250 per side detects at 80% power.
 MDE = 0.125
@@ -24,7 +23,7 @@ def abnormal(chosen: pd.DataFrame) -> pd.Series:
     by_name = {
         p: g.set_index("date")["total_return"].sort_index() for p, g in daily.groupby("permno")
     }
-    market = freeze.market_daily()
+    market = benchmarks.market_daily()
     out = {}
     for _, row in chosen.iterrows():
         r = by_name.get(row["permno"])

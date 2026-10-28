@@ -2,23 +2,13 @@
 
 Each file fixes a test before its first run: the question, the data and window, the method, the
 deciding number and what is reported whatever happens. A change after a run is a new dated
-protocol, and both are kept.
+protocol, and both are kept. Protocols of retired research books are kept in git history only.
 
 | File | Covers |
 |---|---|
-| `v2.md`, `v2_amendment_1.md` | The five v2 improvements and other switches; `grinold`, v2a and v2-pass |
-| `v2_amendment_2.md` | v3: size, low volatility, risk target, drawdown brake |
-| `v2_amendment_3.md` | Final v3: zero beta, 10% risk, daily gross ceiling, risk-sized names, adaptive signals |
-| `risk.md` | Volatility model, risk model, dashboard, volatility budget, warning signs |
-| `evidence.md` | Deflated Sharpe, bootstrap, HAC, break-even IC, neutrality, regimes |
-| `final_exhibits.md` | Is final v3's edge real, live projection, risk table, exposures, agents, dendrogram |
-| `capacity.md` | Optimal and break-even fund size, cost stress |
 | `stress.md` | Crises, named scenarios, reverse stress, liquidity, unwind |
 | `honesty.md`, `honesty_amendment_1.md` | AI honesty tests, number verifier, rules reader, devil's advocate |
 | `crowd.md`, `crowd_amendment_1.md` | The AI Crowd Lab; copycat test, capacity tax, herding and fear |
-| `finals.md` | Turnover cap, net band, rules rehearsals, the pack for any book, which book |
-| `finals_global.md`, `finals_global_amendment_1.md` | The `global` switch, country caps, minimum cap, excluded sectors |
-| `nautilus.md`, `carbon_arc.md` | Accounting replay tolerances; Carbon Arc spending data |
 
 ## Shared conventions
 - Windows: pre-2021 = holding months 2016-01..2020-12; reported = 2021-01..2026-08; LLM outputs

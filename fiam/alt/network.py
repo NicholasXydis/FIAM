@@ -513,9 +513,11 @@ def main(argv=None) -> dict:
     path = Path(args.book)
     book, day = read_book(path, args.date)
     basis = book.attrs.get("basis", "weight")
-    is_v3 = path.resolve() == BOOK.resolve()
+    is_frozen_book = path.resolve() == BOOK.resolve()
     label = args.label or (
-        "v3 September book (frozen/september_final.csv), not the v4 book" if is_v3 else path.stem
+        "September 2026 research book (frozen/september_final.csv), not the final fund's"
+        if is_frozen_book
+        else path.stem
     )
     # The seal is the end of 2020-12-31 in New York: that day is T's cap.
     seal = sources.seal_at().tz_convert("America/New_York").tz_localize(None).normalize()
@@ -616,9 +618,13 @@ def main(argv=None) -> dict:
         ),
     }
     OUT.mkdir(parents=True, exist_ok=True)
-    stem = "v3_september" if is_v3 else path.stem
+    stem = "september_book" if is_frozen_book else path.stem
     (OUT / f"network_{stem}.json").write_text(json.dumps(out, indent=1, default=str))
-    title = "Hidden clusters in the v3 September book" if is_v3 else f"Hidden clusters in {label}"
+    title = (
+        "Hidden clusters in the September 2026 research book"
+        if is_frozen_book
+        else f"Hidden clusters in {label}"
+    )
     note = (
         "Links from Carbon Arc company connections (live) and shared short horizon 13F owners "
         f"(filings public by {T.date()}). No returns used. Based in part on Carbon Arc data."

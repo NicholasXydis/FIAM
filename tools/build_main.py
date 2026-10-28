@@ -20,7 +20,7 @@ LEAVE_OUT = (
     "docs/PLAN.md",
     "docs/TEAM.md",
 )
-# Deck builders, so run.py --finals-pack works from MAIN.py alone.
+# Deck builders, so the decks build from MAIN.py alone.
 CARRIED_TOOLS = {"tools/build_deck.py", "tools/build_deck_finals.py", "tools/motion.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}

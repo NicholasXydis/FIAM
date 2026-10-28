@@ -15,7 +15,10 @@ EXHIBITS = SUBMISSION / "exhibits"
 HOLDINGS = SUBMISSION / "holdings.csv"
 RETURNS = SUBMISSION / "returns.csv"
 METRICS = SUBMISSION / "metrics.json"
-RESULTS = OUT_ROOT / "RESULTS.md"
+# Small frozen inputs, so git holds them. Relative like cache/.
+FROZEN = Path("frozen")
+# Saved research runs and their exhibits, read and written in place.
+ARCHIVE = Path("out") / "v2"
 
 # Small-run switch: slow steps shrink, so the chain tests in minutes.
 SMOKE = os.environ.get("FIAM_SMOKE") == "1"

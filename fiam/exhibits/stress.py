@@ -1,23 +1,18 @@
-# Crash tests on the September books: 17 crises, scenarios, liquidity.
+# Crash windows and replays for any book: crises, scenarios, factors.
 
-import json
 import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
 from fiam import book as P
-from fiam import data, freeze
-from fiam.exhibits import september as S
+from fiam import data
 
 # CRSP daily from our extract, one parquet file per year.
 DAILY = data.EXTRACTS / "crsp_daily"
 CACHE = P.CACHE / "stress_daily.parquet"
-OUT = Path("out") / "v2" / "stress.json"
 FACTORS = ["mktrf", "smb", "hml", "rmw", "cma", "umd"]
-CAPITALS = (1e7, 1e8, 1e9, 5e9)
 
 # Seventeen crises from market events, and the stress scenarios.
 CRISES = {
@@ -49,7 +44,6 @@ SCENARIOS = {
     "Trade war, Aug 2019": ("2019-08-01", "2019-08-23"),
 }
 SQUEEZE = ("2021-01-22", "2021-02-02")
-SHORT_BAN = ("2008-09-19", "2008-10-08")
 
 
 # Each episode's daily stock returns, read once from the extract.
@@ -80,15 +74,6 @@ def episode_returns() -> pd.DataFrame | None:
     out["sic"] = pd.to_numeric(out["sic"], errors="coerce")
     CACHE.parent.mkdir(exist_ok=True)
     out.to_parquet(CACHE, index=False)
-    return out
-
-
-# The saved September books, as weights by permno.
-def books() -> dict:
-    out = {}
-    for name, path in (("v1", S.V1), ("v2", S.V2), ("v3", S.V3), ("final v3", S.FINAL)):
-        if path.exists():
-            out[name] = pd.read_csv(path).set_index("permno")["weight"]
     return out
 
 
@@ -145,18 +130,6 @@ def replay(
     )
 
 
-# Two factors set to their episode moves, the rest to their expectation.
-def conditional_shock(b: pd.Series, factors: pd.DataFrame, first: str, last: str) -> float:
-    move = factors.loc[first:last].sum()
-    base = factors.loc[:"2020-12-31"]
-    sigma = base.cov()
-    shocked = move.abs().nlargest(2).index
-    rest = [f for f in FACTORS if f not in shocked]
-    cond = sigma.loc[rest, shocked] @ np.linalg.solve(sigma.loc[shocked, shocked], move[shocked])
-    full = pd.concat([move[shocked], pd.Series(cond, index=rest)])[FACTORS]
-    return float(b @ full)
-
-
 # The likeliest factor move costing 10% of NAV, and the closest month.
 def reverse_stress(b: pd.Series) -> dict:
     monthly = extract("ff_monthly")
@@ -172,96 +145,5 @@ def reverse_stress(b: pd.Series) -> dict:
     )
 
 
-# Days to sell each name at 10% of daily dollar volume, and forced path.
-def liquidity(weights: pd.Series, info: pd.DataFrame, beta: pd.Series) -> dict:
-    adv = info["dolvol_126d"].reindex(weights.index)
-    adv = adv.fillna(adv.median())
-    out = {}
-    for nav in CAPITALS:
-        days = weights.abs() * nav / (0.10 * adv)
-        side = np.sign(weights)
-        out[f"{nav:.0e}"] = {
-            label: dict(
-                weighted_mean=float((days[s] * weights[s].abs()).sum() / weights[s].abs().sum()),
-                max=float(days[s].max()),
-                over_one_day=int((days[s] > 1).sum()),
-            )
-            for label, s in (("long", side > 0), ("short", side < 0))
-        }
-    nav = 1e9
-    left = weights.copy()
-    path = []
-    for day in range(1, 31):
-        step = np.minimum(left.abs(), 0.10 * adv / nav) * np.sign(left)
-        left = left - step
-        path.append(dict(day=day, net=float(left.sum()), beta=float((left * beta).sum())))
-        if left.abs().sum() < 1e-9:
-            break
-    out["unwind_at_1bn"] = dict(
-        max_abs_net=max(abs(p["net"]) for p in path),
-        max_abs_beta=max(abs(p["beta"]) for p in path),
-        days=len(path),
-    )
-    return out
-
-
-# Runs every test on each book and writes stress.json.
-def main() -> None:
-    panel = episode_returns()
-    factors = factor_daily()
-    info = (
-        P.load_panel(("sic",))
-        .query("eom == @S.DECISION")
-        .drop_duplicates("permno")
-        .set_index("permno")
-    )
-    report = dict(
-        protocol="docs/protocols/stress.md",
-        source=DAILY.relative_to(data.ROOT).as_posix() if panel is not None else None,
-    )
-    for name, weights in books().items():
-        b = loadings(weights, factors)
-        entry = dict(loadings=b.to_dict(), crises={}, scenarios={})
-        for label, (first, last) in CRISES.items():
-            entry["crises"][label] = dict(factor_proxy=float(b @ factors.loc[first:last].sum()))
-            if panel is not None:
-                entry["crises"][label] |= replay(weights, panel, first, last, info)
-        for label, (first, last) in SCENARIOS.items():
-            entry["scenarios"][label] = dict(
-                conditional_shock=conditional_shock(b, factors, first, last),
-                factor_proxy=float(b @ factors.loc[first:last].sum()),
-            )
-            if panel is not None:
-                entry["scenarios"][label] |= replay(weights, panel, first, last, info)
-        if panel is not None:
-            entry["squeeze_2021"] = replay(weights, panel, *SQUEEZE, info)
-            ban = replay(
-                weights[info["gics"].reindex(weights.index).astype(str).str[:2] == "40"],
-                panel,
-                *SHORT_BAN,
-                info,
-            )
-            entry["financials_during_2008_short_ban"] = ban
-        entry["reverse_stress"] = reverse_stress(b)
-        # The September book's hedge beta: learned, then 60-month, then 1.
-        rows = info.reindex(weights.index).reset_index()
-        hedge = freeze.learned(rows).fillna(rows["beta_60m"]).fillna(1.0)
-        beta = pd.Series(hedge.to_numpy(), index=weights.index)
-        entry["liquidity"] = liquidity(weights, info, beta)
-        report[name] = entry
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(report, indent=1, default=float) + "\n", encoding="utf-8")
-    print(
-        json.dumps(
-            {
-                k: v.get("reverse_stress", v) if isinstance(v, dict) else v
-                for k, v in report.items()
-            },
-            indent=1,
-            default=float,
-        )
-    )
-
-
 if __name__ == "__main__":
-    episode_returns() if sys.argv[1:] == ["extract"] else main()
+    episode_returns()

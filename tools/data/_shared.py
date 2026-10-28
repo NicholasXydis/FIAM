@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -13,6 +14,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 # Where the read-only Stock Data archive usually sits, Mac then Windows.
 STOCK_DATA_PLACES = (Path("/Applications/@Apps/Stock Data"), Path("E:/Stock Data"))
+
+
+# The links on a web page matching one pattern, sorted and unique.
+def listed(page: str, pattern: str) -> list[str]:
+    return sorted(set(re.findall(rf'href="({pattern})"', page)))
 
 
 # A setting from the environment or .env; secrets are never printed.

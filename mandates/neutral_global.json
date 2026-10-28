@@ -1,9 +1,0 @@
-{
-  "name": "neutral_global",
-  "gross": 1.6,
-  "net": 0.0,
-  "names_min": 100,
-  "names_max": 500,
-  "countries": ["USA", "CAN"],
-  "country_cap": 0.75
-}

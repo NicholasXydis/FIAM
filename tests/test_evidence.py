@@ -166,7 +166,7 @@ def tree(tmp_path, monkeypatch):
                  "arm_P1_20261800_abc123"):  # fmt: skip
         frame(exact(0, 0.005, 50)).to_parquet(dirs["desk"] / f"{name}.parquet")
     trials = tmp_path / "trials.csv"
-    pd.DataFrame({"name": ["v1@1e9", "v2@1e9", "v2@5e9"]}).to_csv(trials, index=False)
+    pd.DataFrame({"name": ["a@1e9", "b@1e9", "b@5e9"]}).to_csv(trials, index=False)
     for attr, key in (("GATES", "gates"), ("FORECAST", "forecast"), ("CONSTRUCT", "construct"),
                       ("DESK", "desk"), ("OUT", "evidence")):  # fmt: skip
         monkeypatch.setattr(ev, attr, dirs[key])
@@ -221,7 +221,7 @@ def test_older_fits(tmp_path):
     exp.mkdir()
     for n in ("a", "b"):
         (exp / f"{n}.csv").write_text("x\n")
-    pd.DataFrame({"name": ["v1@1e9", "v2@1e9", "v2@5e9"]}).to_csv(tmp_path / "trials.csv")
+    pd.DataFrame({"name": ["a@1e9", "b@1e9", "b@5e9"]}).to_csv(tmp_path / "trials.csv")
     from fiam import stats
     from fiam.exhibits import evidence as old
 

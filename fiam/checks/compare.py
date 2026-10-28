@@ -124,7 +124,7 @@ def main() -> int:
     elif paths.SMOKE:
         print("A rehearsal trains small models on a slice, so its book is not the official one.")
     elif data.wrds("exits") is None:
-        print("Without WRDS the book moves in the third decimal, as RESULTS.md records.")
+        print("Without WRDS the book moves in the third decimal.")
     else:
         print("The book differs from the official one. Check the code and data versions.")
     return 0

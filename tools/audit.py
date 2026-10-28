@@ -236,7 +236,7 @@ def short_lag(b: Path) -> None:
         "bundle",
         "v1 short interest used at month end before it was public",
         f"{after:,} of {len(joined):,} matched rows",
-        "known: research-only in v1-v3; v4 uses available_date",
+        "known: research-only in the older books; the final fund uses available_date",
     )
 
 

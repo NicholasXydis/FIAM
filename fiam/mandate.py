@@ -1,7 +1,7 @@
 # Rules as a file: the shipped book's by default, or a finals mandate.
 
 import json
-from dataclasses import asdict, dataclass, fields
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 from fiam import book as P
@@ -51,9 +51,6 @@ class Mandate:
     @property
     def sides(self) -> tuple[float, float]:
         return (self.gross + self.net) / 2, (self.gross - self.net) / 2
-
-
-V1 = Mandate()
 
 
 # A mandate file; an unknown key stops the run instead of being ignored.
@@ -111,8 +108,3 @@ def check(m: Mandate) -> list[str]:
     if long > 0 and m.pool * m.name_cap < long:
         problems.append(f"a pool of {m.pool} per side at {m.name_cap:.1%} cannot fill {long:.0%}")
     return problems
-
-
-# The mandate as plain data, for the run's record.
-def record(m: Mandate) -> dict:
-    return asdict(m)

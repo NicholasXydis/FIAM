@@ -15,9 +15,11 @@ import pandas as pd  # noqa: E402
 from matplotlib.animation import FFMpegWriter  # noqa: E402
 
 from fiam import book as P  # noqa: E402
-from fiam import v2  # noqa: E402
+from fiam.paths import ARCHIVE  # noqa: E402
 from fiam.paths import read_json as load  # noqa: E402
+from fiam.report.animation import ease  # noqa: E402
 from fiam.report.charts import ALT, BENCH, INK, MUTED, OURS  # noqa: E402
+from fiam.report.runs import CAPITALS, final_run  # noqa: E402
 
 CLIPS = Path("out") / "figures" / "clips"
 FPS, DPI = 30, 160
@@ -44,12 +46,6 @@ plt.rcParams.update(
         "ytick.color": MUTED,
     }
 )
-
-
-# Smoothstep easing, so every move starts and stops gently.
-def ease(x):
-    x = np.clip(x, 0.0, 1.0)
-    return x * x * (3 - 2 * x)
 
 
 # The house axis style: no top or right spine, light gridlines behind.
@@ -106,8 +102,8 @@ def glide(a: np.ndarray, b: np.ndarray, t: float, start: float, delay: np.ndarra
 def journey() -> None:
     from fiam import data
 
-    run = v2.Settings(v2.final_three(), 1e7).name
-    held = data.read(v2.OUT / run / "record" / "holdings.parquet")
+    run = final_run(1e7)
+    held = data.read(ARCHIVE / run / "record" / "holdings.parquet")
     month = held["eom"].max()
     book = held[held["eom"] == month].set_index("permno")["weight"]
     panel = P.load_panel()
@@ -195,7 +191,7 @@ def journey() -> None:
 
 # The final book's submission folder at $10M, where the films read from.
 def final_pack() -> Path:
-    return Path("out") / "finals" / v2.Settings(v2.final_three(), 1e7).name / "submission"
+    return Path("out") / "finals" / final_run(1e7) / "submission"
 
 
 # Growth of $1 after costs: final book vs cash plus 4% and the S&P 500.
@@ -285,7 +281,7 @@ def beta() -> None:
 
 # 1,000 random large-cap books pile up; the final book lands far right.
 def null() -> None:
-    folder = Path("out") / "v2" / "final_exhibits"
+    folder = ARCHIVE / "final_exhibits"
     irs = pd.read_csv(folder / "null_irs.csv")["ir"].to_numpy()
     ours = load(folder / "report.json")["null"]["final_ir"]
     width = 0.05
@@ -369,7 +365,7 @@ def null() -> None:
 
 # Dollars a year and IR by fund size, each book's line from $1M to $5B.
 def capacity() -> None:
-    books = load(v2.OUT / "capacity.json").get("books", {})
+    books = load(ARCHIVE / "capacity.json").get("books", {})
     lines = []
     for name, (colour, label) in BOOKS.items():
         rows = books.get(name, {}).get("record", [])
@@ -379,7 +375,7 @@ def capacity() -> None:
             ir = np.array([r["information_ratio"] for r in rows])
             lines.append((label, colour, caps, dollars, ir))
     sizes = ["$1M", "$10M", "$100M", "", "$1B", "$5B"]
-    ticks = np.log10(v2.CAPITALS)
+    ticks = np.log10(CAPITALS)
 
     # Frame at t: dollars on the left and IR on the right draw in together.
     def draw(fig, t):
@@ -423,8 +419,8 @@ def capacity() -> None:
 
 # Our longs as 100 dots: chance ringed, real crowd favourites in gold.
 def overlap() -> None:
-    run = v2.Settings(v2.final_three(), 1e7).name
-    share = load(v2.OUT / "crowd_insights.json")[f"book {run}"]["overlap"]["retail"]
+    run = final_run(1e7)
+    share = load(ARCHIVE / "crowd_insights.json")[f"book {run}"]["overlap"]["retail"]
     gold = int(round(share["longs_in_favourites"] * 100))
     rng = np.random.default_rng(11)
     order = rng.permutation(100)

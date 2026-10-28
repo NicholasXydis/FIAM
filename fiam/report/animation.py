@@ -11,9 +11,10 @@ import numpy as np  # noqa: E402
 from matplotlib.animation import FFMpegWriter  # noqa: E402
 from matplotlib.colors import to_rgba, to_rgba_array  # noqa: E402
 
-from fiam import data, v2  # noqa: E402
+from fiam import data  # noqa: E402
 from fiam.agents import crowd_lab as L  # noqa: E402
 from fiam.agents import harness as H  # noqa: E402
+from fiam.paths import ARCHIVE  # noqa: E402
 from fiam.paths import read_json as load  # noqa: E402
 
 OUT = Path("out") / "figures" / "ai_crowd.mp4"
@@ -52,9 +53,9 @@ def fade(t: float, start: float, length: float = 0.8) -> float:
 
 # The film's book: the chosen one at $10M with crowd data, else shipped.
 def our_run() -> str:
-    final = load(v2.OUT / "evidence.json").get("v3", {}).get("final", {}).get("name")
+    final = load(ARCHIVE / "evidence.json").get("v3", {}).get("final", {}).get("name")
     run = f"{final}@1e7" if final else ""
-    insights = load(v2.OUT / "crowd_insights.json")
+    insights = load(ARCHIVE / "crowd_insights.json")
     return run if run and f"book {run}" in insights else "v1@1e7"
 
 
@@ -64,9 +65,9 @@ def gather() -> dict:
     month = max(set(retail["eom"]) & set(copy["eom"]))
     retail, copy = retail[retail["eom"] == month], copy[copy["eom"] == month]
     run = our_run()
-    held = data.read(v2.OUT / run / "record" / "holdings.parquet")
-    crowd = load(v2.OUT / "crowd_lab.json")
-    insights = load(v2.OUT / "crowd_insights.json")
+    held = data.read(ARCHIVE / run / "record" / "holdings.parquet")
+    crowd = load(ARCHIVE / "crowd_lab.json")
+    insights = load(ARCHIVE / "crowd_insights.json")
     tests = insights.get(f"book {run}", insights)
     net = insights.get("network", {})
     logs = ("crowdlab_retail", "crowdlab_copycat")

@@ -30,7 +30,8 @@ def test_13f_links_cover_both_folders_and_nothing_else():
         '<a href="/files/structureddata/data/form-13f-data-sets/2013q2_form13f.zip">'
         '<a href="/files/other/readme.zip">'
     )
-    links = tool("edgar").listed(page)
+    edgar = tool("edgar")
+    links = edgar.listed(page, edgar.F13_FILES)
     assert [link.rsplit("/", 1)[1] for link in links] == [
         "01jun2026-31aug2026_form13f.zip",
         "2013q2_form13f.zip",

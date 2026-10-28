@@ -1,9 +1,7 @@
 # Rules reader: rules PDF in, draft mandate out, every quote checked.
 
 import json
-import os
 import sys
-import time
 from dataclasses import fields
 from pathlib import Path
 
@@ -129,34 +127,5 @@ def main(source: str, name: str) -> dict:
     return report
 
 
-# Finals drill: rules, draft mandate, then each finals book, all timed.
-def drill(source: str) -> None:
-    from fiam import v2
-
-    start, name = time.time(), Path(source).stem
-    report = main(source, name)
-    books = v2.finals(M.TEMPLATES / f"{name}_draft.json")
-    minutes = (time.time() - start) / 60
-    path = v2.OUT / "drill.json"
-    record = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    record = {k: v for k, v in record.items() if isinstance(v, dict)}
-    record[name] = dict(
-        source=Path(source).name,
-        mandate=f"{name}_draft.json",
-        minutes=minutes,
-        reference=report.get("reference"),
-        books={
-            k: dict(run=v["run"], breaches=v["months_breaching"], empty=v["months_empty"])
-            for k, v in books.items()
-        },
-        finished=time.strftime("%Y-%m-%d %H:%M"),
-    )
-    path.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
-    print(f"drill: {minutes:.1f} minutes from the rules text to both books")
-
-
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["drill"]:
-        drill(sys.argv[2] if len(sys.argv) > 2 else os.environ["FIAM_RULES"])
-    else:
-        main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else Path(sys.argv[1]).stem)
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else Path(sys.argv[1]).stem)

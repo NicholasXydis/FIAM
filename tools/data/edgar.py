@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
-from _shared import ROOT, check, data_root, fingerprint, receipts, setting, stamp
+from _shared import ROOT, check, data_root, fingerprint, listed, receipts, setting, stamp
 
 # One name key for both builders, kept in the link module only.
 sys.path.insert(0, str(ROOT))
@@ -26,6 +26,7 @@ BULK = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
 HOME_ONLY = {"submissions.zip"}
 FACTS = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 F13 = "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets"
+F13_FILES = r"/files/[^\"]+_form13f\.zip"
 INSIDER_PAGE = "https://www.sec.gov/data-research/sec-markets-data/insider-transactions-data-sets"
 # SEC files recent quarters under another folder, so any folder counts.
 INSIDER_FILES = r"/files/[^\"]+/insider-transactions-data-sets/\d{4}q\d_form345\.zip"
@@ -160,11 +161,6 @@ def facts() -> int:
     return download(FACTS, "companyfacts.zip")
 
 
-# The data-set zip links on an SEC page matching one pattern.
-def listed(page: str, pattern: str = r"/files/[^\"]+_form13f\.zip") -> list[str]:
-    return sorted(set(re.findall(rf'href="({pattern})"', page)))
-
-
 # Every data set an SEC page lists, each zip checked and receipted.
 def data_sets(page_url: str, pattern: str, folder: Path) -> int:
     links = listed(fetch(page_url).decode("utf-8", "replace"), pattern)
@@ -195,7 +191,7 @@ def data_sets(page_url: str, pattern: str, folder: Path) -> int:
 
 # Every 13F data set the SEC lists.
 def thirteen_f() -> int:
-    return data_sets(F13, r"/files/[^\"]+_form13f\.zip", OUT / "13f")
+    return data_sets(F13, F13_FILES, OUT / "13f")
 
 
 # The Forms 3, 4 and 5 data sets from 2006q1.

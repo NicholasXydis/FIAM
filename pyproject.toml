@@ -22,10 +22,6 @@ dependencies = [
     "exchange-calendars==4.13.2",
 ]
 
-[project.optional-dependencies]
-# The accounting replay only (uv sync --extra backtest); the book and MAIN.py never need it.
-backtest = ["nautilus_trader[visualization]==1.230.0"]
-
 [dependency-groups]
 dev = [
     "ruff==0.15.17",

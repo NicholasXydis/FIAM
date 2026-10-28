@@ -1,26 +1,15 @@
-# Fills every generated table and every prose number in RESULTS.md.
+# Every results table as markdown, from submission/, for the decks.
 
-import json
-import re
-from pathlib import Path
 
 from fiam import paths
-from fiam.book import MARKET_NAME, display_name
+from fiam.book import display_name
 
 SUBMISSION = paths.SUBMISSION
-RESULTS = paths.RESULTS
-
-# Prose uses a real minus sign, so a negative must match either form.
-MINUS = "−"
-
-# A prose number: <!--N:file.json:group.key:.2f-->0.85<!--/N-->.
-NUMBER = re.compile(r"<!--N:([^:]+):([^:]+):([^>]*)-->.*?<!--/N-->")
 
 
 # A submission/ output, or {} before its step runs, so the rest builds.
 def load(name: str) -> dict:
-    path = SUBMISSION / name
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    return paths.read_json(SUBMISSION / name)
 
 
 # A markdown table, columns after the first right-aligned if all short.
@@ -33,41 +22,6 @@ def table(header: list[str], rows: list[list[str]]) -> str:
 # A label and a value per row, the shape most of these tables take.
 def pairs(rows: list[tuple[str, str]]) -> str:
     return table(["", ""], [list(r) for r in rows])
-
-
-# The RESULTS.md table, rounded hard since the figures hold to a tenth.
-def headline(m: dict) -> str:
-    perf, cost, comp, run = m["performance"], m["costs"], m["compliance"], m["run"]
-    body = pairs(
-        [
-            ("Gross return (annualized)", f"{perf['return_gross_annual']:.1%}"),
-            ("**Net return (annualized)**", f"**{perf['return_net_annual']:.1%}**"),
-            ("CAGR (total return)", f"{perf['return_total_cagr']:.1%}"),
-            ("Volatility", f"{perf['volatility_annual']:.1%}"),
-            ("**Information ratio vs TB3MS + 4%**", f"**{perf['information_ratio']:.2f}**"),
-            ("Information ratio before costs", f"{perf['information_ratio_before_costs']:.2f}"),
-            ("Sharpe ratio", f"{perf['sharpe_ratio']:.2f}"),
-            ("Max drawdown (total return)", f"{perf['max_drawdown_total']:.1%}"),
-            ("Hit rate", f"{perf['hit_rate_positive_active_months']:.1%}"),
-            (
-                "**Alpha**",
-                f"**{perf['alpha_annual']:.1%}** (se {perf['alpha_stderr_annual']:.1%}, "
-                f"t = {perf['alpha_tstat']:.2f}, HAC)",
-            ),
-            (
-                "**Realized beta**",
-                f"**{perf['beta_realized']:.2f}** (se {perf['beta_stderr']:.2f})",
-            ),
-            ("Correlation with market", f"{perf['correlation_with_market']:.2f}"),
-            ("Market series", m["notes"]["market_series"]),
-            ("Positions", f"{comp['positions_average']:.0f}"),
-            ("Turnover, one-way monthly", f"{cost['turnover_monthly_one_way']:.0%}"),
-            ("Costs as share of gross", f"{cost['cost_share_of_gross']:.0%}"),
-            ("Holding months", f"{run['holding_months']}, {run['window']}"),
-        ]
-    )
-    # The code hash at the bottom is how you spot a table from other code.
-    return f"{body}\n\n_From code `{run['code_sha256']}`._"
 
 
 # 2016-2020 beside the record, both on CRSP; seen, so not a clean test.
@@ -532,72 +486,6 @@ def explained(m: dict) -> str:
     return table(header, rows)
 
 
-# Deflated-Sharpe probability per attempt count, and luck's own Sharpe.
-def deflation(m: dict) -> str:
-    r = m["robustness"]
-    rows = [
-        [
-            f"**At {r['attempts_eligible']} eligible attempts**",
-            f"{r['sharpe_luck_alone_eligible']:.2f}",
-            f"**{r['deflated_sharpe_probability_eligible']:.2f}**",
-        ],
-        [
-            f"At {r['attempts_all']:,}, every fit we ever ran",
-            f"{r['sharpe_luck_alone_all']:.2f}",
-            f"{r['deflated_sharpe_probability_all']:.2f}",
-        ],
-        [
-            "Missing returns at −30%, longs / both sides",
-            "",
-            f"IR {r['ir_missing_returns_conservative']:.2f} / "
-            f"{r['ir_missing_returns_symmetric']:.2f}",
-        ],
-    ]
-    return table(["", "Sharpe luck alone produces", "deflated-Sharpe probability"], rows)
-
-
-# Committee-pack statistics the rules list that the headline lacks.
-def committee(m: dict) -> str:
-    c, perf = load("exhibits/pack.json")["completeness"], m["performance"]
-    r = c["ranges"]
-
-    # An average with its range.
-    def spread(key: str, fmt: str) -> str:
-        x = r[key]
-        text = f"{x['mean']:{fmt}} ({x['min']:{fmt}} to {x['max']:{fmt}})"
-        return text.replace("-0.00%", "0.00%")
-
-    return pairs(
-        [
-            ("Average monthly return, total", f"{c['average_monthly_return']:.2%}"),
-            (
-                "Annualized, arithmetic / geometric (CAGR)",
-                f"{c['average_monthly_return'] * 12:.1%} / {perf['return_total_cagr']:.1%}",
-            ),
-            (
-                "Cumulative return, Jan 2021 to Aug 2026",
-                f"{c['cumulative_return_full_period']:.1%}",
-            ),
-            ("Best month", f"{c['best_month']['value']:+.1%}, {c['best_month']['month'][:7]}"),
-            ("Worst month", f"{c['worst_month']['value']:+.1%}, {c['worst_month']['month'][:7]}"),
-            ("Months beating the benchmark", f"{perf['hit_rate_positive_active_months']:.0%}"),
-            (
-                "Holdings, long / short",
-                f"{c['average_long_positions']:.0f} / {c['average_short_positions']:.0f}",
-            ),
-            ("Gross exposure, average (range)", spread("gross_exposure", ".2%")),
-            ("Net exposure, average (range)", spread("net_exposure", ".2%")),
-            (
-                "Position weight, average / largest",
-                f"{c['average_absolute_position_weight']:.2%} / "
-                f"{m['compliance']['position_weight_max']:.2%}",
-            ),
-            ("Share of gross in the ten largest names", f"{c['legs']['top10_share_of_gross']:.1%}"),
-            ("Turnover, one-way monthly, average (range)", spread("turnover_one_way", ".0%")),
-        ]
-    )
-
-
 # The book marked every trading day, beside what month-end numbers say.
 def daily(m: dict) -> str:
     d = load("exhibits/daily_risk.json")
@@ -781,80 +669,3 @@ def agents(m: dict) -> str:
         text = f"{len(e['positions'])} winners and losers explained from their facts alone"
         rows.append(["**Explainer**", "Qwen3.8-27B", text])
     return table(["agent", "model", "what happened"], rows)
-
-
-TABLES = dict(
-    headline=headline,
-    committee=committee,
-    years=years,
-    legs=legs,
-    top=top,
-    compliance=compliance,
-    costs=costs,
-    implementation=implementation,
-    drift=drift,
-    daily=daily,
-    stress=stress,
-    factors=factors,
-    styles=styles,
-    attribution=attribution,
-    tried=tried,
-    teachers=teachers,
-    scorer=scorer,
-    models=models,
-    r2=r2,
-    agents=agents,
-    firewall=firewall,
-    explained=explained,
-    halves=halves,
-    clean=clean,
-    placebo=placebo,
-    deflation=deflation,
-)
-
-
-# Refills each marker pair, building only the tables the file holds.
-def fill(target: Path, tables: dict, m: dict) -> None:
-    text = target.read_text(encoding="utf-8")
-    for marker, build in tables.items():
-        start, end = f"<!--AUTO:{marker}-->", f"<!--/AUTO:{marker}-->"
-        if start in text:
-            a, b = text.index(start) + len(start), text.index(end)
-            text = text[:a] + "\n\n" + build(m) + "\n\n" + text[b:]
-    target.write_text(numbers(text), encoding="utf-8", newline="\n")
-
-
-# "performance.sharpe_ratio" is group then key; a number indexes a list.
-def dig(data, path: str):
-    for key in path.split("."):
-        data = data[int(key)] if isinstance(data, list) else data[key]
-    return data
-
-
-# Each inline number, read from its named exhibit in its named format.
-def numbers(text: str) -> str:
-    # One marker refilled from its exhibit.
-    def value(match: re.Match) -> str:
-        name, key, fmt = match.groups()
-        data = load(name)
-        shown = format(dig(data, key), fmt).replace("-", MINUS) if data else "?"
-        return f"<!--N:{name}:{key}:{fmt}-->{shown}<!--/N-->"
-
-    return NUMBER.sub(value, text)
-
-
-# Fills RESULTS.md from the latest exhibits.
-def main() -> None:
-    m = load("metrics.json")
-    assert m["notes"]["market_series"] == MARKET_NAME, "metrics.json is from an older run"
-    fill(RESULTS, TABLES, m)
-    # The README's few numbers too, where a README sits beside RESULTS.md.
-    readme = RESULTS.parent / "README.md"
-    if readme.exists():
-        fill(readme, {}, m)
-    perf = m["performance"]
-    print(f"filled: IR {perf['information_ratio']:.2f}, net {perf['return_net_annual']:.1%}")
-
-
-if __name__ == "__main__":
-    main()

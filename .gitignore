@@ -115,7 +115,7 @@ Desktop.ini
 /research/
 # The generated deck; the PDF made from it is submitted, not committed.
 /deck/
-# Drafts the rules reader writes on every drill; only the hand-made references are committed.
+# Drafts the rules reader writes; only the hand-made references are committed.
 /mandates/*_draft*.json
 
 # Site packages, web build, wrangler scratch.
@@ -123,7 +123,6 @@ Desktop.ini
 /site/dist/
 /site/.wrangler/
 
-# Root notes stay local except README.md and RESULTS.md; plans are in docs.
+# Root notes stay local except README.md; plans are in docs.
 /*.md
 !/README.md
-!/RESULTS.md

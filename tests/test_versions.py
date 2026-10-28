@@ -2,7 +2,7 @@
 
 import json
 
-from fiam import v2, versions
+from fiam import versions
 
 
 # Each recipe on disk is what the code builds from today's files.
@@ -12,10 +12,10 @@ def test_recipes_match_the_code_and_closed_files_are_unchanged():
         assert on_disk == versions.recipe(name), f"{name} changed: rerun only if intended"
 
 
-# V3_SWITCHES are known switches; every closed version is fingerprinted.
-def test_v3_switches_exist_and_closed_versions_are_fingerprinted():
-    known = {*v2.MEMBERS, *v2.OTHERS, *v2.CROWD, *v2.CROWDS, *v2.PARTS, *v2.FINAL, *v2.EXHIBIT}
-    assert set(versions.V3_SWITCHES) <= known
+# Every closed version is fingerprinted; every recipe on disk is listed.
+def test_closed_versions_are_fingerprinted_and_recipes_are_listed():
     for name, spec in versions.VERSIONS.items():
         if spec["status"] == "closed":
             assert versions.recipe(name)["fingerprints"], name
+    found = {p.parent.name for p in versions.FOLDER.glob("*/recipe.json")}
+    assert found == set(versions.VERSIONS)

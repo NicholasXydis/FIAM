@@ -126,29 +126,11 @@ Offline (no internet)
   A machine without caches/<machine>.zip makes one with: uv run run.py caches <this folder>
   LightGBM's OpenMP library comes in the kit (models/openmp, part weights); nothing to install.
 
-Before the day
-  Rehearse once:  uv run run.py --world fake --finals mandates/case_2025.json
-  Every book should show breaches 0 empty 0 and its largest country at 75% or less.
-
 On the day, in the repo folder or the folder MAIN.py unpacked into
-  1. Rules. uv run run.py --rules rules.pdf drafts mandates/<name>_draft.json with a quote
-     for each limit, using the Gemma model the kit restored. Check it against the rules by
-     hand. Without a GPU, edit a copy of mandates/case_2025.json instead. Add min_market_cap
-     or exclude_sectors by hand if the rules set them.
-  2. Data. uv run run.py --world <folder>. If their columns are named differently, copy
-     fiam/world_columns.json into that folder as columns.json and change only what differs.
-  3. Books. uv run run.py --world --finals mandates/<name>_draft.json. Add
-     --window 2021-01 2025-06 or --capital 1e8 if the day asks for other months or size.
-  4. Pack. Run the --pack command it prints.
-  5. Deck. uv run run.py --finals-pack adds a slide with the day's book.
   The final version: uv run fiam help lists its commands (rerun, verify and more).
 
 If something goes wrong
   uv is not found            py -m uv run run.py on Windows, python3 -m uv run run.py elsewhere
-  No GPU or no model         write the mandate by hand, the books never need a GPU
-  Other column names         columns.json beside the data
-  Other currencies           name the currency column in columns.json, rates run to Oct 2026
-  The rules cannot all hold  --finals names them before any run, then fix the mandate
   A film will not play       play deck/ai_crowd_short.mp4 on its own, the PDF has every page
   LightGBM will not load     setup restores it (part weights); else Mac brew install libomp,
                              Linux apt install libgomp1

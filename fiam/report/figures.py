@@ -12,9 +12,10 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from fiam import book as P  # noqa: E402
-from fiam import v2  # noqa: E402
+from fiam.paths import ARCHIVE  # noqa: E402
 from fiam.paths import read_json as load  # noqa: E402
 from fiam.report.charts import ALT, BENCH, INK, MUTED, NEG, OURS  # noqa: E402
+from fiam.report.runs import CAPITALS, final_run  # noqa: E402
 
 # Slide-sized type in the deck's font, so charts read from the back row.
 matplotlib.rcParams.update(
@@ -29,7 +30,7 @@ matplotlib.rcParams.update(
     }
 )
 FIGURES = Path("out") / "figures"
-PAGES = v2.OUT
+PAGES = ARCHIVE
 CAPS = ["$1M", "$10M", "$100M", "$500M", "$1B", "$5B"]
 BOOKS = {"v1": OURS, "v2": ALT, "v2a": "#2E8B57", "v2-pass": "#B07D2B", "v3": "#8A7FB5"}
 BOOKS["final v3"] = INK
@@ -64,7 +65,7 @@ def tidy(ax, title: str = "", ylabel: str = "") -> None:
 # Log fund-size axis, $500M unlabelled as it sits too close to $1B.
 def log_capital(ax) -> None:
     ax.set_xscale("log")
-    ax.set_xticks(list(v2.CAPITALS))
+    ax.set_xticks(list(CAPITALS))
     ax.set_xticklabels(["" if c == "$500M" else c for c in CAPS])
     ax.minorticks_off()
 
@@ -97,7 +98,7 @@ def capacity() -> None:
 # The chosen book by fund size: IR, beta, drawdown and volatility.
 def final_book() -> None:
     scored = load(PAGES / "evidence.json").get("v3", {})
-    sizes = [c for c in v2.CAPITALS if f"{c:.0e}".replace("+0", "") in scored]
+    sizes = [c for c in CAPITALS if f"{c:.0e}".replace("+0", "") in scored]
     if not sizes:
         return
     panels = (
@@ -393,7 +394,7 @@ def ladder_rows() -> list[tuple]:
         return []
     market = P.benchmarks().set_index("month")["mkt_rf"]
     book = pd.read_csv(
-        PAGES / v2.Settings(v2.final_three(), 1e7).name / "record" / "returns.csv",
+        PAGES / final_run(1e7) / "record" / "returns.csv",
         parse_dates=["holding_month"],
     )
     sp500 = P.information_ratio(market.reindex(book["holding_month"]).dropna())
@@ -458,7 +459,7 @@ def naive() -> None:
     final = {}
     for tag in ("1e7", "1e9"):
         cap = float(tag.replace("e", "e+"))
-        name = v2.Settings(v2.final_three(), cap).name
+        name = final_run(cap)
         final[tag] = load(PAGES / name / "record" / "stats.json")
     books = [
         ("Equal weights on our score", "naive_equal_model", ALT),
