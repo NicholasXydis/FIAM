@@ -38,6 +38,7 @@ const fail = (message: string) => {
 
 // Runs one step and keeps its error's words; true when it passed.
 async function attempt(name: string, work: () => unknown) {
+  // A thrown error or a rejected promise counts as a failure.
   try {
     await work();
     return true;
@@ -49,6 +50,7 @@ async function attempt(name: string, work: () => unknown) {
 
 // Every file under the given paths with one of the extensions.
 function walk(paths: string[], extensions: RegExp): string[] {
+  // Skip what is excluded, keep a matching file, or walk a folder.
   return paths.flatMap((p) => {
     const at = path.join(SITE, p);
     if (SKIPPED.some((s) => p === s || p.endsWith(`/${s}`)) || !fs.existsSync(at)) return [];
@@ -63,6 +65,7 @@ function walk(paths: string[], extensions: RegExp): string[] {
 // Comments over 72 characters, or longer than one line, fail.
 function comments() {
   const found: string[] = [];
+  // Read each file line by line, flagging any bad comment.
   for (const file of walk(COMMENTED, /\.(ts|tsx|mjs|cjs|css|py|yaml)$/)) {
     const hash = /\.(py|yaml)$/.test(file);
     let previous = false;
@@ -73,6 +76,7 @@ function comments() {
         const text = line.trim();
         // uv's script header is data, read by uv, not a comment.
         if (hash && text === "# /// script") meta = true;
+        // Inside the header, skip lines until its closing marker.
         if (meta) {
           if (text === "# ///") meta = false;
           return void (previous = false);
@@ -104,6 +108,7 @@ async function code(fix: boolean) {
 // Each built page against its budget, and each link shown once.
 function pages() {
   console.log("pages: what each loads, and each link once");
+  // Measure each built page's script and styles, then its links.
   for (const page of BUILT) {
     const html = fs.readFileSync(path.join(DIST, page), "utf8");
     const files = [...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]!))];
@@ -120,6 +125,7 @@ function pages() {
     if (style > most) fail(`${page} loads ${kb(style)} of styles`);
     // The brand links home on every page, so only other links count.
     const links = new Map<string, number>();
+    // Count each link but the brand's, by its address.
     for (const [tag] of html.matchAll(/<a\b[^>]*>/g)) {
       const href = /\bhref="([^"#][^"]*)"/.exec(tag)?.[1];
       if (href && !/class="[^"]*\bbrand\b/.test(tag)) links.set(href, (links.get(href) ?? 0) + 1);
@@ -131,12 +137,15 @@ function pages() {
 // Share cards, robots, the sitemap and the headers the host serves.
 async function extras() {
   console.log("share cards, robots, the sitemap and the headers");
+  // A built file's text.
   const read = (file: string) => fs.readFileSync(path.join(DIST, file), "utf8");
   const headers = headersFor(readHeaders(read("_headers")), "/");
   const csp = headers.find(([name]) => name === "Content-Security-Policy")?.[1] ?? "";
+  // The host must send each of these three headers.
   for (const name of ["Content-Security-Policy", "Strict-Transport-Security", "X-Content-Type-Options"]) {
     if (!headers.some(([n]) => n === name)) fail(`_headers sets no ${name}`);
   }
+  // Check each built page's scripts, fade, card and address.
   for (const page of BUILT) {
     const html = read(page);
     // Every inline script the page runs must be allowed by its hash.
@@ -152,14 +161,17 @@ async function extras() {
     if (!/<style>[^<]*@view-transition \{ navigation: auto; \}/.test(head)) fail(`${page} does not opt in to the fade`);
     // A listed page has its card and address; the rest stay unlisted.
     const address = `/${page.replace(/index\.html$/, "")}`;
+    // An unlisted page must say noindex and needs no card.
     if (!LISTED.includes(address)) {
       if (!html.includes('<meta name="robots" content="noindex"')) fail(`${page} is not marked noindex`);
       continue;
     }
+    // A meta tag's content, found by its property or name.
     const tag = (key: string) => new RegExp(`(?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1];
     if (tag("og:url") !== ORIGIN + address) fail(`${page} has og:url ${tag("og:url")}`);
     if (tag("og:image") !== ORIGIN + CARD.path) fail(`${page} has og:image ${tag("og:image")}`);
     if (tag("twitter:card") !== "summary_large_image") fail(`${page} has no large X card`);
+    // The four title and description tags must all be there.
     for (const key of ["og:title", "og:description", "twitter:title", "twitter:description"])
       if (!tag(key)) fail(`${page} has no ${key}`);
   }
@@ -169,12 +181,14 @@ async function extras() {
   if (width !== CARD.width || height !== CARD.height) fail(`the share card is ${width}x${height}`);
   if (fs.statSync(card).size > 300 * 1024) fail("the share card is over 300 KB");
   if (!read("robots.txt").includes(`Sitemap: ${ORIGIN}/sitemap.xml`)) fail("robots.txt names no sitemap");
+  // The sitemap must list every listed page.
   for (const address of LISTED)
     if (!read("sitemap.xml").includes(`<loc>${ORIGIN}${address}</loc>`)) fail(`the sitemap misses ${address}`);
 }
 
 // Puppeteer's Chrome, which Lighthouse drives.
 function chrome() {
+  // Stop early, with the fix, when Chrome is not installed.
   if (!fs.existsSync(puppeteer.executablePath()))
     throw new Error("puppeteer's Chrome is missing, run pnpm exec puppeteer browsers install chrome");
 }
@@ -192,7 +206,9 @@ interface Category {
 async function lighthouse() {
   console.log("Lighthouse, mobile");
   const env = { ...process.env, CHROME_PATH: puppeteer.executablePath() };
+  // Serve the build and score each page in turn.
   await served(DIST, async (base) => {
+    // Score each page, the missing page by its file.
     for (const [, page, status] of PAGES) {
       // Lighthouse scores no page that answers 404, so it reads the file.
       const at = status === 404 ? "/404.html" : page;
@@ -202,9 +218,11 @@ async function lighthouse() {
         (await exec(bin("lighthouse"), [...args, "--chrome-flags=--headless=new"], { env, maxBuffer: 1 << 28 })).stdout;
       // Its browser sometimes closes on a busy machine, so a second try.
       let json: string;
+      // Try once, then once more, before giving up on the page.
       try {
         json = await score();
       } catch {
+        // The second and last try.
         try {
           json = await score();
         } catch {
@@ -236,6 +254,7 @@ async function quick() {
 
 // A full build first for the parts run on their own.
 const built = () => attempt("the build", build);
+// Run the part asked for, or every check when none is named.
 if (what === "fix") await code(true);
 else if (what === "lighthouse") {
   if ((await attempt("browsers", chrome)) && (await built())) await attempt("Lighthouse", lighthouse);
@@ -245,6 +264,7 @@ else if (what === "lighthouse") {
   // check all adds every device, Safari and Lighthouse.
   const all = what === "all";
   await code(false);
+  // Only a build that passed is checked page by page.
   if (await attempt("the build", bundle)) {
     await attempt("pages", pages);
     await attempt("share cards and headers", extras);

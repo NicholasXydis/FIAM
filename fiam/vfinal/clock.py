@@ -152,11 +152,11 @@ def formation(first_closes, cal: pd.Series) -> pd.Series:
     return shift_sessions(first_closes, 1, cal).rename("formation")
 
 
-# The last day a label may reach while the data stay sealed.
+# The last day a label may reach while later data stay hidden.
 LAST_LABEL_DAY = pd.Timestamp("2020-12-31")
 
 
-# A label window that reaches past the seal: refused, never truncated.
+# A label window that reaches past the cutoff: refused, never cut short.
 class SealedWindow(ValueError):
     pass
 

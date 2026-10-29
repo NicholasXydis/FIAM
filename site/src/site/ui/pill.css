@@ -1,9 +1,12 @@
 /* The pill: every button on the site, and the tour's Back. */
+
+/* How lit the hairline edge is, animated as a number. */
 @property --pill-edge {
   syntax: "<number>";
   inherits: true;
   initial-value: 1;
 }
+/* How near the pointer is, 0 to 1, for the edge's glow. */
 @property --pill-near {
   syntax: "<number>";
   inherits: true;
@@ -19,6 +22,7 @@
   --pill-spring: linear(0, 0.18 4%, 0.6 10%, 0.95 17%, 1.1 24%, 1.12 28%, 1.06 38%, 0.99 50%, 0.985 60%, 1);
 }
 
+/* The pill: round glass, moved and tilted by the pointer. */
 .pill {
   --tx: 0px;
   --ty: 0px;
@@ -62,19 +66,23 @@
     transform 0.22s var(--pill-quick),
     --pill-near 0.3s var(--pill-quick);
 }
+/* The small size, still a full 44 px touch target. */
 .pill-small {
   min-height: 44px;
   padding: 0 1.35em;
   font-size: 0.92rem;
 }
+/* The big size, for the main ways in. */
 .pill-big {
   min-height: 3.6em;
   padding: 0 1.9em;
 }
+/* A violet ring for keyboard focus, set clear of the pill. */
 .pill:focus-visible {
   outline: 2px solid var(--color-violet, #a98bff);
   outline-offset: 5px;
 }
+/* Pressed, it shrinks a little, quickly. */
 .pill.is-pressing {
   --s: 0.95;
   transition: transform 0.1s var(--pill-quick);
@@ -123,24 +131,28 @@
   pointer-events: none;
 }
 
-/* The words, and an optional small caption above them. */
+/* The words and icon sit under the ink as it floods in. */
 .pill-label,
 .pill-stack,
 .pill-icon {
   position: relative;
   z-index: 1;
 }
+/* The words ease their spacing when the pill lights. */
 .pill-label {
   transition: letter-spacing 0.35s var(--pill-quick);
 }
+/* Lit, the words spread a little wider. */
 .pill.is-lit .pill-label {
   letter-spacing: 0.04em;
 }
+/* The caption stacked over the label, centred. */
 .pill-stack {
   display: grid;
   justify-items: center;
   gap: 0.1em;
 }
+/* The caption: small spaced mono capitals, faded. */
 .pill-cap {
   font:
     400 max(11px, 0.62em) "Geist Mono",
@@ -162,20 +174,25 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* A slightly smaller icon on small pills. */
 .pill-small .pill-icon {
   width: 1.1em;
   height: 1.1em;
 }
+/* Each icon part turns and scales about its own centre. */
 .pill-icon * {
   transform-box: fill-box;
   transform-origin: center;
 }
+/* Lit, the icon bobs up once. */
 .pill.is-lit .pill-icon {
   animation: pill-bob 0.6s var(--pill-glide);
 }
+/* Lit, the accent part pops in. */
 .pill.is-lit .pill-accent {
   animation: pill-pop 0.5s var(--pill-glide);
 }
+/* Pressed, the icon hops. */
 .pill.is-pressing .pill-icon {
   animation: pill-hop 0.4s var(--pill-glide);
 }
@@ -189,17 +206,20 @@
     --pill-edge: 2;
   }
 }
+/* A small lift and back. */
 @keyframes pill-bob {
   40% {
     transform: translateY(-2px);
   }
 }
+/* The accent grows in from 60% as it fades in. */
 @keyframes pill-pop {
   from {
     transform: scale(0.6);
     opacity: 0;
   }
 }
+/* A quick hop with a slight squash. */
 @keyframes pill-hop {
   45% {
     transform: translateY(-1.5px) scale(0.93);

@@ -5,13 +5,18 @@ import { h } from "../shared/dom";
 import { coarse } from "./layout";
 import { chip } from "./ui";
 
-// A 16 px line icon in the text colour, and the five the controls use.
+// A 16 px line icon in the text colour.
 const icon = (path: string) =>
   `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+// A filled play triangle, for the guided tour.
 const PLAY = icon('<path d="M7 5l12 7-12 7z" fill="currentColor" stroke="none"/>');
+// Two bars, to pause the guided tour.
 const PAUSE = icon('<path d="M8 5v14M16 5v14"/>');
+// A speaker with waves, while sound is on.
 const SOUND = icon('<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 010 6M19 6.5a7.5 7.5 0 010 11"/>');
+// A speaker with a cross, while sound is off.
 const MUTE = icon('<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M17 10l4 4M21 10l-4 4"/>');
+// Four squares, for the overview of every scene.
 const GRID = icon(
   '<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',
 );
@@ -90,6 +95,7 @@ export class Chrome {
       h("span", { class: "eyebrow text-ink-2 whitespace-nowrap hidden xl:inline" }, TEAM.join("  ·  ")),
     );
     const top = h("div", { class: "topbar" }, this.tourButton, this.soundButton, overview, help);
+    // One dot per scene, each a button that goes to it.
     scenes.forEach((s, i) => {
       // A dot per scene down the right edge, its name shown on hover.
       const b = h("button", { type: "button", "aria-label": s.name }, h("span", {}, s.name));
@@ -119,6 +125,7 @@ export class Chrome {
     this.help.addEventListener("click", () => this.toggleHelp(false));
     // The overview: a card per scene with its number, name and summary.
     const grid = h("div", { class: "overview-grid" });
+    // One card per scene: its number, name and summary.
     scenes.forEach((s, i) => {
       const tile = h(
         "button",
@@ -127,6 +134,7 @@ export class Chrome {
         h("span", { class: "headline text-[24px] text-ink" }, s.name),
         h("span", { class: "text-[13px] text-ink-2 leading-snug" }, s.summary),
       ) as HTMLButtonElement;
+      // A click on a card closes the overview and goes there.
       tile.addEventListener("click", () => {
         this.toggleOverview(false);
         actions.go(i);
@@ -161,6 +169,7 @@ export class Chrome {
     layer.append(brand, top, this.bar, this.tourBar, this.dots, this.dock, this.help, this.overview);
     // Tab and Shift+Tab cycle the open panel's buttons, never leaving it.
     for (const sheet of [this.help, this.overview]) {
+      // On Tab, focus the next or previous button, wrapping round.
       sheet.addEventListener("keydown", (e) => {
         if (e.key !== "Tab") return;
         e.preventDefault();
@@ -172,6 +181,7 @@ export class Chrome {
     }
     // Back closes an open panel, and the address keeps naming the scene.
     addEventListener("popstate", () => {
+      // Skip the Back that sync made; a pushed entry closes the panel.
       if (this.unwinding) this.unwinding = false;
       else if (this.pushed) {
         this.pushed = false;
@@ -208,6 +218,7 @@ export class Chrome {
   // Opens or closes the overview; opening closes help, cards rising in.
   toggleOverview(on = !this.overview.classList.contains("on")) {
     this.overview.classList.toggle("on", on);
+    // Opening hides help and lets the cards rise in.
     if (on) {
       this.help.classList.remove("on");
       gsap.fromTo(

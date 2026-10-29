@@ -10,7 +10,7 @@ export const CARD = {
   path: "/og.jpg",
   width: 1200,
   height: 630,
-  alt: "QUARCC Purple. A market neutral strategy hedged by AI.",
+  alt: "QUARCC Purple at the McGill-FIAM Asset Management Hackathon 2026 Finals.",
 };
 
 // The content policy: only the site itself, plus R2 for the film.

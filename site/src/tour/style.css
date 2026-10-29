@@ -9,7 +9,7 @@
 /* Plain words in the code, such as blur(), that are not class names. */
 @source not inline("blur block filter fixed italic outline resize ring rounded table transform visible");
 
-/* Chrome in the corners, the story lower left, controls lower right. */
+/* The page fills the window, dark, with no scrolling or bounce. */
 html,
 body {
   height: 100%;
@@ -40,6 +40,7 @@ canvas#gl {
   padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
     max(20px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
+/* Only its buttons, inputs and links take clicks. */
 .ui :where(button, input, a) {
   pointer-events: auto;
 }
@@ -57,6 +58,7 @@ canvas#gl {
   opacity: 0;
   visibility: hidden;
 }
+/* Shown while its scene is on. */
 .panel.on {
   visibility: visible;
 }
@@ -75,6 +77,7 @@ canvas#gl {
   opacity: 0;
   visibility: hidden;
 }
+/* Shown while its scene is on. */
 .controls.on {
   visibility: visible;
 }
@@ -88,19 +91,23 @@ input[type="range"] {
   background: transparent;
   cursor: pointer;
 }
+/* Chrome and Safari: the track, filled purple up to --fill. */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 2px;
   background: linear-gradient(90deg, var(--purple) var(--fill, 0%), rgb(237 233 246 / 0.18) var(--fill, 0%));
   border-radius: 2px;
 }
+/* Firefox: the empty track. */
 input[type="range"]::-moz-range-track {
   height: 2px;
   background: rgb(237 233 246 / 0.18);
 }
+/* Firefox: the filled part, in purple. */
 input[type="range"]::-moz-range-progress {
   height: 2px;
   background: var(--purple);
 }
+/* Chrome and Safari: a glowing round thumb. */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
@@ -112,6 +119,7 @@ input[type="range"]::-webkit-slider-thumb {
     0 0 0 4px rgb(169 139 255 / 0.35),
     0 0 18px rgb(169 139 255 / 0.8);
 }
+/* Firefox: the same glowing thumb. */
 input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
@@ -138,14 +146,17 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0;
   transition: opacity 0.15s;
 }
+/* Shown while the pointer is on something. */
 .tip.on {
   opacity: 1;
 }
+/* Names in the tip, in mono and the full ink. */
 .tip strong {
   font-family: var(--mono);
   font-weight: 500;
   color: var(--ink);
 }
+/* Side notes in the tip, dimmer. */
 .tip .muted {
   color: var(--ink-3);
 }
@@ -154,6 +165,7 @@ input[type="range"]::-moz-range-thumb {
 .label3d {
   position: absolute;
   z-index: 1;
+  touch-action: none;
   left: 0;
   top: 0;
   white-space: nowrap;
@@ -165,9 +177,11 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0;
   transition: opacity 0.4s;
 }
+/* Shown while its scene wants it and its point is in front. */
 .label3d.on {
   opacity: 1;
 }
+/* Big labels in the display face. */
 .label3d.big {
   font-family: var(--display);
   font-size: 30px;
@@ -195,6 +209,7 @@ input[type="range"]::-moz-range-thumb {
   flex-direction: column;
   gap: 4px;
 }
+/* Each dot is a 26 by 22 px button. */
 .dots button {
   position: relative;
   width: 26px;
@@ -204,6 +219,7 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   padding: 0;
 }
+/* The dot itself, small and faint. */
 .dots button::before {
   content: "";
   position: absolute;
@@ -218,11 +234,13 @@ input[type="range"]::-moz-range-thumb {
     transform 0.3s,
     background 0.3s;
 }
+/* The current scene's dot: bigger, purple and glowing. */
 .dots button[aria-current="true"]::before {
   background: var(--purple);
   transform: scale(1.6);
   box-shadow: 0 0 12px var(--purple);
 }
+/* The scene's name, hidden to the left of its dot. */
 .dots button span {
   position: absolute;
   right: 30px;
@@ -237,6 +255,7 @@ input[type="range"]::-moz-range-thumb {
   transition: opacity 0.2s;
   pointer-events: none;
 }
+/* Its name shows on hover or keyboard focus. */
 .dots button:hover span,
 .dots button:focus-visible span {
   opacity: 1;
@@ -256,10 +275,10 @@ input[type="range"]::-moz-range-thumb {
 /* A labelled bar: label and value on one row, the track beneath. */
 .bar-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px;
+  grid-template-columns: 78px minmax(0, 1fr) 50px;
   align-items: center;
-  gap: 4px 12px;
-  font-size: 12.5px;
+  gap: 0 10px;
+  font-size: 12px;
   color: var(--ink-2);
 }
 /* A ranked row is a button, tinted under the pointer and once kept. */
@@ -270,15 +289,17 @@ input[type="range"]::-moz-range-thumb {
   padding: 3px 6px;
   border-radius: 8px;
 }
+/* Tinted under the pointer, or once kept. */
 .bar-row[role="button"]:hover,
 .bar-row[aria-pressed="true"] {
   background: rgb(169 139 255 / 0.12);
 }
+/* The track sits between the label and the value. */
 .bar-row .track {
-  grid-column: 1 / -1;
   height: 6px;
   position: relative;
 }
+/* The bar inside the track, placed by the script. */
 .bar-row .track i {
   position: absolute;
   top: 0;
@@ -306,6 +327,7 @@ input[type="range"]::-moz-range-thumb {
   gap: 8px;
   z-index: 5;
 }
+/* A header chip holding an icon, and sometimes a count. */
 .icon-chip {
   display: inline-flex;
   align-items: center;
@@ -327,6 +349,7 @@ input[type="range"]::-moz-range-thumb {
     opacity 0.25s,
     visibility 0.25s;
 }
+/* Open, it shows and takes clicks. */
 .sheet.on {
   opacity: 1;
   visibility: visible;
@@ -347,6 +370,7 @@ input[type="range"]::-moz-range-thumb {
   overflow-y: auto;
   backdrop-filter: blur(6px);
 }
+/* Scene cards, as many columns as fit, 230 px or wider. */
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -367,12 +391,14 @@ input[type="range"]::-moz-range-thumb {
     transform 0.2s,
     background 0.2s;
 }
+/* Lifted and tinted on hover or keyboard focus. */
 .tile:hover,
 .tile:focus-visible {
   border-color: rgb(169 139 255 / 0.65);
   background: rgb(169 139 255 / 0.1);
   transform: translateY(-2px);
 }
+/* The current scene's card has a gold edge. */
 .tile.current {
   border-color: var(--gold);
 }
@@ -389,9 +415,11 @@ input[type="range"]::-moz-range-thumb {
   padding: 8px 10px;
   outline: none;
 }
+/* A purple edge while typing. */
 .search:focus {
   border-color: rgb(169 139 255 / 0.7);
 }
+/* The example in the third ink. */
 .search::placeholder {
   color: var(--ink-3);
 }
@@ -425,24 +453,30 @@ kbd {
   white-space: nowrap;
   text-wrap: nowrap;
 }
+/* All tiles in one row, sharing the width. */
 [data-small] .stats {
   grid-template-columns: none;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
 }
+/* Smaller labels. */
 [data-small] .label3d {
   font-size: 11px;
 }
+/* Smaller big labels too. */
 [data-small] .label3d.big {
   font-size: 20px;
 }
+/* Tiny text in labels and charts, raised to 11 px. */
 [data-small] .label3d .text-\[10px\],
 [data-small] .controls svg text {
   font-size: 11px;
 }
+/* A label that is a button still takes taps. */
 [data-small] .label3d[role="button"] {
   pointer-events: auto;
 }
+/* No dots, names or counts; the dock does their job. */
 [data-small] .dots,
 [data-small] .brand,
 [data-small] .topbar .icon-chip svg + span {
@@ -462,21 +496,26 @@ kbd {
   overflow: hidden;
   pointer-events: auto;
 }
+/* Tapped open, the body shows in full. */
 [data-phone] .panel .body.open {
   -webkit-line-clamp: none;
 }
+/* Tighter tiles. */
 [data-phone] .stats > div {
   padding: 8px 9px 7px;
   gap: 2px;
 }
+/* Smaller values, kept on one line. */
 [data-phone] .stats b {
   font-size: 15px;
   white-space: nowrap;
 }
+/* Smaller captions. */
 [data-phone] .stats span {
   font-size: 11px;
   line-height: 1.25;
 }
+/* Controls span the width and scroll when tall. */
 [data-phone] .controls {
   left: max(16px, env(safe-area-inset-left, 0px));
   align-items: stretch;
@@ -487,11 +526,13 @@ kbd {
   scrollbar-width: none;
   pointer-events: auto;
 }
+/* The controls' glass box, tighter. */
 [data-phone] .controls > .glass {
   width: auto;
   padding: 10px 12px;
   gap: 6px;
 }
+/* A chip row scrolls sideways instead of wrapping. */
 [data-phone] .row {
   flex-wrap: nowrap;
   justify-content: flex-start;
@@ -499,40 +540,50 @@ kbd {
   scrollbar-width: none;
   pointer-events: auto;
 }
+/* With no scrollbar shown. */
 [data-phone] .row::-webkit-scrollbar {
   display: none;
 }
+/* Its chips keep their size. */
 [data-phone] .row > * {
   flex-shrink: 0;
 }
+/* A fold's first row wraps, unless it scrolls. */
 [data-phone] .fold > :first-child:not(.row) {
   flex-wrap: wrap;
 }
+/* An item that takes a whole line in a wrapped row. */
 [data-phone] .whole {
   flex-basis: 100%;
 }
+/* Folded detail and slider ends stay hidden. */
 [data-phone] .fold:not(.open) [data-more],
 [data-phone] .ends {
   display: none;
 }
+/* The fold chip shows on phones. */
 [data-phone] .more-toggle {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
 }
+/* Phone-only parts show, wrapping. */
 [data-phone] .small-only {
   display: flex;
   flex-wrap: wrap;
 }
+/* The side card scrolls, above the controls. */
 [data-phone] .card {
   overflow: auto;
   pointer-events: auto;
   padding: 12px 14px;
   z-index: 3;
 }
+/* An open card hides the controls beneath it. */
 [data-phone] .ui:has(.card:not([hidden])) .controls {
   visibility: hidden;
 }
+/* The dock: back, the scene's name and next, at the foot. */
 [data-phone] .dock {
   position: absolute;
   z-index: 4;
@@ -540,6 +591,7 @@ kbd {
   gap: 8px;
   bottom: max(12px, env(safe-area-inset-bottom, 0px));
 }
+/* Its chips are full 44 px targets. */
 [data-phone] .dock .chip {
   display: inline-flex;
   align-items: center;
@@ -548,13 +600,16 @@ kbd {
   height: 44px;
   gap: 8px;
 }
+/* The arrows, larger. */
 [data-phone] .dock .step {
   font-size: 18px;
   padding: 0;
 }
+/* An arrow with nowhere to go fades. */
 [data-phone] .dock .step:disabled {
   opacity: 0.3;
 }
+/* The scene's name fills the middle, cut with an ellipsis. */
 [data-phone] .dock .where {
   flex: 1;
   display: block;
@@ -563,6 +618,7 @@ kbd {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* The scene's number in the full ink. */
 [data-phone] .dock .where b {
   color: var(--ink);
   font-weight: 500;
@@ -574,13 +630,16 @@ kbd {
   bottom: auto;
   gap: 8px;
 }
+/* A smaller title. */
 [data-tour="stack"] .panel .headline {
   font-size: 30px;
 }
+/* Controls and card sit just above the dock. */
 [data-tour="stack"] .controls,
 [data-tour="stack"] .card {
   bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 56px);
 }
+/* The card spans the width above the dock. */
 [data-tour="stack"] .card {
   top: auto !important;
   left: max(16px, env(safe-area-inset-left, 0px));
@@ -588,20 +647,24 @@ kbd {
   width: auto;
   max-height: 46vh;
 }
+/* The dock spans the width. */
 [data-tour="stack"] .dock {
   left: max(16px, env(safe-area-inset-left, 0px));
   right: max(16px, env(safe-area-inset-right, 0px));
 }
+/* Shorter screens clamp the body to three lines. */
 @media (max-height: 760px) {
   [data-tour="stack"] .panel .body {
     -webkit-line-clamp: 3;
   }
 }
+/* Shorter still, two lines. */
 @media (max-height: 640px) {
   [data-tour="stack"] .panel .body {
     -webkit-line-clamp: 2;
   }
 }
+/* Shortest, one line. */
 @media (max-height: 600px) {
   [data-tour="stack"] .panel .body {
     -webkit-line-clamp: 1;
@@ -609,29 +672,36 @@ kbd {
 }
 /* The narrowest phones let tile values wrap and set tables smaller. */
 @media (max-width: 359px) {
+  /* Tile values may wrap. */
   [data-phone] .stats b {
     white-space: normal;
   }
+  /* Small table text a little smaller. */
   [data-phone] .controls .text-\[13px\] {
     font-size: 12px;
   }
 }
 /* Portrait tablets keep big type, the controls in their corner. */
 @media (min-width: 761px) {
+  /* A wider panel. */
   [data-tour="stack"] .panel {
     width: min(640px, calc(100vw - 32px));
   }
+  /* Big titles. */
   [data-tour="stack"] .panel .headline {
     font-size: 44px;
   }
+  /* Larger body text. */
   [data-tour="stack"] .panel .body {
     font-size: 15px;
   }
+  /* Controls and card in the right corner. */
   [data-tour="stack"] .controls,
   [data-tour="stack"] .card {
     left: auto;
     width: 440px;
   }
+  /* The dock in the same corner. */
   [data-tour="stack"] .dock {
     left: auto;
     width: 440px;
@@ -648,21 +718,26 @@ kbd {
   scrollbar-width: none;
   pointer-events: auto;
 }
+/* A smaller title. */
 [data-tour="side"] .panel .headline {
   font-size: 24px;
 }
+/* The body clamped to two lines. */
 [data-tour="side"] .panel .body {
   -webkit-line-clamp: 2;
 }
+/* A squeezed body clamps to one line until opened. */
 [data-tour="side"] .panel .body.tight:not(.open) {
   -webkit-line-clamp: 1;
 }
+/* Controls lower left, under the story. */
 [data-tour="side"] .controls {
   max-height: 50%;
   right: auto;
   width: min(340px, 46vw);
   bottom: max(10px, env(safe-area-inset-bottom, 0px));
 }
+/* The card at the right, over the scene. */
 [data-tour="side"] .card {
   top: 60px !important;
   right: max(16px, env(safe-area-inset-right, 0px)) !important;
@@ -675,6 +750,7 @@ kbd {
   right: max(16px, env(safe-area-inset-right, 0px));
   bottom: max(10px, env(safe-area-inset-bottom, 0px));
 }
+/* Very short screens clamp the body to one line. */
 @media (max-height: 360px) {
   [data-tour="side"] .panel .body {
     -webkit-line-clamp: 1;
@@ -683,12 +759,14 @@ kbd {
 
 /* Touch: 44 px targets, touch hints for keys, chips on one line. */
 @media (pointer: coarse) {
+  /* Every control at least 44 px tall. */
   .chip,
   .search,
   .bar-row[role="button"],
   input[type="range"] {
     min-height: 44px;
   }
+  /* Chips 44 px wide too, kept on one line. */
   .chip:not(.more-toggle) {
     min-width: 44px;
     display: inline-flex;
@@ -696,10 +774,12 @@ kbd {
     justify-content: center;
     white-space: nowrap;
   }
+  /* No key hints or dots. */
   .hint,
   .dots {
     display: none;
   }
+  /* Touch hints instead. */
   .touch-hint {
     display: block;
   }

@@ -90,20 +90,20 @@ PNPM_BUILDS = {
 LICENSES = """# Licences and handling
 
 - Organisers' files (data/organisers): competition use only, never redistributed.
-- WRDS (data/fiam_v1, data/v4/extracts): licensed through McGill for the team's academic
-  use. Private kit only, never public. Charts show derived results only.
+- WRDS (data/fiam_v1, data/v4/extracts): licensed through McGill for academic use.
+  Private kit only, never public. Charts show derived results only.
 - Carbon Arc (data/carbon_arc): derived results only, credited "Based in part on Carbon Arc
   data". Raw data never public. No training on MCP output. Human review on every use.
 - SEC EDGAR, company facts and 13F (data/edgar): public, pulled under SEC's fair-access
   rules with a contact in the User-Agent and at most 5 requests a second.
 - NOAA (data/noaa): US government public domain, cited as NOAA NCEI.
-- Amazon Reviews 2023 (data/amazon): research use approved by the team leader, cited as
+- Amazon Reviews 2023 (data/amazon): research use only, cited as
   Hou et al. 2024. Raw reviews never redistributed, only product-month summaries kept.
 - Models (models/, huggingface/): each under its publisher's licence, unchanged.
 """
 README = """FIAM finals kit
 
-Private to the team. It holds licensed data, so never post or share it.
+Private. It holds licensed data, so never post or share it.
 
 With a clone of the repo
   1. Install uv (https://docs.astral.sh/uv) or from installers/<your machine>/.
@@ -193,7 +193,7 @@ def parts() -> dict[str, list[tuple[Path, str]]]:
         "media-film": here("out/ad"),
         "weights-gemma": here(f"models/{GEMMA}", f"models/{GEMMA}.sha256.json"),
         "weights": here("models") + models,
-        # The two plans and every note at the repo root, local ones too.
+        # The two docs files and every note at the repo root, local ones too.
         "docs": here("docs/PLAN.md", "docs/TEAM.md", *sorted(p.name for p in ROOT.glob("*.md"))),
     }
 

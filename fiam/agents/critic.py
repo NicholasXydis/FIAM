@@ -15,7 +15,7 @@ from fiam.agents import harness as H
 
 ROOT = H.ROOT
 EXHIBITS = ROOT / paths.EXHIBITS
-PROMPT = ROOT / "prompts" / "agents" / "critic.md"
+PROMPT = ROOT / "fiam" / "agents" / "prompts" / "critic.md"
 
 # Ten each side. Fewer misses the book's character, more goes unread.
 TOP_N = 10
@@ -156,7 +156,7 @@ class Evidence:
             )
         )
 
-    # Every variant tried with its result, the shipped book, recall test.
+    # Each variant with its result, the final book and the recall test.
     def what_we_tried(self) -> dict:
         from fiam.exhibits import config_log
 

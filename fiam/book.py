@@ -1,4 +1,4 @@
-# Screen, score, neutralize, size, round and cost. Writes submission/.
+# Screen, score, neutralize, size, round and cost. Writes frozen/v1/.
 
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def load_panel(extra: tuple[str, ...] = ()) -> pd.DataFrame:
 def screen(
     panel: pd.DataFrame, first: str = FIRST_FORECAST, last: str = LAST_FORECAST, wrds: bool = True
 ):
-    # Never filter on a future return, that drops the companies that failed.
+    # Price and size only, never a return, so failed firms stay in.
     keep = (panel["prc"].abs() >= 5.0) & (panel["me"] >= 300.0)
     window = panel["eom"].between(first, last)
     # wrds=False is the book anyone rebuilds from organizer data alone.
@@ -237,8 +237,8 @@ def universe() -> pd.DataFrame:
     return built
 
 
-# Teachers' learned beta and crowding, committed to rebuild untrained.
-INPUTS = MODELS / "book_inputs.parquet"
+# Teachers' learned beta and crowding, kept in the data bundle.
+INPUTS = data.DIR / "models" / "book_inputs.parquet"
 
 
 # The composite neutral to the teacher's daily-return beta: the book.
@@ -274,7 +274,7 @@ def optimize_month(month: pd.DataFrame, previous: pd.Series | None = None) -> pd
 
 # Best score from one pool inside every limit. Exactly one right answer.
 def solve(month: pd.DataFrame, pool: pd.DataFrame, previous: pd.Series | None) -> pd.Series | None:
-    # Held names leaving the pool were force-sold. Re-adding cut turnover.
+    # Held names that leave the pool stay in it, so none is force-sold.
     if previous is not None:
         held = month[month["permno"].isin(previous.index) & ~month["permno"].isin(pool["permno"])]
         if not held.empty:
@@ -595,7 +595,7 @@ def run() -> dict:
 
     book = pd.DataFrame(rows).set_index("holding_month")
     check_compliance(book)
-    OUT.mkdir(exist_ok=True)
+    OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "exhibits").mkdir(exist_ok=True)
     write_holdings(fill_labels(pd.concat(holdings), panel))
     stats = performance(book)
@@ -641,7 +641,7 @@ def cached(name: str, depends: list, build):
 
 # One hash of code, prompts and pins. Same code, same hash, any machine.
 def source_fingerprint() -> dict:
-    files = [*Path("fiam").rglob("*.py"), *Path("prompts").rglob("*")]
+    files = [*Path("fiam").rglob("*.py"), *Path("fiam/agents/prompts").rglob("*")]
     files += [Path("run.py"), Path("requirements.txt")]
     files = sorted((f for f in files if f.is_file()), key=lambda f: f.as_posix())
     digest = hashlib.sha256()
@@ -656,7 +656,7 @@ round_floats = paths.round_floats
 
 # Deflated Sharpe: a PROBABILITY our Sharpe beats zero, not a Sharpe.
 def deflated_sharpe(excess: pd.Series, trials: int) -> tuple[float, float]:
-    # How high luck alone pushes the best of many tries, then if we beat it.
+    # How high luck alone lifts the best of many trials, then if we beat it.
     n = len(excess)
     # Monthly, scaled to a year only at the end.
     sr = excess.mean() / excess.std()
@@ -717,7 +717,7 @@ def _robustness_stats(df: pd.DataFrame) -> dict:
     conservative = df["net"] - df["missing_long_weight"] * MISSING_STRESS
     symmetric = conservative + df["missing_short_weight"] * MISSING_STRESS
 
-    # Narrow counts shippable tries, broad every fit. Both from the ledger.
+    # Narrow counts eligible trials, broad every fit. Both from the ledger.
     eligible, everything = config_log.attempts()
     dsr_eligible, luck_eligible = deflated_sharpe(df["excess"], eligible)
     dsr_all, luck_all = deflated_sharpe(df["excess"], everything)

@@ -7,8 +7,9 @@ import { box, fill, finder, fold, Label, months, type Player, SideCard, spark, s
 import { C, dust, header, pick, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
-// Height of the long and short discs, and seconds per month on Play.
+// Height of the long and short discs.
 const LIFT = 3.6;
+// Seconds per month while Play runs.
 const STEP = 0.62;
 // A stock's ticker, or a stand-in when it has none.
 const ticker = (i: number) => D.stocks.ticker[i] || "No ticker";
@@ -47,6 +48,7 @@ export class Universe extends Scene {
     this.dwell = 22;
     const r = seeded(11);
     this.halo = new Float32Array(STOCKS * 3);
+    // Give every stock a random spot in a wide flat ring.
     for (let i = 0; i < STOCKS; i++) {
       const a = r() * Math.PI * 2;
       const d = 8.5 + r() * 3.2;
@@ -101,6 +103,7 @@ export class Universe extends Scene {
       });
     seat(longs, LIFT, C.cyan);
     seat(shorts, -LIFT, C.orange);
+    // Stocks not held this month sit dim in the outer halo.
     for (let i = 0; i < STOCKS; i++) {
       if (!placed[i]) f.put(i, this.halo[i * 3], this.halo[i * 3 + 1], this.halo[i * 3 + 2], -0.42, C.dust, 0.42);
     }

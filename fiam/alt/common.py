@@ -1,14 +1,14 @@
-# Shared seal window, ticker links and SEC quarterly sales, alt tools.
+# Shared date limit, ticker links and SEC quarterly sales for alt tools.
 
 import numpy as np
 import pandas as pd
 
 from fiam.vfinal import sources
 
-# The last day a sealed run may read.
+# The last day a run may read while later data stay hidden.
 CUTOFF = pd.Timestamp("2020-12-31")
-# The one line a run past the cutoff prints while the seal holds.
-WAITS = "Waits for the unseal, a run past 2020-12-31 is refused while the data stay sealed"
+# The line a run past the cutoff prints while later data are hidden.
+WAITS = "A run past 2020-12-31 is refused while later data stay hidden"
 # The credit Carbon Arc's terms ask for.
 CREDIT = "Based in part on Carbon Arc data"
 # A quarter is 80 to 125 days, a year 350 to 380, nine months 250-290.
@@ -25,11 +25,11 @@ SALES_TAGS = (
 REVENUE_TAGS = ("Revenues",) + tuple(t for t in SALES_TAGS if t != "Revenues")
 
 
-# The run's last day: the cutoff, or later only once unsealed.
+# The run's last day: the cutoff, or later once the data gate opens.
 def run_end(end=None, opened: bool | None = None) -> pd.Timestamp | None:
     opened = sources.unsealed() if opened is None else opened
     last = CUTOFF if end is None else pd.Timestamp(end)
-    # Past the cutoff while sealed, the run is refused with one line.
+    # Past the cutoff while data are hidden, the run stops with one line.
     if last > CUTOFF and not opened:
         print(WAITS)
         return None
@@ -79,7 +79,7 @@ def correlation(x, y, least: int = 3) -> dict:
     return {"r": round(float(np.corrcoef(a[ok], b[ok])[0, 1]), 4), "n": n}
 
 
-# Tickers to PERMNO on each date through the sealed dated links.
+# Tickers to PERMNO on each date through the dated links.
 def permnos(tickers, dates) -> pd.Series:
     from fiam.vfinal import data, links
 
@@ -123,7 +123,7 @@ def quarter_facts(facts: pd.DataFrame, tags=SALES_TAGS, first_only: bool = True)
     return out.drop(columns=["rank", "derived"]).reset_index(drop=True)
 
 
-# Quarterly sales as filed for these stocks, on the sealed reader.
+# Quarterly sales as filed for these stocks, read up to the cutoff.
 def sec_quarters(stocks, tags=SALES_TAGS, first_only: bool = True) -> pd.DataFrame:
     from fiam.vfinal import data
 

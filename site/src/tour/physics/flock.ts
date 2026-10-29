@@ -2,19 +2,26 @@ import * as THREE from "three";
 
 // Points kept in each agent's trail.
 const TRAIL = 22;
-// Scratch reused every step, so the flock allocates nothing.
+// Scratch: the gap between two agents, or from one to its goal.
 const d = new THREE.Vector3();
+// Scratch: an agent's ball matrix.
 const m = new THREE.Matrix4();
+// Scratch: no turn, as the balls never rotate.
 const q = new THREE.Quaternion();
+// Scratch: an agent's ball size.
 const s = new THREE.Vector3();
+// Scratch: the sum of the pushes on one agent.
 const acc = new THREE.Vector3();
+// Scratch: the middle of an agent's nearby mates.
 const centre = new THREE.Vector3();
+// Scratch: the average velocity of those mates.
 const heading = new THREE.Vector3();
-// Speed limits in units per second, so no agent stalls or races off.
+// The fastest an agent may move, in units per second.
 const TOP = 3.6;
+// The slowest an agent may move, in units per second.
 const LOW = 1.2;
 
-// One AI agent: position, velocity, its herd and its last 22 positions.
+// One agent: position, velocity, its herd and its last 22 positions.
 export interface Bird {
   p: THREE.Vector3;
   v: THREE.Vector3;
@@ -38,7 +45,9 @@ export class Flock {
     this.colors = colors;
     // Park-Miller numbers from seed 1, so every load starts alike.
     let seed = 1;
+    // The next number from 0 to 1 in the sequence.
     const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    // Place each agent at random, with a random start velocity.
     herds.forEach((herd) => {
       const p = new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(12);
       const trail = new Float32Array(TRAIL * 3);
@@ -79,6 +88,7 @@ export class Flock {
   // Steers every agent, then moves it and redraws its trail.
   step(dt: number, time: number) {
     const n = this.birds.length;
+    // First pass: each agent's steer from the others and its goal.
     for (let i = 0; i < n; i++) {
       const b = this.birds[i];
       acc.set(0, 0, 0);
@@ -92,6 +102,7 @@ export class Flock {
         d.copy(b.p).sub(o.p);
         const dist = d.length();
         if (dist < 0.9) acc.addScaledVector(d, ((0.9 - dist) * 9) / Math.max(dist, 0.05));
+        // A herd mate within 5 adds to the centre and the heading.
         if (o.herd === b.herd && dist < 5) {
           centre.add(o.p);
           heading.add(o.v);
@@ -121,6 +132,7 @@ export class Flock {
     // A second pass moves them, so every steer read the same positions.
     const pos = this.lines.geometry.attributes.position.array as Float32Array;
     const col = this.lines.geometry.attributes.color.array as Float32Array;
+    // Move each agent, shift its trail and place its ball.
     for (let i = 0; i < n; i++) {
       const b = this.birds[i];
       b.p.addScaledVector(b.v, dt);
@@ -135,6 +147,7 @@ export class Flock {
       this.mesh.setMatrixAt(i, m);
       // Trail segments fade from 60% at the head toward the tail.
       const c = this.colors[b.herd];
+      // Write each trail segment's two ends and their faded colours.
       for (let k = 0; k < TRAIL - 1; k++) {
         const o = (i * (TRAIL - 1) + k) * 6;
         const fadeA = (1 - k / TRAIL) * lit * 0.6;

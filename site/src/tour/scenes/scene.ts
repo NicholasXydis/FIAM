@@ -108,6 +108,7 @@ export abstract class Scene {
       y: -10,
       duration: 0.4,
       ease: "power2.in",
+      // Once faded, drop the panel unless the scene came back.
       onComplete: () => {
         if (this.active) return;
         this.panel.classList.remove("on");
@@ -115,6 +116,7 @@ export abstract class Scene {
       },
     });
     for (const l of this.labels) l.hide();
+    // Hide the group once faded, unless the scene came back.
     fade(this.group, 0, 0.6, 0, () => {
       if (!this.active) this.group.visible = false;
     });
@@ -157,6 +159,7 @@ function fade(group: THREE.Object3D, to: number, duration: number, delay = 0, do
   group.traverse((o) => {
     const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
     if (!m || o.userData.keep) return;
+    // Fade each material, through its uOpacity if it has one.
     for (const one of Array.isArray(m) ? m : [m]) {
       const u = (one as THREE.ShaderMaterial).uniforms;
       const target = (u?.uOpacity ?? one) as unknown as Record<string, number>;
@@ -189,11 +192,13 @@ export function pick(f: Formation, from: number, to: number, x: number, y: numbe
   let best = -1;
   let bestD = radius * radius;
   const camera = w.stage.camera;
+  // Test each visible particle in range against the point.
   for (let i = from; i < Math.min(to, N); i++) {
     if (f.pos[i * 4 + 3] === 0 || f.col[i * 4 + 3] < 0.05) continue;
     where(f, i, w.sim).project(camera);
     if (v.z > 1) continue;
     const d = ((v.x * 0.5 + 0.5) * innerWidth - x) ** 2 + ((-v.y * 0.5 + 0.5) * innerHeight - y) ** 2;
+    // Keep the nearest particle so far.
     if (d < bestD) {
       bestD = d;
       best = i;
@@ -209,6 +214,7 @@ const ice = new THREE.Color(C.ice);
 export function dust(f: Formation, from: number, seed = 1, radius = 26, thickness = 1.4, alpha = 0.22) {
   const r = seeded(seed);
   const tint = new THREE.Color();
+  // Each leftover particle goes on one of two loose spiral arms.
   for (let i = from; i < N; i++) {
     const arm = Math.floor(r() * 2);
     const d = Math.pow(r(), 0.7) * radius + 2;
@@ -232,6 +238,7 @@ export function ball(
   r: () => number,
   shell = false,
 ) {
+  // Scatter count particles through a ball, or over its surface.
   for (let j = 0; j < count && k < N; j++, k++) {
     const u = r() * 2 - 1;
     const t = r() * Math.PI * 2;

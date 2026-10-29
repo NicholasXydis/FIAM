@@ -19,7 +19,7 @@ def members(eom, held_long=(), held_short=()) -> pd.DataFrame:
     rows = data.table("panel", ["me", "prc"], where={"eom": (eom, eom)})
     last = data.eom_session([eom]).iloc[0]
     data.assert_public_by(rows["first_close"], last, "universe panel rows")
-    # A stock trades on T, the month's last session, or it is out (M6).
+    # A stock trades on T, the month's last session, or it is out.
     day = data.table("dsf", ["ret"], where={"date": (last, last)})
     data.assert_public_by(day["first_close"], last, "universe dsf rows")
     traded = set(day.loc[day["ret"].notna(), "permno"])

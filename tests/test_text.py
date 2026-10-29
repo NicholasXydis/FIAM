@@ -212,12 +212,3 @@ def test_boilerplate_catches_spelling_variants():
         "Forward\u2011looking information.",
     ):
         assert text.strip_boilerplate(line + " Sales rose.") == "Sales rose."
-
-
-# A property row is right with no extra state and at most one miss.
-def test_property_right_rule():
-    from fiam.vfinal import hand_checks
-
-    assert hand_checks.property_right(["TX", "OH"], ["TX", "OH", "CA"])
-    assert not hand_checks.property_right(["TX", "NY"], ["TX"])
-    assert not hand_checks.property_right(["TX"], ["TX", "OH", "CA"])

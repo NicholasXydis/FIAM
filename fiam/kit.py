@@ -8,7 +8,7 @@ from fiam import paths
 
 NAME = "fiam_results.zip"
 MANIFEST = "kit_manifest.json"
-# Git-ignored outputs: research runs, agent cache, books, film, drafts.
+# Git-ignored outputs: research runs, agent cache, books, film, frozen/.
 PARTS = (
     "research",
     "cache/agents",
@@ -21,10 +21,6 @@ PARTS = (
     "out/figures/ai_crowd_poster.png",
     "out/figures/receipt.json",
     "out/figures/clips",
-    "mandates/case_2025_draft.json",
-    "mandates/case_2025_draft_quotes.json",
-    "mandates/rules_2026_draft.json",
-    "mandates/rules_2026_draft_quotes.json",
 )
 
 

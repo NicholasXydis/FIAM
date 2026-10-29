@@ -234,7 +234,7 @@ def scales(d: pd.DataFrame, factor) -> pd.DataFrame:
     return out
 
 
-# The as-filed SUE of every stock-quarter public by the seal.
+# The as-filed SUE of every stock-quarter public by the cutoff.
 def sue(log: dict) -> pd.DataFrame:
     cols = ["cik", "tag", "unit", "start", "end", "val", "accn", "form", "filed", "days"]
     f = data.table("sec_facts", cols, where={"unit": {"USD/shares"}})

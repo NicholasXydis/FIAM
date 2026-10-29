@@ -4,8 +4,9 @@ import path from "node:path";
 import { type Browser, chromium, type Page, webkit } from "playwright-core";
 import { PAGES, served, SITE, sleep } from "./lib.ts";
 
-// The website's build, and the tour's thirteen slides.
+// The website's build.
 const DIST = path.join(SITE, "dist");
+// The tour's thirteen slides.
 const SLIDES = 13;
 // Marks the on-screen copy never uses: long dashes, colons, semicolons.
 const BANNED = /[—–:;]/;
@@ -27,9 +28,11 @@ function addresses() {
     [/\.js$/, /"(\/(?:assets|people)\/[^"#?]+)"/g],
     [/\.webmanifest$/, /"src":\s*"(\/[^"]+)"/g],
   ];
+  // Look in each file whose kind has a pattern.
   for (const file of all) {
     const pattern = patterns.find(([ext]) => ext.test(file))?.[1];
     if (!pattern) continue;
+    // Each local address the file names must exist in the build.
     for (const [, at] of fs.readFileSync(file, "utf8").matchAll(pattern)) {
       if (at!.startsWith("//")) continue;
       const target = path.join(DIST, at!.endsWith("/") ? `${at}index.html` : at!);
@@ -47,8 +50,10 @@ function marks({ banned, slide }: { banned: string; slide: number | null }) {
     slide === null
       ? [document.body]
       : [document.querySelectorAll(".panel")[slide]!, document.querySelectorAll(".controls")[slide]!];
+  // Walk every text node in each root.
   for (const root of roots) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    // Keep visible text that has a banned mark.
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       const el = n.parentElement;
       const text = n.textContent ?? "";
@@ -64,6 +69,7 @@ function marks({ banned, slide }: { banned: string; slide: number | null }) {
 
 // Waits, up to five seconds, for a slide's story to finish rising in.
 async function settle(page: Page, slide: number) {
+  // Ask every 100 ms if the panel is on, opaque and still.
   for (let i = 0; i < 50; i++) {
     const still = await page.evaluate((n) => {
       const panel = document.querySelectorAll<HTMLElement>(".panel")[n];
@@ -87,6 +93,7 @@ async function tab(browser: Browser, options: Parameters<Browser["newContext"]>[
   page.setDefaultNavigationTimeout(process.env["CI"] ? 120_000 : 30_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
+  // Console errors count, but not failed resource loads.
   page.on("console", (m) => {
     if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) errors.push(`console: ${m.text()}`);
   });
@@ -98,11 +105,14 @@ async function site(browser: Browser, base: string) {
   const problems: string[] = [];
   const { page, errors } = await tab(browser, { viewport: { width: 1280, height: 800 }, reducedMotion: "reduce" });
   const people = [] as string[];
+  // Each page: its banned marks, its people, then the keyboard.
   for (const [name, at] of PAGES) {
     await page.goto(base + at);
     await sleep(300);
+    // Every banned mark on the page is a problem.
     for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: null }))
       problems.push(`${name} shows "${m}"`);
+    // The team page lists the people to visit next.
     if (at === "/team/")
       people.push(...(await page.$$eval("[data-slug]", (els) => els.map((e) => e.dataset["slug"]!))));
     problems.push(...(await keys(page, name)));
@@ -111,6 +121,7 @@ async function site(browser: Browser, base: string) {
   for (const slug of people) {
     await page.goto(`${base}/team/#${slug}`, { waitUntil: "domcontentloaded" });
     await sleep(300);
+    // Every banned mark on the profile is a problem.
     for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: null }))
       problems.push(`${slug} shows "${m}"`);
   }
@@ -124,8 +135,10 @@ async function site(browser: Browser, base: string) {
 async function keys(page: Page, name: string) {
   const problems: string[] = [];
   const seen: string[] = [];
+  // Press Tab up to 40 times, until focus comes back round.
   for (let i = 0; i < 40; i++) {
     await page.keyboard.press("Tab");
+    // What has focus, whether it shows a ring and is on screen.
     const now = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
@@ -171,6 +184,7 @@ async function desk(browser: Browser, base: string, width: number, height: numbe
   const { page, errors } = await tab(browser, { viewport: { width, height } });
   await page.goto(`${base}/tour/#0`);
   await sleep(1500);
+  // Step through every slide with the right arrow key.
   for (let s = 0; s < SLIDES; s++) {
     if (s) await page.keyboard.press("ArrowRight");
     await sleep(250);
@@ -179,6 +193,7 @@ async function desk(browser: Browser, base: string, width: number, height: numbe
     if (got.hash !== `#${s}`) problems.push(`${at}: the arrow key reached ${got.hash}`);
     if (got.title > 1 || got.wide) problems.push(`${at}: the title takes ${got.title} lines`);
     if (got.body > 2) problems.push(`${at}: the paragraph takes ${got.body} lines`);
+    // At 1280 wide, also check the slide for banned marks.
     if (width === 1280)
       for (const m of await page.evaluate(marks, { banned: BANNED.source, slide: s }))
         problems.push(`${at} shows "${m}"`);
@@ -194,6 +209,7 @@ function phone(slide: number) {
   // Shown with a size, and not faded or hidden by any parent.
   const shows = (el: Element | null): el is HTMLElement => {
     if (!el || el.closest("[hidden]")) return false;
+    // Walk up the parents; any hidden or faded one hides it.
     for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
       const s = getComputedStyle(e);
       if (s.display === "none" || s.visibility === "hidden" || +s.opacity < 0.05) return false;
@@ -201,10 +217,12 @@ function phone(slide: number) {
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
   };
+  // Whether two boxes overlap by more than a pixel.
   const hit = (a: DOMRect, b: DOMRect) =>
     a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
   const story = document.querySelectorAll(".panel")[slide] ?? null;
   const controls = document.querySelectorAll(".controls")[slide] ?? null;
+  // The slide's boxes and the chrome, each with its box if shown.
   const named = (
     [
       ["story", story],
@@ -214,6 +232,7 @@ function phone(slide: number) {
       ["Back", document.querySelector(".tour-back")],
     ] as const
   ).flatMap(([n, el]) => (shows(el) ? [[n, el.getBoundingClientRect()] as const] : []));
+  // No two of those boxes may meet.
   for (let i = 0; i < named.length; i++)
     for (let j = i + 1; j < named.length; j++)
       if (hit(named[i]![1], named[j]![1])) problems.push(`the ${named[i]![0]} meets the ${named[j]![0]}`);
@@ -221,6 +240,7 @@ function phone(slide: number) {
   if (head && head.scrollWidth > head.clientWidth + 1) problems.push("the title is cut");
   // Text in a scrolling row, panel or the dock may run past the edge.
   const walker = document.createTreeWalker(document.querySelector(".ui")!, NodeFilter.SHOW_TEXT);
+  // Each visible text must stay on screen and be 11 px or more.
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const el = n.parentElement;
     if (!n.textContent?.trim() || !shows(el) || el.closest(".sheet, .label3d, .row, .where, .dots")) continue;
@@ -232,11 +252,14 @@ function phone(slide: number) {
     const r = range.getBoundingClientRect();
     const scroller = el.closest(".panel, .controls, .card");
     const clipped = scroller && scroller.scrollHeight > scroller.clientHeight + 1;
+    // Text off screen counts unless its box scrolls.
     if (!clipped && (r.left < -1 || r.right > innerWidth + 1 || r.top < -1 || r.bottom > innerHeight + 1))
       problems.push(`"${n.textContent.trim().slice(0, 24)}" runs off screen`);
+    // Text under 11 px is too small to read.
     if (parseFloat(getComputedStyle(el).fontSize) < 11)
       problems.push(`"${n.textContent.trim().slice(0, 24)}" is under 11px`);
   }
+  // Every tap target must be at least 44 px each way.
   for (const el of document.querySelectorAll(".ui button, .ui input, .ui [role=button], .tour-back")) {
     const box = el.closest(".panel, .controls");
     if (!shows(el) || el.closest(".sheet, .dots, .label3d") || (box && box !== story && box !== controls)) continue;
@@ -252,6 +275,7 @@ async function phones(browser: Browser, base: string, width: number, height: num
   const { page, errors } = await tab(browser, { viewport: { width, height }, isMobile: true, hasTouch: true });
   await page.goto(`${base}/tour/#0`);
   await sleep(1500);
+  // Visit each slide by its address and check it by the rules.
   for (let s = 0; s < SLIDES; s++) {
     await page.evaluate((n) => (location.hash = `#${n}`), s);
     await settle(page, s);
@@ -269,7 +293,9 @@ export async function fast() {
   // Chrome draws the tour's WebGL in software, as a laptop GPU would.
   const gpu = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
   const [blink, safari] = await Promise.all([chromium.launch({ args: gpu }), webkit.launch()]);
+  // Close both browsers even if a check throws.
   try {
+    // Run all the browser checks side by side on one server.
     await served(DIST, async (base) => {
       const parts = await Promise.all([
         site(blink, base),

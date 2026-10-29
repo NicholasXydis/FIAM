@@ -17,10 +17,12 @@ import { PAGES, REPO, served, SITE, sleep } from "./lib.ts";
 const OUT = path.join(REPO, "out", "screens");
 // Playwright's three engines: Safari's, Chrome's and Firefox's.
 const ENGINES = { chromium, firefox, webkit };
+// One engine's name.
 type Engine = keyof typeof ENGINES;
 
 // Starts an engine, or says how to install it when it is missing.
 async function launch(engine: Engine) {
+  // A missing engine gets a clear fix; other errors pass on.
   try {
     return await ENGINES[engine].launch();
   } catch (error) {
@@ -125,9 +127,11 @@ function inspect() {
   if (scroll > 1) problems.push(`scrolls sideways by ${scroll}px`);
   // Text a reader meets; decorative copies, like a pill's ink, are not.
   const read = (el: Element) => !el.closest(".pill-ink");
+  // Every visible element holding words a reader meets.
   const texts = [...document.body.querySelectorAll("*")].filter(
     (el) => [...el.childNodes].some(texty) && shown(el) && read(el),
   );
+  // Each text must sit on screen, unclipped, at 11 px or more.
   for (const el of texts) {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
@@ -137,7 +141,9 @@ function inspect() {
   }
   // Each line of each text as a tight box, so wide blocks do not overlap.
   const lines: { el: Element; r: DOMRect }[] = [];
+  // Gather the box of every line of every text.
   for (const el of texts) {
+    // Only its own text nodes count, not child elements.
     for (const node of el.childNodes) {
       if (!texty(node)) continue;
       const range = document.createRange();
@@ -145,24 +151,32 @@ function inspect() {
       for (const r of range.getClientRects()) if (r.width > 1 && r.height > 1) lines.push({ el, r });
     }
   }
+  // No two lines from different texts may overlap much.
   for (let i = 0; i < lines.length; i++) {
+    // Compare each later line with this one.
     for (let j = i + 1; j < lines.length; j++) {
       const [a, b] = [lines[i]!, lines[j]!];
       if (a.el === b.el || a.el.contains(b.el) || b.el.contains(a.el)) continue;
       const x = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
       const y = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      // Overlap over 2 px across and 30% of a line high.
       if (x > 2 && y > 0.3 * Math.min(a.r.height, b.r.height))
         problems.push(`text overlaps: "${words(a.el)}" and "${words(b.el)}"`);
     }
   }
+  // On touch screens, every target must be 44 px each way.
   if (matchMedia("(pointer: coarse)").matches) {
+    // Check every link, button and field on the page.
     for (const el of document.querySelectorAll("a[href], button, input, select, [role=button]")) {
       const r = el.getBoundingClientRect();
+      // A shown target smaller than that is a problem.
       if (shown(el) && (r.width < 44 || r.height < 44))
         problems.push(`target under 44px (${Math.round(r.width)}x${Math.round(r.height)}): "${words(el)}"`);
     }
   }
+  // How many times each path is linked on the page.
   const links = new Map<string, number>();
+  // Count each shown link but anchors and the brand.
   for (const a of document.querySelectorAll<HTMLAnchorElement>("a[href]")) {
     if (!shown(a) || a.getAttribute("href")?.startsWith("#") || a.classList.contains("brand")) continue;
     const href = new URL(a.href).pathname;
@@ -175,6 +189,7 @@ function inspect() {
 // Loads a page, waits for its fonts and pictures, and gives its status.
 async function load(tab: Page, url: string) {
   const reply = await tab.goto(url, { waitUntil: "load" });
+  // Wait in the page for its fonts and every picture.
   await tab.evaluate(async () => {
     await document.fonts.ready;
     const waiting = [...document.images].filter((i) => !i.complete);
@@ -195,9 +210,11 @@ const named = (...parts: string[]) =>
 async function onDevices(list: Device[], base: string) {
   const results: Result[] = [];
   const browsers: Partial<Record<Engine, Browser>> = {};
+  // Each device gets a fresh context, then every page in it.
   for (const device of list) {
     const browser = (browsers[device.engine] ??= await launch(device.engine));
     const context = await browser.newContext({ ...device.options, reducedMotion: "reduce" });
+    // Load each page, note its errors, then shoot and inspect it.
     for (const [page, at, status] of PAGES) {
       const tab = await context.newPage();
       const errors: string[] = [];
@@ -208,6 +225,7 @@ async function onDevices(list: Device[], base: string) {
           errors.push(`console error: ${m.text()}`);
       });
       tab.on("requestfailed", (r) => errors.push(`could not load ${new URL(r.url()).pathname}`));
+      // Any failed answer but the page's own counts as an error.
       tab.on("response", (r) => {
         if (r.status() >= 400 && !r.request().isNavigationRequest())
           errors.push(`${new URL(r.url()).pathname} answered ${r.status()}`);
@@ -228,6 +246,7 @@ async function onDevices(list: Device[], base: string) {
 // Back after following a link returns to the page it left, per engine.
 async function back(base: string) {
   const problems: string[] = [];
+  // In each engine, follow the team link and press Back.
   for (const engine of Object.keys(ENGINES) as Engine[]) {
     const browser = await launch(engine);
     const tab = await browser.newPage({ reducedMotion: "reduce" });
@@ -256,13 +275,17 @@ async function sweep(base: string): Promise<Swept[]> {
   const found = new Map<string, string[]>();
   const browser = await launch("chromium");
   const tab = await browser.newPage({ reducedMotion: "reduce" });
+  // Each page at every shape and width in the range.
   for (const [page, at] of PAGES) {
     await load(tab, base + at);
+    // Each shape, from tall phone to ultrawide.
     for (const shape of SHAPES) {
+      // Widths 280 to 3840, skipping heights out of range.
       for (let w = 280; w <= 3840; w += 40) {
         const h = Math.round(w / shape);
         if (h < 280 || h > 2400) continue;
         await tab.setViewportSize({ width: w, height: h });
+        // Note each problem with the size it showed at.
         for (const p of await tab.evaluate(inspect)) {
           const key = `${page}: ${p}`;
           found.set(key, [...(found.get(key) ?? []), `${w}x${h}`]);
@@ -277,12 +300,15 @@ async function sweep(base: string): Promise<Swept[]> {
 // The iOS Simulator's tool through any installed Xcode, or null.
 function simulator() {
   let found = "";
+  // Ask Spotlight where Xcode is; no answer is fine.
   try {
     found = execFileSync("mdfind", ["kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"], { encoding: "utf8" });
   } catch {}
   const dirs = [process.env["DEVELOPER_DIR"], ...found.split("\n").map((x) => x && `${x}/Contents/Developer`)];
+  // Use the first Xcode whose simctl answers.
   for (const dir of dirs.filter((d): d is string => !!d)) {
     const env = { ...process.env, DEVELOPER_DIR: dir };
+    // A working simctl gives a runner bound to this Xcode.
     try {
       execFileSync("xcrun", ["simctl", "help"], { env, stdio: "ignore" });
       return (...args: string[]) =>
@@ -306,6 +332,7 @@ async function onSimulators(base: string) {
   const lists: Record<string, Simulated[]> = JSON.parse(simctl("list", "devices", "available", "-j")).devices;
   const available = Object.values(lists).flat();
   const results: Result[] = [];
+  // Boot each wanted device, shoot every page, then leave it as found.
   for (const want of ["iPhone 17e", "iPhone 17 Pro Max", "iPad mini", "iPad Pro 13"]) {
     const sim = available.find((d) => d.name.startsWith(want));
     if (!sim) continue;
@@ -314,6 +341,7 @@ async function onSimulators(base: string) {
     // Safari's first start after a boot is slow, so it warms up first.
     simctl("openurl", sim.udid, `${base}/`);
     await sleep(8000);
+    // Open each page in Safari and shoot the screen.
     for (const [page, at] of PAGES) {
       simctl("openurl", sim.udid, base + at);
       await sleep(5000);
@@ -333,6 +361,7 @@ function sheet(results: Result[], swept: Swept[], backs: string[], note: string)
   const rows = new Map<string, Result[]>();
   for (const r of results) rows.set(r.device.name, [...(rows.get(r.device.name) ?? []), r]);
   const count = results.reduce((n, r) => n + r.problems.length, 0) + swept.length + backs.length;
+  // One section per device, its shots in a row with problems.
   const body = [...rows]
     .map(([name, shots]) => {
       const first = shots[0]!.device;
@@ -349,9 +378,11 @@ function sheet(results: Result[], swept: Swept[], backs: string[], note: string)
     .join("");
   // How many sizes beyond the six the sheet lists.
   const more = (n: number) => (n > 6 ? ` and ${n - 6} more` : "");
+  // The sweep's problems, each with its first six sizes.
   const sweepList = swept.map(
     (s) => `<li>${esc(s.problem)} <small>at ${s.sizes.slice(0, 6).join(", ")}${more(s.sizes.length)}</small></li>`,
   );
+  // The whole sheet as one HTML page.
   const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Device checks</title>
 <style>body{margin:0;padding:24px max(16px,env(safe-area-inset-left));background:#0b0a10;color:#e9e6f2;font:14px/1.5 system-ui,sans-serif}h1{font-weight:600}h2{font-size:15px;margin:28px 0 8px}small{color:#9b96ab;font-weight:400}.row{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}figure{margin:0;flex:0 0 220px}img{width:220px;border:1px solid #2a2735;border-radius:6px;display:block}figcaption{color:#9b96ab;font-size:12px;margin-top:4px}.bad{color:#ff8a7a;font-size:12px;margin:4px 0 0}.ok{color:#8fe3a8}</style>
 <h1>Device checks <small>${new Date().toISOString().slice(0, 16).replace("T", " ")}</small></h1>
@@ -365,6 +396,7 @@ ${backs.map((b) => `<p class="bad">${esc(b)}</p>`).join("")}${sweepList.length ?
 export async function screens({ full = false, sim = false } = {}) {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
+  // Run every check on the served build, then write the sheet.
   return served(path.join(SITE, "dist"), async (url) => {
     const results = await onDevices(full ? FULL : QUICK, url);
     const backs = await back(url);

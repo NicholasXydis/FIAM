@@ -10,7 +10,7 @@ import pandas as pd
 from fiam.vfinal import clock, data, inputs, sources
 
 ROOT = Path(__file__).resolve().parents[2]
-MANDATE = ROOT / "mandates" / "finals_2026.json"
+MANDATE = ROOT / "frozen" / "vfinal" / "finals_2026.json"
 # The fifth straight missing day writes a held name off.
 STUB_DAYS = 5
 # Shumway (1997): a long loses 30%, a short owes 10% more.
@@ -198,7 +198,7 @@ class Market:
         for r in self.exits.get(permno, []):
             if r["exit_date"] < opened:
                 continue
-            # A data gap closes at its last price once its rows stop (2B).
+            # A data gap closes at its last price once its rows stop.
             if r["category"] == "data_gap" and d > r["exit_date"]:
                 return r
             if pd.isna(r["first_close"]) or r["first_close"] > d:
@@ -269,7 +269,7 @@ def run(
     reader = getattr(data.table, "synthetic", False)
     if synthetic and (unsealed or sources.unsealed() or not reader):
         raise clock.SealedWindow("a synthetic run needs the rehearsal's reader, sealed")
-    # Blind mode refuses a window past the seal; it never truncates one.
+    # Blind mode refuses a window past the cutoff; it never cuts one short.
     if end > clock.LAST_LABEL_DAY and not unsealed and not synthetic:
         raise clock.SealedWindow(f"the book ends {end:%Y-%m-%d}, after 2020-12-31")
     # Only the data gate opens the registry's 2021+ rows.
@@ -291,7 +291,7 @@ def run(
     if lag < rules["lag_days"] and not same_day:
         raise ValueError(f"lag {lag} is under the rules' {rules['lag_days']} (PDF p15)")
     days = data.sessions(start, end)
-    # The run past the seal is the finals run, in its window only.
+    # The run past the cutoff is the finals run, in its window only.
     if unsealed and strict:
         finals_window(rules, days)
     on_days, orders = set(days), {}
@@ -314,7 +314,7 @@ def run(
     for i, d in enumerate(days):
         book.step(i, d, orders.get(d))
     result = book.result()
-    # Past the seal any PDF limit breach stops the build.
+    # Past the cutoff any PDF limit breach stops the build.
     if strict:
         found = breaches(result)
         if len(found):
@@ -422,7 +422,7 @@ class Book:
             self.missing.pop(permno, None)
             return float(r), "dsf"
         if d <= data.CRSP_END and not np.isnan(m.crsp_retx[i, j]):
-            # The dsf lost a stock CRSP still trades: marked, sold next (2B).
+            # The dsf lost a stock CRSP still trades: marked, sold next.
             r = float(m.crsp_retx[i, j])
             self.missing.pop(permno, None)
             if permno in self.last_price:
@@ -545,7 +545,7 @@ class Book:
                 continue
             ok = j is not None and m.has_row[i, j] and not np.isnan(m.ret[i, j])
             crsp = j is not None and d <= data.CRSP_END and not np.isnan(m.crsp_retx[i, j])
-            # A sale may use CRSP's close; a purchase needs the dsf's (2B).
+            # A sale may use CRSP's close; a purchase needs the dsf's.
             if not ok and not (goal == 0.0 and crsp):
                 self.event(d, permno, "unfilled", goal - have)
                 continue

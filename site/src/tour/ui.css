@@ -89,6 +89,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
+/* Hovered or pressed toggle tiles tint purple. */
 .stats > [role="button"]:hover,
 .stats > [aria-pressed="true"] {
   background: rgb(169 139 255 / 0.16);
@@ -126,6 +127,7 @@ input:focus-visible {
   outline: 2px solid var(--purple);
   outline-offset: 2px;
 }
+/* A tile's ring sits inside it, since the grid clips its edges. */
 .stats > [role="button"]:focus-visible {
   outline-offset: -2px;
 }

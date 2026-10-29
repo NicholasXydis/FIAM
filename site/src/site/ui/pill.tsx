@@ -23,6 +23,7 @@ interface Props {
 export function Pill(props: Props) {
   const { label, icon, href, onPress, onTap, pressed, caption, trailing = false, external = false } = props;
   const { size = "small", className } = props;
+  // The words: a caption over the label, or the label alone.
   const words: ReactNode = caption ? (
     <span className="pill-stack">
       <span className="pill-cap">{caption}</span>
@@ -31,6 +32,7 @@ export function Pill(props: Props) {
   ) : (
     <span className="pill-label">{label}</span>
   );
+  // The icon before the words, or after them when trailing.
   const face = trailing ? (
     <>
       {words}
@@ -42,6 +44,7 @@ export function Pill(props: Props) {
       {words}
     </>
   );
+  // The face twice: once plain, once again in the ink layer.
   const body = (
     <>
       {face}

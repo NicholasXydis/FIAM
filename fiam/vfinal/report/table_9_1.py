@@ -129,7 +129,7 @@ def avg_min_max(x: pd.Series, places: int) -> str:
     return f"avg {x.mean():.{places}f}, min {x.min():.{places}f}, max {x.max():.{places}f}"
 
 
-# The 23 rows: row, name, strategy, benchmark and a note of any reading.
+# The 23 rows: row, name, strategy, benchmark and a note on each.
 def table(daily, trades, positions, bench, rf_monthly=None, caps=None) -> pd.DataFrame:
     start = float(daily["nav"].iloc[0] / (1 + daily["ret"].iloc[0]))
     prev = daily["nav"].shift(1)
@@ -168,7 +168,7 @@ def table(daily, trades, positions, bench, rf_monthly=None, caps=None) -> pd.Dat
                  f"HAC 5 lags; Dimson beta {dimson(y_d, x_d, LAGS_DAILY):.3f}"))  # fmt: skip
     rows.append((8, "Sharpe ratio", annual_ratio(m["excess"]), "undefined, constant excess",
                  "monthly excess over the bill, mean / sd x sqrt 12"))  # fmt: skip
-    # Row 9 adds back the engine's trading and borrow dollars (reading).
+    # Row 9 adds back the engine's trading and borrow dollars.
     before = d["ret"] + (d["cost"] + d["borrow"]) / prev
     active_before = compound(before) - hurdle_m
     rows.append((9, "IR vs T-bill + 4%, before costs", annual_ratio(active_before), NA,
@@ -182,7 +182,7 @@ def table(daily, trades, positions, bench, rf_monthly=None, caps=None) -> pd.Dat
                  "worst calendar-month return"))  # fmt: skip
     rows.append((13, "Max one-day loss (%)", d["ret"].min() * 100, hurdle_d.min() * 100,
                  "worst daily return"))  # fmt: skip
-    # Rows 14-16 count the sessions from the first trade day on (reading).
+    # Rows 14-16 count the sessions from the first trade day on.
     traded = d.index[d["traded"].astype(bool)]
     live = d[d.index >= traded.min()] if len(traded) else d
     names = live["n_long"] + live["n_short"]

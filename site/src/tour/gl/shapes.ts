@@ -92,8 +92,10 @@ export function streams(
   const lane = new Float32Array(total);
   const tint = new THREE.Color();
   let k = 0;
+  // Fill in each path's particles with its ends, colour and lane.
   paths.forEach((p, i) => {
     tint.setHex(p.color);
+    // Each particle gets the path's points and a random phase.
     for (let j = 0; j < p.count; j++, k++) {
       a.set(p.a.toArray(), k * 3);
       b.set(p.b.toArray(), k * 3);

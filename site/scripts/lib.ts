@@ -7,8 +7,9 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { localHeadersFor, readHeaders } from "./headers.ts";
 
-// The site's folder and the repo around it.
+// The site's own folder.
 export const SITE = path.resolve(import.meta.dirname, "..");
+// The repo folder that holds the site.
 export const REPO = path.resolve(SITE, "..");
 
 // A tool from the site's own packages.
@@ -59,6 +60,7 @@ const TYPES: Record<string, string> = {
 // The file an address names inside a build, or null when it cannot.
 function locate(base: string, url: string) {
   let name: string;
+  // A broken percent escape in the address throws.
   try {
     name = decodeURIComponent(new URL(url, "http://localhost").pathname);
   } catch {
@@ -77,13 +79,16 @@ export async function serve(root: string) {
   const rules = fs.existsSync(path.join(base, "_headers"))
     ? readHeaders(fs.readFileSync(path.join(base, "_headers"), "utf8"))
     : [];
+  // Answer each request with its file, headers and status.
   const server = http.createServer((req, res) => {
+    // Send every header rule that matches the address.
     for (const [name, value] of localHeadersFor(rules, new URL(req.url ?? "/", "http://site").pathname)) {
       res.setHeader(name, value);
     }
     let file = locate(base, req.url ?? "/");
     if (file === null) return void res.writeHead(400).end();
     let status = 200;
+    // A missing file gets the build's 404 page, or a bare 404.
     if (!fs.existsSync(file)) {
       file = path.join(base, "404.html");
       status = 404;
@@ -109,6 +114,7 @@ export async function serve(root: string) {
 // Serves a build while some work runs, and stops even if it fails.
 export async function served<T>(root: string, work: (url: string) => Promise<T>) {
   const server = await serve(root);
+  // Close the server whether the work passes or throws.
   try {
     return await work(server.url);
   } finally {

@@ -9,7 +9,7 @@ import pandas as pd
 from fiam.vfinal import compustat, data, links, universe
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "out" / "vfinal" / "rebuild"
+OUT = ROOT / "out" / "audit" / "engine" / "rebuild"
 # The rebuild's span and the gap's span.
 REBUILD = (pd.Timestamp("2015-01-31"), pd.Timestamp("2020-12-31"))
 GAP = (pd.Timestamp("2011-01-01"), pd.Timestamp("2020-12-31"))

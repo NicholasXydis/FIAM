@@ -1,4 +1,4 @@
-# Writes final/ from the locked run: final_results.py [--into dir].
+# Writes frozen/vfinal/final/ from the locked run: [--into dir].
 
 import csv
 import gzip
@@ -14,11 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from fiam.vfinal.report.table_9_1 import rebalances  # noqa: E402
 
-OUTPUTS = ROOT / "frozen" / "vfinal" / "outputs.json"
-CARDS = ROOT / "data" / "v4" / "cards"
-INTO = ROOT / "final"
+FROZEN = ROOT / "frozen" / "vfinal"
+OUTPUTS, INPUTS = FROZEN / "outputs.json", FROZEN / "inputs.json"
+INTO = ROOT / "frozen" / "vfinal" / "final"
+# The headline book's folder inside the locked output folder.
+BOOK = "bw_fresh_lag"
 # The input cards whose raw hashes name the organisers' files.
 CARRIED_CARDS = ("dsf", "panel")
+CARDS, CHAR_LIST = "data/v4/cards", "data/organisers/factor_char_list.csv"
 # Ledger kinds by daily column: price moves and position closes.
 PRICE, EXITS = ("price",), ("exit", "stub", "true_up")
 # The engine's daily marks carried beside NAV, as booked.
@@ -38,29 +41,32 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
-# The locked run's record: its commit, folder and file digests.
+# The locked outputs: their folder and every file's digest.
 def locked() -> dict:
     return json.loads(OUTPUTS.read_text(encoding="utf-8"))
 
 
-# One locked output's path, refused unless its digest matches the lock.
-def source(record: dict, name: str, base: str | None = None) -> Path:
-    folder = base or record["headline"]
-    rel = f"{folder}/{name}"
-    path = ROOT / rel
-    want = record["files"].get(rel)
+# The locked run's name: the first 12 of its outputs' tree hash.
+def tree(record: dict) -> str:
+    return hashlib.sha256(json.dumps(record["files"], sort_keys=True).encode()).hexdigest()
+
+
+# One book file's path, refused unless its digest matches the lock.
+def source(record: dict, name: str) -> Path:
+    key = f"{BOOK}/{name}"
+    path = ROOT / record["folder"] / key
+    want = record["files"].get(key)
     if want is None:
-        raise SystemExit(f"refused: {rel} is not in {OUTPUTS.name}")
+        raise SystemExit(f"refused: {key} is not in {OUTPUTS.name}")
     if not path.is_file() or digest(path) != want:
-        raise SystemExit(f"refused: {rel} is missing or differs from the lock")
+        raise SystemExit(f"refused: {record['folder']}/{key} is missing or differs from the lock")
     return path
 
 
-# The run's frames by name, each read from a locked file.
+# The book's frames by name, each read from a locked file.
 def frames(record: dict) -> dict:
-    at = record["run_at"]
-    read = lambda stem: pd.read_parquet(source(record, f"{stem}_{at}.parquet"))  # noqa: E731
-    return {k: read(f"{k}_7") for k in ("daily", "positions", "ledger", "compliance", "trades")}
+    parts = ("daily", "positions", "ledger", "compliance", "trades")
+    return {k: pd.read_parquet(source(record, f"{k}.parquet")) for k in parts}
 
 
 # One row a day: NAV, return, the ledger's dollars and exposures.
@@ -78,7 +84,7 @@ def daily_table(f: dict) -> pd.DataFrame:
     out["long_usd"], out["short_usd"] = long, short
     out["gross_usd"], out["net_usd"] = long - short, long + short
     out = out.join(d[BOOKED]).join(f["compliance"][CHECKED])
-    # Each formation's date on its first trade day, as the table counts.
+    # Each decision close on its first trade day, as the table counts.
     first = rebalances(f["trades"])
     formed = pd.DatetimeIndex(first.index).strftime("%Y-%m-%d")
     out["formed"] = pd.Series(formed, index=first.to_numpy()).reindex(out.index).fillna("")
@@ -108,10 +114,9 @@ def positions_gz(f: dict) -> bytes:
 
 # The monthly holdings from the Arcana file, checked against its lock.
 def holdings(record: dict) -> str:
-    at = record["run_at"]
-    name = f"arcana_weights_monthly_{at}.csv"
+    name = "arcana_weights_monthly.csv"
     plain = source(record, name).read_text(encoding="utf-8")
-    own = (ROOT / record["headline"] / name.replace(".csv", "_own.csv")).read_text("utf-8")
+    own = source(record, name.replace(".csv", "_own.csv")).read_text(encoding="utf-8")
     plain_rows, own_rows = list(csv.reader(io.StringIO(plain))), list(csv.reader(io.StringIO(own)))
     width = len(plain_rows[0])
     if [r[:width] for r in own_rows] != plain_rows:
@@ -128,44 +133,35 @@ def holdings(record: dict) -> str:
     return out.getvalue()
 
 
-# The 23 rows as written, the report's headline and the book's breaches.
-def metrics(record: dict, cards: dict) -> str:
-    at = record["run_at"]
-    table = source(record, f"table_9_1_{at}.csv").read_text(encoding="utf-8")
-    report = json.loads(source(record, f"report_{at}.json").read_text(encoding="utf-8"))
-    book = json.loads(source(record, f"book_{at}.json").read_text(encoding="utf-8"))
-    rows = list(csv.DictReader(io.StringIO(table)))
-    stamp = report["stamp"]
-    keep = ("cadence", "limits", "headline_arm", "rows", "daily_rows", "monthly_rows")
-    used = [f"{k}_7_{at}.parquet" for k in ("daily", "positions", "ledger", "compliance", "trades")]
-    used += [f"table_9_1_{at}.csv", f"report_{at}.json", f"book_{at}.json"]
-    used += [f"arcana_weights_monthly_{at}.csv"]
-    names = [f"{record['headline']}/{n}" for n in used]
-    files = {n: record["files"][n] for n in names}
+# The 23 rows as written, the book's checks and its sources' digests.
+def metrics(record: dict, inputs: dict) -> str:
+    table = source(record, "table_9_1.csv").read_text(encoding="utf-8")
+    result = json.loads(source(record, "result.json").read_text(encoding="utf-8"))
+    check = json.loads(source(record, "compliance_check.json").read_text(encoding="utf-8"))
+    used = [f"{k}.parquet" for k in ("daily", "positions", "ledger", "compliance", "trades")]
+    used += ["table_9_1.csv", "result.json", "compliance_check.json"]
+    used += ["arcana_weights_monthly.csv", "arcana_weights_monthly_own.csv"]
     body = {
-        "run_at": at,
-        "commit": stamp["commit"],
-        "headline": record["headline"],
-        "table_9_1": rows,
-        "report": {k: report[k] for k in keep},
-        "book": {k: book[k] for k in ("breach_days", "first_breach", "formations", "design")},
-        "input_cards_sha256": {k: stamp["input_cards_sha256"][k] for k in cards},
-        "char_list_sha256": stamp["char_list_sha256"],
-        "sources": files,
+        "run_at": tree(record)[:12],
+        "tree_sha256": tree(record),
+        "headline": f"{record['folder']}/{BOOK}",
+        "table_9_1": list(csv.DictReader(io.StringIO(table))),
+        "book": {k: result[k] for k in ("breach_days", "names_min", "names_max", "gross_max")},
+        "finals_check": {k: check[k] for k in ("breaches", "violations", "rebalances")},
+        "input_cards_sha256": {k: inputs[f"{CARDS}/{k}.json"] for k in CARRIED_CARDS},
+        "char_list_sha256": inputs[CHAR_LIST],
+        "sources": {f"{BOOK}/{n}": record["files"][f"{BOOK}/{n}"] for n in used},
     }
     return json.dumps(body, indent=1) + "\n"
 
 
-# The input cards, each refused unless the report's stamp names it.
-def cards(record: dict) -> dict[str, bytes]:
-    at = record["run_at"]
-    report = json.loads(source(record, f"report_{at}.json").read_text(encoding="utf-8"))
-    want = report["stamp"]["input_cards_sha256"]
+# The input cards, each refused unless the locked inputs name it.
+def cards(inputs: dict) -> dict[str, bytes]:
     out = {}
     for name in CARRIED_CARDS:
-        raw = (CARDS / f"{name}.json").read_bytes()
-        if hashlib.sha256(raw).hexdigest() != want[name]:
-            raise SystemExit(f"refused: the {name} card differs from the locked report's stamp")
+        raw = (ROOT / CARDS / f"{name}.json").read_bytes()
+        if hashlib.sha256(raw).hexdigest() != inputs[f"{CARDS}/{name}.json"]:
+            raise SystemExit(f"refused: the {name} card differs from the locked inputs")
         out[name] = raw
     return out
 
@@ -173,12 +169,13 @@ def cards(record: dict) -> dict[str, bytes]:
 # Writes every carried file into a folder and returns their paths.
 def build(into: Path = INTO) -> list[Path]:
     record = locked()
+    inputs = json.loads(INPUTS.read_text(encoding="utf-8"))["files"]
     f = frames(record)
-    made = cards(record)
+    made = cards(inputs)
     files = {
         "holdings.csv": holdings(record).encode(),
         "daily.csv": daily_table(f).to_csv(lineterminator="\n").encode(),
-        "metrics.json": metrics(record, made).encode(),
+        "metrics.json": metrics(record, inputs).encode(),
         "positions_daily.csv.gz": positions_gz(f),
         **{f"cards/{k}.json": v for k, v in made.items()},
     }
@@ -191,7 +188,7 @@ def build(into: Path = INTO) -> list[Path]:
     return written
 
 
-# Builds final/ or the folder given, then prints each file's size.
+# Builds frozen/vfinal/final/ or a folder, then prints each size.
 if __name__ == "__main__":
     args = sys.argv[1:]
     into = Path(args[args.index("--into") + 1]).resolve() if "--into" in args else INTO

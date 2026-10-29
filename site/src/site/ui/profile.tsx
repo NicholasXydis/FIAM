@@ -16,6 +16,7 @@ export function Profile({ person, before, after }: Props) {
   const [first, ...rest] = person.name.split(" ");
   // Bare arrow keys step to a neighbour; Escape goes back to the list.
   useEffect(() => {
+    // Handle one key, skipping repeats and keys held with others.
     const key = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
       if (e.key === "ArrowRight") openPerson(slug(after.name), true);

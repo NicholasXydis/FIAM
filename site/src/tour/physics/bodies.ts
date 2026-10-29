@@ -1,18 +1,28 @@
 import * as THREE from "three";
 
-// Gravity in units per second squared, and the world's up and axes.
+// Gravity, in units per second squared.
 const G = -18;
+// The world's up, for finding which face points up.
 const UP = new THREE.Vector3(0, 1, 0);
+// The world's down, for a face that points down.
 const DOWN = new THREE.Vector3(0, -1, 0);
+// The three axes of a box before it turns.
 const AXES = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
-// Scratch reused every substep, so the physics allocates nothing.
+// Scratch: one box corner; all scratch is reused, never reallocated.
 const corner = new THREE.Vector3();
+// Scratch: the lowest corner found this substep.
 const low = new THREE.Vector3();
+// Scratch: from the centre to the corner that hit.
 const lever = new THREE.Vector3();
+// Scratch: the axis the box is spinning about.
 const spin = new THREE.Vector3();
+// Scratch: one box axis turned into world space.
 const axis = new THREE.Vector3();
+// Scratch: the box axis nearest to straight up or down.
 const best = new THREE.Vector3();
+// Scratch: the turn that rolls the box onto a face.
 const fix = new THREE.Vector3();
+// Scratch: one substep's small turn as a quaternion.
 const dq = new THREE.Quaternion();
 
 // A box that falls, tumbles and rests, turned by its first corner down.
@@ -45,17 +55,20 @@ export class Body {
     if (this.asleep) return;
     const sub = 4;
     const h = dt / sub;
+    // Each substep falls, meets the floor and settles.
     for (let s = 0; s < sub; s++) {
       // Falls, then moves and turns by its spin.
       this.velocity.y += G * h;
       this.mesh.position.addScaledVector(this.velocity, h);
       const speed = this.angular.length();
+      // Turn only when there is spin enough to measure.
       if (speed > 1e-5) {
         dq.setFromAxisAngle(spin.copy(this.angular).divideScalar(speed), speed * h);
         this.mesh.quaternion.premultiply(dq);
       }
       // Finds the lowest of the eight corners in world space.
       let lowest = Infinity;
+      // Each bit of i picks one side of the box on one axis.
       for (let i = 0; i < 8; i++) {
         corner.set(
           i & 1 ? this.half.x : -this.half.x,
@@ -63,6 +76,7 @@ export class Body {
           i & 4 ? this.half.z : -this.half.z,
         );
         corner.multiply(this.mesh.scale).applyQuaternion(this.mesh.quaternion).add(this.mesh.position);
+        // Keep the lowest corner seen so far.
         if (corner.y < lowest) {
           lowest = corner.y;
           low.copy(corner);
@@ -97,9 +111,11 @@ export class Body {
   // On the floor it rolls to its nearest face, not balancing on an edge.
   private settle(h: number) {
     let lean = -1;
+    // Find the box axis most nearly straight up or down.
     for (const a of AXES) {
       axis.copy(a).applyQuaternion(this.mesh.quaternion);
       const d = Math.abs(axis.dot(UP));
+      // Keep the most upright axis so far.
       if (d > lean) {
         lean = d;
         best.copy(axis);

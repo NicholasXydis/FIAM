@@ -172,7 +172,7 @@ def ratios(
     g = g.dropna(subset=["gvkey"])
     report["pre_2015_months_by_source"] = g["source"].value_counts().to_dict()
     g["start"] = g["month"].dt.start_time
-    # iid 01 only for a one-common-stock company (M2), else the 2015 iid.
+    # iid 01 only for a one-common-stock company, else the 2015 iid.
     count = common_per_company(crsp_path)
     single = count.reindex(pd.MultiIndex.from_arrays([g["permno"], g["month"]])).eq(1)
     single = single.to_numpy()
@@ -296,7 +296,7 @@ def ciks(
             cik, source = int(firm.cik_compustat), "compustat_header"
         else:
             continue
-        # Undated sources start at the filer's first filing (H4).
+        # Undated sources start at the filer's first filing.
         rows.append((firm.permno, str(cik), first.get(cik), None, source))
     out = pd.DataFrame(rows, columns=["permno", "value", "valid_from", "valid_to", "source"])
     out["valid_from"] = pd.to_datetime(out["valid_from"]).fillna(pd.Timestamp("1900-01-01"))
@@ -421,7 +421,7 @@ def dated_ciks(paths: dict) -> tuple[pd.DataFrame, dict]:
     joint = joint.sort_values(["recent", "cik"], ascending=[False, True])
     f = pd.concat([own, joint.drop_duplicates("accession").drop(columns="recent")])
     span = f.groupby("cik")["filing_date"].agg(first="min", last="max")
-    # A filer counts only from its first SEC filing, on every page (H1).
+    # A filer counts only from its first SEC filing, on every page.
     sec_first = pd.read_parquet(paths["cik_first"]).set_index("cik")["first_filing"]
     sec = pd.Series(span.index.map(sec_first), index=span.index)
     span["first"] = pd.concat([sec, span["first"]], axis=1).min(axis=1)
@@ -704,7 +704,7 @@ def coverage(links: pd.DataFrame, panel_path: Path) -> dict:
     return out
 
 
-# Builds the table and its report; writes both under data/v4.
+# Builds the table and its report; writes both under the data folder.
 def build(data: Path = DATA) -> dict:
     p = paths(data)
     crsp_links = crsp(p["crsp"])
@@ -716,7 +716,7 @@ def build(data: Path = DATA) -> dict:
     decided = cik_links[cik_links["source"].str.startswith("decision")]
     dated = dated[~dated["permno"].isin(decided["permno"])]
     cik_links = pd.concat([decided, dated], ignore_index=True)
-    # Every CIK link ends at its stock's last CRSP month (final audit L3).
+    # Every CIK link ends at its stock's last CRSP month.
     m = pd.read_parquet(p["crsp"], columns=["PERMNO", "MthCalDt"])
     m = m.assign(permno=pd.to_numeric(m["PERMNO"]), month=pd.to_datetime(m["MthCalDt"]))
     last = m.groupby("permno")["month"].max() + pd.offsets.MonthEnd(0)
@@ -740,7 +740,7 @@ def build(data: Path = DATA) -> dict:
     report |= ratio_report | cik_report | carc_report
     report["panel_coverage"] = coverage(links, p["panel"])
     (data / "v4" / "links.json").write_text(json.dumps(report, indent=1, default=str))
-    # The build's receipt: its code and every input's hash (final audit L4).
+    # The build's receipt: its code and every input's hash.
     code = [Path(__file__), Path(__file__).parents[2] / "tools" / "data" / "edgar.py"]
     book = {"code": {c.name: digest(c) for c in code}}
     book["inputs"] = {k: digest(v) for k, v in p.items() if v.exists()}

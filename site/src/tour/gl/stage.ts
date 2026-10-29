@@ -145,6 +145,7 @@ function starfield(count: number) {
   const position = new Float32Array(count * 6);
   const seed = new Float32Array(count * 2);
   const tail = new Float32Array(count * 2);
+  // A random point on a shell; head and tail start at the same spot.
   for (let i = 0; i < count; i++) {
     const u = Math.random() * 2 - 1;
     const a = Math.random() * Math.PI * 2;
@@ -304,6 +305,7 @@ export class Stage {
     this.drift = shot.drift ?? 1;
     this.fov = shot.fov ?? 42;
     this.shift = shot.shift ?? 0.15;
+    // A cut snaps at once; a move warps unless motion is reduced.
     if (snap) {
       this.eye.snap();
       this.look.snap();
@@ -317,6 +319,7 @@ export class Stage {
       .timeline()
       .to(this.starUniforms.uWarp, { value: strength, duration: 0.35, ease: "power2.in" })
       .to(this.starUniforms.uWarp, { value: 0, duration: 1.3, ease: "power3.out" });
+    // The frame smears too, while trails are on.
     if (this.trails.enabled)
       gsap.fromTo(
         this.trails.uniforms.damp,
@@ -359,6 +362,7 @@ export class Stage {
     this.camera.lookAt(this.look.value);
     // The lens shift, off at 760 px or less or in a band, eases in.
     const lens = innerWidth > 760 && !this.view ? this.shift : 0;
+    // Ease the fov and lens toward the shot's while they differ.
     if (Math.abs(this.camera.fov - this.fov) > 0.01 || Math.abs(this.lens - lens) > 1e-4) {
       this.camera.fov += (this.fov - this.camera.fov) * (1 - Math.exp(-dt * 3));
       this.lens += (lens - this.lens) * (1 - Math.exp(-dt * 2.5));
@@ -381,6 +385,7 @@ export class Stage {
     if (!this.view && this.camera.zoom === 1 && s.ox === 0 && s.oy === 0) return;
     const k = 1 - Math.exp(-dt * 3);
     const near = Math.abs(to.zoom - s.zoom) < 1e-3 && Math.abs(to.ox - s.ox) < 0.5 && Math.abs(to.oy - s.oy) < 0.5;
+    // Snap once close enough, else ease a step closer.
     if (near) Object.assign(s, to);
     else
       Object.assign(s, {

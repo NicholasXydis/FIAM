@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BETA, CRASHES as crashes, INVESTORS, ROLES, SIGNALS, STOCKS } from "./data";
+import { BETA, CRASHES as crashes, EYEBROW, INVESTORS, ROLES } from "./data";
 import { TEAM } from "../content/credits";
 import words from "../../ad/voice/words.json";
 import { Gimbal } from "./gimbal";
@@ -128,7 +128,7 @@ export const TITLES: Title[] = [
     words: ["Long", "the", "strongest", 0, "short", 10, "weakest"].map((w) =>
       w === 0 ? 0 : said("neutral", w as string | number),
     ),
-    eyebrow: [17.9, `${SIGNALS} signals · ${STOCKS.toLocaleString("en-US")} US stocks · every month`],
+    eyebrow: [17.9, EYEBROW],
     tone: "dark",
     place: "low",
   },

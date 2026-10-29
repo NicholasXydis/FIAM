@@ -124,7 +124,7 @@ def test_missing_days_earn_zero(monkeypatch):
     assert row["sessions"] == n and abs(row["label"] - (1.01**n - 1)) < 1e-12
 
 
-# An exit whose return is public only after the seal refuses the label.
+# An exit whose return is public only past the cutoff refuses the label.
 def test_label_public_after_the_seal_is_refused(monkeypatch):
     m = Market()
     m.stock(4, ret=0.0, last="2020-11-20")
@@ -177,7 +177,7 @@ def test_syy_combine_signs_and_eligibility():
     assert out.loc[2, "raw"] == pytest.approx(signs / 10)
 
 
-# On the real build, every kept label is public by the seal (PDF p15).
+# On the real build, every kept label is public by the cutoff (PDF p15).
 @pytest.mark.skipif(not HAVE_LABELS, reason="no labels on this machine")
 def test_real_labels_are_public_by_the_seal():
     got = sources.read("labels", ["label", "available", "start", "T"], purpose="label")
@@ -240,7 +240,7 @@ def test_three_month_window(monkeypatch):
     assert w["start"] == pd.Timestamp("2019-11-01") and w["end"] == pd.Timestamp("2020-02-03")
 
 
-# No exit dated inside a label window is public only after the seal.
+# No exit dated inside a label window is public only after the cutoff.
 @pytest.mark.skipif(not HAVE_LABELS, reason="no labels on this machine")
 def test_real_exits_in_label_windows_are_public_by_the_seal():
     path = sources.DATA / "v4" / "clean" / "exits.parquet"

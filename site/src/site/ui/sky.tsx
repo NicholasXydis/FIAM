@@ -9,12 +9,14 @@ export type Opening = "name" | "dust";
 // The sky a page drives once it is laid out.
 type Sky = NonNullable<ReturnType<typeof startSky>>;
 
-// Where the landing leaves its name and a picture of it, for the next.
+// Where the landing leaves its name's box, for the next page.
 const HANDOFF = "sky:name";
+// Where it leaves a picture of the sky, for the next page.
 const PICTURE = "sky:frame";
 
 // The name's box as the landing left it, on a screen of the same size.
 function handed() {
+  // Bad or missing data, or no storage, means nothing was handed.
   try {
     const box = JSON.parse(sessionStorage.getItem(HANDOFF) ?? "null") as Record<string, number> | null;
     if (!box || box["vw"] !== innerWidth || box["vh"] !== innerHeight) return null;
@@ -36,6 +38,7 @@ function picture(canvas: HTMLCanvasElement) {
 // Remembers where the landing's name is and how it looked, as it goes.
 function handOff(box: DOMRect, canvas: HTMLCanvasElement | null) {
   const at = { x: box.x, y: box.y, w: box.width, h: box.height, vw: innerWidth, vh: innerHeight };
+  // Storage may be full or blocked, so saving can throw.
   try {
     sessionStorage.setItem(HANDOFF, JSON.stringify(at));
     if (canvas) sessionStorage.setItem(PICTURE, picture(canvas));
@@ -46,6 +49,7 @@ function handOff(box: DOMRect, canvas: HTMLCanvasElement | null) {
 
 // Forgets the hand-off once used, so a reload does not replay it.
 function forget() {
+  // Storage may be blocked, so removing can throw.
   try {
     sessionStorage.removeItem(HANDOFF);
     sessionStorage.removeItem(PICTURE);
@@ -62,6 +66,7 @@ function plain() {
 
 // The sky, or null when WebGL2 is missing or fails to start.
 function begin(canvas: HTMLCanvasElement) {
+  // A WebGL error while starting means no sky.
   try {
     return startSky(canvas, { stage });
   } catch {
@@ -101,6 +106,7 @@ const carry = (sky: Sky) => {
 // Coming back, dust gathers into the name; first, it rises; else dust.
 function open(sky: Sky, opening: Opening) {
   const from = cameFrom();
+  // Inner pages carry the name on from the landing, or open on dust.
   if (opening === "dust") {
     if (from === "/" && arrival() === "navigate" && handed()) return carry(sky);
     sky.shape("dust", true);
@@ -112,6 +118,7 @@ function open(sky: Sky, opening: Opening) {
 // The night behind every page: clouds, the particle sky, grain.
 export function Sky({ opening }: { opening: Opening }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  // Start the sky once mounted and wire up its page events.
   useEffect(() => {
     const el = canvas.current;
     const sky = el && begin(el);
@@ -145,6 +152,7 @@ export function Sky({ opening }: { opening: Opening }) {
     addEventListener(ATTRACT, pull);
     addEventListener(FILM, covered);
     addEventListener(GATHER, light);
+    // On unmount, unwire everything and stop the sky.
     return () => {
       el.removeEventListener("webglcontextlost", lost);
       removeEventListener("pageshow", restored);

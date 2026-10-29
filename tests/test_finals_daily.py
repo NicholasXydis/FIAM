@@ -71,7 +71,7 @@ class Fake:
             lambda days, by=None: pd.Series(self.rf, index=pd.DatetimeIndex(days)),
         )
         monkeypatch.setattr(inputs, "sp500", lambda days: pd.Series(0.0, index=days))
-        # The fake holds no sealed row, so its 2026 runs may open.
+        # The fake holds no hidden row, so its 2026 runs may open.
         monkeypatch.setattr(sources, "unsealed", lambda: True)
         monkeypatch.setattr(
             data, "permcos", lambda p, d: pd.Series(pd.Series(p).to_numpy(), dtype=float)
@@ -491,7 +491,7 @@ def test_reader_cache_keeps_sets_and_ranges_apart(monkeypatch):
     assert len(calls) == 2
 
 
-# A sealed month takes the last public bill rate, never the first.
+# A month past the cutoff takes the last public bill rate.
 def test_sealed_month_takes_the_last_public_bill(monkeypatch):
     bills = pd.DataFrame(
         {"month": pd.to_datetime(["1934-01-01", "2020-11-01"]), "tb3ms": [0.0072, 0.0009]}
@@ -596,7 +596,7 @@ def test_marks_before_the_trade_count(monkeypatch):
     assert not out.compliance.loc["2019-02-28", "net_ok"]
 
 
-# A same-day book, or an unsealed one while sealed, is refused.
+# A same-day book, or one past the cutoff while closed, is refused.
 def test_same_day_and_sealed_runs_are_refused(monkeypatch):
     fake = Fake()
     fake.stock(1)
@@ -635,7 +635,7 @@ def test_ledger_rebuilds_nav(monkeypatch):
     assert {"price", "dividend", "cost"} <= set(totals.columns)
 
 
-# Past the seal a breach stops the build; the δ guard zeroes a negative.
+# Past the cutoff a breach stops the build; a negative δ is set to 0.
 def test_strict_runs_stop_on_a_breach_and_delta_is_guarded(monkeypatch):
     fake = Fake()
     fake.stock(1)

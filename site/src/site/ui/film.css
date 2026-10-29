@@ -10,9 +10,11 @@
   outline: none;
   transition: opacity 0.6s var(--ease-film);
 }
+/* While the film is open, it is in the page. */
 [data-film] .film {
   display: block;
 }
+/* It fades in once it is on, or in full screen. */
 [data-film="on"] .film,
 [data-film="full"] .film {
   opacity: 1;
@@ -39,6 +41,7 @@
   opacity: 0;
   transition: opacity 0.3s var(--ease-film);
 }
+/* The copy that is showing sits on top, fully seen. */
 .film-video.is-on {
   z-index: 1;
   opacity: 1;
@@ -47,6 +50,7 @@
 .film-fill {
   transition: opacity 0.3s var(--ease-film);
 }
+/* Mid turn, both fade out fast. */
 .film[data-turning] .film-video,
 .film[data-turning] .film-fill {
   opacity: 0;
@@ -69,9 +73,11 @@
   animation: film-spin 0.9s linear infinite;
   pointer-events: none;
 }
+/* The ring shows while the film is loading. */
 .film[data-loading] .film-wait {
   opacity: 1;
 }
+/* One full turn, for the loading ring. */
 @keyframes film-spin {
   to {
     rotate: 1turn;
@@ -119,6 +125,7 @@
     max(20px, env(safe-area-inset-left, 0px));
   transition: opacity 0.5s var(--ease-film);
 }
+/* The controls on the right, in a row. */
 .film-right {
   display: flex;
   gap: 12px;
@@ -139,9 +146,11 @@
   place-items: center;
   pointer-events: none;
 }
+/* Only the Play button itself takes clicks. */
 .film-resume > * {
   pointer-events: auto;
 }
+/* Paused, the Play button shows. */
 .film[data-paused] .film-resume {
   display: grid;
 }
@@ -149,6 +158,7 @@
 .film[data-idle] {
   cursor: none;
 }
+/* Idle, the controls fade and ignore the pointer. */
 .film[data-idle] .film-top {
   opacity: 0;
   pointer-events: none;
@@ -157,6 +167,7 @@
 .film .pill.is-beckon {
   animation: film-beckon 1.1s var(--ease-film) 2;
 }
+/* A violet ring that spreads out and fades. */
 @keyframes film-beckon {
   from {
     box-shadow: 0 0 0 0 rgb(169 139 255 / 0.65);
@@ -167,10 +178,12 @@
 }
 /* On touch screens the controls are larger, easy for a thumb. */
 @media (pointer: coarse) {
+  /* Taller pills with larger words. */
   .film .pill-small {
     min-height: 50px;
     font-size: 1rem;
   }
+  /* Larger icons to match. */
   .film .pill-small .pill-icon {
     width: 1.3em;
     height: 1.3em;
@@ -178,9 +191,11 @@
 }
 /* An upright phone: Back and the toggles round, Skip keeps its word. */
 @media (orientation: portrait) and (max-width: 520px) {
+  /* Slightly narrower side margins. */
   .film-top {
     padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
   }
+  /* The right controls closer together. */
   .film-right {
     gap: 8px;
   }
@@ -188,6 +203,7 @@
   .film-full {
     display: none;
   }
+  /* Back and the toggles become round icon buttons. */
   .film-back,
   .film-cc,
   .film-full {
@@ -196,6 +212,7 @@
     padding: 0;
     justify-content: center;
   }
+  /* Their words stay for screen readers, out of sight. */
   .film-back .pill-label,
   .film-cc .pill-label,
   .film-full .pill-label {
@@ -209,6 +226,7 @@
 }
 /* A phone on its side: round icon buttons in the strips beside it. */
 @media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
+  /* The controls fill the screen's edges, top to bottom. */
   .film-top {
     inset: 0;
     align-items: flex-start;
@@ -216,6 +234,7 @@
       max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
     pointer-events: none;
   }
+  /* Each control a round button that still takes taps. */
   .film-top .pill {
     width: 52px;
     min-height: 52px;
@@ -232,14 +251,17 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+  /* Larger icons for the round buttons. */
   .film-top .pill-icon {
     width: 1.45em;
     height: 1.45em;
   }
+  /* The right controls stack in a column. */
   .film-right {
     flex-direction: column;
     gap: 10px;
   }
+  /* Captions sit at the top, narrower, between the strips. */
   .film-caption {
     top: max(12px, env(safe-area-inset-top, 0px));
     width: min(34em, 64vw);

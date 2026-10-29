@@ -1,21 +1,14 @@
 import raw from "../data/fiam.json";
 
-// One AI agent as the tour shows it; facts are [label, value] pairs.
+// One AI agent as the tour shows it, and its finding on the final book.
 interface Agent {
   key: string;
   name: string;
   model: string;
   does: string;
-  facts: [string, string][];
-}
-
-// One family of attempts in the research ledger.
-interface Family {
-  what: string;
-  family: string;
-  eligible: boolean;
-  attempts: number;
-  verdict: string;
+  finding: string;
+  number: string;
+  date: string;
 }
 
 // A 60/40 with some of its bonds in the fund: points moved and results.
@@ -36,15 +29,6 @@ interface Crisis {
   coverage: number;
 }
 
-// One test of the AI desk: IR with no AI, the fixed rule and the AI.
-interface DeskTest {
-  none: number;
-  rule: number;
-  ai: number;
-  random: number;
-  memory: boolean;
-}
-
 // The headline's single-number measures the tour shows.
 type Measure =
   | "ir"
@@ -63,26 +47,37 @@ type Measure =
   | "positions"
   | "longs"
   | "shorts"
-  | "breaches";
+  | "breaches"
+  | "sector_max"
+  | "cumulative"
+  | "months_up"
+  | "down_capture"
+  | "up_capture";
+
+// One month and the fund's return over it, or over the 12 to it.
+interface Dated {
+  month: string;
+  value: number;
+}
 
 // Everything the site draws, as tools/build_site.py writes it.
 export interface Fiam {
-  book: string;
-  code: string;
   window: string;
   months: string[];
-  headline: Record<Measure, number>;
+  headline: Record<Measure, number> & { best_month: Dated; worst_month: Dated; worst_12: Dated };
   years: Record<string, { strategy: number; benchmark: number; market: number; active: number; months: number }>;
   race: { book: number[]; hurdle: number[]; market: number[]; market_monthly: number[]; book_monthly: number[] };
   beta: { rolling: Record<string, [number, number]>; since: Record<string, number> };
   stocks: { ticker: string[]; name: string[]; book: number[][] };
-  signals: { code: string; sign: number; family: string; label: string }[];
+  signals: { code: string; family: string; label: string; count: number }[];
   families: Record<string, string>;
   journey: { month: string; stocks: number; tradeable: number; longs: number; shorts: number; average: number };
   costs: {
     gross: number;
     net: number;
     hurdle: number;
+    cash: number;
+    break_even: number;
     parts: Record<string, number>;
     total: number;
     ir_gross: number;
@@ -100,28 +95,27 @@ export interface Fiam {
     agents: number;
     copycats: number;
     effective_voters: number;
-    correlation: number;
-    longs_in_favourites: number;
-    copycat_test: Record<string, { longs: number; shorts: number }>;
-    picks: number;
+    lsv: number;
+    beta: number;
+    sell_10bn_pct: number;
+    long_pct: number;
+    short_pct: number;
+    favourites_pct: number;
   };
   agents: Agent[];
-  desk: { early: DeskTest; late: DeskTest };
   september: {
-    decision: string;
     month: string;
     book: [string, string, number][];
-    xray: { names: number; owned: number; benzinga: number; benzinga_share: number; top: number; keep: number };
+    hype: {
+      long_growth: number;
+      short_growth: number;
+      longs: number;
+      shorts: number;
+      favourites: number;
+      in_hype: number;
+    };
   };
   crises: Crisis[];
-  honesty: {
-    attempts: number;
-    eligible: number;
-    ideas: number;
-    ideas_passed: number;
-    whatifs: number;
-    families: Family[];
-  };
 }
 
 // The data as tools/build_site.py writes it; bundled, never fetched.
@@ -143,22 +137,30 @@ const MONTHS = [
   "December",
 ];
 
-// Data text made plain: ranges read "to", dashes commas, colons a stop.
+// Data text made plain: ranges say "to", dashes commas, a true minus.
 export const prose = (text: string) =>
   text
     .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, "$1 to $2")
     .replace(/\s*[\u2013\u2014]\s*/g, ", ")
-    .replace(/\s*[:;]\s+(\S)/g, (_, c: string) => `. ${c.toUpperCase()}`);
+    .replace(/\s*[:;]\s+(\S)/g, (_, c: string) => `. ${c.toUpperCase()}`)
+    .replace(/(^|\s)-(\d)/g, "$1\u2212$2");
 
 // A one-line title from data text: a colon or semicolon becomes " · ".
 export const caption = (text: string) => prose(text.replace(/\s*[:;]\s+/g, " · "));
 
-// Fractions as percents with a true minus sign; signed always signs.
+// A fraction as a percent with a true minus sign.
 export const pct = (x: number, digits = 1) => `${x < 0 ? "−" : ""}${Math.abs(x * 100).toFixed(digits)}%`;
+// A fraction as a percent that always shows its sign.
 export const signed = (x: number, digits = 1) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(digits)}%`;
-// Plain numbers with a true minus sign; plus always signs.
+// A plain number with a true minus sign.
 export const num = (x: number, digits = 2) => (x < 0 ? "−" : "") + Math.abs(x).toFixed(digits);
+// A plain number that always shows its sign.
 export const plus = (x: number, digits = 2) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(digits);
+// A whole number as an ordinal, as in 1st, 22nd, 57th or 112th.
+export const ordinal = (n: number) => {
+  const end = n % 100 >= 10 && n % 100 <= 20 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${end}`;
+};
 // Whole numbers with thousands commas, as in 12,345.
 export const int = (x: number) => Math.round(x).toLocaleString("en-US");
 // A "2021-03" month as "March 2021", or "Mar 2021" when short.

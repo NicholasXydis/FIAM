@@ -9,18 +9,35 @@ import { box, chip, Label, nearest, slider, swatch } from "../ui";
 import { C, dust, header, Scene, type World } from "./scene";
 import { clamp, mix, seeded } from "../../shared/math";
 
-// The crises in date order, and the chart's x from first to last.
+// The crises in date order.
 const CRISES = D.crises;
+// The average move of the market and of the book across the crises.
+const mean = (key: "book" | "market") => CRISES.reduce((s, c) => s + c[key], 0) / CRISES.length;
+// The last crisis's index, the chart's right end.
 const LAST = CRISES.length - 1;
-// Crisis index to x, a move to y, and each series' colour, mark, depth.
+// A crisis index to x across the chart.
 const X = (i: number) => -8.5 + (i / LAST) * 17;
+// A move to a height on the chart.
 const Y = (move: number) => move * 7;
+// The least height between the two end labels, in world units.
+const GAP = 0.55;
+// An end label's height: the higher series' label above, parted to GAP.
+const endAt = (key: Series) => {
+  const end = CRISES[LAST]!;
+  const [mine, other] = [Y(end[key]), Y(end[key === "book" ? "market" : "book"])];
+  const mid = (mine + other) / 2;
+  const half = Math.max(GAP, Math.abs(mine - other)) / 2;
+  const up = mine > other || (mine === other && key === "market");
+  return mid + (up ? half : -half);
+};
+// Each series' colour, legend mark, depth and name.
 const STYLE: Record<Series, { color: number; mark: string; z: number; label: string }> = {
   book: { color: C.gold, mark: "var(--m-ours)", z: 1.6, label: "Final book" },
   market: { color: C.purple, mark: "var(--m-brand)", z: 0, label: "US market" },
 };
-// The series drawn, listed and labelled, the final book first.
+// The two series the chart draws.
 type Series = "book" | "market";
+// The series drawn, listed and labelled, the final book first.
 const order: Series[] = ["book", "market"];
 
 // A series' move at any point between crises, linear between them.
@@ -39,7 +56,7 @@ const curve = (key: Series, n = 90) =>
 // The crises replayed: the final book against the market in each.
 export class Capacity extends Scene {
   name = "Crises, replayed";
-  summary = `The final book against the market in ${CRISES.length} replayed crises. It barely moved.`;
+  summary = `The final book against the market in ${CRISES.length} replayed crises. On average the market moved ${signed(mean("market"))} and the book ${signed(mean("book"))}.`;
   private input: HTMLInputElement;
   private size = h("b", { class: "figure text-[24px] text-ink font-medium" });
   private table = h("div", { class: "flex flex-col gap-1.5" });
@@ -55,6 +72,7 @@ export class Capacity extends Scene {
     this.shot = { eye: [2.5, 2.2, 23.5], look: [0.4, -1.9, -0.8], drift: 0.6, shift: 0.02 };
     this.physics = { stiff: 8, damp: 1.25, flow: 0.15, spin: 0.02, mouse: 0.7 };
     this.dwell = 13;
+    // Each series: its curve, a dot per crisis and an end label.
     for (const key of order) {
       const s = STYLE[key];
       const line = tube(
@@ -65,6 +83,7 @@ export class Capacity extends Scene {
         false,
       );
       this.group.add(line);
+      // A glowing dot at each crisis on this series' curve.
       CRISES.forEach((c, i) => {
         const dot = new THREE.Mesh(
           new THREE.SphereGeometry(key === "book" ? 0.16 : 0.11, 16, 12),
@@ -79,7 +98,7 @@ export class Capacity extends Scene {
       this.addLabel(
         new Label(
           `${swatch(s.mark)}${s.label} <b class="text-ink">${signed(end[key])}</b>`,
-          [X(LAST) + 0.4, Y(end[key]) + (key === "book" ? -0.15 : 0.3), s.z],
+          [X(LAST) + 0.4, endAt(key), s.z],
           "left",
         ),
       ).small = { html: `${swatch(s.mark)}<b class="text-ink">${signed(end[key])}</b>` };
@@ -102,6 +121,7 @@ export class Capacity extends Scene {
       }),
     );
     this.group.add(this.plane);
+    // One glow per series, to ride its curve with the slider.
     for (const key of order) {
       const mark = glow(STYLE[key].color, key === "book" ? 1.5 : 1.1, 1.2);
       mark.userData.key = key;
@@ -111,12 +131,13 @@ export class Capacity extends Scene {
     const worst = CRISES.reduce((a, b) => (b.book < a.book ? b : a));
     this.panel.append(
       ...header(
-        `${CRISES.length} crises, <em>barely moved</em>`,
-        `Today's book replayed through every crisis since 2000. Its worst was ${signed(worst.book)} in ${worst.name}, when the US market moved ${signed(worst.market, 0)}. Drag to pick one.`,
+        `${CRISES.length} crises, <em>a fraction of the fall</em>`,
+        `Today's book replayed through ${CRISES.length} crises since 2000. Its worst was ${signed(worst.book)} in the ${worst.name}, when the US market moved ${signed(worst.market, 0)}. Drag to pick one.`,
       ),
     );
     // The slider runs across the crises and snaps to the nearest one.
     this.input = slider("crisis", "Crisis", 0, LAST, 1, 0);
+    // Dragging stops any sweep and shows the chosen crisis.
     this.input.addEventListener("input", () => {
       this.timeline?.kill();
       this.set(+this.input.value);
@@ -136,6 +157,7 @@ export class Capacity extends Scene {
     );
     // The crisis' name, then one row per series with its move there.
     this.table.append(h("div", { class: "flex items-center justify-between gap-3 text-[13px]" }, this.crisis));
+    // One row per series: its name and its move in the crisis.
     for (const { key, move } of this.rows) {
       this.table.append(
         h(
@@ -160,9 +182,11 @@ export class Capacity extends Scene {
     const r = seeded(55);
     let k = 0;
     const tint = new THREE.Color();
+    // The curtain's dots, more for the final book than the market.
     for (const key of order) {
       const s = STYLE[key];
       const n = key === "book" ? 3200 : 1700;
+      // Each dot at a random x, dropped some way below the curve.
       for (let i = 0; i < n; i++, k++) {
         const x = LAST * r();
         const top = Y(at(key, x));
@@ -181,6 +205,7 @@ export class Capacity extends Scene {
     }
     // The floor at no move, dots shown only on every 5th and 4th line.
     for (let gx = 0; gx <= 85; gx++) {
+      // Walk the floor's depth at this step across.
       for (let gz = 0; gz <= 14; gz++, k++) {
         const on = gx % 5 === 0 || gz % 4 === 0;
         f.put(k, -8.5 + gx * 0.2, 0, -4.4 + gz * 0.5, on ? 0.18 : 0, C.dust, 0.4);
@@ -198,6 +223,7 @@ export class Capacity extends Scene {
     this.size.textContent = CRISES[i]!.first.slice(0, 4);
     this.crisis.textContent = CRISES[i]!.name;
     this.plane.position.set(X(x), Y(-0.15), 0);
+    // Each glow rides its own curve to the point.
     for (const mark of this.marks) {
       const key = mark.userData.key as Series;
       mark.position.set(X(x), Y(at(key, x)), STYLE[key].z);
@@ -225,7 +251,7 @@ export class Capacity extends Scene {
     );
     if (i < 0) return null;
     const c = CRISES[this.dots[i]!.crisis]!;
-    return `<strong>${c.name}</strong><br>${c.first} to ${c.last}<br>Final book <strong>${signed(c.book)}</strong> · market ${signed(c.market)}<br><span class="muted">${pct(c.coverage, 0)} of today's book traded then</span>`;
+    return `<strong>${c.name}</strong><br>${c.first} to ${c.last}<br>Final book <strong>${signed(c.book)}</strong> · market ${signed(c.market)}<br><span class="muted">${pct(c.coverage, 0)} of today's book traded then, the rest take their peers' returns</span>`;
   }
 
   // Shows the labels and sweeps the crises 1.6 s after arriving.

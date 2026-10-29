@@ -34,33 +34,43 @@ const CUES = [...vtt.matchAll(/([\d:.]+) --> ([\d:.]+)\n(.+)/g)].map((m) => ({
   text: m[3] ?? "",
 }));
 
-// The player's parts, and what it is doing now.
+// The player's parts, null until it mounts.
 let parts: Parts | null = null;
-// Whether the sky holds the film's light, and the wait before the film.
+// Whether the sky holds the film's light.
 let gathered = false;
+// The wait before the film starts, while the dust gathers.
 let gatherTimer = 0;
+// Whether the film is open.
 let on = false;
+// Whether the viewer wants it playing, not paused.
 let want = false;
+// The shape of the copy now in use.
 let shape: Shape = "wide";
+// Whether the smaller lite copies are in use.
 let lite = false;
+// Whether captions are on.
 let cc = false;
 // The video showing now; the other is free for a change of copy.
 let live: HTMLVideoElement | null = null;
 // Each change of copy has a number, so a newer one cancels the old.
 let changing = 0;
-// Whether a turn holds the film, and the wait for it to settle.
+// Whether a turn holds the film.
 let turning = false;
+// The timer that waits for a turn to settle.
 let settle = 0;
 // Whether the other way up has been made ready.
 let warm = false;
-// When the film opened and whether it has begun, for a slow start.
+// When the film opened, to spot a slow start.
 let opened = 0;
+// Whether the film has begun to play.
 let started = false;
 // When the current turn began, for the loading ring.
 let turnFrom = 0;
-// Waits mid film, in time and in count; too many mean the lite copies.
+// Time spent in counted waits mid film; too much means lite.
 let waited = 0;
+// How many counted waits there have been.
 let waits = 0;
+// When the current wait began, 0 when not waiting.
 let waitFrom = 0;
 // Since when the film has played smoothly, -1 in a counted wait.
 let smoothSince = 0;
@@ -70,11 +80,17 @@ let jumped = 0;
 let later = false;
 // The copy a change is loading, so a newer change can stop it.
 let loading: HTMLVideoElement | null = null;
+// The next frame's request, kept to cancel it.
 let raf = 0;
+// The timer that hides the controls when still.
 let idle = 0;
+// Whether the blurred fill shows in the strips.
 let fillOn = false;
+// When the fill was last painted.
 let painted = 0;
+// The caption on screen now.
 let said = "";
+// What had focus before the film opened, to give it back.
 let opener: HTMLElement | null = null;
 // Whether the iPhone's own player has the film.
 let native = false;
@@ -83,28 +99,34 @@ let leftFull = 0;
 // Those who want to know when full screen starts and ends.
 const watchers = new Set<(full: boolean) => void>();
 
-// The prefixed full screen calls Safari still uses.
+// The document with the prefixed full screen calls Safari uses.
 type Doc = Document & {
   webkitFullscreenEnabled?: boolean;
   webkitFullscreenElement?: Element | null;
   webkitExitFullscreen?: () => void;
 };
+// An element with Safari's prefixed full screen call.
 type Box = HTMLElement & { webkitRequestFullscreen?: () => void };
+// A video with the iPhone's own full screen player calls.
 type Native = HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitExitFullscreen?: () => void };
+// The document, typed with Safari's prefixed calls.
 const doc = () => document as Doc;
 // The element now full screen, if any.
 const fullElement = () => doc().fullscreenElement ?? doc().webkitFullscreenElement ?? null;
 
 // The shape nearest a screen's: upright gets tall, past 1.96 side.
 const shapeOf = (ratio: number): Shape => (ratio <= 1 ? "tall" : ratio >= 1.96 ? "side" : "wide");
+// The shape nearest this screen now.
 const current = () => shapeOf(innerWidth / innerHeight);
-// The same two edges as queries, which say when a screen turns.
+// Upright as a query, which says when a screen turns.
 const upright = () => matchMedia("(max-aspect-ratio: 1/1)");
+// Past 1.96 wide as a query, for the same reason.
 const long = () => matchMedia("(min-aspect-ratio: 49/25)");
 // A file's fingerprinted name from the list pnpm media web writes.
 const named = (key: string) => String((files as Record<string, unknown>)[key] ?? "");
-// A copy's full address and the poster of its first light.
+// A copy's full address, the lite one when small.
 const source = (s: Shape, small: boolean) => new URL(`${MEDIA}/${named(small ? `${s}-lite` : s)}`, location.href).href;
+// The poster of a shape's first light.
 const poster = (s: Shape) => `/film/${named(`poster-${s}`)}`;
 // A promise's failure that needs no answer.
 const quiet = () => undefined;
@@ -188,6 +210,7 @@ function tick(t: number) {
   const slowTurn = turning && t - turnFrom > 1200;
   const slowFilm = waitFrom > 0 && t - waitFrom > 1200;
   parts?.root.toggleAttribute("data-loading", slowStart || slowTurn || slowFilm);
+  // Repaint the fill at most every 150 ms, once there is a frame.
   if (fillOn && t - painted > 150 && live.readyState >= 2) {
     painted = t;
     paint(live);
@@ -250,12 +273,14 @@ function swap() {
   // A play and pause starts the loading even where a pause would not.
   to.play().catch(quiet);
   to.pause();
+  // Jump the new copy to the old one's time, unless overtaken.
   const seek = () => mine === changing && (to.currentTime = t);
   if (to.readyState >= 1) seek();
   else to.addEventListener("loadedmetadata", seek, { once: true });
   // Waits for that frame, then shows it and lets the old copy go.
   const arrive = () => {
     if (mine !== changing || !on) return;
+    // Not on that frame yet, so look again next frame.
     if (to.seeking || to.readyState < 2 || Math.abs(to.currentTime - t) > 0.1) {
       return void requestAnimationFrame(arrive);
     }
@@ -291,6 +316,7 @@ function stall(e: Event) {
   const v = e.target as HTMLVideoElement;
   if (v !== live || !on) return;
   const now = performance.now();
+  // A jump resets the smooth play clock; it is not a wait.
   if (e.type === "seeking") {
     jumped = now;
     smoothSince = 0;
@@ -298,6 +324,7 @@ function stall(e: Event) {
   }
   // A wait counts only after 2 s of smooth play with no jump or turn.
   const fair = started && smoothSince > 0 && now - smoothSince > 2000 && now - jumped > 2000;
+  // A wait begins; it counts only if play was smooth before.
   if (e.type === "waiting") {
     waitFrom = now;
     if (fair) waits++;
@@ -308,6 +335,7 @@ function stall(e: Event) {
   if (waitFrom && smoothSince === -1) waited += now - waitFrom;
   waitFrom = 0;
   smoothSince = now;
+  // Over 3 s or 3 waits in all, change to the lite copies.
   if (!lite && (waited > 3000 || waits >= 3)) {
     lite = true;
     swap();
@@ -316,6 +344,7 @@ function stall(e: Event) {
 
 // The rest of the page, inert while the film covers it.
 function behind(inert: boolean) {
+  // Every sibling of the film goes inert, or comes back.
   for (const el of parts?.root.parentElement?.children ?? []) {
     if (el !== parts?.root) (el as HTMLElement).inert = inert;
   }
@@ -357,12 +386,14 @@ function afterFade(then: () => void) {
   if (!parts) return then();
   const root = parts.root;
   let done = false;
+  // Runs then just once, from whichever comes first.
   const once = () => {
     if (done) return;
     done = true;
     root.removeEventListener("transitionend", own);
     then();
   };
+  // The player's own opacity fade has ended.
   const own = (e: Event) => e.target === root && (e as TransitionEvent).propertyName === "opacity" && once();
   root.addEventListener("transitionend", own);
   setTimeout(once, 900);
@@ -383,6 +414,7 @@ export function open() {
   // With the particle sky and motion, the page gives way to the light.
   const root = document.documentElement;
   const sky = root.hasAttribute("data-lit") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // With the sky, gather the dust into the film's first light.
   if (sky) {
     gathered = true;
     root.setAttribute("data-gather", "");
@@ -462,6 +494,7 @@ export const toggle = () => playing(!want);
 // Turns the captions on or off, kept for the next visit.
 export function captions(next: boolean) {
   cc = next;
+  // Storage may be blocked, so saving can throw.
   try {
     localStorage.setItem(KEPT, next ? "on" : "off");
   } catch {
@@ -473,6 +506,7 @@ export function captions(next: boolean) {
 
 // The captions choice from an earlier visit, off by default.
 export function kept() {
+  // Storage may be blocked, so reading can throw.
   try {
     return localStorage.getItem(KEPT) === "on";
   } catch {
@@ -511,6 +545,7 @@ export function full() {
   if (!parts || !live || !on) return;
   if (fullElement()) return unfull();
   const box = parts.root as Box;
+  // Most browsers put the whole player full screen.
   if (fullWay() === "player") {
     if (box.requestFullscreen) box.requestFullscreen({ navigationUI: "hide" }).catch(quiet);
     else box.webkitRequestFullscreen?.();
@@ -533,6 +568,7 @@ function nativeFull(e: Event) {
   const track = v.textTracks[0];
   if (track) track.mode = "disabled";
   if (!on || v !== live) return;
+  // Same shape and no change waiting: play on if it should.
   if (shape === current() && !later) {
     if (want && v.paused) v.play().catch(() => playing(false));
     return;
@@ -575,6 +611,7 @@ export function mount(root: HTMLElement) {
   reach();
   // Each video carries the captions too, for the iPhone's own player.
   const captionsFile = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+  // Add the captions track to each video, hidden for now.
   for (const v of parts.videos) {
     const track = Object.assign(document.createElement("track"), {
       kind: "captions",
@@ -622,14 +659,16 @@ export function mount(root: HTMLElement) {
     swap();
     if (was === "tall" && shape !== "tall") beckon();
   };
-  // The showing copy's end goes on to the tour; a failed copy, the lite.
+  // The showing copy's end goes on to the tour.
   const ended = (e: Event) => e.target === live && on && skip();
+  // A failed copy tries the lite one, then goes on to the tour.
   const failed = (e: Event) => {
     if (!on || e.target !== live) return;
     if (lite) return skip();
     lite = true;
     swap();
   };
+  // Every event the player listens to, and what answers it.
   const handlers: [EventTarget, string, (e: Event) => void][] = [
     [window, "popstate", () => on && !(history.state as { film?: boolean } | null)?.film && close()],
     [window, "pageshow", (e) => (e as PageTransitionEvent).persisted && close(true)],
@@ -653,6 +692,7 @@ export function mount(root: HTMLElement) {
     ]),
   ];
   for (const [target, type, handler] of handlers) target.addEventListener(type, handler);
+  // Stopping closes the film and unwires every listener.
   return () => {
     close(true);
     for (const [target, type, handler] of handlers) target.removeEventListener(type, handler);

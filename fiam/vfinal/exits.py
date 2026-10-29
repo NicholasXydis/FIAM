@@ -34,7 +34,7 @@ def crsp_exits(data: Path) -> pd.DataFrame:
     return d[keep].assign(source="crsp_delistings", evidence="")
 
 
-# Stocks whose rows stop in 2026 or end 2025 with no CRSP exit (2B).
+# Stocks whose rows stop in 2026 or end 2025 with no CRSP exit.
 def stoppers(data: Path, crsp_done: frozenset = frozenset()) -> pd.Series:
     d = pd.read_parquet(data / "v4" / "clean" / "dsf.parquet", columns=["permno", "date"])
     last = d.groupby("permno")["date"].max()
@@ -58,7 +58,7 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
     span = pd.DataFrame({"permno": last.index.to_numpy(), "last": last.to_numpy()})
     span["lo"], span["hi"] = lo.to_numpy(), hi.to_numpy()
     near = f.merge(span, on="permno")
-    # A bankruptcy filed in the year before the stop still names it (M5).
+    # A bankruptcy filed in the year before the stop still names it.
     year = near["filing_date"] >= near["last"] - pd.Timedelta(days=365)
     broke_any = set(
         near.loc[near["bankrupt"] & year & (near["filing_date"] <= near["hi"]), "permno"]
@@ -70,7 +70,7 @@ def sec_exits(data: Path, last: pd.Series) -> pd.DataFrame:
         if hits.empty:
             category, group, known, evidence = "data_gap", "data_gap", pd.NaT, ""
         else:
-            # A bankruptcy (item 1.03) is a failure even with an asset sale (M5).
+            # A bankruptcy (item 1.03) is a failure even with an asset sale.
             broke = bool(hits["bankrupt"].any()) or permno in broke_any
             merged = bool(hits["merger"].any())
             category = "bankruptcy" if broke else "merger" if merged else "delisted"
@@ -107,7 +107,7 @@ def build(data: Path = DATA) -> tuple[pd.DataFrame, dict]:
     sec = sec_exits(data, last)
     table = pd.concat([crsp, sec], ignore_index=True)
     table = table.merge(compustat_deletions(data), on="permno", how="left")
-    # Compustat's date only when it falls near this exit (L8).
+    # Compustat's date only when it falls near this exit.
     far = (table["compustat_dldte"] - table["exit_date"]).dt.days.abs() > 90
     table.loc[far, ["compustat_dldte", "compustat_dlrsn"]] = None
     table["known"] = pd.to_datetime(table["known"]).astype("datetime64[ns]")
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         out = {str(k): v for k, v in out.items()}
         for key in ("old_by_source_category", "new_by_source_category"):
             out[key] = {" ".join(k): v for k, v in out[key].items()}
-        target = ROOT / "out" / "vfinal" / "engine" / "exits_diff.json"
+        target = ROOT / "out" / "audit" / "engine" / "inputs" / "exits_diff.json"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
         print(json.dumps({k: v for k, v in out.items() if k != "changed_rows"}, indent=1))

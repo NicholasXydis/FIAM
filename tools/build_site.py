@@ -1,4 +1,4 @@
-# Site data and the ad's crises from the final fund's pick. Read only.
+# Site data and the film's crises from the fund's pack. Read only.
 
 import argparse
 import csv
@@ -8,86 +8,49 @@ import re
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-# The repo root on the path, so crisis windows import fiam from any cwd.
-sys.path.insert(0, str(ROOT))
-# The site's two data files and the agents' model names.
+# The site's two data files, and the film's own small data file.
 OUT = ROOT / "site" / "src" / "data" / "fiam.json"
 CRASHES = ROOT / "site" / "src" / "data" / "crashes.json"
+FILM = ROOT / "site" / "src" / "film" / "data.json"
+# The numbers and charts pack, the one source for every site number.
+PACK = Path.home() / "FIAM_work" / "vfinal_pack"
+# The agents' model names, and the hurdle's yearly premium over bills.
 MODELS = {"gemma": "Gemma 4 26B-A4B", "qwen": "Qwen3.8-27B"}
-# The headline's pick files and the hurdle's yearly premium.
-V4 = ROOT / "out" / "vfinal" / "final"
 PREMIUM = 0.04
-# The AI desk's two tests, the eight ideas' gates and the X-ray.
-DESK = {
-    "early": ROOT / "out" / "vfinal" / "desk" / "decide_ce5cbff850d2.json",
-    "late": ROOT / "out" / "vfinal" / "desk" / "final_decide_512e4bdd3a5e.json",
-}
-GATES = ROOT / "out" / "vfinal" / "gates" / "late_db36eb4b849a.json"
-XRAY = ROOT / "out" / "alt" / "xray" / "xray_2026-08-31.json"
-# The first strategy's commit, run once on 2021-2026, then revised.
-FIRST = "512e4bdd3a5e"
 # The organisers' panel, read only for its stocks per month.
 PANEL = ROOT / "data" / "organisers" / "chars_final_with_names.parquet"
 # The forecasts' months the universe average counts from.
 UNIVERSE_FROM = "2020-12-31"
-# The ten SYY-10 parts of fiam/vfinal/signals/syy.py, by question.
-SIGNALS_FINAL = [
-    ("gp_at", +1, "profitable", "Gross profit to assets"),
-    ("niq_at", +1, "profitable", "Return on assets"),
-    ("ret_12_1", +1, "rising", "12-month momentum"),
-    ("chcsho_12m", -1, "careful", "Net stock issues"),
-    ("eqnetis_at", -1, "careful", "Net equity issuance"),
-    ("at_gr1", -1, "careful", "Asset growth"),
-    ("ppeinv_gr1a", -1, "careful", "Investment growth"),
-    ("o_score", -1, "safe", "Distress risk (O-score)"),
-    ("oaccruals_at", -1, "real", "Operating accruals"),
-    ("noa_at", -1, "real", "Net operating assets"),
-]
-FAMILIES_FINAL = {
-    "profitable": "Is it profitable?",
-    "rising": "Is it rising?",
-    "careful": "Is it careful with its money?",
-    "safe": "Is it safe?",
-    "real": "Are its profits real?",
+# The crisis replay run as its method is written, with peer fill.
+VARIANT = "new_peer_fill"
+# Our three signals among the forecast's inputs, in plain words.
+OURS = {
+    "syy": "SYY-10 mispricing score",
+    "sue_forecast": "Earnings surprise forecast",
+    "short_ratio": "Short interest",
 }
-# Each what-if in plain words; one not listed here stops the build.
-WHATIFS = {
-    "styles_free": "Style limits lifted",
-    "names_220": "At most 220 names",
-    "vol_reliability": "Alpha scaled by past reliability",
-    "yearly_refits": "Yearly refits",
-    "budget_none": "No cost budget",
-    "sectors_wide": "Sector limits doubled",
-    "speed_0.5": "Trading half way to target",
-    "names_480": "At most 480 names",
-    "lambda_half": "Half the risk aversion",
-    "budget_half": "Half the cost budget",
-    "cap_3bn": "Only stocks of $3bn and up",
-    "speed_0.2": "Trading a fifth of the way",
-}
-# The words every what-if's label file must carry.
-IN_SAMPLE = "chosen with 2021-2026 visible"
-# Exhibit 1's daily S&P 500 path, and the 60/40 steps from the deck.
-EXHIBIT_1 = ROOT / "out" / "vfinal" / "exhibits_revised" / "exhibit_1_active_return.csv"
-SIXTY_FORTY = ROOT / "out" / "deck" / "sixty_forty_steps.json"
-# The comparison file's rows for volatility, and its S&P 500 column.
-VOLATILITY = "Annual volatility (%)"
-SP500 = "sp500_price"
-# Site keys the final fund no longer fills, dropped from the base.
-DROPPED = ("capacity", "explained", "factor_story")
+# The organisers' characteristics are shown in this many equal sets.
+BUNDLES = 7
+# Columns of the features file that are keys, not forecast inputs.
+KEYS = ("date", "permno", "exchcd", "me")
 # Days in the rolling beta's window.
 BETA_DAYS = 252
 # Row 21 books fees, spread and impact as one, put under this part.
 TRADING_PART = "trading"
 # Each year's cards and the monthly column each compounds.
 YEAR_COLUMNS = {"strategy": "ret", "benchmark": "hurdle", "market": "market"}
-# The comparison file's row for the fund's correlation with the market.
-CORRELATION = "Correlation with the market"
+# The 60/40 slider moves up to this many points of bonds into the fund.
+SWAP_MAX = 20
 # A signed decimal number inside a table cell.
 NUMBER = r"[-+]?\d+(?:\.\d+)?"
+# Site keys carried over from the base file; the rest are rebuilt.
+KEPT = ("crowd", "agents")
+# How far a rebuilt number may stray from the pack's before a stop.
+TOLERANCE = 5e-4
 
 
 # A JSON file, as a dict.
@@ -106,49 +69,10 @@ def r(x: float, digits: int = 4) -> float:
     return round(float(x), digits)
 
 
-# The crises file a pick's headline folder holds, or None if unnamed.
-def crises_file(pick: Path) -> Path | None:
-    headline = load(pick).get("headline")
-    if not headline:
-        return None
-    commit = pick.stem.removeprefix("pick_")
-    return pick.parent / Path(headline).name / f"crises_{commit}.json"
-
-
-# The newest pick, by when it is last written, whose crises file exists.
-def newest_pick(folder: Path = V4) -> Path:
-    picks = sorted(folder.glob("pick_*.json"), key=lambda p: p.stat().st_mtime)
-    if not picks:
-        raise SystemExit(f"No pick file in {folder}: run uv run fiam stage pick first.")
-    ready = [p for p in picks if (c := crises_file(p)) is not None and c.exists()]
-    if not ready:
-        raise SystemExit(f"No pick in {folder} has its crises file: run its crises replay first.")
-    return ready[-1]
-
-
-# The headline folder and its commit from a pick, refused unless final.
-def headline_folder(pick: Path) -> tuple[Path, str]:
-    got = load(pick)
-    if got.get("final") is not True:
-        todo = ", ".join(got.get("next", [])) or "none listed"
-        raise SystemExit(f"{pick.name} is not final, so no headline yet. Still to run: {todo}.")
-    # The folder sits beside its pick, wherever the pick lives.
-    return pick.parent / Path(got["headline"]).name, pick.stem.removeprefix("pick_")
-
-
-# The headline folder's five files, refused if any is missing.
-def v4_files(folder: Path, commit: str) -> dict[str, Path]:
-    files = {
-        "table": folder / f"table_9_1_{commit}.csv",
-        "vs_market": folder / f"vs_market_{commit}.csv",
-        "daily": folder / f"daily_7_{commit}.parquet",
-        "positions": folder / f"positions_7_{commit}.parquet",
-        "names": folder / f"arcana_weights_monthly_{commit}_own.csv",
-    }
-    missing = [p.name for p in files.values() if not p.exists()]
-    if missing:
-        raise SystemExit(f"{folder} lacks {', '.join(missing)}.")
-    return files
+# Stops the build when a rebuilt number strays from the pack's.
+def agree(name: str, ours: float, pack: float, tolerance: float = TOLERANCE) -> None:
+    if abs(ours - pack) > tolerance:
+        raise SystemExit(f"{name}: rebuilt {ours:.6f}, pack {pack:.6f}. Fix before publishing.")
 
 
 # Every number in a table cell, in order.
@@ -156,12 +80,12 @@ def numbers(cell: str) -> list[float]:
     return [float(x) for x in re.findall(NUMBER, cell)]
 
 
-# A cell's first number, as -1.39 in "-1.39 (0.44); at 100% gross".
-def first(cell: str) -> float:
-    got = numbers(cell)
+# The number after a word, as CAGR in "arithmetic 6.86, CAGR 7.00".
+def labelled(cell: str, label: str) -> float:
+    got = re.search(rf"\b{re.escape(label)}\s+({NUMBER})", cell)
     if not got:
-        raise ValueError(f"no number in {cell!r}")
-    return got[0]
+        raise ValueError(f"no {label} in {cell!r}")
+    return float(got[1])
 
 
 # A "value (s.e.)" cell as its value and standard error.
@@ -172,66 +96,38 @@ def with_se(cell: str) -> tuple[float, float]:
     return float(got[1]), float(got[2])
 
 
-# The number after a word, as CAGR in "arithmetic -3.57, CAGR -3.80".
-def labelled(cell: str, label: str) -> float:
-    got = re.search(rf"\b{re.escape(label)}\s+({NUMBER})", cell)
-    if not got:
-        raise ValueError(f"no {label} in {cell!r}")
-    return float(got[1])
-
-
 # The 23-row table as each row's cells, keyed by row number.
 def table_rows(path: Path) -> dict[int, dict]:
     return {int(x["row"]): x for x in rows(path)}
 
 
-# The fund's column of the comparison with the market, by measure.
-def vs_market(path: Path) -> dict[str, float]:
-    return {x["measure"]: float(x["fund"]) for x in rows(path)}
+# The PDF's monthly bill, TB3MS / 1200, by month.
+def bill(pack: Path) -> pd.Series:
+    t = pd.read_csv(pack / "src" / "TB3MS.csv", parse_dates=["observation_date"])
+    return pd.Series(t["TB3MS"].to_numpy() / 1200, index=t["observation_date"].dt.to_period("M"))
 
 
-# Yearly return over the hurdle before rounding, from row 3's means.
-def active_annual(t: dict[int, dict]) -> float:
-    fund = labelled(t[3]["strategy"], "arithmetic")
-    return (fund - labelled(t[3]["benchmark"], "arithmetic")) / 100
-
-
-# Trading and borrow costs a year as fractions, rows 21 and 22.
-def cost_parts(t: dict[int, dict]) -> tuple[float, float]:
-    return float(t[21]["strategy"]) / 100, float(t[22]["strategy"]) / 100
-
-
-# The month's bill as TB3MS / 1200, its first daily rate x 252 / 12.
-def monthly_bill(rf_daily: pd.Series) -> pd.Series:
-    month = pd.DatetimeIndex(rf_daily.index).to_period("M")
-    return (rf_daily * 252 / 12).groupby(month).first()
+# The S&P 500's daily return as the engine uses it, from the pack.
+def market_daily(pack: Path) -> pd.Series:
+    d = pd.read_csv(pack / "data" / "daily_paths.csv", parse_dates=["date"], index_col="date")
+    return d["sp500_ret"]
 
 
 # Each month's fund return, bill and hurdle, the endowment row dropped.
-def fund_months(daily: pd.DataFrame) -> pd.DataFrame:
+def fund_months(daily: pd.DataFrame, bills: pd.Series) -> pd.DataFrame:
     d = daily.iloc[1:]
     month = pd.DatetimeIndex(d.index).to_period("M")
-    bill = monthly_bill(d["rf"])
     ret = (1 + d["ret"]).groupby(month).prod() - 1
-    return pd.DataFrame({"ret": ret, "bill": bill, "hurdle": bill + PREMIUM / 12})
+    b = bills.reindex(ret.index)
+    if b.isna().any():
+        raise SystemExit("TB3MS misses a month of the run.")
+    return pd.DataFrame({"ret": ret, "bill": b, "hurdle": b + PREMIUM / 12})
 
 
-# The S&P 500's daily closes from the benchmarks file, blanks dropped.
-def sp500() -> pd.Series:
-    close = {
-        x["observation_date"]: float(x["SP500"])
-        for x in rows(ROOT / "data" / "benchmarks" / "SP500.csv")
-        if x["SP500"] not in ("", ".")
-    }
-    out = pd.Series(close, dtype=float)
-    out.index = pd.to_datetime(out.index)
-    return out.sort_index()
-
-
-# The S&P 500's return in each month, last close to last close.
-def market_months(close: pd.Series, months: pd.PeriodIndex) -> pd.Series:
-    last = close.groupby(pd.DatetimeIndex(close.index).to_period("M")).last()
-    got = (last / last.shift(1) - 1).reindex(months)
+# The S&P 500's return in each month, compounded from its days.
+def market_months(market: pd.Series, months: pd.PeriodIndex) -> pd.Series:
+    got = (1 + market).groupby(pd.DatetimeIndex(market.index).to_period("M")).prod() - 1
+    got = got.reindex(months)
     if got.isna().any():
         raise SystemExit("The S&P 500 series misses a month of the run.")
     return got
@@ -243,7 +139,7 @@ def growth(monthly: pd.Series) -> list[float]:
 
 
 # $1 in the fund, the hurdle and the S&P 500, and their monthly moves.
-def race_v4(m: pd.DataFrame, market: pd.Series) -> dict:
+def race(m: pd.DataFrame, market: pd.Series) -> dict:
     return dict(
         book=growth(m["ret"]),
         hurdle=growth(m["hurdle"]),
@@ -254,7 +150,7 @@ def race_v4(m: pd.DataFrame, market: pd.Series) -> dict:
 
 
 # Each calendar year's fund, hurdle and market returns, compounded.
-def years_v4(m: pd.DataFrame, market: pd.Series) -> dict:
+def years(m: pd.DataFrame, market: pd.Series) -> dict:
     both = m.assign(market=market.to_numpy())
     out = {}
     for year, part in both.groupby(both.index.year):
@@ -265,6 +161,15 @@ def years_v4(m: pd.DataFrame, market: pd.Series) -> dict:
             "months": len(part),
         }
     return out
+
+
+# The rebuilt years against the pack's calendar years, or a stop.
+def check_years(got: dict, pack: Path) -> None:
+    for x in rows(pack / "data" / "calendar_years.csv"):
+        y = got[x["year"]]
+        agree(f"{x['year']} fund", y["strategy"], float(x["fund_after_costs_pct"]) / 100)
+        agree(f"{x['year']} hurdle", y["benchmark"], float(x["hurdle_pct"]) / 100)
+        agree(f"{x['year']} S&P 500", y["market"], float(x["sp500_pct"]) / 100)
 
 
 # The fund's rolling beta to the S&P 500 and a zero-beta noise band.
@@ -286,14 +191,15 @@ def beta_so_far(excess: pd.Series, market: pd.Series, days: int = 10) -> pd.Seri
 
 
 # Each month's rolling beta and band, the share outside, and before.
-def beta_v4(daily: pd.DataFrame, close: pd.Series) -> dict:
+def beta_block(daily: pd.DataFrame, market: pd.Series) -> dict:
     d = daily.iloc[1:]
-    excess, market = d["ret"] - d["rf"], close.pct_change().dropna()
-    got = rolling_beta(excess, market)
+    excess = d["ret"] - d["rf"]
+    mkt = market.reindex(d.index) - d["rf"]
+    got = rolling_beta(excess, mkt)
     ends = got.groupby(pd.DatetimeIndex(got.index).to_period("M")).last()
     outside = float((ends["beta"].abs() > ends["band"]).mean()) if len(ends) else 0.0
     # Months before the first full window show the beta measured so far.
-    early = beta_so_far(excess, market)
+    early = beta_so_far(excess, mkt)
     early = early.groupby(pd.DatetimeIndex(early.index).to_period("M")).last()
     first = ends.index[0] if len(ends) else None
     return dict(
@@ -306,7 +212,7 @@ def beta_v4(daily: pd.DataFrame, close: pd.Series) -> dict:
 
 
 # The latest ticker and name of each PERMNO in the Arcana weights file.
-def names_v4(path: Path) -> dict[int, tuple[str, str]]:
+def names(path: Path) -> dict[int, tuple[str, str]]:
     cols = ["Date", "Ticker", "PERMNO", "Name"]
     own = pd.read_csv(path, usecols=cols, dtype=str, keep_default_na=False)
     own = own.replace("", pd.NA).sort_values("Date", kind="stable")
@@ -318,7 +224,7 @@ def names_v4(path: Path) -> dict[int, tuple[str, str]]:
 
 
 # Each month's book on its last positions date, in 0.001% units.
-def holdings_v4(positions: pd.DataFrame, nav: pd.Series, names: dict, months: list[str]) -> dict:
+def holdings(positions: pd.DataFrame, nav: pd.Series, known: dict, months: list[str]) -> dict:
     p = positions.assign(date=pd.to_datetime(positions["date"]))
     p = p[p["value"] != 0]
     month = p["date"].dt.to_period("M").astype(str)
@@ -333,94 +239,130 @@ def holdings_v4(positions: pd.DataFrame, nav: pd.Series, names: dict, months: li
         for permno, weight in zip(part["permno"], part["weight"]):
             flat += [index[int(permno)], int(round(float(weight) * 1000))]
         book.append(flat)
-    known = [names.get(permno, ("", "")) for permno in order]
-    return dict(ticker=[t for t, _ in known], name=[n.title() for _, n in known], book=book)
+    found = [known.get(permno, ("", "")) for permno in order]
+    return dict(ticker=[t for t, _ in found], name=[n.title() for _, n in found], book=book)
 
 
-# The headline measures from the table, the comparison and the months.
-def headline_v4(
-    t: dict[int, dict], vs: dict[str, float], m: pd.DataFrame, daily: pd.DataFrame, old: dict
-) -> dict:
-    alpha, alpha_se = with_se(t[5]["strategy"])
-    # The daily beta is the headline one; row 6's monthly sits beside it.
-    beta, beta_se = with_se(t[7]["strategy"])
-    monthly, monthly_se = with_se(t[6]["strategy"])
-    net = active_annual(t) + PREMIUM
-    days = daily.iloc[1:]
-    best, worst = m["ret"].idxmax(), m["ret"].idxmin()
-    return old | dict(
-        ir=r(first(t[23]["strategy"]), 3),
-        ir_gross=r(float(t[9]["strategy"]), 3),
-        net=r(net),
-        gross=r(net + sum(cost_parts(t))),
-        cagr=r(labelled(t[3]["strategy"], "CAGR") / 100),
-        vol=r(float(t[4]["strategy"]) / 100, 5),
-        sharpe=r(float(t[8]["strategy"]), 3),
-        drawdown=r(float(t[11]["strategy"]) / 100),
-        alpha=r(alpha / 100),
-        alpha_t=r(alpha / alpha_se, 2),
-        beta=r(beta, 3),
-        beta_se=r(beta_se, 3),
-        beta_monthly=r(monthly, 3),
-        beta_monthly_se=r(monthly_se, 3),
-        correlation=r(vs[CORRELATION], 3),
-        hit=r((m["ret"] > m["hurdle"]).mean(), 3),
-        positions=r(labelled(t[14]["strategy"], "avg"), 1),
-        longs=r(days["n_long"].mean(), 1),
-        shorts=r(days["n_short"].mean(), 1),
-        turnover=r(labelled(t[17]["strategy"], "without") / 100 / 12, 3),
-        cumulative=r(float(t[2]["strategy"]) / 100),
-        best_month=dict(month=str(best), value=r(m["ret"][best])),
-        worst_month=dict(month=str(worst), value=r(m["ret"][worst])),
+# Months up, the worst 12 months and the market captures, by month.
+def monthly(n: dict, m: pd.DataFrame, market: pd.Series) -> dict:
+    ret = m["ret"]
+    up = int((ret > 0).sum())
+    hits = n["hit_rate"]
+    agree("months up", up / len(ret), hits["monthly_hit_rate_pct"] / 100)
+    if len(ret) != hits["months"]:
+        raise SystemExit("The run's months and the pack's disagree.")
+    agree("worst month", float(ret.min()), n["headline"]["max_one_month_loss_pct"] / 100)
+    # Each run of 12 months compounded, and the worst of them.
+    twelve = (1 + ret).rolling(12).apply(np.prod, raw=True) - 1
+    fell = market.to_numpy() < 0
+    rose = market.to_numpy() > 0
+    # Each capture is the fund's mean month over the market's.
+    down = float(ret[fell].mean() / market[fell].mean())
+    upside = float(ret[rose].mean() / market[rose].mean())
+    return dict(
+        months_up=up,
+        worst_12=dict(month=str(twelve.idxmin()), value=r(twelve.min())),
+        down_capture=r(down, 3),
+        up_capture=r(upside, 3),
     )
 
 
+# The headline measures, from the pack's numbers and the daily file.
+def headline(n: dict, t: dict[int, dict], daily: pd.DataFrame, m: pd.DataFrame) -> dict:
+    h = n["headline"]
+    days = daily.iloc[1:]
+    best, worst = m["ret"].idxmax(), m["ret"].idxmin()
+    beta_m, beta_m_se = with_se(t[6]["strategy"])
+    beta_d, beta_d_se = with_se(t[7]["strategy"])
+    agree("monthly beta", beta_m, h["beta_monthly"], 1e-3)
+    agree("daily beta", beta_d, h["beta_daily"], 1e-3)
+    return dict(
+        ir=r(h["ir_after_costs"], 3),
+        ir_gross=r(h["ir_before_costs"], 3),
+        net=r(h["arithmetic_return_pct"] / 100),
+        cagr=r(h["cagr_pct"] / 100),
+        vol=r(h["vol_monthly_pct"] / 100, 5),
+        sharpe=r(h["sharpe_pdf_bill"], 3),
+        drawdown=r(h["max_drawdown_pct"] / 100),
+        alpha=r(h["alpha_pct"] / 100),
+        alpha_t=r(h["alpha_pct"] / h["alpha_se_pct"], 2),
+        # The headline beta is the monthly one, row 6; row 7's daily beside.
+        beta=r(beta_m, 3),
+        beta_se=r(beta_m_se, 3),
+        beta_daily=r(beta_d, 3),
+        beta_daily_se=r(beta_d_se, 3),
+        correlation=r(n["sp500_context"]["correlation_monthly_with_fund"], 3),
+        hit=r(n["hit_rate"]["months_beating_hurdle_pct"] / 100, 3),
+        positions=r(h["names_avg"], 1),
+        longs=r(days["n_long"].mean(), 1),
+        shorts=r(days["n_short"].mean(), 1),
+        cumulative=r(h["cumulative_return_pct"] / 100),
+        ending=r(h["ending_value_bn"], 4),
+        hurdle_ending=r(h["hurdle_ending_bn_pdf_bill"], 4),
+        best_month=dict(month=str(best), value=r(m["ret"][best])),
+        worst_month=dict(month=str(worst), value=r(m["ret"][worst])),
+        breaches=int(h["breaches"]),
+        sector_max=r(n["sector_net"]["max_abs_net_pct"] / 100, 4),
+        rebalances=int(h["rebalances"]),
+    )
+
+
+# Trading and borrow costs a year as fractions, rows 21 and 22.
+def cost_parts(t: dict[int, dict]) -> tuple[float, float]:
+    return float(t[21]["strategy"]) / 100, float(t[22]["strategy"]) / 100
+
+
 # Return a year before and after the two booked costs, and the hurdle.
-def costs_v4(t: dict[int, dict]) -> dict:
+def costs(t: dict[int, dict]) -> dict:
     trading, borrow = cost_parts(t)
     net = labelled(t[3]["strategy"], "arithmetic") / 100
+    hurdle = labelled(t[3]["benchmark"], "arithmetic") / 100
+    total = trading + borrow
+    gross = net + total
     return dict(
-        gross=r(net + trading + borrow),
-        net=r(net),
-        hurdle=r(labelled(t[3]["benchmark"], "arithmetic") / 100),
+        gross=r(gross, 5),
+        net=r(net, 5),
+        hurdle=r(hurdle, 5),
+        # Cash a year is the hurdle less its premium over bills.
+        cash=r(hurdle - PREMIUM, 5),
+        # The multiple of today's costs at which the fund meets the hurdle.
+        break_even=r((gross - hurdle) / total, 3),
         parts={TRADING_PART: r(trading, 5), "borrow": r(borrow, 5)},
-        total=r(trading + borrow, 5),
+        total=r(total, 5),
         ir_gross=r(float(t[9]["strategy"]), 3),
         turnover=r(labelled(t[17]["strategy"], "build") / 100, 3),
     )
 
 
-# The site data with its headline keys refilled from a run folder.
-def v4(base: dict, folder: Path, commit: str, close: pd.Series) -> dict:
-    f = v4_files(folder, commit)
-    t, daily = table_rows(f["table"]), pd.read_parquet(f["daily"])
-    m = fund_months(daily)
-    market = market_months(close, m.index)
-    months = [str(p) for p in m.index]
-    return base | dict(
-        book=folder.name,
-        code=commit,
-        window=f"{months[0]} to {months[-1]}",
-        months=months,
-        headline=headline_v4(t, vs_market(f["vs_market"]), m, daily, base["headline"]),
-        years=years_v4(m, market),
-        race=race_v4(m, market),
-        beta=beta_v4(daily, close),
-        stocks=holdings_v4(
-            pd.read_parquet(f["positions"]), daily["nav"], names_v4(f["names"]), months
-        ),
-        costs=costs_v4(t),
-    )
-
-
-# A number with a true minus sign, as the site's own copy writes it.
-def minus(x: float, digits: int = 2) -> str:
-    return f"{'−' if x < 0 else ''}{abs(x):.{digits}f}"
+# The forecast's inputs: the organisers' sets and our three signals.
+def signals(pack: Path) -> tuple[list[dict], dict]:
+    cols = pd.read_parquet(pack / "src" / "forecast" / "plus" / "features.parquet").columns
+    inputs = [c for c in cols if c not in KEYS]
+    theirs = sorted(c for c in inputs if c not in OURS)
+    if sorted(c for c in inputs if c in OURS) != sorted(OURS):
+        raise SystemExit("The forecast's inputs lack one of our three signals.")
+    size = math.ceil(len(theirs) / BUNDLES)
+    out = []
+    # Each set holds a run of the characteristics in name order.
+    for i in range(0, len(theirs), size):
+        part = theirs[i : i + size]
+        out.append(
+            dict(
+                code=f"set{i // size + 1}",
+                family="theirs",
+                label=f"{len(part)} characteristics, {part[0]} to {part[-1]}",
+                count=len(part),
+            )
+        )
+    out += [dict(code=c, family="ours", label=label, count=1) for c, label in OURS.items()]
+    families = {"theirs": f"The organisers' {len(theirs)} characteristics", "ours": "Our 3 signals"}
+    return out, families
 
 
 # One real month: all stocks, the forecast universe and the final book.
-def journey_v4(forecasts: Path, positions: pd.DataFrame) -> dict:
-    eoms = pd.to_datetime(pd.read_parquet(forecasts, columns=["eom"])["eom"])
+def journey(pack: Path, positions: pd.DataFrame) -> dict:
+    fc = pd.read_parquet(pack / "src" / "forecast" / "elasso_rho.parquet", columns=["eom"])
+    eoms = pd.to_datetime(fc["eom"])
     per = eoms[eoms >= UNIVERSE_FROM].value_counts().sort_index()
     last = per.index[-1]
     panel = pd.to_datetime(pd.read_parquet(PANEL, columns=["eom"])["eom"])
@@ -436,230 +378,354 @@ def journey_v4(forecasts: Path, positions: pd.DataFrame) -> dict:
     )
 
 
-# Each replayed crisis with its dates, the market and the final book.
-def crises_v4(folder: Path, commit: str) -> list[dict]:
-    from fiam.exhibits.stress import CRISES
-
-    replay = load(folder / f"crises_{commit}.json")["crises"]
-    if list(replay) != list(CRISES):
-        raise SystemExit("The crises file and the stress windows differ.")
-    return [
-        dict(
-            name=name,
-            first=first,
-            last=last,
-            market=r(replay[name]["market"]),
-            book=r(replay[name]["loss"]),
-            coverage=r(replay[name]["coverage"], 2),
-        )
-        for name, (first, last) in CRISES.items()
-    ]
+# A Yahoo monthly bar file's adjusted returns over the run's months.
+def yahoo(path: Path, months: pd.PeriodIndex) -> pd.Series:
+    j = load(path)["chart"]["result"][0]
+    ts = pd.to_datetime(j["timestamp"], unit="s").tz_localize("UTC").tz_convert("America/New_York")
+    adj = pd.Series(j["indicators"]["adjclose"][0]["adjclose"], index=ts.tz_localize(None))
+    adj.index = adj.index.to_period("M")
+    adj = adj[~adj.index.duplicated(keep="last")]
+    return adj.pct_change().reindex(months)
 
 
-# Every finished what-if: its label check and its table's measures.
-def whatifs(commit: str) -> list[dict]:
-    found = {}
-    for table in sorted(V4.glob(f"whatif*/*/table_9_1_{commit}.csv")):
-        key = table.parent.name
-        label = (table.parent / "LABEL.txt").read_text(encoding="utf-8")
-        if IN_SAMPLE not in label or key in found:
-            raise SystemExit(f"{table.parent} is unlabelled or repeated.")
-        if key not in WHATIFS:
-            raise SystemExit(f"Name the what-if {key} in WHATIFS first.")
-        t = table_rows(table)
-        found[key] = dict(
-            key=key,
-            label=WHATIFS[key],
-            ir=r(first(t[23]["strategy"]), 2),
-            ir_gross=r(float(t[9]["strategy"]), 2),
-            cagr=r(labelled(t[3]["strategy"], "CAGR") / 100),
-            drawdown=r(float(t[11]["strategy"]) / 100),
-        )
-    return sorted(found.values(), key=lambda x: -x["ir"])
-
-
-# The S&P 500's yearly volatility and worst daily fall, as fractions.
-def sp500_v4(vs: Path) -> dict:
-    vol = next(float(x[SP500]) for x in rows(vs) if x["measure"] == VOLATILITY)
-    level = 1 + pd.read_csv(EXHIBIT_1, usecols=["sp500"])["sp500"] / 100
-    return dict(vol=r(vol / 100, 5), drawdown=r((level / level.cummax() - 1).min(), 5))
+# A mix's yearly return, volatility and worst month-end fall.
+def mix_stats(x: pd.Series) -> dict:
+    wealth = (1 + x).cumprod().to_numpy()
+    peak = np.maximum.accumulate(np.concatenate([[1.0], wealth]))[1:]
+    return dict(
+        cagr=r(wealth[-1] ** (12 / len(x)) - 1, 5),
+        vol=r(x.std(ddof=1) * math.sqrt(12), 5),
+        drawdown=r((wealth / peak - 1).min(), 5),
+    )
 
 
 # 2022 for the S&P 500, bonds, a 60/40 and the fund, and the steps.
-def edge_v4(years: dict) -> dict:
-    if not SIXTY_FORTY.exists():
-        raise SystemExit(f"No {SIXTY_FORTY}: run the deck's 60/40 steps first.")
-    got = load(SIXTY_FORTY)
-    year = got["year_2022"]
+def edge(pack: Path, m: pd.DataFrame, yrs: dict, six: dict) -> dict:
+    stocks = yahoo(pack / "src" / "SPY.json", m.index)
+    bonds = yahoo(pack / "src" / "AGG.json", m.index)
+    if stocks.isna().any() or bonds.isna().any():
+        raise SystemExit("SPY or AGG misses a month of the run.")
+    fund = m["ret"]
+    steps = []
+    # Each step moves one more point of the portfolio from bonds to us.
+    for k in range(SWAP_MAX + 1):
+        mixed = 0.6 * stocks + (0.4 - k / 100) * bonds + (k / 100) * fund
+        steps.append(dict(fund=k) | mix_stats(mixed))
+    agree("60/40 CAGR", steps[0]["cagr"], six["mixes"]["60/40"]["cagr_pct"] / 100)
+    agree("60/30/10 CAGR", steps[10]["cagr"], six["mixes"]["60/30/10 fund"]["cagr_pct"] / 100)
+    agree("60/20/20 vol", steps[20]["vol"], six["mixes"]["60/20/20 fund"]["vol_pct"] / 100)
+    in_2022 = slice("2022-01", "2022-12")
+    sixty = 0.6 * stocks + 0.4 * bonds
+    # 2022 on the 60/40's own basis: SPY and AGG with dividends in.
+    year = dict(
+        sp500=r((1 + stocks.loc[in_2022]).prod() - 1),
+        bonds=r((1 + bonds.loc[in_2022]).prod() - 1),
+        sixty_forty=r((1 + sixty.loc[in_2022]).prod() - 1),
+        fund=yrs["2022"]["strategy"],
+    )
+    legs = six["legs_stats"]
+    agree("2022 SPY", year["sp500"], legs["stocks"]["year_2022_pct"] / 100)
+    agree("2022 AGG", year["bonds"], legs["bonds"]["year_2022_pct"] / 100)
+    agree("2022 60/40", year["sixty_forty"], six["mixes"]["60/40"]["year_2022_pct"] / 100)
     return dict(
-        year_2022=dict(
-            sp500=years["2022"]["market"],
-            bonds=r(year["bonds"]),
-            sixty_forty=r(year["sixty_forty"]),
-            fund=years["2022"]["strategy"],
-        ),
-        steps=got["steps"],
-        window=got["window"],
-        source=got["source"],
+        year_2022=year,
+        steps=steps,
+        window="2021-01 to 2026-08, 68 months, rebalanced each month end",
+        source="SPDR SPY and iShares AGG adjusted monthly closes, FRED TB3MS",
     )
 
 
-# The AI desk's tests: IR with no AI, the simple rule and the AI.
-def desk_v4() -> dict:
-    out = {}
-    for when, path in DESK.items():
-        got = load(path)
-        irs = got["irs"]
-        out[when] = dict(
-            none=r(irs["A0"], 2),
-            rule=r(irs["A1"], 2),
-            ai=r(irs["A2"], 2),
-            random=got["placebo"]["n"],
-            memory=got["memory_gate"]["passes"],
+# Each replayed crisis with its dates, the market and the final book.
+def crises(pack: Path, n: dict) -> list[dict]:
+    replay = load(pack / "crises.json")[VARIANT]
+    out = [
+        dict(
+            name=c["crisis"],
+            first=c["first"],
+            last=c["last"],
+            market=r(c["market_pct"] / 100),
+            book=r(c["book_pct"] / 100),
+            coverage=r(c["coverage_pct"] / 100, 2),
         )
+        for c in replay["crises"]
+    ]
+    summary = n["crises"][VARIANT]
+    agree(
+        "crisis market mean", np.mean([c["market"] for c in out]), summary["market_mean_pct"] / 100
+    )
+    agree("crisis book mean", np.mean([c["book"] for c in out]), summary["book_mean_pct"] / 100)
     return out
 
 
-# The base's agents and the risk desk, the eighth, with its tests.
-def agents_v4(base: list[dict], desk: dict) -> list[dict]:
-    early, late = desk["early"], desk["late"]
-    risk = dict(
-        key="desk",
-        name="Risk desk",
-        model=MODELS["gemma"],
-        does="Proposes shrinking a position at a risky moment from a card with no name, "
-        "ticker or date. A devil's advocate argues back",
-        facts=[
-            ["Tested against", f"a fixed rule and {late['random']} random desks"],
-            ["IR 2017 to 2020", f"{minus(early['ai'])} with AI, {minus(early['none'])} without"],
-            [
-                "IR 2021 to 2026, first strategy",
-                f"{minus(late['ai'])} with AI, {minus(late['none'])} without",
-            ],
-            ["Result", "No help, so the fund runs without it"],
+# The agents the slide shows, by the names the findings file uses.
+AGENT_NAMES = {
+    "rules": "Rules reader",
+    "triage": "Triage",
+    "analyst": "Analyst",
+    "explainer": "Explainer",
+    "memo": "Memo writer",
+    "advocate": "Devil's advocate",
+    "desk": "Risk desk",
+    "crowd": "AI crowd",
+}
+# What three agents do now, where the base's words describe older runs.
+DOES = {
+    "analyst": "Reads the latest filing of the book's ten largest longs and ten largest shorts",
+    "memo": "Writes the August investor letter, and code checks every number in it",
+    "desk": "Writes the risk note on the final book, with every number and level set by code",
+    "triage": "Labels each 8-K the book's companies filed as good, bad or neutral news",
+}
+# Facts an agent may keep beside its finding, each with its own file.
+STANDING: dict[str, str] = {}
+
+
+# Each key number checked against the agent's own output file.
+def check_found(found: dict, pack: Path) -> None:
+    ai = pack / "ai"
+    rules = load(ai / "rules" / "rules_check.json")
+    want = {"Rules reader": f"{rules['matched']} of {rules['rules_read']}"}
+    sides = load(ai / "analyst" / "analyst_final.json")["balance_by_side"]
+    support = sum(side["supports"] for side in sides.values())
+    want["Analyst"] = f"{support} of {sum(sum(side.values()) for side in sides.values())}"
+    want["Explainer"] = f"{len(load(ai / 'explanations.json')['positions'])} positions"
+    verdicts = load(ai / "desk" / "critic_final.json")["verdicts"]
+    stand = verdicts["stands"] + verdicts["partly stands"]
+    want["Devil's advocate"] = f"{stand} of {sum(verdicts.values())}"
+    want["Risk desk"] = f"{load(ai / 'desk' / 'risk_note.json')['levels']['watch']} watch"
+    rounded = load(ai / "crowd_aug" / "crowd_where_we_sit.json")["round"]
+    want["AI crowd"] = f"crowd beta {rounded['beta']}"
+    triage = load(ai / "triage" / "triage_final.json")
+    want["Triage"] = f"{triage['filings']['labelled']} 8-Ks"
+    for name, number in want.items():
+        if found[name]["key_number"] != number:
+            raise SystemExit(
+                f"{name}: findings say {found[name]['key_number']}, its file {number}."
+            )
+    # Words each finding must carry from its file: shares, percentiles.
+    words = {
+        "Triage": [f"{round(triage['share_for_our_side'] * 100)}%"],
+        "AI crowd": [
+            f"AI crowd's {ordinal(rounded['long_pct'])} percentile",
+            f"shorts at the {ordinal(rounded['short_pct'])}",
+            f"crowd beta {rounded['beta']}",
         ],
+    }
+    for name, parts in words.items():
+        for part in parts:
+            if part not in found[name]["finding"]:
+                raise SystemExit(f"{name}: the finding lacks {part!r} from its file.")
+
+
+# The models the live crowd ran on, read from its run manifests.
+def crowd_models(pack: Path) -> str:
+    runs = load(pack / "ai" / "crowd_aug" / "crowd_where_we_sit.json")["live_run"]["manifests"]
+    files = {run["model_file"] for run in runs.values()}
+    names = set()
+    # Each model file must be one the site can name.
+    for file in files:
+        if file.lower().startswith("gemma-4-26b-a4b"):
+            names.add(MODELS["gemma"])
+        else:
+            raise SystemExit(f"The crowd ran on {file}, a model the site cannot name.")
+    return " and ".join(sorted(names))
+
+
+# The base's eight agents with each one's finding on the final book.
+def agents(base: list[dict], pack: Path) -> list[dict]:
+    file = load(pack / "ai" / "agents_found.json")
+    found = file["agents"]
+    if file["agents_count"] != 8 or len(found) != 8 or len(base) != 8:
+        raise SystemExit("The AI desk must have exactly 8 agents.")
+    if set(found) != set(AGENT_NAMES.values()) or {a["key"] for a in base} != set(AGENT_NAMES):
+        raise SystemExit("The findings and the slide name different agents.")
+    # Every agent must have its finding; none may still be pending.
+    if file.get("pending") or any(not isinstance(v, dict) for v in found.values()):
+        raise SystemExit("An agent's finding is still pending.")
+    check_found(found, pack)
+    out = []
+    for a in base:
+        got = found[AGENT_NAMES[a["key"]]]
+        a = {k: v for k, v in a.items() if k != "facts" or a["key"] in STANDING}
+        # A fact kept beside a finding needs its file in the pack's AI folder.
+        if a["key"] in STANDING and not (pack / "ai" / STANDING[a["key"]]).exists():
+            raise SystemExit(f"{a['name']}: its older facts have no backing file.")
+        a |= dict(
+            does=DOES.get(a["key"], a["does"]),
+            finding=got["finding"],
+            number=got["key_number"],
+            date=got["date"],
+        )
+        # A run on Gemma names that model; the crowd reads its run manifests.
+        source = Path(got["source"]).read_text(encoding="utf-8").lower()
+        if a["key"] == "crowd":
+            a["model"] = crowd_models(pack)
+        elif "gemma" in source:
+            a["model"] = MODELS["gemma"]
+        out.append(a)
+    return out
+
+
+# The one crowd study the site reads, and the hype map.
+CROWD = PACK / "ai" / "crowd_aug" / "crowd_where_we_sit.json"
+HYPE = PACK.parent / "hype_map" / "results.json"
+# Crowd keys measured on older books, never shown for this fund.
+STALE = (
+    "picks",
+    "models",
+    "model_agreement",
+    "crowd_beta",
+    "crowd_t",
+    "longs_in_favourites",
+    "shorts_in_favourites",
+    "copycat_longs",
+    "copycat_test",
+    "likes",
+    "same_information",
+    "same_persona",
+    "rerun_agreement",
+    "correlation",
+    "sell_10bn",
+    "headline",
+    "favourites",
+)
+
+
+# An ordinal in English words' style: 1st, 2nd, 3rd, 11th, 57th.
+def ordinal(n: int) -> str:
+    end = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{end}"
+
+
+# The base's crowd, stale numbers gone and the study's rounded ones in.
+def crowd(base: dict, path: Path = CROWD) -> dict:
+    x = load(path)
+    rounded = x["round"]
+    if x["herding"]["retail"]["all_months"]["agents"] != base["agents"]:
+        raise SystemExit("The herding study and the crowd count differ.")
+    # Gold balls: the 68-month average share of our longs in favourites.
+    share = x["spliced_retail"]["average"]["long_in_top_decile"]
+    out = {k: v for k, v in base.items() if k not in STALE} | dict(
+        effective_voters=rounded["voters"],
+        lsv=rounded["lsv"],
+        beta=rounded["beta"],
+        sell_10bn_pct=rounded["sell_10bn_pct"],
+        long_pct=rounded["avg_long_pct"],
+        short_pct=rounded["avg_short_pct"],
+        favourites_pct=round(share * 100),
     )
-    others = [a for a in base if a["key"] != "desk"]
-    # The desk goes before the crowd, whose long label then fits.
-    at = next((i for i, a in enumerate(others) if a["key"] == "crowd"), len(others))
-    return [*others[:at], risk, *others[at:]]
+    if out["favourites_pct"] != round(share * 100) or not 0 <= out["favourites_pct"] <= 100:
+        raise SystemExit("The gold balls drift from the crowd study's average.")
+    return out
 
 
-# The final book on its last day, largest first, and the X-ray's read.
-def now_v4(stocks: dict, months: list[str]) -> dict:
+# Card spend of the book's two sides, as totals only, from the hype map.
+def hype(path: Path = HYPE) -> dict:
+    card = load(path)["card"]
+    sides = card["longs_vs_shorts"]
+    fav = card["crowd_favourites"]
+    return dict(
+        long_growth=r(sides["long_wmean"]),
+        short_growth=r(sides["short_wmean"]),
+        longs=sides["longs"],
+        shorts=sides["shorts"],
+        favourites=fav["favourites_with_growth"],
+        in_hype=fav["in_hype"],
+    )
+
+
+# The final book on its last day, largest first, and the hype check.
+def now(stocks: dict, months: list[str], pack: Path) -> dict:
     flat = stocks["book"][-1]
     book = [[stocks["ticker"][i], stocks["name"][i], w] for i, w in zip(flat[::2], flat[1::2])]
     book.sort(key=lambda x: -x[2])
-    x = load(XRAY)
-    cover = x["book_coverage"]
-    owned = ("card_spend", "foot_traffic", "web_traffic")
-    return dict(
-        decision=x["meta"]["as_of"],
-        month=months[-1],
-        book=book,
-        xray=dict(
-            names=cover["names"],
-            owned=max(cover[k]["names"] for k in owned),
-            benzinga=cover["benzinga_ever"]["names"],
-            benzinga_share=r(cover["benzinga_ever"]["share_of_gross"], 3),
-            top=len(x["cards"]),
-            keep=sum(c["suggestion"]["action"] == "keep" for c in x["cards"]),
-        ),
+    return dict(month=months[-1], book=book, hype=hype())
+
+
+# Every site key rebuilt from the pack, on top of the base's crowd.
+def build(base: dict, pack: Path) -> dict:
+    src = pack / "src" / "bw_fresh_lag"
+    n = load(pack / "numbers.json")
+    t = table_rows(src / "table_9_1.csv")
+    daily = pd.read_parquet(src / "daily.parquet")
+    positions = pd.read_parquet(src / "positions.parquet")
+    m = fund_months(daily, bill(pack))
+    mkt_daily = market_daily(pack)
+    market = market_months(mkt_daily, m.index)
+    months = [str(p) for p in m.index]
+    yrs = years(m, market)
+    check_years(yrs, pack)
+    head = headline(n, t, daily, m)
+    mkt = market_months(market_daily(pack), m.index)
+    head |= monthly(n, m, mkt)
+    ran = race(m, market)
+    agree("ending value", ran["book"][-1], head["ending"])
+    agree("hurdle ending", ran["hurdle"][-1], head["hurdle_ending"])
+    stocks = holdings(
+        positions, daily["nav"], names(src / "arcana_weights_monthly_own.csv"), months
     )
-
-
-# Every attempt: both strategies, the eight ideas and the what-ifs.
-def honesty_v4(pick: dict, head: dict, rows: list[dict]) -> dict:
-    first_ir = first(table_rows(V4 / f"table_9_1_{FIRST}.csv")[23]["strategy"])
-    holm = load(GATES)["late"]["holm"]
-    passed = sum(g["passes"] for g in holm.values())
-    checks = len(pick["ic_2017_2020"]) + len(pick["early_ir"])
-    better = sum(x["ir"] > r(head["ir"], 2) for x in rows)
-    families = [
-        dict(
-            what="The first strategy, frozen before any 2021 to 2026 result",
-            family="first",
-            eligible=True,
-            attempts=1,
-            verdict=f"Run once on 2021 to 2026, IR {minus(first_ir)} after costs, then revised",
-        ),
-        dict(
-            what="The revised strategy, its refits and limits settled on 2017 to 2020",
-            family="revised",
-            eligible=True,
-            attempts=checks,
-            verdict=f"Shipped, {pick['cadence']} refits and {pick['limits']} limits, "
-            f"IR {minus(head['ir'])} after costs",
-        ),
-        dict(
-            what="New ideas, each tested against a bar set in advance",
-            family="ideas",
-            eligible=False,
-            attempts=len(holm),
-            verdict=f"{passed} of {len(holm)} passed, so the fund runs on the published signals",
-        ),
-        dict(
-            what="What-ifs chosen with 2021 to 2026 visible",
-            family="whatifs",
-            eligible=False,
-            attempts=len(rows),
-            verdict=f"Never the headline, {better} of {len(rows)} did better in hindsight",
-        ),
-    ]
-    return dict(
-        attempts=sum(f["attempts"] for f in families),
-        eligible=sum(f["attempts"] for f in families if f["eligible"]),
-        ideas=len(holm),
-        ideas_passed=passed,
-        whatifs=len(rows),
-        families=families,
-    )
-
-
-# The final fund's scenes refilled on top of the headline keys.
-def final(data: dict, folder: Path, commit: str, pick: dict) -> dict:
-    f = v4_files(folder, commit)
-    rows = whatifs(commit)
-    desk = desk_v4()
-    head = data["headline"] | dict(breaches=load(folder / f"book_{commit}.json")["breach_days"])
-    forecasts = V4 / f"forecasts_{pick['cadence']}_{commit}.parquet"
-    kept = {k: v for k, v in data.items() if k not in DROPPED}
-    return kept | dict(
+    sig, fams = signals(pack)
+    sp = n["sp500_context"]
+    return {k: v for k, v in base.items() if k in KEPT} | dict(
+        window=f"{months[0]} to {months[-1]}",
+        months=months,
         headline=head,
-        signals=[dict(code=c, sign=s, family=g, label=x) for c, s, g, x in SIGNALS_FINAL],
-        families=FAMILIES_FINAL,
-        journey=journey_v4(forecasts, pd.read_parquet(f["positions"])),
-        edge=edge_v4(data["years"]),
-        sp500=sp500_v4(f["vs_market"]),
-        crises=crises_v4(folder, commit),
-        desk=desk,
-        agents=agents_v4(data["agents"], desk),
-        september=now_v4(data["stocks"], data["months"]),
-        honesty=honesty_v4(pick, head, rows),
+        years=yrs,
+        race=ran,
+        beta=beta_block(daily, mkt_daily),
+        stocks=stocks,
+        signals=sig,
+        families=fams,
+        journey=journey(pack, positions),
+        costs=costs(t),
+        edge=edge(pack, m, yrs, n["sixty_forty"]),
+        sp500=dict(
+            vol=r(sp["vol_monthly_pct"] / 100, 5), drawdown=r(sp["max_drawdown_pct"] / 100, 5)
+        ),
+        crises=crises(pack, n),
+        agents=agents(base["agents"], pack),
+        crowd=crowd(base["crowd"]),
+        september=now(stocks, months, pack),
     )
 
 
-# Any pick file and any base site file, else the defaults.
+# The film's Sharpe ratio and monthly beta, from the pack.
+def film_numbers(pack: Path) -> dict[str, float]:
+    n = load(pack / "numbers.json")
+    t = table_rows(pack / "src" / "bw_fresh_lag" / "table_9_1.csv")
+    return dict(sharpe=r(n["headline"]["sharpe_pdf_bill"]), beta=with_se(t[6]["strategy"])[0])
+
+
+# Puts the film's numbers in its data file, keeping the file's layout.
+def write_film(numbers: dict[str, float]) -> None:
+    text = FILM.read_text(encoding="utf-8")
+    # Each number replaces the one value after its key, and only that.
+    for key, value in numbers.items():
+        text, hits = re.subn(rf'("{key}":\s*)[-0-9.eE+]+', rf"\g<1>{value}", text)
+        if hits != 1:
+            raise SystemExit(f"{FILM} has no single {key} to update.")
+    FILM.write_text(text, encoding="utf-8")
+    print(f"wrote {FILM.relative_to(ROOT)}: " + ", ".join(f"{k} {v}" for k, v in numbers.items()))
+
+
+# A pack folder and a base site file, else the defaults.
 def options(args: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Writes the site's data files.")
-    parser.add_argument("--pick", type=Path, help="this pick file, not the newest ready one")
-    parser.add_argument("--base", type=Path, help="refill this site file, not the bundled one")
+    parser = argparse.ArgumentParser(description="Writes the site's data files from the pack.")
+    parser.add_argument("--pack", type=Path, default=PACK, help="the numbers and charts pack")
+    parser.add_argument("--base", type=Path, help="take the crowd and agents from this site file")
     return parser.parse_args(args)
 
 
-# The final fund refills a base site file, the bundled one by default.
+# Writes the site's data, its crises and the film's numbers.
 def main(args: list[str]) -> None:
     opts = options(args)
-    pick = opts.pick or newest_pick()
     base = opts.base or OUT
     if not base.exists():
         raise SystemExit(f"No {base}: pass --base with a site data file.")
-    folder, commit = headline_folder(pick)
-    data = final(v4(load(base), folder, commit, sp500()), folder, commit, load(pick))
-    OUT.parent.mkdir(parents=True, exist_ok=True)
+    data = build(load(base), opts.pack)
     for out, made in ((OUT, data), (CRASHES, data["crises"])):
         out.write_text(json.dumps(made, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"wrote {out.relative_to(ROOT)}: {out.stat().st_size / 1024:.0f} KB")
+    write_film(film_numbers(opts.pack))
 
 
 if __name__ == "__main__":

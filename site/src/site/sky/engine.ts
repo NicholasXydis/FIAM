@@ -100,15 +100,19 @@ const DUST: [number, number, number] = [0.72, 0.68, 1];
 const GOLD: [number, number, number] = [1, 0.8, 0.14];
 // Each gathered mote's share of light, so together they glow, not burn.
 const GATHERED = 0.026;
-// How far the halos spread round the gathered point, and their light.
+// How far the halos spread round the gathered point.
 const HALO = 4.5;
+// The gathered halos' light, all together.
 const GLOW = 0.065;
-// The gather: a mote's flight, its latest start, its turn on the way.
+// Seconds each mote takes to fly to the light.
 const FLIGHT = 0.8;
+// The latest a mote may set off, in seconds.
 const STAGGER = 0.15;
+// How far each mote turns on its way, in radians.
 const SPIN = 0.9;
-// At most three shooting stars at once, each a head and a tail.
+// At most three shooting stars at once.
 const COMETS = 3;
+// Points in each shooting star: a head and its tail.
 const TAIL = 30;
 
 // The name's colours: violet to periwinkle, a few gold and white.
@@ -173,6 +177,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     gl!.resize(w, h, dpr);
     random = seeded(7);
     const area = w * h;
+    // Far stars, more on bigger screens, each with its depth and shine.
     stars = Array.from({ length: Math.round(Math.min(2600, Math.max(500, area / 900))) }, () => ({
       x: random() * w,
       y: random() * h,
@@ -183,6 +188,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       f: 0.4 + random() * 1.6,
     }));
     const old = motes;
+    // Motes, more on bigger screens, each keeping its old place.
     motes = Array.from({ length: Math.round(Math.min(22000, Math.max(6500, area / 45))) }, (_, i) => {
       const was = old[i];
       return {
@@ -205,6 +211,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         sy: 0,
       };
     });
+    // Rising dust specks, more on bigger screens.
     embers = Array.from({ length: Math.round(Math.min(520, Math.max(140, area / 2800))) }, () => ({
       x: random() * w,
       y: random() * h,
@@ -225,6 +232,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     current = next;
     const box = next === "name" ? options.stage() : null;
     const spots = box ? letters(box, motes.length, random) : [];
+    // Give each mote its target: the light, a letter or its dust spot.
     motes.forEach((m, i) => {
       const s = spots[i];
       // Gathered, each mote rests near the light, most of them close in.
@@ -271,9 +279,11 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     }
     // Motes spring home, swirl gently, and part around the pointer.
     let halo = o + motes.length * FLOATS;
+    // Each mote moves, then draws itself and its faint halo.
     for (const m of motes) {
       // Gathering, each mote flies a set path: in, turning, by one second.
       let arrived = 0;
+      // In flight, place the mote along its path to the light.
       if (gathering && !reduce) {
         const p = Math.min(1, Math.max(0, (t - gatherAt - (m.ph / 6.29) * STAGGER) / FLIGHT));
         arrived = p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
@@ -294,6 +304,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         const dx = m.x - pointer.x;
         const dy = m.y - pointer.y;
         const d = Math.hypot(dx, dy) + 0.001;
+        // Near the pointer, a mote is pushed out and swirled round.
         if (d < reach && ring === null) {
           const f = (1 - d / reach) ** 2;
           ax += ((dx / d) * 2200 - (dy / d) * 1300) * f + pointer.vx * f * 16;
@@ -302,6 +313,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         // Free dust near a hovered control lets go of home and orbits it.
         if (ring && m.free) {
           const { ox, oy, nx, ny, gap } = outline(ring, m.x, m.y);
+          // Within reach, pull it to an orbit just outside the outline.
           if (gap < PULL) {
             const f = (1 - gap / PULL) ** 0.7;
             const px = ox + nx * ORBIT - m.x;
@@ -359,6 +371,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       // Rising dust is drawn to a hovered control too, more gently.
       if (ring && !reduce) {
         const { ox, oy, gap } = outline(ring, e.x, e.y);
+        // The nearer it is, the harder the pull.
         if (gap < PULL) {
           e.x += (ox - e.x) * Math.min(1, dt * 3) * (1 - gap / PULL);
           e.y += (oy - e.y) * Math.min(1, dt * 3) * (1 - gap / PULL);
@@ -383,9 +396,12 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       nextComet = t + 1.2 + Math.random() * 2.6;
     }
     for (let c = comets.length - 1; c >= 0; c--) if (t - comets[c]!.t0 > comets[c]!.life) comets.splice(c, 1);
+    // Draw every comet slot, an unused one as hidden points.
     for (let c = 0; c < COMETS; c++) {
       const cm = comets[c];
+      // Each point of the tail trails a little further behind.
       for (let k = 0; k < TAIL; k++) {
+        // An empty slot still fills its points, out of sight.
         if (!cm) {
           put(-99, -99, 0, 0, 0, 0, 1);
           continue;
@@ -408,7 +424,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
     gl!.draw(data);
   }
 
-  // The pointer stirs the motes; a tap away from a control bursts them.
+  // Keeps the pointer's place and speed, so it can stir the motes.
   const move = (e: PointerEvent) => {
     // Arriving from nowhere, the pointer has no speed yet.
     const known = pointer.x > -1e3;
@@ -419,6 +435,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
   };
   // Throws motes out from a point, harder the nearer they are to it.
   const push = (x: number, y: number, radius: number, force: number) => {
+    // Push each mote within the radius straight away from the point.
     for (const m of motes) {
       const dx = m.x - x;
       const dy = m.y - y;
@@ -429,17 +446,20 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       }
     }
   };
+  // A tap away from any control bursts the motes outward.
   const burst = (e: PointerEvent) => {
     Object.assign(pointer, { x: e.clientX, y: e.clientY, vx: 0, vy: 0 });
     if (reduce || (e.target instanceof Element && e.target.closest("a, button"))) return;
     push(e.clientX, e.clientY, Math.min(w, h) * 0.3, 1100);
   };
+  // The pointer left the page, so it stirs nothing.
   const away = () => Object.assign(pointer, { x: -1e4, y: -1e4 });
   // Runs only while the page is shown, to spare the battery.
   const loop = (now: number) => {
     step(now);
     raf = requestAnimationFrame(loop);
   };
+  // Runs the loop while the page shows, and stops it otherwise.
   const shown = () => {
     cancelAnimationFrame(raf);
     if (document.hidden || resting || !motes.length) return;
@@ -471,6 +491,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
       const { x, y } = light;
       shape("dust");
       if (reduce) return;
+      // Each mote flies out from the name's centre, a little at random.
       for (const m of motes) {
         const d = Math.hypot(m.x - x, m.y - y) + 0.001;
         const speed = 260 + Math.random() * 380;
@@ -496,6 +517,7 @@ export function startSky(canvas: HTMLCanvasElement, options: Options) {
         dark = 0;
         return shape(reduce ? "name" : "dust", true);
       }
+      // Each mote bursts out in a random direction.
       for (const m of motes) {
         const a = Math.random() * Math.PI * 2;
         const speed = 300 + Math.random() * 700;

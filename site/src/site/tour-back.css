@@ -7,11 +7,13 @@
 }
 /* Under 360 px Back is its arrow alone, its word kept for readers. */
 @media (max-width: 359px) {
+  /* A square button that holds only the arrow. */
   .tour-back {
     width: 44px;
     padding-inline: 0;
     justify-content: center;
   }
+  /* The word hidden from sight but still read aloud. */
   .tour-back .pill-label {
     position: absolute;
     width: 1px;
@@ -20,6 +22,7 @@
     clip-path: inset(50%);
   }
 }
+/* Shift the tour's name right so Back has room. */
 html:has(.tour-back) .brand {
   translate: 116px 0;
 }

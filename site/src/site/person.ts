@@ -20,6 +20,7 @@ function transition(change: () => void) {
 
 // The person the address names; a malformed one names nobody.
 const read = () => {
+  // A broken percent escape in the hash throws.
   try {
     return decodeURIComponent(location.hash.slice(1));
   } catch {
@@ -34,6 +35,7 @@ export function usePerson() {
   useLayoutEffect(() => {
     setCurrent(read());
     document.documentElement.removeAttribute("data-person");
+    // Each change of hash swaps the view in a transition.
     const change = () => transition(() => setCurrent(read()));
     addEventListener("hashchange", change);
     return () => removeEventListener("hashchange", change);

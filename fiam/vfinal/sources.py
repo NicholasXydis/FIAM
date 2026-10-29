@@ -24,7 +24,7 @@ EXTRACTS = DATA / "v4" / "extracts"
 TEXT = DATA / "v4" / "text"
 # Tables kept as a folder of parts, since one frame would be too big.
 FOLDERS = {"crsp_daily", "sections", "taq_daily", "options_daily"}
-# Blind mode seals every row public after the end of 2020.
+# Blind mode hides every row public after the end of 2020.
 SEAL = pd.Timestamp("2020-12-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
 # With the gate open: the finals' last day; nothing later is read.
 OPENED = pd.Timestamp("2026-08-31 23:59:59", tz=clock.EASTERN).tz_convert("UTC")
@@ -47,7 +47,7 @@ ITEM_NAMES = {
 RED_ITEMS = {"1.03", "2.06", "3.01", "4.01", "4.02"}
 # Items beside which a 3.01 is mechanical (deal, control, reorganising).
 MECHANICAL = {"2.01", "5.01", "3.03"}
-# A Form 4 line filed this long after its trade is left out (M1).
+# A Form 4 line filed this long after its trade is left out.
 INSIDER_LATE = pd.Timedelta(days=30)
 # The insider data sets' kept columns; names and addresses never read.
 INSIDER_FORMS = ("4", "4/A")
@@ -67,7 +67,7 @@ INSIDER_NAMES = {
     "ISSUERCIK": "issuer_cik", "RPTOWNERCIK": "owner_cik", "RPTOWNER_RELATIONSHIP": "relationship",
     "RPTOWNER_TITLE": "title",
 }  # fmt: skip
-# Form 4 titles that are common stock, and those that never are (L13).
+# Form 4 titles that are common stock, and those that never are.
 COMMON_TITLE = r"(?i)common|ordinary|capital stock|class [a-z] shares"
 NOT_COMMON = r"(?i)preferred|option|warrant|\bunits?\b|\bnotes?\b|debenture|\brights?\b"
 # FINRA's files hold exchange-listed short interest from June 2021.
@@ -364,7 +364,7 @@ REGISTRY = {
             ("restatement_notification_key", "permno"),
             "permno",
             "file_date",
-            # Restated amounts may be revised later; dates only (L7).
+            # Restated amounts may change later, so only dates are kept.
             banned=(
                 "initial_cum_net_income_usd",
                 "restated_cum_net_income_usd",
@@ -374,7 +374,7 @@ REGISTRY = {
                 "change_cum_tot_sto_equ_usd",
                 "res_adverse",
                 "res_improves",
-                # A later 4.02 8-K's date and key (final audit M3).
+                # A later 4.02 8-K's date and key.
                 "date_of_8k_402",
                 "form_fkey_of_8k_402",
                 # Fraud, investigation and auditor fields may be updated later.
@@ -893,7 +893,7 @@ def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     f = f[["settlement", "permno", "symbol", "shortint", "revision"]].assign(source="finra")
     both = pd.concat([s.assign(revision=""), f], ignore_index=True)
     both = both.sort_values(["permno", "settlement"], ignore_index=True)
-    # A corrected FINRA row takes the last clean value in 2 months (1B).
+    # A corrected FINRA row takes the last clean value in 2 months.
     fixed = both["revision"].eq("R")
     prior = both["shortint"].where(~fixed).groupby(both["permno"]).ffill()
     when = both["settlement"].where(~fixed).groupby(both["permno"]).ffill()
@@ -904,7 +904,7 @@ def load_short_interest(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     log["finra_corrected_rows_left_missing"] = int((fixed & ~near).sum())
     both = both[~fixed | near].drop(columns=["revision"])
     ours = clock.short_interest_available(both["settlement"], cal)
-    # WRDS's header ids served the link only (final audit M3).
+    # WRDS's header ids serve the link only.
     both = both.drop(columns=["gvkey", "cik", "iid", "gvkey_iid"], errors="ignore")
     return stamped(both, ours, cal)
 
@@ -918,7 +918,7 @@ def load_edgar(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
         ],
         ignore_index=True,
     ).drop_duplicates(["cik", "accession"])
-    # Forms 4 tag owner companies too, so insiders read sec_insiders (L3).
+    # Forms 4 tag owner companies too, so insiders read sec_insiders.
     log["insider_forms_left_out"] = int(f["form"].isin(INSIDER_FORMS).sum())
     f = f[~f["form"].isin(INSIDER_FORMS)].copy()
     f["filing_date"] = pd.to_datetime(f["filing_date"]).astype("datetime64[ns]")
@@ -944,7 +944,7 @@ def load_events(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     rows["amendment"] = rows["form"] == "8-K/A"
     # Only the SEC's own item codes flag, never 5.02.
     red = rows["item"].isin(RED_ITEMS)
-    # A 3.01 beside 2.01, 5.01 or 3.03 is mechanical, never a flag (M5).
+    # A 3.01 beside 2.01, 5.01 or 3.03 is mechanical, never a flag.
     deal = rows["accession"].isin(rows.loc[rows["item"].isin(MECHANICAL), "accession"])
     mechanical = red & (rows["item"] == "3.01") & deal
     log["red_flag_rows_dropped_as_mechanical_301"] = int(mechanical.sum())
@@ -1087,7 +1087,7 @@ def load_sec_insiders(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return clean_insiders(t, log)
 
 
-# Amendments, repeats, code mismatches and late lines (final audit M1).
+# Amendments, repeats, code mismatches and late lines.
 def clean_insiders(t: pd.DataFrame, log: dict) -> pd.DataFrame:
     group = ["owner_cik", "permno", "trans_date", "trans_code"]
     sig = [*group, "shares", "price"]
@@ -1214,7 +1214,7 @@ def load_tb3ms(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     return stamped(t, clock.end_of_day(end), cal)
 
 
-# FRED's S&P 500 level and daily return, each at its own close (M5).
+# FRED's S&P 500 level and daily return, each at its own close.
 def load_sp500(data: Path, cal: pd.Series, log: dict) -> pd.DataFrame:
     s = pd.read_csv(data / "benchmarks" / "SP500.csv")
     s = s.rename(columns={"observation_date": "date", "SP500": "sp500"})
@@ -1250,7 +1250,7 @@ def load_earnings_calendar(data: Path, cal: pd.Series, log: dict) -> pd.DataFram
     when = both["known_from"].astype("datetime64[ns]")
     live = (when >= both["valid_from"]) & (both["valid_to"].isna() | (when <= both["valid_to"]))
     both = both[live & both["projected"].notna()].drop(columns=["valid_from", "valid_to"])
-    # The real release date is known only once it happens (H2): cut.
+    # The real release date is known only once it happens, so it is cut.
     both = both.drop(columns=["rdq"])
     both = both.drop_duplicates(["permno", "gvkey", "fyearq", "fqtr"]).astype({"permno": "int64"})
     log["permno_quarters"] = len(both)
@@ -1423,7 +1423,7 @@ def card(source: Source, files: list[Path], frame: pd.DataFrame, log: dict) -> d
     }
 
 
-# Converts one source to data/v4/clean and writes its card.
+# Converts one source to the clean data folder and writes its card.
 def convert(name: str, data: Path = DATA, cal: pd.Series | None = None) -> dict:
     source = REGISTRY[name]
     cal = trading_calendar(data) if cal is None else cal
@@ -1496,7 +1496,7 @@ def unsealed() -> bool:
     return UNSEAL_CACHE
 
 
-# The seal in force: 2020-12-31, or the finals' end once unsealed.
+# The cutoff in force: 2020-12-31, or the finals' end once open.
 def seal_at() -> pd.Timestamp:
     return OPENED if unsealed() else SEAL
 
@@ -1545,7 +1545,7 @@ def allowed_use(name: str, touched: set, purpose: str | None) -> Source:
     return source
 
 
-# A folder table one part at a time, under the same checks and seal.
+# A folder table one part at a time, under the same checks and cutoff.
 def read_parts(name: str, columns: list[str], purpose: str | None = None):
     if name not in FOLDERS:
         raise ValueError(f"{name} is not a folder table")
@@ -1555,7 +1555,7 @@ def read_parts(name: str, columns: list[str], purpose: str | None = None):
         yield sealed_out(read_unsealed(path, want), source, set(columns))
 
 
-# A folder table's rows public by the seal, so sealed text never loads.
+# A folder table's rows public by the cutoff, so later text never loads.
 def read_unsealed(path: Path, want: list[str] | None, where=None) -> pd.DataFrame:
     import pyarrow as pa
     import pyarrow.dataset as ds
@@ -1609,7 +1609,7 @@ def row_filter(schema, where):
     return expr
 
 
-# Drops every row public after the seal, and labels that reach past it.
+# Drops every row public after the cutoff, and labels reaching past it.
 def sealed_out(frame: pd.DataFrame, source: Source, asked: set) -> pd.DataFrame:
     cut = seal_at()
     public = pd.to_datetime(frame["available_at"], utc=True)
@@ -1619,14 +1619,14 @@ def sealed_out(frame: pd.DataFrame, source: Source, asked: set) -> pd.DataFrame:
             ends = pd.to_datetime(frame["eom"]) + pd.offsets.MonthEnd(months)
             keep &= ends <= cut.tz_convert(None)
     out = frame[keep.to_numpy()].copy()
-    # A period ending after the seal reveals a later exit (M4): left open.
+    # A period ending after the cutoff shows a later exit, so it stays open.
     if "valid_to" in out.columns:
         late = pd.to_datetime(out["valid_to"]) > cut.tz_convert(None)
         out.loc[late, "valid_to"] = pd.NaT
     return out
 
 
-# Row counts per year of any registered table, sealed rows included.
+# Row counts per year of any registered table, hidden rows included.
 def count(name: str) -> dict:
     path = CLEAN / name if name in FOLDERS else CLEAN / f"{name}.parquet"
     frame = pd.read_parquet(path, columns=["first_close", "available_at"])

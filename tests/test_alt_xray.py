@@ -132,9 +132,9 @@ def test_next_print_known_by_as_of():
     assert got["date"] == "2026-11-04" and got["sessions_ahead"] == 7
     assert xray.next_print(cal, 3, DAY("2026-10-26"), SEAL, False)["status"] == "sealed"
     assert xray.next_print(cal, 3, DAY("2019-10-26"), SEAL, False)["status"] == "none known"
-    # With the gate open nothing is hidden, so the word is never sealed.
+    # With the gate open nothing is hidden, so no Hidden note shows.
     late = xray.next_print(cal, 3, DAY("2026-10-26"), SEAL, True)
-    assert late["status"] == "none known" and "Sealed" not in late["why"]
+    assert late["status"] == "none known" and "Hidden" not in late["why"]
 
 
 # Coverage lines on the page read as plain words, never key names.
@@ -203,7 +203,7 @@ def test_load_book_and_largest(tmp_path):
     assert xray.load_book(path2, DAY("2026-10-26"))["ticker"].iat[0] == "AAA"
 
 
-# A sealed registry leaves a missing ticker empty, never guessed.
+# A closed registry leaves a missing ticker empty, never guessed.
 def test_fill_tickers_sealed():
     book = pd.DataFrame({"permno": [1, 2], "value": [1.0, -1.0], "ticker": ["AAA", None]})
     got = xray.fill_tickers(book, DAY("2026-10-26"), SEAL, unsealed=False)
@@ -235,7 +235,7 @@ def test_build_cards_end_to_end(tmp_path):
     assert a["read"]["confidence"] == "low"
     assert (a["suggestion"]["action"], a["suggestion"]["shrink"]) == ("trim", 0.75)
     assert b["read"]["direction"] == "none" and b["benzinga"]["total"] == 1
-    assert c["ticker"] is None and "sealed" in c["ticker_note"]
+    assert c["ticker"] is None and "hidden" in c["ticker_note"]
     assert all(x["suggestion"]["shrink"] in SHRINKS for x in cards)
     assert all(x["weather"]["status"] == "skipped" for x in cards)
     cov = xray.coverage(cards)
@@ -289,7 +289,7 @@ def test_load_series_from_snapshot(tmp_path):
     assert set(s.rows["part"]) == {"Online", "Physical"}
 
 
-# Once unsealed, a missing ticker comes from the link at the seal.
+# Once open, a missing ticker comes from the link at the cutoff.
 def test_fill_tickers_unsealed(monkeypatch):
     links = pd.DataFrame(
         {"permno": [2, 2], "kind": ["ticker", "ticker"], "value": ["OLD", "NEW"],

@@ -2,10 +2,13 @@ import * as THREE from "three";
 
 // Gravity on the balls, in units per second squared.
 const G = -20;
-// Scratch for writing the instance matrices.
+// Scratch: a ball's matrix for the instanced mesh.
 const m = new THREE.Matrix4();
+// Scratch: no turn, as balls never rotate.
 const q = new THREE.Quaternion();
+// Scratch: a ball's size, 0 while it is hidden.
 const s = new THREE.Vector3();
+// Scratch: a ball's position.
 const p = new THREE.Vector3();
 
 // One ball: where it is, where it settles, when it drops and its size.
@@ -65,6 +68,7 @@ export class Pile {
     });
     this.mesh = new THREE.InstancedMesh(geometry, material, rests.length);
     this.mesh.frustumCulled = false;
+    // Each ball starts on its slot in its colour, unshown.
     rests.forEach((rest, i) => {
       this.balls.push({
         x: rest.x,
@@ -103,6 +107,7 @@ export class Pile {
   // Drops each ball at its start time; writes only when one moved.
   step(dt: number, clock: number) {
     let changed = false;
+    // Move each ball that has started and is not at rest.
     for (let i = 0; i < this.balls.length; i++) {
       const b = this.balls[i];
       if (clock < b.start) continue;

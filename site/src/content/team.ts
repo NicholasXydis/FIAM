@@ -14,5 +14,5 @@ export const PEOPLE: Person[] = [
   { name: "Yohannah Ilieva", photo: "/people/yohannah-ilieva.webp" },
   { name: "Andrew Koumoudjian", photo: "/people/andrew-koumoudjian.webp" },
   { name: "Nicolas Romero", photo: "/people/nicolas-romero.webp" },
-  { name: "Nokto Lapointe" },
+  { name: "Nokto Lapointe", photo: "/people/nokto-lapointe.webp" },
 ];

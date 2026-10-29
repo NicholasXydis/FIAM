@@ -20,10 +20,12 @@ LEAVE_OUT = (
     "docs/PLAN.md",
     "docs/TEAM.md",
 )
-# Deck builders, so the decks build from MAIN.py alone.
-CARRIED_TOOLS = {"tools/build_deck.py", "tools/motion.py"}
+# The fund's own test file, which the lock hashes beside its code.
+CARRIED_TESTS = {"tests/test_vfinal.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
+# Tables derived from WRDS data, which MAIN.py never carries.
+NEVER = {"book_inputs.parquet", "borrow.parquet"}
 # Ignores later packages, so a new release never changes a rerun.
 EXCLUDE_NEWER = "2026-10-14T00:00:00Z"
 
@@ -110,9 +112,10 @@ def script_header() -> str:
 
 # The four ways to check the final fund, in MAIN.py's header.
 WAYS = """#   1. MAIN.py alone:  uv run MAIN.py
-#      checks every PDF rule on every day of the carried book in final/, recomputes the
-#      headline (IR, Sharpe, beta, drawdown, CAGR, ending value) from final/daily.csv and the
-#      public FRED series, and checks the code against the lock in frozen/vfinal/. Seconds.
+#      checks every PDF rule on every day of the carried book in frozen/vfinal/final/,
+#      recomputes the headline (IR, Sharpe, beta, drawdown, CAGR, ending value) from its
+#      daily.csv and the public FRED series, and checks the code against the lock in
+#      frozen/vfinal/. Seconds.
 #   2. MAIN.py with the organisers' files in data/organisers/ (or beside MAIN.py):  uv run MAIN.py
 #      does the same, then checks their SHA-256 against our receipts, replays our daily stock
 #      P&L on their daily returns and checks the shorts' market caps at each formation. It does
@@ -122,8 +125,8 @@ WAYS = """#   1. MAIN.py alone:  uv run MAIN.py
 #      uv run fiam setup     restores the kit's data and results, then doctor
 #      uv run fiam verify    the lock, then every headline output it records
 #   4. A clone and the USB kit, rebuilt from the data:
-#      uv run fiam rerun     every headline stage at this commit, in the order below
-#      uv run fiam compare   the rerun against the locked run, file by file"""
+#      uv run fiam rerun     every stage of the fund from the data, in the order below
+#      uv run fiam compare   the rebuild against the locked outputs, file by file"""
 
 
 # The header: the fund, the four ways, run.py's help and the stages.
@@ -134,23 +137,20 @@ def description() -> str:
     run = (ROOT / "run.py").read_text(encoding="utf-8")
     usage = run.split('HELP = """')[1].split('"""')[0]
     header = "\n".join(f"#   {line}" for line in usage.splitlines())
-    stages = [*(" ".join(args) for args in cli.RERUN), "pick"]
-    listed = [f"#   {name:<23} {cli.WHAT[name.split()[0]]}" for name in stages]
-    extra = ", ".join(sorted(cli.IF_NEEDED))
-    listed.insert(-1, f"#   {'':<23} then, only if pick still needs them: {extra}")
+    listed = [f"#   {name:<10} {cli.WHAT[name]}" for name in cli.STAGES]
     return (
         "# MAIN.py: McGill-FIAM Asset Management Hackathon 2026, QUARCC Purple's final fund,\n"
         "# vfinal: market-neutral US equities from US$1bn, compounding, 2021-01 to 2026-08.\n"
         "#\n# Run:  pip install uv, then  uv run MAIN.py   (uv brings Python and the packages)\n"
         "#   Run it from the folder that holds MAIN.py. On Windows, if uv is not found:\n"
         "#   py -m uv run MAIN.py\n"
-        "#   It writes the project's code and our carried results (final/) beside itself, then\n"
+        "#   It writes the code and our carried results (frozen/vfinal/final/) beside it, then\n"
         "#   runs run.py with the same arguments. It holds no organisers' data and no raw WRDS\n"
         "#   data. It does carry the public FRED and Kenneth French series, so every number\n"
         "#   can be checked offline.\n"
         "#\n# Four ways to check the fund:\n" + WAYS + "\n"
         "#\n# run.py's options, the same for MAIN.py:\n" + header + "\n"
-        "#\n# The headline stages uv run fiam rerun runs, in order (fiam/vfinal/cli.py):\n"
+        "#\n# The stages uv run fiam rerun runs, in order (fiam/vfinal/run.py):\n"
         + "\n".join(listed)
         + "\n"
     )
@@ -173,8 +173,10 @@ def carried(with_edgar: bool, with_new: bool = False) -> dict[str, tuple[str, st
     files = {}
     for name in sorted(names):
         path = ROOT / name
-        left_out = name.startswith(LEAVE_OUT) and name not in CARRIED_TOOLS
+        left_out = name.startswith(LEAVE_OUT) and name not in CARRIED_TESTS
         if not name or name in BUILT or left_out or not path.is_file():
+            continue
+        if Path(name).name in NEVER:
             continue
         if name in LARGE and not with_edgar:
             continue

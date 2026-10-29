@@ -4,16 +4,20 @@ import { MONTH_COUNT, weights } from "../shared/data";
 import { type Child, h } from "../shared/dom";
 import { every, small, stale } from "./layout";
 
-// The one tooltip, its last text and size kept to spare layout.
+// The one tooltip, shared by every scene.
 export const tip = h("div", { class: "tip glass", "aria-hidden": "true" });
+// The tooltip's last text, so it is only rewritten on change.
 let tipHtml = "";
+// Its width when last measured.
 let tipW = 0;
+// Its height when last measured.
 let tipH = 0;
 
 // Puts the tooltip by the mouse or above a finger, measured on change.
 export function showTip(html: string, x: number, y: number, above = false) {
   const shown = tip.classList.contains("on");
   tip.classList.add("on");
+  // New text or a fresh show: write it and measure it again.
   if (html !== tipHtml || !shown) {
     if (html !== tipHtml) tip.innerHTML = html;
     tipHtml = html;
@@ -35,9 +39,11 @@ export function hideTip() {
   tip.classList.remove("on");
 }
 
-// Scratch reused per call, so hover and labels allocate nothing.
+// Scratch: a point projected onto the screen.
 const v = new THREE.Vector3();
+// Scratch: the raycaster each call to rayAt reuses.
 const caster = new THREE.Raycaster();
+// Scratch: a pixel in the camera's -1 to 1 space.
 const ndc = new THREE.Vector2();
 
 // The ray through a screen pixel, in a shared caster each call reuses.
@@ -63,6 +69,7 @@ const spot = { x: 0, y: 0, front: true };
 export function nearest(points: THREE.Vector3[], x: number, y: number, camera: THREE.Camera, radius = 30) {
   let best = -1;
   let bestD = radius * radius;
+  // Keep the nearest point in front within the radius.
   points.forEach((p, i) => {
     screen(p, camera, spot);
     const d = (spot.x - x) ** 2 + (spot.y - y) ** 2;
@@ -113,10 +120,11 @@ export class Label {
     if (cls.includes("big")) this.prio = 3;
   }
 
-  // The point and side in use: the small layout's, when it has its own.
+  // The point it sits at: the small layout's, when it has one.
   get where() {
     return (small() && this.small?.at) || this.at;
   }
+  // The side it anchors by: the small layout's, when it has one.
   get anchor() {
     return (small() && this.small?.align) || this.align;
   }
@@ -134,11 +142,13 @@ export class Label {
     screen(this.at, camera, spot);
     const shift = this.align === "center" ? "-50%" : this.align === "right" ? "-100%" : "0%";
     const transform = `translate(${spot.x.toFixed(1)}px, ${spot.y.toFixed(1)}px) translate(${shift}, -50%)`;
+    // Move it only when its place on screen changed.
     if (transform !== this.last) {
       this.el.style.transform = transform;
       this.last = transform;
     }
     const on = this.shown && spot.front;
+    // Fade it in or out only when that changed.
     if (on !== this.on) {
       this.el.classList.toggle("on", on);
       this.on = on;
@@ -150,6 +160,7 @@ export class Label {
     const html = this.small?.html ?? this.text;
     if (this.el.innerHTML !== html) this.el.innerHTML = html;
     if (this.small?.cls) this.el.classList.add(this.small.cls);
+    // Measure again when its words change, or every 30 frames.
     if (this.measured !== html || every(30)) {
       this.measured = html;
       this.width = this.el.offsetWidth;
@@ -161,11 +172,13 @@ export class Label {
     const top = spot.y - this.height / 2;
     this.box = { x: left, y: top, w: this.width, h: this.height };
     const transform = `translate(${left.toFixed(1)}px, ${(top + this.dy).toFixed(1)}px)`;
+    // Move it only when its place on screen changed.
     if (transform !== this.last) {
       this.el.style.transform = transform;
       this.last = transform;
     }
     const on = this.shown && spot.front && !this.blocked;
+    // Fade it in or out only when that changed.
     if (on !== this.on) {
       this.el.classList.toggle("on", on);
       this.on = on;
@@ -197,6 +210,7 @@ export function fold(box: HTMLElement, row: HTMLElement, nodes: Element[], label
   for (const n of nodes) n.setAttribute("data-more", "");
   const b = chip(
     label,
+    // Each press opens or closes the folded nodes.
     () => {
       const open = box.classList.toggle("open");
       b.setAttribute("aria-pressed", String(open));
@@ -218,6 +232,7 @@ export function count(el: HTMLElement, to: number, format: (x: number) => string
     duration,
     delay,
     ease: "expo.out",
+    // Write the number at each step, in the given format.
     onUpdate: () => {
       el.textContent = format(state.x);
     },
@@ -293,13 +308,16 @@ export function finder(example: string, none: string, tickers: string[], names: 
     matches.innerHTML = "";
     if (!q) return;
     const hits: number[] = [];
+    // Tickers that start with the search come first.
     for (let i = 0; i < tickers.length && hits.length < 6; i++) if (tickers[i]?.startsWith(q)) hits.push(i);
+    // Then names that contain it, up to six hits in all.
     for (let i = 0; i < names.length && hits.length < 6; i++) {
       if (!hits.includes(i) && names[i]?.toUpperCase().includes(q)) hits.push(i);
     }
     if (!hits.length) matches.append(h("span", { class: "text-[12px] text-ink-3" }, none));
     // A ticker held by two stocks gets the first word of each name.
     const twice = (i: number) => hits.some((j) => j !== i && tickers[j] === tickers[i]);
+    // One chip per hit, which opens that stock.
     for (const i of hits) {
       const label = `${tickers[i] || "No ticker"}${twice(i) ? ` ${names[i]?.split(" ")[0] ?? ""}` : ""}`;
       matches.append(chip(label, () => go(i)));
@@ -320,8 +338,11 @@ export function spark(stock: number, month: number) {
   const W = 292;
   const H = 76;
   const top = Math.max(0.2, ...Array.from(w, Math.abs));
+  // A month to x across the chart.
   const x = (i: number) => (i / (MONTH_COUNT - 1)) * W;
+  // A weight to a height, zero in the middle.
   const y = (v: number) => H / 2 - (v / top) * (H / 2 - 6);
+  // One bar per month held: up for long, down for short.
   const bars = Array.from(w, (v, i) => {
     if (!v) return "";
     const color = v > 0 ? "var(--m-long)" : "var(--m-short)";
@@ -434,6 +455,7 @@ export function months(id: string, delay: number, scene: { month: number; active
     () => scene.active,
   );
   const input = slider(id, "Month", 0, MONTH_COUNT - 1, 1, 0);
+  // Dragging stops the play and shows the chosen month.
   input.addEventListener("input", () => {
     player.stop();
     scene.set(+input.value);

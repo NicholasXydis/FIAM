@@ -37,12 +37,11 @@ htmlcov/
 *.npy
 *.npz
 
-# Working data; the public benchmarks and SEC records are pinned in git so a clone runs
+# Working data stays local and in the USB kit; only public benchmarks are in git.
 /fiam_v1.zip
 /fiam_results.zip
 /data/*
 !/data/benchmarks/
-!/data/edgar_cache.zip
 # Archived pre-2021 French copies for the B23 check: kit only, never git.
 /data/benchmarks/french_archive/
 
@@ -72,12 +71,13 @@ cache/
 credentials.json
 service-account*.json
 
-# Editors
+# Editors and agents
 .vscode/
 .idea/
 *.iml
 .zed/
 .helix/
+.claude/
 *.sublime-workspace
 .ccls-cache/
 .clangd/
@@ -102,31 +102,29 @@ Desktop.ini
 .Trash-*
 *.kate-swp
 
-# Generated outputs, except the submitted holdings and returns
-/submission/figures/
-/submission/*.csv
-!/submission/holdings.csv
-!/submission/returns.csv
-/submission/*.pdf
-!/submission/models/*.parquet
-!/submission/exhibits/agents/*.parquet
-/out/
-# Past research runs from the results kit; the trial count reads them.
-/research/
-# The generated deck; the PDF made from it is submitted, not committed.
-/deck/
+# Round one's record: only the submitted holdings, returns and exhibits.
+/frozen/v1/submission/figures/
+/frozen/v1/submission/*.csv
+!/frozen/v1/submission/holdings.csv
+!/frozen/v1/submission/returns.csv
+/frozen/v1/submission/*.pdf
+!/frozen/v1/submission/exhibits/agents/*.parquet
 # Drafts the rules reader writes; only the hand-made references are committed.
-/mandates/*_draft*.json
+/frozen/v1/mandates/*_draft*.json
+/frozen/v1/mandates/*_rules.txt
+
+# Run outputs, past research runs, the generated deck and local notes.
+/out/
+/research/
+/deck/
+/docs/
 
 # Site packages, web build, wrangler scratch.
 /site/node_modules/
 /site/dist/
 /site/.wrangler/
+/site/.vite/
 
-# Root notes stay local except README.md; plans are in docs.
+# Root notes stay local except README.md.
 /*.md
 !/README.md
-
-# The plan files stay on this machine and in the USB kit.
-/docs/PLAN.md
-/docs/TEAM.md

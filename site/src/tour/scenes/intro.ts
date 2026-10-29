@@ -26,6 +26,7 @@ function sample(lines: Line[], width: number, step: number) {
   g.fillStyle = "#fff";
   g.textAlign = "center";
   g.textBaseline = "middle";
+  // Draw each line of the title in white on the canvas.
   for (const line of lines) {
     g.font = line.font;
     g.letterSpacing = `${line.spacing ?? 0}px`;
@@ -37,7 +38,9 @@ function sample(lines: Line[], width: number, step: number) {
   const out: { x: number; y: number; line: number; u: number }[] = [];
   // Keeps pixels over 140 alpha, tagged by line and by x across, 0 to 1.
   for (let y = 0; y < H; y += step) {
+    // Step across the row, every step pixels.
     for (let x = 0; x < W; x += step) {
+      // Keep only the pixels the letters fill.
       if (data[(y * W + x) * 4 + 3] > 140) {
         out.push({ x: (x - W / 2) * scale, y: (H / 2 - y) * scale, line: y < split ? 0 : 1, u: x / W });
       }
@@ -65,7 +68,7 @@ export class Intro extends Scene {
       h(
         "p",
         { class: "body", "data-rise": true },
-        "Ten published signals and machine learning pick US stocks, code keeps the book market neutral and an AI crowd shows who crowds our trades.",
+        `Two LASSO models read ${D.signals.reduce((n, s) => n + s.count, 0)} signals, one from LightGBM, to rank US stocks, code keeps the book neutral and an AI crowd tracks AI traders.`,
       ),
       stats(
         stat(num(head.beta), "Beta, market neutral").el,
@@ -103,6 +106,7 @@ export class Intro extends Scene {
     const gold = new THREE.Color(C.gold);
     const ink = new THREE.Color(C.ink);
     const tint = new THREE.Color();
+    // Purple to ice on the name, gold to ink on FIAM; a few sparkle.
     pts.forEach((p, i) => {
       if (p.line === 0) tint.copy(purple).lerp(ice, p.u * 0.6 + r() * 0.15);
       else tint.copy(gold).lerp(ink, 0.15 + r() * 0.3);
@@ -111,6 +115,7 @@ export class Intro extends Scene {
       f.put(i, x, p.y + 1.2 + (r() - 0.5) * 0.05, (r() - 0.5) * 0.35, 0.62 * sparkle, tint, 0.95 * sparkle);
     });
     dust(f, pts.length, 3, 30, 2, 0.2);
+    // Every seventh spare point becomes a faint far star.
     for (let i = pts.length; i < N; i += 7)
       f.put(i, (r() - 0.5) * 60, (r() - 0.5) * 34, -12 - r() * 20, 0.35, C.ice, 0.3);
     return f;

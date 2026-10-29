@@ -10,7 +10,7 @@ import pandas as pd
 from fiam.vfinal import betas, clock, data, inputs, ranks, universe
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "out" / "vfinal" / "labels"
+OUT = ROOT / "out" / "audit" / "engine" / "labels"
 # Gate formations: the 2020-11 label ends 2021-01-04, so it is refused.
 FIRST_FORMATION = pd.Timestamp("2015-01-31")
 # The month horizons: 1 for the gates and the grid, 3 for the grid also.
@@ -126,7 +126,7 @@ def raw(eoms, months: int, log: dict | None = None) -> pd.DataFrame:
         frame = frame.assign(eom=w.eom, T=w.T, start=w.start, end=w.end, horizon=months)
         out.append(frame.drop(columns=["growth"]))
     labels = pd.concat(out, ignore_index=True)
-    # A label public only after the seal is refused, never truncated.
+    # A label public only after the cutoff is refused, never cut short.
     late = labels["available"] > clock.LAST_LABEL_DAY
     log |= counts | {"refused_public_after_seal": int(late.sum())}
     labels = labels[~late].reset_index(drop=True)

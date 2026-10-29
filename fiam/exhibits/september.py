@@ -10,7 +10,7 @@ from fiam import data, paths
 from fiam.paths import FROZEN
 
 DECISION = pd.Timestamp("2026-08-31")
-V1 = FROZEN / "september_v1.csv"
+V1 = FROZEN / "v1" / "september_v1.csv"
 
 
 # The shipped universe plus one decision month, built like the record's.
@@ -57,7 +57,7 @@ def check_august(books: dict) -> float:
 
 # A book frozen as CSV with its SHA-256, so any later change shows.
 def write(book: pd.DataFrame, path) -> str:
-    FROZEN.mkdir(exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     book.to_csv(path, index=False, lineterminator="\n")
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     path.with_suffix(".sha256").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
@@ -120,7 +120,7 @@ def main() -> None:
     trades = trade_list(books, crowd_scores())
     trades.to_csv(paths.RESEARCH / "trade_list_v1.csv", index=False)
     gross, net = book["weight"].abs().sum(), book["weight"].sum()
-    print(f"September v1: {len(book)} names, gross {gross:.3f}, net {net:+.4f}, {digest[:16]}")
+    print(f"September book: {len(book)} names, gross {gross:.3f}, net {net:+.4f}, {digest[:16]}")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ import pandas as pd
 
 from fiam.vfinal import data
 
-OUT = Path(__file__).resolve().parents[3] / "out" / "vfinal" / "construct"
+OUT = Path(__file__).resolve().parents[3] / "frozen" / "vfinal" / "pinned"
 # The fee schedule in force at 2020-12-31, sales only.
 SEC_FEE, TAF, TAF_CAP = 22.10 / 1e6, 0.000119, 5.95
 # Commissions: 0.5 US cents a share on every trade.

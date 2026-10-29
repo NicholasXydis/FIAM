@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { caption, D, prose } from "../../shared/data";
+import { caption, D, monthName, prose } from "../../shared/data";
 import { blank } from "../gl/sim";
 import { streams } from "../gl/shapes";
 import { h } from "../../shared/dom";
@@ -8,14 +8,8 @@ import { asButton, box, chip, fold, Label, nearest } from "../ui";
 import { ball, C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
-// Facts reworded where the data overstates; 80% is from RESULTS.md.
-const FACTS: Record<string, [string, string][]> = {
-  triage: [
-    ["Filings labelled", "6,000"],
-    ["Small model match", "87%"],
-    ["Guessing routine", "80%"],
-  ],
-};
+// A date as day, month and year, as 28 October 2026.
+const day = (d: string) => `${+d.slice(8, 10)} ${monthName(d.slice(0, 7))}`;
 
 // The agents' data, and the core where the book sits and threads meet.
 const A = D.agents;
@@ -75,7 +69,7 @@ export class Agents extends Scene {
     // Name and model labels sit just under each agent's node.
     A.forEach((a, i) => {
       const at = this.nodes[i].clone().add(new THREE.Vector3(0, -1.05, 0));
-      const html = `<b class="text-ink font-medium">${a.name}</b><br><span class="text-ink-3 text-[10px]">${a.model}</span>`;
+      const html = `<b class="text-ink font-medium">${a.name}</b><br><span class="text-ink-3 text-[11px]">${a.model}</span>`;
       const label = this.addLabel(new Label(html, at, "center")).el;
       label.style.textAlign = "center";
       // Each name is a button too, so the keyboard can open its card.
@@ -88,7 +82,7 @@ export class Agents extends Scene {
     this.panel.append(
       ...header(
         `${A.length} AI colleagues, <em>none trade</em>`,
-        `They work on our own machines. The AI risk desk, tested against a fixed rule and ${D.desk.late.random} random desks, did not help, so the fund runs without it.`,
+        "They work on our own machines. Each one reads or checks the final book, and none sets a trade.",
       ),
     );
     this.controls.append(this.card);
@@ -138,18 +132,17 @@ export class Agents extends Scene {
       h("div", {}, h("p", { class: "eyebrow" }, a.model), h("p", { class: "headline text-[28px]" }, a.name)),
       chip("All agents", () => this.select(-1)),
     );
-    this.card.append(
-      head,
-      h("p", { class: "text-[14px] text-ink-2" }, prose(a.does)),
-      ...(FACTS[a.key] ?? a.facts).map(([k, v]) =>
-        h(
-          "div",
-          { class: "flex justify-between gap-4 text-[13px] border-t border-line pt-1.5" },
-          h("span", { class: "text-ink-3" }, caption(k)),
-          h("b", { class: "figure text-ink font-medium text-right" }, caption(v)),
-        ),
+    // What it found on the final book, the date and its key number.
+    const found = [
+      h("p", { class: "text-[13px] text-ink border-t border-line pt-1.5" }, prose(a.finding)),
+      h(
+        "div",
+        { class: "flex justify-between gap-4 text-[13px]" },
+        h("span", { class: "text-ink-3" }, `On ${day(a.date)}`),
+        h("b", { class: "figure text-ink font-medium text-right" }, caption(a.number)),
       ),
-    );
+    ];
+    this.card.append(head, h("p", { class: "text-[14px] text-ink-2" }, prose(a.does)), ...found);
     // Small screens fold the facts behind a Details chip.
     this.card.classList.remove("open");
     fold(this.card, head, [...this.card.children].slice(2), "Details");

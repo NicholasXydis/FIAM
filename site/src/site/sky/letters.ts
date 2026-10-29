@@ -1,5 +1,6 @@
 // The name the particles write, in the film's serif.
 const FACE = '"Instrument Serif"';
+// The two words; the second is set in italic.
 const WORDS = ["QUARCC", "Purple"] as const;
 
 // A place inside a letter, and how far across the name it lies.
@@ -23,6 +24,7 @@ export function letters(box: DOMRect, count: number, random: () => number): Spot
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   // On a tall box the name takes two lines, else one.
   const tall = box.width / box.height < 1.1;
+  // Both words' widths at a size, and the gap between them.
   const widths = (size: number) => {
     ctx.font = `400 ${size}px ${FACE}`;
     const a = ctx.measureText(WORDS[0]).width;
@@ -36,6 +38,7 @@ export function letters(box: DOMRect, count: number, random: () => number): Spot
   ctx.fillStyle = "#fff";
   const cx = box.width / 2;
   const cy = box.height / 2;
+  // Draw the words stacked when tall, else side by side.
   if (tall) {
     ctx.font = `400 ${size}px ${FACE}`;
     ctx.fillText(WORDS[0], cx - m.a / 2, cy - size * 0.06);
@@ -52,9 +55,11 @@ export function letters(box: DOMRect, count: number, random: () => number): Spot
   // Every second pixel the letters cover, then random picks among them.
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   const filled: number[] = [];
+  // Step two pixels at a time, keeping the solid ones.
   for (let y = 0; y < canvas.height; y += 2)
     for (let x = 0; x < canvas.width; x += 2) if (pixels[(y * canvas.width + x) * 4 + 3]! > 140) filled.push(x, y);
   if (!filled.length) return [];
+  // Pick random solid pixels, nudged within their square.
   return Array.from({ length: count }, () => {
     const k = Math.floor(random() * (filled.length / 2)) * 2;
     const x = filled[k]!;

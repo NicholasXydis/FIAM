@@ -291,7 +291,7 @@ def contributors() -> None:
 
 # Clears the folder, draws the charts. research_charts.py runs after.
 def main() -> None:
-    # Cleared first, so a renamed or retired chart never lingers.
+    # Cleared first, so the folder holds only the charts drawn here.
     for stale in FIGURES.glob("*.png"):
         stale.unlink()
     df = load()

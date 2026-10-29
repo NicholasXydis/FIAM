@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { GPUComputationRenderer, type Variable } from "three/addons/misc/GPUComputationRenderer.js";
 import { hash, simplex } from "../../shared/glsl";
 
-// A 128 by 128 texture, one texel per particle, 16,384 in all.
+// The side of the particle texture, one texel per particle.
 const SIDE = 128;
+// The particle count: 128 by 128, so 16,384 in all.
 export const N = SIDE * SIDE;
 
 // Scratch colour for put, so placing a particle allocates nothing.
@@ -180,6 +181,7 @@ export class Sim {
     if (!renderer.extensions.has("EXT_color_buffer_float")) this.gpu.setDataType(THREE.HalfFloatType);
     const start = this.gpu.createTexture();
     const data = start.image.data as Float32Array;
+    // Scatter every particle in a shell 26 to 56 units out.
     for (let i = 0; i < N; i++) {
       const u = Math.random() * 2 - 1;
       const a = Math.random() * Math.PI * 2;
@@ -235,6 +237,7 @@ export class Sim {
     const geometry = new THREE.BufferGeometry();
     const ref = new Float32Array(N * 2);
     const index = new Float32Array(N);
+    // Fill in each particle's texel centre and its number.
     for (let i = 0; i < N; i++) {
       ref[i * 2] = ((i % SIDE) + 0.5) / SIDE;
       ref[i * 2 + 1] = (Math.floor(i / SIDE) + 0.5) / SIDE;

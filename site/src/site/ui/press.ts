@@ -56,6 +56,7 @@ const ease = (name: string) => getComputedStyle(document.documentElement).getPro
 
 // After a cache restore, the old pointer's replayed hovers are stale.
 let stale = false;
+// Whether the restore watch has started yet.
 let watching = false;
 
 // Starts watching for restores, once, from the first control wired.
@@ -89,6 +90,7 @@ export function wirePill(el: HTMLElement) {
   const shape = ink.parentElement ?? el;
   const tilts = el.matches(".pill-big, .person");
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Sets one of the pill's CSS variables.
   const set = (name: string, value: string) => el.style.setProperty(name, value);
   // A script animation, so a page's entrance animation never restarts.
   const ripple = () => shape.animate(RIPPLE, { duration: 800, easing: ease("--pill-glide") });
@@ -100,6 +102,7 @@ export function wirePill(el: HTMLElement) {
     attract(shape);
     ripple();
   };
+  // Unlit: the ink drains toward the pointer and the shape rests.
   const dark = (x: number, y: number) => {
     inkOut(ink, x, y);
     el.classList.remove("is-lit", "is-pressing");
@@ -124,8 +127,9 @@ export function wirePill(el: HTMLElement) {
   };
   // A real move over it lights it, if a stale moment swallowed the enter.
   const pickUp = (e: PointerEvent) => e.pointerType === "mouse" && !el.classList.contains("is-lit") && light(...xy(e));
-  // A finger lifting: the press shows for its beat, then the shape rests.
+  // The timer that rests a touched shape after its beat.
   let rest = 0;
+  // A finger lifting: the press shows for its beat, then it rests.
   const lift = (e: Event) => {
     el.classList.remove("is-pressing");
     if ((e as PointerEvent).pointerType === "mouse") return;
@@ -139,6 +143,7 @@ export function wirePill(el: HTMLElement) {
     else if (!still) ripple();
     el.classList.add("is-pressing");
   };
+  // Each pointer and focus event the shape answers, and how.
   const handlers: [string, (e: Event) => void][] = [
     ["pointerenter", (e) => (e as PointerEvent).pointerType === "mouse" && !stale && light(...xy(e))],
     ["pointerleave", (e) => (e as PointerEvent).pointerType === "mouse" && dark(...xy(e))],

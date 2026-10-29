@@ -12,8 +12,8 @@ from fiam.vfinal import carried, daily_book, lock
 from fiam.vfinal.report import table_9_1
 
 ROOT = Path(__file__).resolve().parents[1]
-FINAL = ROOT / "final"
-OUT = ROOT / "out" / "vfinal" / "final"
+FINAL = ROOT / "frozen" / "vfinal" / "final"
+BOOK = ROOT / "out" / "vfinal" / "bw_fresh_lag"
 
 
 # Two years of sessions with returns, a bill and an S&P 500 beside.
@@ -39,8 +39,7 @@ def run_frames():
 # The recomputed rows are the 23-row table's own, digit for digit.
 def test_headline_matches_the_table():
     daily, trades, positions, sp, rf = run_frames()
-    monthly = (rf * 252 / 12).groupby(rf.index.to_period("M")).first()
-    t = table_9_1.table(daily, trades, positions, sp, rf_monthly=monthly)
+    t = table_9_1.table(daily, trades, positions, sp)
     cell = t.set_index("row")["strategy"]
     got = carried.headline(daily[["nav", "ret"]], rf, sp)
     assert got[1] == cell[1] and got[8] == cell[8] and got[11] == cell[11]
@@ -110,19 +109,18 @@ def test_replay_earns_the_next_session():
     assert gone.loc["2021-01-06", "no_row"] == 1 and gone.loc["2021-01-06", "replay"] == 0.0
 
 
-# Changed and missing code fail; absent pinned outputs are only counted.
+# Changed, missing and unlisted locked files all fail.
 def test_lock_lines(tmp_path, monkeypatch):
     (tmp_path / "fiam").mkdir()
     (tmp_path / "fiam" / "a.py").write_text("a")
     (tmp_path / "fiam" / "b.py").write_text("b")
-    lines = [f"{lock.digest(tmp_path / 'fiam' / 'a.py')}  fiam/a.py", f"{'0' * 64}  out/x.json"]
+    lines = [f"{lock.digest(tmp_path / 'fiam' / 'a.py')}  fiam/a.py"]
     sha = tmp_path / "vfinal.sha256"
     sha.write_text("\n".join(lines) + "\n")
     monkeypatch.setattr(lock, "SHA", sha)
     monkeypatch.setattr(lock, "code", lambda: ["fiam/a.py"])
     checks, notes = carried.lock_checks(tmp_path)
     assert [ok for _, ok, _ in checks] == [True] and "1 of 1" in checks[0][2]
-    assert "1 pinned data files are absent" in notes[-1]
     (tmp_path / "fiam" / "a.py").write_text("changed")
     monkeypatch.setattr(lock, "code", lambda: ["fiam/a.py", "fiam/b.py"])
     checks, notes = carried.lock_checks(tmp_path)
@@ -131,8 +129,10 @@ def test_lock_lines(tmp_path, monkeypatch):
     assert "  not in the lock: fiam/b.py" in notes
 
 
-# The tracked final/ passes every rule and gives the table's headline.
-@pytest.mark.skipif(not (FINAL / "metrics.json").is_file(), reason="final/ is not here")
+# The tracked results pass every rule and give the table's headline.
+@pytest.mark.skipif(
+    not (FINAL / "metrics.json").is_file(), reason="frozen/vfinal/final/ is not here"
+)
 def test_carried_results_pass():
     c = carried.load(FINAL)
     checks = [carried.provenance(c["metrics"]), *carried.limits(c, daily_book.mandate())]
@@ -143,15 +143,15 @@ def test_carried_results_pass():
     assert [c for c in checks if not c[1]] == []
 
 
-# final/ is rebuilt byte for byte from the locked run's files.
-@pytest.mark.skipif(not (OUT / "pick_eab2349a0ce1.json").is_file(), reason="no out/vfinal")
+# The results rebuild byte for byte from the locked run's files.
+@pytest.mark.skipif(not (BOOK / "daily.parquet").is_file(), reason="no out/vfinal")
 def test_final_rebuilds_from_the_lock(tmp_path):
     spec = importlib.util.spec_from_file_location(
         "final_results", ROOT / "tools" / "final_results.py"
     )
     tool = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tool)
-    if not (tool.CARDS / "dsf.json").is_file():
+    if not (ROOT / tool.CARDS / "dsf.json").is_file():
         pytest.skip("the input cards are not here")
     written = tool.build(tmp_path)
     for path in written:

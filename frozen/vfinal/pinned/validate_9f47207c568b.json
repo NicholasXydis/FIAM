@@ -1,0 +1,1043 @@
+{
+ "stamp": {
+  "commit": "9f47207c568b39f0091c0a3404417fcd81118579",
+  "protocol_sha256": "aa6a064581ff274479509e4aa84c48c40ce871555f9d5e304ac57448ce4385f6",
+  "input_cards_sha256": {
+   "labels": "c51f761cb43a019f5aebfa4b2243fe0d2ee13f240c09f0cfba4b88711ff0ce52",
+   "panel": "1a83764fc6cd17b1b25100ba7c4cb5b2a2857ca4296ec7c8daae93f65fce34e4",
+   "dsf": "0681363a861fca13f4aa7c09c45aefd891ca7a9e31150acc2cc1f5976b8c4207",
+   "crsp_daily": "aa3c7c61a74d2566fbb689e9c1c4da0d504af4dfef81c09e266d25cd0242d61a",
+   "crsp_monthly": "047c7a37e4c2f787e2848d7f506dbfabf3b695b1586b910f83bb061c4f0e8001",
+   "short_interest": "d6958f849362c638ec4a10ed81b4166c48df95eb68928688a03f6789e08f5df2",
+   "events": "c218972ce46742106f18b606f41dd91d0098fce5c3fb8ed82826f8f48f51de04",
+   "sec_insiders": "32c8ac533fe102de10ade274130797b868eda17ca57cbbe73b3313e66f20cc7f",
+   "sections": "998d6a890ea53ce5afd65cb5cbb2f3cfb01a8776d8f23e7467f74bead80227f6",
+   "sec_13f": "404523dcf6b5dd2ac6f69f98ab4c9cd23f8dda3e3810c0dd81b73426f7027efb",
+   "sec_13f_reports": "fb8e79752c015888dc3854350fa47cdbae7884ae4da5ebf79a20840cf20da897",
+   "sue": "36d0499a5aa47fb7121a15e567bc3a9ab67dc226ee1d42a958aceef2cd1fa39f",
+   "links": "d9f89c82558e07f026ba0e1c1c0aa2322c29d39bf3d17e7f5fed61b62acf191f",
+   "exits": "9410c46f476d7a6697eda143f831c83f88e28ff3c7bf27c82933f8a3141d7799"
+  },
+  "char_list_sha256": "066c783d8bae211643197c23c1474143384409976e38c5f010ea901e53f3904b",
+  "seeds": {
+   "nn": [
+    20261700,
+    20261704
+   ],
+   "lgbm": 42,
+   "trap": [
+    20261600,
+    20261619
+   ]
+  },
+  "run_utc": "2026-10-26T03:30:42+00:00",
+  "libraries": {
+   "lightgbm": "4.7.0",
+   "torch": "2.14.0",
+   "sklearn": "1.9.1",
+   "pandas": "3.0.3",
+   "numpy": "2.5.1"
+  }
+ },
+ "validate": {
+  "cells": [
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.006201290741153763
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.0031834888330460873
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.01183609496359318
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.016451425496156233
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.0065634457804177445
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.002391890449481863
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.010502696825821181
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.014795749329248972
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.006178477817194318
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.003082451454846019
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.011409165108591354
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.015961337089086664
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.005958905692183997
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.003630846282777398
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.01197001721194292
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.016469846001568852
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.006557837423951458
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.0022511875515975666
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.010445217193805725
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.015044721357548075
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": -0.006131037815952616
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.003361644731571034
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.01191819036186124
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "universe",
+    "ic": 0.01639125325417093
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.0069426454613975425
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.0020569958860250873
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.010111449079760875
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.014022042346036705
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.006407014204100506
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.0031702119941580593
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.011794648619521321
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.016074783191360877
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.006762456970457712
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.0023736011695600495
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.010300832198277928
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.013895173792564388
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.006275160489752267
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.0035692420447127338
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.01219480926281924
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.016260724678823477
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.005893486181911804
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.004515979792401236
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.013044120527013973
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.016786787423276366
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": -0.006416842782173543
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.003291258301544223
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.011772489209272579
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "universe",
+    "ic": 0.015699984097451915
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.006445953081685925
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.0031725416826049306
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.012549352982064717
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.01673472134333246
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.006757677163233434
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.0023216661188203806
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.011158860266103287
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.015259601650073056
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.006400003768458219
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.003200155420441272
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.01256425658659727
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.016711489394355978
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.006545155075009433
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.002718500633023796
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.011515101691784853
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.01567763645543958
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.0062780788079887205
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.003539632219264114
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.012744976813529018
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.016765777762323634
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": -0.006330807344844557
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.0031634517539197706
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.012011026048177964
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 1,
+    "stocks": "panel",
+    "ic": 0.016088356898760217
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.007074521996280526
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.0017168636525705199
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.010043031686070346
+   },
+   {
+    "leaves": 7,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.014208680841485797
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.007038614866330734
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.0016804309845129038
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.009980894647575575
+   },
+   {
+    "leaves": 7,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.013991252210459848
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.0070440012656656625
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.001860273615501367
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.010475184834317126
+   },
+   {
+    "leaves": 15,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.014781568878902555
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.006700973198794861
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.002373882329554063
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.011073558307722242
+   },
+   {
+    "leaves": 15,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.015306236491151981
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.006582520112488061
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.0029019001797315246
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.011771829418405119
+   },
+   {
+    "leaves": 31,
+    "children": 500,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.016128579656719565
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.25,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": -0.006117129309293476
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.5,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.003792293763054945
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 0.75,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.012840035946640464
+   },
+   {
+    "leaves": 31,
+    "children": 2000,
+    "w_ml": 1.0,
+    "horizon": 3,
+    "stocks": "panel",
+    "ic": 0.017025940688964698
+   }
+  ],
+  "chosen": {
+   "leaves": 31,
+   "children": 2000,
+   "w_ml": 1.0,
+   "horizon": 3,
+   "stocks": "panel",
+   "ic": 0.017025940688964698
+  },
+  "sue_model": {
+   "universe": {
+    "cells": [
+     {
+      "leaves": 7,
+      "children": 500,
+      "mean_ic": 0.37476462289367385,
+      "nw_t": 15.014597969448477,
+      "months": 20
+     },
+     {
+      "leaves": 7,
+      "children": 2000,
+      "mean_ic": 0.3739658680371103,
+      "nw_t": 14.813306416203226,
+      "months": 20
+     },
+     {
+      "leaves": 15,
+      "children": 500,
+      "mean_ic": 0.38329542372316866,
+      "nw_t": 14.178123687107249,
+      "months": 20
+     },
+     {
+      "leaves": 15,
+      "children": 2000,
+      "mean_ic": 0.38646549814556747,
+      "nw_t": 14.884328041134133,
+      "months": 20
+     },
+     {
+      "leaves": 31,
+      "children": 500,
+      "mean_ic": 0.384959723675294,
+      "nw_t": 14.109328025472132,
+      "months": 20
+     },
+     {
+      "leaves": 31,
+      "children": 2000,
+      "mean_ic": 0.3862257211871723,
+      "nw_t": 14.7806476805643,
+      "months": 20
+     }
+    ],
+    "chosen": {
+     "leaves": 15,
+     "children": 2000,
+     "mean_ic": 0.38646549814556747,
+     "nw_t": 14.884328041134133,
+     "months": 20
+    },
+    "passes": true
+   },
+   "panel": {
+    "cells": [
+     {
+      "leaves": 7,
+      "children": 500,
+      "mean_ic": 0.36888310556732284,
+      "nw_t": 14.831356950391921,
+      "months": 20
+     },
+     {
+      "leaves": 7,
+      "children": 2000,
+      "mean_ic": 0.3701760809898773,
+      "nw_t": 14.63654732623056,
+      "months": 20
+     },
+     {
+      "leaves": 15,
+      "children": 500,
+      "mean_ic": 0.38020165756338176,
+      "nw_t": 14.230440059403453,
+      "months": 20
+     },
+     {
+      "leaves": 15,
+      "children": 2000,
+      "mean_ic": 0.3814296309468713,
+      "nw_t": 14.090581058048523,
+      "months": 20
+     },
+     {
+      "leaves": 31,
+      "children": 500,
+      "mean_ic": 0.3842935787570309,
+      "nw_t": 14.236982159990948,
+      "months": 20
+     },
+     {
+      "leaves": 31,
+      "children": 2000,
+      "mean_ic": 0.3843249386940914,
+      "nw_t": 14.251661526233494,
+      "months": 20
+     }
+    ],
+    "chosen": {
+     "leaves": 31,
+     "children": 2000,
+     "mean_ic": 0.3843249386940914,
+     "nw_t": 14.251661526233494,
+     "months": 20
+    },
+    "passes": true
+   }
+  },
+  "rows": 41541,
+  "members": {
+   "universe h1": {
+    "enet": [
+     0.0001,
+     0.1
+    ],
+    "nn": 0.0001,
+    "scores": {
+     "enet (0.0001, 0.1)": 0.018261632697313377,
+     "enet (0.0001, 0.5)": 0.018080806438224836,
+     "enet (0.0001, 0.9)": 0.017526669217030832,
+     "enet (0.001, 0.1)": 0.01742430547228859,
+     "enet (0.001, 0.5)": 0.013219156275521353,
+     "enet (0.001, 0.9)": 0.012925584526084697,
+     "enet (0.01, 0.1)": 0.012527159554420535,
+     "enet (0.01, 0.5)": 0.017736393540079835,
+     "enet (0.01, 0.9)": 0.01689481453756149,
+     "nn 1e-05": 0.017449613365969365,
+     "nn 0.0001": 0.022560695173875746,
+     "nn 0.001": 0.022444839658962056,
+     "lgbm (7, 500)": 0.01483907518902988,
+     "lgbm (7, 2000)": 0.013737368072541199,
+     "lgbm (15, 500)": 0.013508186189839138,
+     "lgbm (15, 2000)": 0.0176594621803554,
+     "lgbm (31, 500)": 0.012270067671178178,
+     "lgbm (31, 2000)": 0.01707551457309989
+    }
+   },
+   "universe h3": {
+    "enet": [
+     0.001,
+     0.1
+    ],
+    "nn": 0.001,
+    "scores": {
+     "enet (0.0001, 0.1)": 0.021591423236565686,
+     "enet (0.0001, 0.5)": 0.02188316290126715,
+     "enet (0.0001, 0.9)": 0.02212871831103894,
+     "enet (0.001, 0.1)": 0.02222444561933289,
+     "enet (0.001, 0.5)": 0.019924626487740994,
+     "enet (0.001, 0.9)": 0.01766384299023792,
+     "enet (0.01, 0.1)": 0.01598788029725222,
+     "enet (0.01, 0.5)": 0.00731653182925407,
+     "enet (0.01, 0.9)": 0.009177438192767288,
+     "nn 1e-05": 0.01361365823494263,
+     "nn 0.0001": 0.013330770506055833,
+     "nn 0.001": 0.016340092418649116,
+     "lgbm (7, 500)": 0.009096900350207118,
+     "lgbm (7, 2000)": 0.017438156575835296,
+     "lgbm (15, 500)": 0.009740093596001387,
+     "lgbm (15, 2000)": 0.017417660088992877,
+     "lgbm (31, 500)": 0.017340740324454075,
+     "lgbm (31, 2000)": 0.016706241719973987
+    }
+   },
+   "panel h1": {
+    "enet": [
+     0.001,
+     0.1
+    ],
+    "nn": 0.0001,
+    "scores": {
+     "enet (0.0001, 0.1)": 0.016887989182916684,
+     "enet (0.0001, 0.5)": 0.017712823016488553,
+     "enet (0.0001, 0.9)": 0.018211361137427714,
+     "enet (0.001, 0.1)": 0.018718424860707805,
+     "enet (0.001, 0.5)": 0.018698801997398116,
+     "enet (0.001, 0.9)": 0.016936352390179474,
+     "enet (0.01, 0.1)": 0.016439703113380114,
+     "enet (0.01, 0.5)": 0.01378557507012291,
+     "enet (0.01, 0.9)": 0.01788853637809569,
+     "nn 1e-05": 0.01755477662799011,
+     "nn 0.0001": 0.02057680776128569,
+     "nn 0.001": 0.017069965808279425,
+     "lgbm (7, 500)": 0.018939665012895443,
+     "lgbm (7, 2000)": 0.01622874488998557,
+     "lgbm (15, 500)": 0.018371980318165868,
+     "lgbm (15, 2000)": 0.017109526345064924,
+     "lgbm (31, 500)": 0.018633431194832926,
+     "lgbm (31, 2000)": 0.019096538648322958
+    }
+   },
+   "panel h3": {
+    "enet": [
+     0.001,
+     0.5
+    ],
+    "nn": 0.001,
+    "scores": {
+     "enet (0.0001, 0.1)": 0.016258163008181885,
+     "enet (0.0001, 0.5)": 0.016488741836698614,
+     "enet (0.0001, 0.9)": 0.01677474132317051,
+     "enet (0.001, 0.1)": 0.01744790404252776,
+     "enet (0.001, 0.5)": 0.018337728879958864,
+     "enet (0.001, 0.9)": 0.017874072683745326,
+     "enet (0.01, 0.1)": 0.01673372162872112,
+     "enet (0.01, 0.5)": 0.008914131802385681,
+     "enet (0.01, 0.9)": 0.01077991290406698,
+     "nn 1e-05": 0.01635909321363714,
+     "nn 0.0001": 0.019510481517313064,
+     "nn 0.001": 0.021644150907964805,
+     "lgbm (7, 500)": 0.01303215813301462,
+     "lgbm (7, 2000)": 0.01286008159103398,
+     "lgbm (15, 500)": 0.012962660012639456,
+     "lgbm (15, 2000)": 0.015286927292047899,
+     "lgbm (31, 500)": 0.015682974664935314,
+     "lgbm (31, 2000)": 0.017666885943960212
+    }
+   }
+  }
+ }
+}

@@ -6,6 +6,7 @@ import { bin, SITE } from "./lib.ts";
 
 // A command's answer, or null when it is not installed.
 const ask = (cmd: string, args: string[]) => {
+  // Run it quietly; a missing command throws.
   try {
     return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
@@ -21,6 +22,7 @@ if (!ask("uv", ["--version"]))
 // Installs the locked packages when missing or older than the lockfile.
 const lock = path.join(SITE, "pnpm-lock.yaml");
 const stamp = path.join(SITE, "node_modules", ".modules.yaml");
+// Install when there is no stamp or the lockfile is newer.
 if (!fs.existsSync(stamp) || fs.statSync(stamp).mtimeMs < fs.statSync(lock).mtimeMs) {
   console.log("installing the locked packages");
   // Viewing needs no checker's Chrome, so its large download waits.

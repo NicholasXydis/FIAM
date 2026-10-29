@@ -140,7 +140,7 @@ def test_fits_only_see_public_labels(monkeypatch):
 # A SUE target not yet public at the cut changes no fit's target rank.
 def test_sue_rank_ignores_unpublished_targets(monkeypatch):
     t = fake_table(monkeypatch)
-    # 2018-10's other targets are public by the cut, so future rows show.
+    # 2018-10's other targets are public by the cut, so those rows count.
     late = (t.x["eom"] == pd.Timestamp("2018-10-31")) & (t.x["permno"] % 2 == 0)
     t.x.loc[late, "sue_public"] = pd.Timestamp("2019-03-31")
     before = grid.sue_column(t, "universe", 7, 20)

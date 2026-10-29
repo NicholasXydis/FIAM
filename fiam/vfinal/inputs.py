@@ -10,7 +10,7 @@ import pandas as pd
 from fiam.vfinal import data, universe
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "out" / "vfinal" / "engine"
+OUT = ROOT / "out" / "audit" / "engine" / "inputs"
 # The month each 2026 input is checked against its CRSP original.
 CHECK = pd.Timestamp("2019-06-30")
 # The agreement bars written before the checks ran.
@@ -163,7 +163,7 @@ def check() -> dict:
     return out
 
 
-# The checks written to out/vfinal/engine/inputs_check.json.
+# The checks written to out/audit/engine/inputs/inputs_check.json.
 def main() -> dict:
     OUT.mkdir(parents=True, exist_ok=True)
     out = check()

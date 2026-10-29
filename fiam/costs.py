@@ -10,7 +10,7 @@ import pandas as pd
 from fiam import data, paths
 
 MODELS = paths.SUBMISSION / "models"
-SPREADS, BORROW = MODELS / "spreads.json", MODELS / "borrow.parquet"
+SPREADS, BORROW = MODELS / "spreads.json", data.DIR / "models" / "borrow.parquet"
 
 # IBKR Pro Fixed, US stocks, interactivebrokers.com pricing, 2026-09-30.
 COMMISSION_PER_SHARE, COMMISSION_MIN, COMMISSION_MAX = 0.005, 1.00, 0.01
@@ -163,7 +163,7 @@ def month_costs(
     return {k: float(v) * model.multiple for k, v in parts.items()}
 
 
-# Writes both calibrations to submission/models, so no-WRDS runs match.
+# Writes both calibrations, so runs without WRDS match.
 def main() -> None:
     from fiam import book as P
 
@@ -175,12 +175,13 @@ def main() -> None:
     write_spreads(ratios)
     spread_ratios.cache_clear()
     frame = P.universe()
-    inputs = MODELS / "book_inputs.parquet"
+    inputs = data.DIR / "models" / "book_inputs.parquet"
     if inputs.exists():
         taught = data.read(inputs, [*data.KEYS, "crowding_hat"])
         frame = frame.merge(taught, on=data.KEYS, how="left")
     frame = frame[frame["eom"] >= P.FIRST_FORECAST]
     out = frame[data.KEYS].assign(borrow=borrow_rate(frame).to_numpy()).sort_values(data.KEYS)
+    BORROW.parent.mkdir(parents=True, exist_ok=True)
     out.to_parquet(BORROW, index=False)
     print(f"spread ratios {ratios}; borrow for {len(out):,} stock-months")
 

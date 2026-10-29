@@ -9,7 +9,7 @@ import pandas as pd
 
 from fiam import data, paths
 
-OFFICIAL = Path("submission")
+OFFICIAL = Path("frozen") / "v1" / "submission"
 
 # Keys that name the code behind a result rather than the result itself.
 RUN_DETAILS = {"run", "code", "code_sha256"}

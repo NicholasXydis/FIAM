@@ -10,7 +10,7 @@ import pandas as pd
 from fiam.vfinal import agreement, data, gates, ranks, sources
 from fiam.vfinal.forecast import dataset, models
 
-OUT = gates.ROOT / "out" / "vfinal" / "forecast"
+OUT = gates.ROOT / "out" / "audit" / "engine" / "forecast"
 # The stages in order; walk and trap need validate at the same HEAD.
 STAGES = ("check", "validate", "walk", "trap")
 # Validation: one fit on rows public by 2018-12, forecasts to 2020-10.

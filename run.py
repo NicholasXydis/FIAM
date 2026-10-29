@@ -9,13 +9,13 @@ import tempfile
 from pathlib import Path
 
 HELP = """uv run run.py [verb]   (MAIN.py passes its arguments here)
-  no verb              checks the final fund's carried results in final/: every PDF
+  no verb              checks the carried results in frozen/vfinal/final/: every PDF
                        rule on every day, the headline recomputed from daily.csv and
                        the FRED series, and the code against the lock, in seconds.
                        With the organisers' files in data/organisers/ or beside
                        MAIN.py it also checks their SHA-256 against our receipts and
                        replays our daily stock P&L on their daily returns
-  check, rerun, stage, whatif, compare, lock, verify, audit
+  check, rerun, compare, verify
                        the final fund's verbs, the same as uv run fiam <verb>;
                        uv run fiam help lists them
   setup [kit]          restores the finals kit from the USB, missing files only, then doctor
@@ -29,10 +29,10 @@ HELP = """uv run run.py [verb]   (MAIN.py passes its arguments here)
   --data rebuild <source> <verb ...>   rebuilds into a scratch folder and compares with ours
   --data <source> <verb ...>   one data tool: edgar, noaa, stock, carbon or amazon, e.g.
                        --data carbon plan <spec> (prices, buys nothing); carbon buy and rebuy
-                       spend tokens, so the leader runs them; --data amazon fetch [category]"""
+                       spend tokens, so they run only by hand; --data amazon fetch [category]"""
 
 # The final fund's verbs, passed to fiam/vfinal/cli.py as given.
-FINAL_VERBS = ("check", "rerun", "stage", "whatif", "compare", "lock", "verify", "audit")
+FINAL_VERBS = ("check", "rerun", "compare", "verify")
 # The finals kit's verbs, passed to fiam/vfinal/kit.py as given.
 KIT_VERBS = ("setup", "doctor", "export", "installers", "caches")
 
@@ -134,7 +134,7 @@ def bundle() -> bool:
     if all((BUNDLE / name).is_file() for name in CORE):
         return True
     if not all((Path("data") / name).exists() for name in REQUIRED):
-        # Files beside MAIN.py or run.py count too, as people put them there.
+        # Files beside MAIN.py or run.py count too.
         if not all(Path(name).exists() for name in REQUIRED):
             return False
         import_from(Path("."))

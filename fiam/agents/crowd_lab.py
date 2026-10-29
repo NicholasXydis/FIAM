@@ -16,15 +16,15 @@ from fiam import data
 from fiam.agents import harness as H
 from fiam.paths import FROZEN
 
-LABELS = FROZEN / "characteristic_labels.json"
-SETS = FROZEN / "crowd_info_sets.json"
-PROMPT = H.ROOT / "prompts" / "agents" / "crowd_lab.md"
-COPYCAT = H.ROOT / "prompts" / "agents" / "crowd_lab_copycat.md"
+LABELS = FROZEN / "agents" / "characteristic_labels.json"
+SETS = FROZEN / "agents" / "crowd_info_sets.json"
+PROMPT = H.ROOT / "fiam" / "agents" / "prompts" / "crowd_lab.md"
+COPYCAT = H.ROOT / "fiam" / "agents" / "prompts" / "crowd_lab_copycat.md"
 JKP = Path("research/jkp/factor_details.csv")
-# After Gemma's January 2025 cutoff: holding months 2025-02 to 2026-08.
-FIRST, LAST = "2025-01-31", "2026-07-31"
+# After Gemma's January 2025 cutoff: holding months 2025-02 to 2026-09.
+FIRST, LAST = "2025-01-31", "2026-08-31"
 STOCKS, PICKS, COLUMNS, N_SETS, SEED = 40, 8, 40, 5, 42
-# 13 cards a month took ~32 GPU hours at 7.8 s a call, so 9 fit in 24.
+# 13 cards a month need ~32 GPU hours at 7.8 s a call, so 9 fit in 24.
 CARDS = 9
 PERSONAS = ("attention", "lottery", "momentum", "contrarian", "income", "familiar")
 
@@ -38,7 +38,7 @@ def labels() -> dict:
     names = names.str.replace("â€™", "'", regex=False).str.strip()
     out = {c: str(names.get(c, c)) for c in P.characteristics()}
     out["intrinsic_value"] = "Intrinsic value to price"
-    FROZEN.mkdir(exist_ok=True)
+    LABELS.parent.mkdir(parents=True, exist_ok=True)
     LABELS.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
     return out
 

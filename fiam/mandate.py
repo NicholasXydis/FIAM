@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fiam import book as P
 
-TEMPLATES = Path("mandates")
+TEMPLATES = Path("frozen") / "v1" / "mandates"
 # GICS sectors by two-digit code, so a mandate may name one either way.
 SECTORS = {
     "energy": "10", "materials": "15", "industrials": "20", "consumer discretionary": "25",

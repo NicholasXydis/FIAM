@@ -44,6 +44,7 @@
   --ease-film: cubic-bezier(0.2, 0.7, 0.2, 1);
   --animate-rise: rise 0.7s var(--pill-quick) backwards;
 
+  /* Rise in from 14 px below, fading in. */
   @keyframes rise {
     from {
       transform: translateY(14px);
@@ -60,6 +61,7 @@
 
 /* The night, the ink and the focus ring, on every page. */
 @layer base {
+  /* Dark by default, in the moon ink and the sans face. */
   html {
     color-scheme: dark;
     background: var(--color-night);
@@ -68,12 +70,14 @@
     -webkit-font-smoothing: antialiased;
     -webkit-text-size-adjust: 100%;
   }
+  /* A violet ring for keyboard focus on anything. */
   :focus-visible {
     outline: 2px solid var(--color-violet);
     outline-offset: 3px;
   }
 }
 
+/* The site's own parts, which utilities may still override. */
 @layer components {
   /* The sky: faint clouds, particles, a deep vignette, grain. */
   .sky,
@@ -82,6 +86,7 @@
     inset: 0;
     pointer-events: none;
   }
+  /* Faint violet clouds that drift slowly. */
   .sky-nebula {
     inset: -25%;
     background:
@@ -102,6 +107,7 @@
     background: radial-gradient(closest-side, rgb(140 104 255 / 0.2), rgb(96 70 230 / 0.07) 50%, transparent);
     animation: aura 11s ease-in-out infinite alternate;
   }
+  /* The particle canvas fills the screen. */
   .sky-canvas {
     width: 100%;
     height: 100%;
@@ -111,6 +117,7 @@
     display: none;
     mix-blend-mode: screen;
   }
+  /* While carried, the kept picture fills the screen. */
   [data-carry] .sky-carry {
     display: block;
     background: var(--carry) 0 0 / 100% 100% no-repeat;
@@ -119,9 +126,11 @@
   [data-person] main {
     visibility: hidden;
   }
+  /* Darkens the edges of the screen. */
   .sky-vignette {
     background: radial-gradient(110% 85% at 50% 42%, transparent 40%, rgb(0 0 0 / 0.78));
   }
+  /* A faint film grain over everything. */
   .sky-grain {
     opacity: 0.09;
     mix-blend-mode: overlay;
@@ -135,9 +144,11 @@
     font: 400 min(15vw, 22vh) / 0.95 var(--font-display);
     letter-spacing: -0.01em;
   }
+  /* The second word in violet. */
   .wordmark em {
     color: var(--color-violet);
   }
+  /* Once the particles draw it, the text turns clear. */
   [data-lit] .wordmark,
   [data-lit] .wordmark em {
     color: transparent;
@@ -147,10 +158,13 @@
     -webkit-user-select: none;
     user-select: none;
   }
+  /* On tall screens the two words stack and grow. */
   @media (max-aspect-ratio: 11/10) {
+    /* Larger, sized for the stack. */
     .wordmark {
       font-size: min(27vw, 17vh);
     }
+    /* Each word on its own line. */
     .wordmark > * {
       display: block;
     }
@@ -164,6 +178,7 @@
   .sky-grain {
     transition: opacity 0.6s var(--ease-film);
   }
+  /* Gathering, they fade out and take no taps. */
   [data-gather] .ways,
   [data-gather] footer,
   [data-gather] .sky-nebula,
@@ -181,15 +196,19 @@
     padding-bottom: clamp(0.5rem, 6vh, 5rem);
     font-size: clamp(1.05rem, 0.8vmin + 0.78rem, 1.6rem);
   }
+  /* Each pill rises in after a short wait. */
   .ways > * {
     --enter: 0.6s;
     animation: var(--animate-rise);
     animation-delay: var(--enter);
   }
+  /* The second a beat after the first. */
   .ways > * + * {
     --enter: 0.7s;
   }
+  /* On narrow screens the pills stack. */
   @media (max-width: 34rem) {
+    /* One column, at most 22 rem wide. */
     .ways {
       grid-template-columns: minmax(0, 22rem);
     }
@@ -206,21 +225,26 @@
   }
   /* On a phone: three across, two centred below, each name stacked. */
   @media (max-width: 34rem) {
+    /* Row gaps only; each item sets its own width. */
     .roster {
       gap: clamp(1.2rem, 4.5vh, 2rem) 0;
       width: 100%;
     }
+    /* Each person takes a third of the row. */
     .roster > li {
       display: flex;
       justify-content: center;
       width: 33.3%;
     }
+    /* A tighter gap between face and name. */
     .roster .person {
       gap: 0.9rem;
     }
+    /* Faces sized for three across. */
     .roster .face {
       width: min(5.4rem, 24vw, 14vh);
     }
+    /* Names may wrap, one word to a line. */
     .roster .person-name {
       width: min-content;
       white-space: normal;
@@ -250,36 +274,46 @@
     outline: none;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Keyboard focus rings the face, not the button. */
   .person:focus-visible .face {
     outline: 2px solid var(--color-violet);
     outline-offset: 7px;
   }
+  /* The face leans and springs as a pill does. */
   .person .face {
     border-radius: 50%;
     transform: perspective(500px) translate(var(--tx), var(--ty)) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--s));
     transition: transform 0.7s var(--pill-spring);
   }
+  /* Lit, it follows the pointer quickly. */
   .person.is-lit .face {
     transition: transform 0.22s var(--pill-quick);
   }
+  /* Pressed, it shrinks a little. */
   .person.is-pressing {
     --s: 0.95;
   }
+  /* Pressed, the shrink is quick. */
   .person.is-pressing .face {
     transition: transform 0.1s var(--pill-quick);
   }
+  /* Lit, the initials bob once. */
   .person.is-lit .face-mark {
     animation: pill-bob 0.6s var(--pill-glide);
   }
+  /* Pressed, the initials hop. */
   .person.is-pressing .face-mark {
     animation: pill-hop 0.4s var(--pill-glide);
   }
+  /* The ink floods a circle, not a pill. */
   .face .pill-ink {
     border-radius: 50%;
   }
+  /* The initials in the ink sit above its fill. */
   .face .pill-ink .face-mark {
     position: relative;
   }
+  /* The name in the display face, brightening when lit. */
   .person-name {
     font: 400 clamp(0.95rem, 0.8vmin + 0.62rem, 1.25rem) / 1.2 var(--font-display);
     white-space: nowrap;
@@ -288,10 +322,12 @@
       letter-spacing 0.35s var(--pill-quick),
       color 0.35s var(--pill-quick);
   }
+  /* Lit, the name spreads a little and brightens. */
   .person.is-lit .person-name {
     letter-spacing: 0.03em;
     color: var(--color-moon);
   }
+  /* The role in small spaced mono capitals. */
   .person-role {
     font: 400 max(11px, 0.7rem) var(--font-mono);
     letter-spacing: 0.18em;
@@ -308,10 +344,12 @@
     aspect-ratio: 1;
     font: 400 clamp(1.7rem, 3.5vmin, 3.1rem) var(--font-display);
   }
+  /* The larger face on a person's own section. */
   .face-big {
     width: clamp(8rem, 22vmin, 15rem);
     font-size: clamp(3rem, 8vmin, 5.6rem);
   }
+  /* The hairline ring, lit in whole and under the pointer. */
   .face::after {
     content: "";
     position: absolute;
@@ -335,6 +373,7 @@
       linear-gradient(#000 0 0);
     animation: pill-light 1.1s var(--pill-quick) var(--enter, 0s) both;
   }
+  /* The disc itself, a soft violet glass circle. */
   .face-disc {
     position: absolute;
     inset: 0;
@@ -347,6 +386,7 @@
     background:
       radial-gradient(circle at 30% 28%, rgb(169 139 255 / 0.32), rgb(169 139 255 / 0.04) 72%), rgb(12 9 22 / 0.85);
   }
+  /* A photo fills the disc, ready to zoom when lit. */
   .face-disc img {
     width: 100%;
     height: 100%;
@@ -372,11 +412,13 @@
       transform 0.22s var(--pill-quick),
       filter 0.22s var(--pill-quick);
   }
+  /* A face with a photo has no ink. */
   .face:has(img) .pill-ink {
     visibility: hidden;
   }
   /* Touch has no hover, so a soft glow passes face to face while idle. */
   @media (hover: none) and (prefers-reduced-motion: no-preference) {
+    /* A ring and glow round each face, faded in by beckon. */
     .roster .face::before {
       content: "";
       position: absolute;
@@ -406,6 +448,7 @@
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
   }
+  /* The card's hairline edge, lit in as it rises. */
   .profile::after {
     content: "";
     position: absolute;
@@ -423,6 +466,7 @@
       linear-gradient(#000 0 0);
     animation: pill-light 1.1s var(--pill-quick) both;
   }
+  /* Role, name, rule, about and focus, stacked. */
   .profile-info {
     display: flex;
     flex-direction: column;
@@ -430,25 +474,31 @@
     gap: 0.95rem;
     min-width: 0;
   }
+  /* Each part rises in, one after another. */
   .profile-info > * {
     margin: 0;
     animation: var(--animate-rise);
   }
+  /* The second part a beat later. */
   .profile-info > :nth-child(2) {
     animation-delay: 0.06s;
   }
+  /* The third a beat after that. */
   .profile-info > :nth-child(3) {
     animation-delay: 0.12s;
   }
+  /* The rest together, last. */
   .profile-info > :nth-child(n + 4) {
     animation-delay: 0.18s;
   }
+  /* The role in small spaced mono capitals. */
   .profile-role {
     font: 400 0.78rem var(--font-mono);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgb(176 174 180 / 0.8);
   }
+  /* The name, large in the display face. */
   .profile-name {
     font: 400 clamp(2.4rem, 7vmin, 5.4rem) / 0.98 var(--font-display);
   }
@@ -456,9 +506,11 @@
   .profile-name:focus {
     outline: none;
   }
+  /* The rest of the name in violet. */
   .profile-name em {
     color: var(--color-violet);
   }
+  /* A thin rule that draws in from the left. */
   .profile-info > .profile-rule {
     width: min(100%, 62ch);
     height: 1px;
@@ -466,6 +518,7 @@
     transform-origin: left;
     animation: line 1.1s var(--pill-quick) 0.2s both;
   }
+  /* The paragraph in the dim ink, at reading width. */
   .profile-about {
     max-width: 62ch;
     font-size: var(--text-body);
@@ -473,6 +526,7 @@
     color: var(--color-dim);
     text-wrap: pretty;
   }
+  /* The focus areas as a row of outlined chips. */
   .profile-focus {
     display: flex;
     flex-wrap: wrap;
@@ -480,6 +534,7 @@
     padding: 0;
     list-style: none;
   }
+  /* Each chip: small mono words in a hairline pill. */
   .profile-focus li {
     padding: 0.55em 1.05em;
     border-radius: 999px;
@@ -487,18 +542,23 @@
     letter-spacing: 0.08em;
     box-shadow: inset 0 0 0 1px rgb(244 241 250 / 0.22);
   }
+  /* On narrow screens the card stacks and centres. */
   @media (max-width: 44rem) {
+    /* Face above, words below, all centred. */
     .profile {
       grid-template-columns: 1fr;
       justify-items: center;
     }
+    /* The words centred too. */
     .profile-info {
       align-items: center;
       text-align: center;
     }
+    /* The paragraph stays left aligned, to read. */
     .profile-about {
       text-align: left;
     }
+    /* The rule draws out from its middle. */
     .profile-info > .profile-rule {
       transform-origin: center;
     }
@@ -511,6 +571,7 @@
     transform: translate3d(4%, -3%, 0) scale(1.08) rotate(3deg);
   }
 }
+/* The name's glow swells and sways side to side. */
 @keyframes aura {
   from {
     transform: scale(0.9) translateX(-4%);
@@ -519,6 +580,7 @@
     transform: scale(1.1) translateX(4%);
   }
 }
+/* A rule draws in from nothing. */
 @keyframes line {
   from {
     transform: scaleX(0);
@@ -543,6 +605,7 @@
     animation-timing-function: var(--ease-film);
   }
 }
+/* Reduced motion: nothing animates or transitions. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

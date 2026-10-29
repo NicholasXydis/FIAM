@@ -10,7 +10,7 @@ from fiam.vfinal import agreement, asfiled, clock, compustat, data, links, ranks
 from fiam.vfinal.signals import syy
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / "out" / "vfinal" / "history"
+OUT = ROOT / "out" / "audit" / "engine" / "history"
 # The twin runs 2000-2020; 2015-2020 only to measure it on the panel.
 SPAN = (pd.Timestamp("2000-01-31"), pd.Timestamp("2020-12-31"))
 PANEL_FROM = pd.Timestamp("2015-01-31")
@@ -68,7 +68,7 @@ def market_parts(m: pd.DataFrame) -> pd.DataFrame:
 def gvkeys(u: pd.DataFrame, log: dict) -> pd.DataFrame:
     lk = data.table("links", None)
     u = u.assign(gvkey=links.value_at(lk, "gvkey", u["permno"], u["eom"]).to_numpy())
-    # A month with no gvkey stays in the universe, uncovered (audit H1).
+    # A month with no gvkey stays in the universe, uncovered.
     log["universe_months_without_gvkey"] = int(u["gvkey"].isna().sum())
     none, u = u[u["gvkey"].isna()], u.dropna(subset=["gvkey"]).astype({"gvkey": str})
     # The panel's 2015 stock of each gvkey, the class it kept.

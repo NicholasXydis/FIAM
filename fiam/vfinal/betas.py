@@ -53,7 +53,7 @@ def dimson(stock: pd.DataFrame, market: pd.Series) -> pd.Series:
 def at(T, permnos) -> pd.DataFrame:
     days = data.sessions(pd.Timestamp(T) - pd.Timedelta(days=400), T)[-WELCH_DAYS:]
     rets = data.dsf(permnos, days[0], days[-1])
-    # Only bill rates public by T's close (decision 3: next business day).
+    # Only bill rates public by T's close (the next business day).
     rf = data.rf_daily(days, by=T)
     stock = data.matrix(rets, "ret", days, permnos).sub(rf, axis=0)
     market = data.market_daily(days) - rf

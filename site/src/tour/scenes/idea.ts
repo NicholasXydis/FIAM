@@ -9,23 +9,31 @@ import { box, chip, count, Label, nearest, stat } from "../ui";
 import { ball, C, dust, header, Scene, stats, type World } from "./scene";
 import { GOLDEN, seeded } from "../../shared/math";
 
-// The journey's counts, dots per question orb, and the orbs' height.
+// An orb's colour: gold for our signals, cyan for the organisers'.
+const hue = (i: number) => (D.signals[i]!.family === "ours" ? C.gold : C.cyan);
+// How many signals feed the two LASSO models.
+const INPUTS = D.signals.reduce((n, s) => n + s.count, 0);
+// How many of those signals are the organisers' characteristics.
+const THEIRS = D.signals.reduce((n, s) => n + (s.family === "ours" ? 0 : s.count), 0);
+// The journey's counts for the chosen month.
 const J = D.journey;
+// Dots per input orb.
 const ORB = 220;
+// The height of the arc of input orbs.
 const ARC_Y = 5.4;
 // The funnel's steps: second of the replay, caption and chip.
 const STEPS = [
   { at: 0, caption: `${int(J.stocks)} US stocks`, chip: "All stocks" },
   { at: 1.9, caption: `${int(J.tradeable)} we can trade`, chip: "Tradeable" },
-  { at: 3.7, caption: "Ten signals and a forecast", chip: "Scored" },
+  { at: 3.7, caption: `${INPUTS} signals and a LightGBM forecast`, chip: "Scored" },
   { at: 5.4, caption: "Ranked, worst to best", chip: "Ranked" },
   { at: 7.3, caption: `${J.longs} long, ${J.shorts} short`, chip: "Chosen" },
   { at: 9.4, caption: "Beta near zero", chip: "Balanced" },
 ];
 
-// Ten questions: how a real month's stocks become longs and shorts.
+// The signals: how a real month's stocks become longs and shorts.
 export class Idea extends Scene {
-  name = "Ten questions, one forecast";
+  name = `${INPUTS} signals, one ranking`;
   summary = `How ${int(J.tradeable)} stocks become ${J.longs + J.shorts} positions in one real month of the final book.`;
   private step = 0;
   private orbs: THREE.Vector3[] = [];
@@ -42,7 +50,7 @@ export class Idea extends Scene {
   private chips: HTMLButtonElement[];
   private beam: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
 
-  // Lines the ten orbs up by family on a shallow arc, with flows down.
+  // Lines the orbs up by family on a shallow arc, with flows down.
   constructor(w: World) {
     super(w);
     this.shot = { eye: [0, 1.6, 24], look: [0, 1.2, 0], drift: 0.7, shift: 0.07 };
@@ -52,6 +60,7 @@ export class Idea extends Scene {
     // Orbs 1.45 apart, 0.65 more between families, each family labelled.
     const xs: number[] = [];
     let x = 0;
+    // Each family's orbs in a row, then a gap and its label.
     for (const fam of Object.keys(D.families)) {
       const members = D.signals.filter((s) => s.family === fam);
       const from = xs.length;
@@ -72,13 +81,13 @@ export class Idea extends Scene {
       .sort(() => r() - 0.5)
       .forEach((v, i) => (this.order[v] = i));
     this.seed = new Float32Array(J.stocks * 4).map(() => r());
-    // Each orb streams 70 dots down to the stocks, cyan or orange by sign.
+    // Each orb streams 70 dots down to the stocks, gold if it is ours.
     this.flow = streams(
       this.orbs.map((o, i) => ({
         a: o,
         b: new THREE.Vector3(o.x * 0.25, -0.6, 0),
         c: new THREE.Vector3(o.x * 0.75, 1.6, 1.2),
-        color: D.signals[i].sign > 0 ? C.cyan : C.orange,
+        color: hue(i),
         count: 70,
       })),
       0.16,
@@ -98,8 +107,8 @@ export class Idea extends Scene {
     this.group.add(this.beam);
     this.panel.append(
       ...header(
-        "Ten questions, <em>one forecast</em>",
-        "Ten published signals, signs set by theory, feed a machine learning forecast. We buy the best stocks, short the worst and hold the fund's beta near zero.",
+        `${INPUTS} signals, <em>one ranking</em>`,
+        `The organisers' ${THEIRS} characteristics and ${INPUTS - THEIRS} of ours, one a LightGBM earnings forecast, feed two LASSO models. E-LASSO blends them into one ranking.`,
       ),
       stats(...Object.values(this.stats).map((s) => s.el)),
     );
@@ -135,6 +144,7 @@ export class Idea extends Scene {
     const mid = new THREE.Color(C.dim);
     const hi = new THREE.Color(C.cyan);
     const tradeable = J.tradeable;
+    // Place each stock for the step, from the cloud to the book.
     for (let i = 0; i < J.stocks; i++) {
       const s = this.seed.subarray(i * 4, i * 4 + 4);
       const a = s[0] * Math.PI * 2;
@@ -169,6 +179,7 @@ export class Idea extends Scene {
       if (step >= 4 && kept) {
         const long = rank >= tradeable - J.longs;
         const short = rank < J.shorts;
+        // Longs and shorts gather in two golden spirals.
         if (long || short) {
           const k = long ? tradeable - 1 - rank : rank;
           const d = 0.2 * Math.sqrt(k + 0.5);
@@ -182,12 +193,14 @@ export class Idea extends Scene {
       }
       f.put(i, x, y, z, size, tint, alpha);
     }
-    // The question orbs, lit once the stocks are scored.
+    // The input orbs, lit once the stocks are scored.
     let k = J.stocks;
     const r = seeded(5);
     const on = step >= 2 ? 1 : 0.35;
+    // Draw each input orb as a cluster of soft balls.
     this.orbs.forEach((o, i) => {
-      const accent = D.signals[i].sign > 0 ? C.cyan : C.orange;
+      const accent = hue(i);
+      // Five balls per orb, the first in the orb's accent colour.
       for (let j = 0; j < 5; j++)
         k = ball(f, k, ORB / 5, o, 0.42, 0.3 + r() * 0.25, j === 0 ? accent : C.purple, on * (0.6 + r() * 0.6), r);
     });
@@ -204,6 +217,7 @@ export class Idea extends Scene {
     this.chips.forEach((c, i) => c.setAttribute("aria-pressed", String(i === step)));
     if (step === 0) count(this.stats.stocks.value, J.stocks, int, 1.2);
     if (step === 1) count(this.stats.tradeable.value, J.tradeable, int, 1.2);
+    // The longs and shorts count up together at step 4.
     if (step === 4) {
       count(this.stats.longs.value, J.longs, int, 1.2);
       count(this.stats.shorts.value, J.shorts, int, 1.2);
@@ -249,14 +263,17 @@ export class Idea extends Scene {
     this.step = 0;
   }
 
-  // Names the question under the pointer and lights its flow.
+  // Names the input under the pointer and lights its flow.
   override hover(x: number, y: number) {
     const i = nearest(this.orbs, x, y, this.w.stage.camera, 30);
     this.flow.material.uniforms.uFocus.value = i;
     if (i < 0) return null;
     const s = D.signals[i];
-    const way = s.sign > 0 ? "Higher is better" : "Lower is better";
-    return `<strong>${s.label}</strong><br><span class="muted">${D.families[s.family]}</span><br>${way}, a sign fixed by theory before we ran anything.`;
+    const feeds = s.count > 1 ? "Each feeds" : "It feeds";
+    // The earnings forecast names the model that makes it.
+    const made =
+      s.family === "ours" && /earnings/i.test(s.label) ? "A LightGBM model, refit once a year, forecasts it. " : "";
+    return `<strong>${s.label}</strong><br><span class="muted">${D.families[s.family]}</span><br>${made}${feeds} the two LASSO models, refit each month on past data only.`;
   }
 
   // Moves the flow along its threads and sizes its dots to the screen.

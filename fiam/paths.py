@@ -1,4 +1,4 @@
-# Where steps write: submission/ officially, else out/ via FIAM_OUT.
+# Where steps write: frozen/v1/submission/, else under FIAM_OUT.
 
 import hashlib
 import json
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 OUT_ROOT = Path(os.environ.get("FIAM_OUT", "."))
-SUBMISSION = OUT_ROOT / "submission"
+SUBMISSION = OUT_ROOT / "frozen" / "v1" / "submission"
 EXHIBITS = SUBMISSION / "exhibits"
 HOLDINGS = SUBMISSION / "holdings.csv"
 RETURNS = SUBMISSION / "returns.csv"

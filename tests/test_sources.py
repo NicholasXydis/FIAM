@@ -10,7 +10,7 @@ from fiam.vfinal import clock, guards, sources
 SEALED_DAY = pd.Timestamp("2021-01-04")
 
 
-# A tiny clean folder: a panel and a daily file either side of the seal.
+# A tiny clean folder: a panel and a daily file each side of the cutoff.
 @pytest.fixture
 def clean(tmp_path, monkeypatch):
     monkeypatch.setattr(sources, "CLEAN", tmp_path)
@@ -146,7 +146,7 @@ def test_real_clean_tables_hold_no_globally_banned_field():
             assert not always & set(ds.dataset(path).schema.names), name
 
 
-# Blind reads of the links show no period ending after the seal.
+# Blind reads of the links show no period ending after the cutoff.
 def test_real_links_hide_ends_after_the_seal():
     path = sources.DATA / "v4" / "clean" / "links.parquet"
     if not path.exists():
@@ -178,7 +178,7 @@ def test_footprint_weights():
     assert sources.footprint_weights(None, "") == {}
 
 
-# No row public after the seal comes back from any text or map table.
+# No row public after the cutoff comes back from any text or map table.
 @pytest.mark.skipif(not (sources.DATA / "v4" / "clean" / "sections").exists(), reason="no data")
 def test_real_step4_tables_hide_rows_after_the_seal():
     for name, cols, purpose in [
@@ -267,10 +267,10 @@ def test_only_allowed_modules_open_data_files():
     allowed |= {"hand_checks.py", "kit.py", "text.py", "vintage.py", "fema.py"}
     # The table builders read the extracts and CRSP's types to clean them.
     allowed |= {"compustat.py", "thirteen_f.py"}
-    # The final run, the headline and the what-ifs read their own outputs.
-    allowed |= {"final.py", "headline.py", "whatif.py"}
-    # The checks after the lock read final/, out/ and the organisers' files.
-    allowed |= {"carried.py", "compare.py"}
+    # Checks after the lock read frozen/, out/ and the organisers' files.
+    allowed |= {"carried.py"}
+    # The fund reads the organisers' files and its own outputs.
+    allowed |= {"book.py", "checks.py", "config.py", "lock.py"}
     root = Path(sources.__file__).resolve().parent
     opens = ("read_parquet", "read_csv", '"clean"', '"extracts"', "fiam_v1", "pq.read_table")
     for path in sorted(root.glob("*.py")):
@@ -287,7 +287,7 @@ def test_registered_sources_keep_their_early_bans():
             assert set(fields) <= set(sources.REGISTRY[name].banned), name
 
 
-# SEC and Compustat tables: bans refuse reads, sealed labels never load.
+# SEC and Compustat tables: bans refuse reads, hidden labels never load.
 def test_step6_bans_and_sealed_labels(tmp_path, monkeypatch):
     monkeypatch.setattr(sources, "CLEAN", tmp_path)
     for name, col, why in (("sec_facts", "frame", None), ("compustat_quarterly", "dldte", "twin")):
@@ -319,7 +319,7 @@ def test_step6_bans_and_sealed_labels(tmp_path, monkeypatch):
     assert {"ajexq", "ajex"} <= set(sources.COMPUSTAT_BANNED)
 
 
-# The SUE and 13F holdings stay sealed like every registered table.
+# The SUE and 13F holdings stay hidden past the cutoff like the rest.
 def test_step6_sue_and_holdings_are_sealed(tmp_path, monkeypatch):
     monkeypatch.setattr(sources, "CLEAN", tmp_path)
     cal = clock.calendar(clock.xnys_sessions("2020-11-01", "2021-02-26"))

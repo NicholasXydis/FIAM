@@ -53,19 +53,6 @@ def test_text_components_fit_on_training_rows_only():
     assert np.isnan(first[700:]).all()
 
 
-# The stock picker's target is uncorrelated with beta and every style.
-def test_stock_picker_target_is_free_of_style():
-    scorer = importlib.import_module("fiam.ml.scorer")
-    rng = np.random.default_rng(0)
-    n = 400
-    frame = pd.DataFrame({c: rng.normal(size=n) for c in scorer.STYLE})
-    frame["holding_month"] = pd.Timestamp("2020-01-01")
-    frame["sector"] = rng.choice(["10", "20"], n)
-    frame[scorer.D.TARGET] = frame[scorer.STYLE].sum(axis=1) + rng.normal(size=n)
-    out = scorer.residual(frame)
-    assert all(abs(np.corrcoef(out, frame[c])[0, 1]) < 1e-8 for c in scorer.STYLE)
-
-
 # The answer log resumes: a second session sees what the first saved.
 def test_agent_answers_resume(tmp_path, monkeypatch):
     harness = importlib.import_module("fiam.agents.harness")
@@ -82,31 +69,6 @@ def test_analyst_verdicts_from_the_evaluation_never_teach():
     eom = pd.to_datetime(["2020-10-31", "2020-11-30", "2020-12-31", "2023-05-31"])
     verdicts = pd.DataFrame(dict(permno=1, eom=eom, analyst_conviction=[1.0, np.nan, 2.0, -1.0]))
     assert learned.taught(verdicts)["eom"].tolist() == [pd.Timestamp("2020-10-31")]
-
-
-# A teacher never trains on a label first known inside its test year.
-def test_teacher_drops_labels_known_in_the_test_year(monkeypatch):
-    teachers = importlib.import_module("fiam.ml.teachers")
-    months = pd.date_range("2016-01-01", "2018-12-01", freq="MS")
-    frame = pd.DataFrame(dict(holding_month=np.repeat(months, 600), x=0.0))
-    known = frame["holding_month"] + pd.DateOffset(months=4)
-    seen = []
-
-    # Records which rows each fit is given, and predicts nothing.
-    class Stub:
-        # Zeros for every row, since the test only checks the fit's rows.
-        def predict(self, x, **_):
-            return np.zeros(len(x))
-
-    # Stands in for lgb.train, keeping the label rows each fit is given.
-    def fake(params, dataset, rounds):
-        seen.append(dataset.label.index)
-        return Stub()
-
-    monkeypatch.setattr(teachers, "YEARS", [2018])
-    monkeypatch.setattr(teachers.lgb, "train", fake)
-    teachers.walk_forward(frame, ["x"], pd.Series(1.0, index=frame.index), known=known)
-    assert frame.loc[seen[0], "holding_month"].max() == pd.Timestamp("2017-08-01")
 
 
 # A toy month with one sector and one beta, so neutralizing keeps order.

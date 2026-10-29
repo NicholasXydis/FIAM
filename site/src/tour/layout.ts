@@ -17,6 +17,7 @@ export interface Box {
 
 // A finger rather than a mouse, read once and kept in step.
 const touch = matchMedia("(pointer: coarse)");
+// The layout mode in use now.
 let current: Mode = "desktop";
 // Frames since load, so slow work can run every few frames only.
 let frames = 0;
@@ -107,8 +108,9 @@ function band(list: Box[]): Box {
   return left.length && clear && side.w * side.h > gap.w * gap.h ? side : gap;
 }
 
-// Scratch vectors for projecting, so fitting allocates little.
+// Scratch: a point projected onto the screen, reused by fit.
 const v = new THREE.Vector3();
+// Scratch: the scene's own camera eye, to compare against.
 const shot = new THREE.Vector3();
 
 // The biggest zoom to the cap that fits frame and labels, and offset.
@@ -122,6 +124,7 @@ function fit(stage: Stage, scene: Scene, room: Box) {
     return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight];
   };
   const points = scene.frame.map(onScreen);
+  // Each shown label's place on screen, its anchor and size.
   const labels = scene.labels
     .filter((l) => l.fits && l.shown)
     .map((l) => {
@@ -135,12 +138,14 @@ function fit(stage: Stage, scene: Scene, room: Box) {
     let x1 = -Infinity;
     let y0 = Infinity;
     let y1 = -Infinity;
+    // Stretch the box to take in every frame point.
     for (const [x, y] of points) {
       x0 = Math.min(x0, cx + z * (x - cx));
       x1 = Math.max(x1, cx + z * (x - cx));
       y0 = Math.min(y0, cy + z * (y - cy));
       y1 = Math.max(y1, cy + z * (y - cy));
     }
+    // Then every label, by its anchor, width and height.
     for (const l of labels) {
       const X = cx + z * (l.x - cx);
       const Y = cy + z * (l.y - cy);
@@ -156,6 +161,7 @@ function fit(stage: Stage, scene: Scene, room: Box) {
   if (!own) return { zoom: 1, ox: 0, oy: cy - (room.y + room.h / 2) };
   let lo = 0.3;
   let hi = scene.zoomCap;
+  // Halve the range 22 times to find the biggest zoom that fits.
   for (let k = 0; k < 22 && points.length + labels.length; k++) {
     const z = (lo + hi) / 2;
     const e = extent(z);
@@ -169,6 +175,7 @@ function fit(stage: Stage, scene: Scene, room: Box) {
 
 // Fits the camera to the band on small screens, never on the desktop.
 export function frame(stage: Stage, scene: Scene, moved: boolean) {
+  // The desktop keeps the camera as it is.
   if (!small()) {
     stage.view = null;
     return;
@@ -201,6 +208,7 @@ function squeeze(scene: Scene) {
 export function declutter(labels: Label[], blocks: Box[]) {
   const order = labels.filter((l) => l.shown && l.box).sort((p, q) => q.prio - p.prio);
   const placed: Box[] = [];
+  // Place labels most important first, each in a free spot.
   for (const l of order) {
     const r0 = l.box!;
     const step = r0.h + 4;
@@ -208,6 +216,7 @@ export function declutter(labels: Label[], blocks: Box[]) {
     const far = l.prio > 0 ? [2 * step, -3 * step, 3 * step] : [];
     const tries = l.moves ? [l.dy, 0, -step, step, -2 * step, ...far].filter((d, i, all) => all.indexOf(d) === i) : [0];
     let found: number | null = null;
+    // Try each offset in turn until one is clear of everything.
     for (const dy of tries) {
       const r = { x: r0.x, y: r0.y + dy, w: r0.w, h: r0.h };
       if (r.y < 0 || r.y + r.h > innerHeight) continue;
@@ -226,6 +235,7 @@ export function declutter(labels: Label[], blocks: Box[]) {
 
 // Shrinks each slide's title on small screens until it fits one line.
 export function titles(list: Scene[]) {
+  // Measure each title and shrink it to fit its panel.
   for (const scene of list) {
     const head = scene.panel.querySelector<HTMLElement>(".headline");
     if (!head) continue;

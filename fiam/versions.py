@@ -7,7 +7,7 @@ from pathlib import Path
 from fiam import paths
 
 ROOT = Path(__file__).resolve().parent.parent
-FOLDER = ROOT / "versions"
+FOLDER = ROOT / "frozen"
 # Each version: its code, documents, frozen files and results.
 VERSIONS = {
     "v1": {
@@ -15,16 +15,20 @@ VERSIONS = {
         "status": "closed",
         "code": ["fiam/book.py"],
         "command": "uv run run.py",
-        "protocols": ["docs/protocols/README.md"],
-        "frozen": ["frozen/september_v1.csv"],
-        "results": ["submission/holdings.csv", "submission/returns.csv", "submission/metrics.json"],
+        "protocols": ["frozen/v1/protocols/README.md"],
+        "frozen": ["frozen/v1/september_v1.csv"],
+        "results": [
+            "frozen/v1/submission/holdings.csv",
+            "frozen/v1/submission/returns.csv",
+            "frozen/v1/submission/metrics.json",
+        ],
     },
     "vfinal": {
         "title": "The final version, the finals book",
         "status": "in progress",
         "code": ["fiam/vfinal/"],
         "command": "uv run fiam rerun",
-        "protocols": ["versions/vfinal/protocol.md"],
+        "protocols": ["frozen/vfinal/protocol.md"],
         "frozen": ["frozen/vfinal/"],
         "results": ["out/vfinal/"],
     },
@@ -44,14 +48,14 @@ def recipe(name: str) -> dict:
     return {"version": name, **spec, "fingerprints": files}
 
 
-# Writes versions/<name>/recipe.json for every version.
+# Writes frozen/<name>/version.json for every version.
 def write() -> None:
     for name in VERSIONS:
         folder = FOLDER / name
         folder.mkdir(parents=True, exist_ok=True)
         text = json.dumps(recipe(name), indent=1) + "\n"
-        (folder / "recipe.json").write_text(text, encoding="utf-8")
-        print(f"versions/{name}/recipe.json: {len(recipe(name)['fingerprints'])} fingerprints")
+        (folder / "version.json").write_text(text, encoding="utf-8")
+        print(f"frozen/{name}/version.json: {len(recipe(name)['fingerprints'])} fingerprints")
 
 
 # Rewrites the recipes; only a deliberate run changes a closed version.

@@ -9,11 +9,15 @@ import { corners } from "../layout";
 import { box, fill, fold, months, nearest, type Player, stat } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 
-// Floor of 64 by 40 dots 0.42 apart, its height, and tilt per return.
+// Dots across the floor, along x.
 const GX = 64;
+// Dots deep into the floor, along z.
 const GZ = 40;
+// The gap between floor dots, in world units.
 const STEP = 0.42;
+// The floor's height, below the gyroscope.
 const FLOOR = -3.2;
+// How far the floor tilts per unit of monthly return.
 const TILT = 3.2;
 
 // Gauge: a half dial from -0.5 to +0.5, noise band shaded, a needle.
@@ -23,15 +27,16 @@ function dial() {
     <path class="band" fill="none" stroke="var(--m-long)" stroke-opacity=".45" stroke-width="10"/>
     <line x1="0" y1="0" x2="0" y2="-96" stroke="rgb(237 233 246 / .35)" stroke-width="1" stroke-dasharray="2 3"/>
     <g class="needle"><line x1="0" y1="6" x2="0" y2="-82" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/><circle r="6" fill="var(--gold)"/></g>
-    <text x="-90" y="16" fill="var(--ink-3)" font-size="10" text-anchor="middle" font-family="var(--mono)">−0.5</text>
-    <text x="0" y="16" fill="var(--ink-3)" font-size="10" text-anchor="middle" font-family="var(--mono)">0</text>
-    <text x="90" y="16" fill="var(--ink-3)" font-size="10" text-anchor="middle" font-family="var(--mono)">+0.5</text>
+    <text x="-90" y="16" fill="var(--ink-3)" font-size="11" text-anchor="middle" font-family="var(--mono)">−0.5</text>
+    <text x="0" y="16" fill="var(--ink-3)" font-size="11" text-anchor="middle" font-family="var(--mono)">0</text>
+    <text x="90" y="16" fill="var(--ink-3)" font-size="11" text-anchor="middle" font-family="var(--mono)">+0.5</text>
   </svg>`;
   return h("div", { html: svg });
 }
 
 // An SVG arc across the gauge between two betas.
 const arc = (a: number, b: number) => {
+  // A beta's point on the dial's arc of radius 90.
   const p = (v: number) => {
     const t = Math.PI * (1 - (clamp(v, -0.5, 0.5) + 0.5));
     return `${(Math.cos(t) * 90).toFixed(2)} ${(-Math.sin(t) * 90).toFixed(2)}`;
@@ -76,6 +81,7 @@ export class Neutral extends Scene {
     const face = new THREE.Mesh(new THREE.CircleGeometry(1.55, 96), rim(C.purple, 0.18, 0.2));
     face.rotation.x = -Math.PI / 2;
     this.rotor.add(disc, face);
+    // Twelve thin spokes, spaced evenly round the rotor.
     for (let i = 0; i < 12; i++) {
       const spoke = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.02, 0.03), rim(C.ice, 0.45, 0.5));
       spoke.position.set(Math.cos((i / 12) * Math.PI * 2) * 0.76, 0.09, Math.sin((i / 12) * Math.PI * 2) * 0.76);
@@ -95,10 +101,10 @@ export class Neutral extends Scene {
     this.panel.append(
       ...header(
         "The market tilts, <em>we stay level</em>",
-        "The optimizer holds the fund's beta near zero. The floor tilts with the S&P 500, the gyroscope only with the fund's measured beta.",
+        `The optimizer holds beta near zero. Downside capture ${signed(head.down_capture, 0)}, upside ${signed(head.up_capture, 0)}. The floor tilts with the S&P 500, the gyroscope with our beta.`,
       ),
       stats(
-        stat(plus(head.beta), "Daily beta").el,
+        stat(plus(head.beta), "Monthly beta").el,
         stat(`${gained} of ${down.length}`, "Down months gained").el,
         // The share of the book's monthly moves the S&P 500 explains.
         stat(pct(head.correlation ** 2), "Explained by S&P").el,
@@ -133,7 +139,9 @@ export class Neutral extends Scene {
     const toward = new THREE.Color(a < 0 ? C.orange : C.cyan);
     const lean = Math.min(1, Math.abs(a) * 3) * 0.75;
     let k = 0;
+    // A 64 by 40 grid of dots, tilted by the month's return.
     for (let i = 0; i < GX; i++) {
+      // Walk one row from front to back.
       for (let j = 0; j < GZ; j++, k++) {
         const x = (i - (GX - 1) / 2) * STEP;
         const z = (j - (GZ - 1) / 2) * STEP;

@@ -1,0 +1,132 @@
+{
+ "el_plus_bwf_lag": {
+  "name": "el_plus_bwf_lag",
+  "overlay": {
+   "core": "p1_d69",
+   "plus": true,
+   "biweekly": "fresh",
+   "scale_k": null,
+   "scale_cap": 1.95
+  },
+  "execution": {
+   "sessions": 5,
+   "participation": 0.1,
+   "gross_guard": 1.92,
+   "gross_trim_to": 1.8,
+   "trim_at": 0.0475,
+   "trim_to": 0.0425,
+   "short_hold_musd": 550.0,
+   "lag_guard": true
+  },
+  "policy": {
+   "names_min": 200,
+   "names_max": 500,
+   "name_cap": 0.05,
+   "net_band": 0.5,
+   "nav0": 1000000000.0,
+   "premium": 0.04,
+   "beta_band": 0.02,
+   "sector_band": 0.01,
+   "participation": 0.1,
+   "days_to_exit_max": 5,
+   "position_cap": 0.0425,
+   "position_cap_short": 0.01,
+   "position_min": 0.001,
+   "impact_y": 1.0,
+   "borrow_flat_other": 0.05,
+   "forecaster_scale": 0.04841426765809828,
+   "forecaster_kappa": 0.00217388862207945,
+   "target_gross": 1.8,
+   "risk_aversion": 1.0,
+   "uncertainty_scale": 0.25,
+   "beta_penalty": 10.0,
+   "vol_target": 0.12,
+   "vol_target_risk_aversion": 0.25,
+   "style_band_share": 0.25,
+   "beta_bands_extra": [
+    "welch_dimson",
+    "beta_60m"
+   ]
+  }
+ },
+ "bw_fresh_lag": {
+  "name": "bw_fresh_lag",
+  "overlay": {
+   "core": "el_plus_bwf_lag",
+   "plus": false,
+   "biweekly": "fresh",
+   "scale_k": 1.08,
+   "scale_cap": 1.88
+  },
+  "execution": {
+   "sessions": 5,
+   "participation": 0.1,
+   "gross_guard": 1.9,
+   "gross_trim_to": 1.85,
+   "trim_at": 0.044,
+   "trim_to": 0.039,
+   "short_hold_musd": 550.0,
+   "lag_guard": true
+  },
+  "policy": {
+   "names_min": 200,
+   "names_max": 500,
+   "name_cap": 0.05,
+   "net_band": 0.5,
+   "nav0": 1000000000.0,
+   "premium": 0.04,
+   "beta_band": 0.02,
+   "sector_band": 0.01,
+   "participation": 0.1,
+   "days_to_exit_max": 5,
+   "position_cap": 0.039,
+   "position_cap_short": 0.0108,
+   "position_min": 0.001,
+   "impact_y": 1.0,
+   "borrow_flat_other": 0.05,
+   "forecaster_scale": 0.04841426765809828,
+   "forecaster_kappa": 0.00217388862207945,
+   "target_gross": 1.8,
+   "risk_aversion": 1.0,
+   "uncertainty_scale": 0.25,
+   "beta_penalty": 10.0,
+   "vol_target": 0.12,
+   "vol_target_risk_aversion": 0.25,
+   "style_band_share": 0.25,
+   "beta_bands_extra": [
+    "welch_dimson",
+    "beta_60m"
+   ]
+  }
+ },
+ "window": {
+  "start": "2015-01-02",
+  "first_eom": "2020-12-31",
+  "last_eom": "2026-07-31",
+  "end": "2026-08-31",
+  "cut": "2026-08-31",
+  "features_from": "2016-11-30"
+ },
+ "race_years": [
+  2017,
+  2018,
+  2019,
+  2020
+ ],
+ "hard": {
+  "name_cap": 0.05,
+  "gross": 2.0,
+  "net": 0.5,
+  "names_min": 200,
+  "names_max": 500,
+  "short_floor_musd": 500.0,
+  "sectors_min": 5,
+  "sector_net": 0.2,
+  "vol": 0.12
+ },
+ "flat": [
+  10000.0,
+  0.005,
+  0.05
+ ]
+}

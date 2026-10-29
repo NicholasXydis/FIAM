@@ -1,10 +1,6 @@
-# The site's headline source on small synthetic result files.
+# The site's data builder on small synthetic pack files.
 
-import ast
-import csv
 import json
-import os
-import re
 from pathlib import Path
 
 import numpy as np
@@ -13,381 +9,406 @@ import pytest
 
 from tools import build_site as b
 
-COMMIT = "abcdef123456"
-SITE = Path(__file__).resolve().parents[1] / "site" / "src" / "data" / "fiam.json"
-# The keys the headline mode fills, each checked against the bundle.
-FILLED = (
-    "book",
-    "code",
-    "window",
-    "months",
-    "headline",
-    "years",
-    "race",
-    "beta",
-    "stocks",
-    "costs",
-)
-# The table's cells the tests read, in the formats the report writes.
+# The table's cells the tests read, in the formats the pack writes.
 CELLS = {
-    1: ("Ending value (US$ bn)", "0.95", "1.05"),
-    2: ("Cumulative return (%)", "-5.5", "6.1"),
-    3: ("Annualised return (%)", "arithmetic -3.57, CAGR -3.80", "arithmetic 7.27, CAGR 7.52"),
-    4: ("Annualised volatility (%)", "7.8", "0.56"),
-    5: ("Alpha vs S&P 500 (%, s.e.)", "-6.25 (3.18)", "n/a"),
-    6: ("Beta monthly (s.e.)", "-0.056 (0.041)", "n/a"),
-    7: ("Beta daily (s.e.)", "-0.031 (0.012)", "n/a"),
-    8: ("Sharpe ratio", "-0.8794", "undefined, constant excess"),
-    9: ("IR vs T-bill + 4%, before costs", "-1.1904", "n/a"),
-    10: ("Tracking error (%)", "7.775", "n/a"),
-    11: ("Max drawdown (%)", "-29.26", "0.0"),
-    14: ("Positions held", "avg 273.0, min 252, max 281", "n/a"),
-    17: ("One-way turnover (%)", "with build 122, without 107; all trade days 122", "n/a"),
-    21: ("Trading cost (% NAV a year)", "1.2844", "n/a"),
-    22: ("Borrow cost (% NAV a year)", "0.4464", "n/a"),
-    23: ("IR net of all costs", "-1.39 (0.44); at 100% gross IR -1.74, Sharpe -0.88", "n/a"),
+    3: ("Annualised return (%)", "arithmetic 6.86, CAGR 7.00", "arithmetic 7.27, CAGR 7.52"),
+    5: ("Alpha vs S&P 500 (%, s.e.)", "3.46 (1.41)", "n/a"),
+    6: ("Beta monthly (s.e.)", "0.012 (0.030)", "n/a"),
+    9: ("IR vs T-bill + 4%, before costs", "0.0031", "n/a"),
+    14: ("Positions held", "avg 314.2, min 246, max 357", "n/a"),
+    17: ("One-way turnover (%)", "with build 94, without 92; all trade days 95", "n/a"),
+    21: ("Trading cost (% NAV a year)", "0.136215", "n/a"),
+    22: ("Borrow cost (% NAV a year)", "0.287569", "n/a"),
 }
-# Each stock's ticker and name in the Arcana file, by PERMNO and date.
-ARCANA = [
-    ("2021-01-04", "OLD US Equity", 1, "Old Name Inc"),
-    ("2021-06-01", "NEW US Equity", 1, "NEW NAME INC"),
-    ("2021-01-04", "BRK/A US Equity", 2, "BERKSHIRE HATHAWAY INC"),
-    ("2021-01-04", "", 3, ""),
-]
+
+
+# The table as the builder reads it, keyed by row number.
+def table() -> dict[int, dict]:
+    return {n: dict(row=n, name=a, strategy=s, benchmark=bm) for n, (a, s, bm) in CELLS.items()}
 
 
 # Every trading day from the endowment close to the end of March 2022.
-def days() -> pd.DatetimeIndex:
-    return pd.DatetimeIndex([pd.Timestamp("2020-12-31")]).append(
+def daily_frame() -> pd.DataFrame:
+    index = pd.DatetimeIndex([pd.Timestamp("2020-12-31")]).append(
         pd.bdate_range("2021-01-04", "2022-03-31")
     )
-
-
-# A daily book whose bill is higher on each month's first day.
-def daily_frame() -> pd.DataFrame:
-    index = days()
     i = np.arange(len(index))
     ret = np.where(i == 0, 0.0, 0.002 * np.sin(i))
-    later = pd.Series(index.to_period("M")).duplicated().to_numpy()
-    rf = np.where(later, 0.0001, 0.0003)
     return pd.DataFrame(
-        {
-            "nav": 1e9 * np.cumprod(1 + ret),
-            "ret": ret,
-            "rf": rf,
-            "n_long": np.where(i == 0, 0, 100 + i % 3),
-            "n_short": np.where(i == 0, 0, 150),
-        },
+        {"nav": 1e9 * np.cumprod(1 + ret), "ret": ret, "rf": 0.0001},
         index=pd.Index(index, name="date"),
     )
 
 
-# S&P 500 closes from before the run to after it.
-def closes() -> pd.Series:
-    index = pd.bdate_range("2020-11-02", "2022-04-29")
-    i = np.arange(len(index))
-    return pd.Series(4000 * np.cumprod(1 + 0.004 * np.cos(i * 0.7)), index=index)
+# A monthly bill of 3% a year for every month of the run.
+def bills() -> pd.Series:
+    months = pd.period_range("2020-12", "2022-04", freq="M")
+    return pd.Series(0.03 / 12, index=months)
 
 
-# Two positions a month, mid month and the month's last day.
-def positions(daily: pd.DataFrame) -> pd.DataFrame:
-    out = []
-    for _, month in daily.iloc[1:].groupby(daily.index[1:].to_period("M")):
-        for date in (month.index[len(month) // 2], month.index[-1]):
-            late = date == month.index[-1]
-            out += [(date, 1, 2e7 if late else 1e6), (date, 2, -1e7), (date, 3, 5e6)]
-    return pd.DataFrame(out, columns=["date", "permno", "value"])
-
-
-# Writes a CSV of dict rows with the given columns.
-def write_csv(path: Path, columns: list[str], rows: list[dict]) -> None:
-    with path.open("w", encoding="utf-8", newline="") as f:
-        out = csv.DictWriter(f, fieldnames=columns)
-        out.writeheader()
-        out.writerows(rows)
-
-
-# The headline folder's five files, as the report writes them.
-def write_folder(folder: Path) -> None:
-    folder.mkdir(parents=True)
-    cells = {n: CELLS.get(n, (f"row {n}", "0.0", "n/a")) for n in range(1, 24)}
-    table = [
-        dict(row=n, name=a, strategy=s, benchmark=bm, note="") for n, (a, s, bm) in cells.items()
-    ]
-    write_csv(
-        folder / f"table_9_1_{COMMIT}.csv", ["row", "name", "strategy", "benchmark", "note"], table
-    )
-    write_csv(
-        folder / f"vs_market_{COMMIT}.csv",
-        ["measure", "fund", "sp500_price"],
-        [
-            dict(measure="Sharpe ratio", fund=-0.88, sp500_price=0.7),
-            dict(measure=b.CORRELATION, fund=-0.0918, sp500_price=0.99),
-        ],
-    )
-    daily = daily_frame()
-    daily.to_parquet(folder / f"daily_7_{COMMIT}.parquet")
-    positions(daily).to_parquet(folder / f"positions_7_{COMMIT}.parquet")
-    columns = ["Date", "Ticker", "Weights", "Asset Class", "ISIN", "AUM", "Custom Tag"]
-    own = [
-        dict(Date=d, Ticker=t, Weights=0.01, PERMNO=p, Name=n)
-        | {"Asset Class": "Equity", "ISIN": "", "AUM": 1e9, "Custom Tag": "long"}
-        for d, t, p, n in ARCANA
-    ]
-    write_csv(
-        folder / f"arcana_weights_monthly_{COMMIT}_own.csv", [*columns, "PERMNO", "Name"], own
-    )
-
-
-# A pick file in folder naming the headline folder, final or not.
-def write_pick(folder: Path, headline: Path, final: bool) -> Path:
-    pick = folder / f"pick_{COMMIT}.json"
-    body = {"final": final, "headline": str(headline), "next": [] if final else ["report"]}
-    pick.write_text(json.dumps(body), encoding="utf-8")
-    return pick
-
-
-# The bundled site data, as the site reads it.
-@pytest.fixture(scope="module")
-def base() -> dict:
-    if not SITE.exists():
-        pytest.skip("no bundled site data")
-    return json.loads(SITE.read_text(encoding="utf-8"))
-
-
-# The headline output from a synthetic folder, as the JSON holds it.
-@pytest.fixture
-def made(tmp_path, base) -> dict:
-    write_folder(tmp_path / "revised")
-    out = b.v4(base, tmp_path / "revised", COMMIT, closes())
-    return json.loads(json.dumps(out, allow_nan=False))
-
-
-# A pick that is not final is refused with a clear message.
-def test_refuses_a_pick_that_is_not_final(tmp_path):
-    pick = write_pick(tmp_path, tmp_path / "revised", final=False)
-    with pytest.raises(SystemExit, match="not final.*report"):
-        b.headline_folder(pick)
-
-
-# A final pick gives its headline folder and the file suffix.
-def test_final_pick_gives_folder_and_commit(tmp_path):
-    pick = write_pick(tmp_path, tmp_path / "revised", final=True)
-    assert b.headline_folder(pick) == (tmp_path / "revised", COMMIT)
-
-
-# The newest pick with its crises file wins; none at all is refused.
-def test_newest_pick(tmp_path):
-    with pytest.raises(SystemExit, match="No pick file"):
-        b.newest_pick(tmp_path)
-    picks = {}
-    for commit, when in (("aaaaaaaaaaaa", 1_000_000_000), ("bbbbbbbbbbbb", 2_000_000_000)):
-        folder = tmp_path / f"revised_{commit}"
-        folder.mkdir()
-        pick = tmp_path / f"pick_{commit}.json"
-        pick.write_text(json.dumps({"final": True, "headline": str(folder)}), encoding="utf-8")
-        os.utime(pick, (when, when))
-        picks[commit] = (pick, folder / f"crises_{commit}.json")
-    with pytest.raises(SystemExit, match="crises file"):
-        b.newest_pick(tmp_path)
-    (old, old_crises), (new, new_crises) = picks["aaaaaaaaaaaa"], picks["bbbbbbbbbbbb"]
-    old_crises.write_text("{}", encoding="utf-8")
-    assert b.crises_file(new) == new_crises
-    assert b.newest_pick(tmp_path) == old
-    new_crises.write_text("{}", encoding="utf-8")
-    assert b.newest_pick(tmp_path) == new
-
-
-# A folder missing any of the five files is refused by name.
-def test_missing_file_is_refused(tmp_path):
-    write_folder(tmp_path / "revised")
-    (tmp_path / "revised" / f"vs_market_{COMMIT}.csv").unlink()
-    with pytest.raises(SystemExit, match="vs_market"):
-        b.v4_files(tmp_path / "revised", COMMIT)
-
-
-# Each string cell gives the number the site reads.
+# Each cell gives the numbers the site reads, and only those.
 def test_cells_parse():
-    assert b.first(CELLS[23][1]) == -1.39
-    assert b.numbers(CELLS[23][1]) == [-1.39, 0.44, 100.0, -1.74, -0.88]
-    assert b.with_se(CELLS[5][1]) == (-6.25, 3.18)
-    assert b.with_se(CELLS[6][1]) == (-0.056, 0.041)
-    assert b.labelled(CELLS[3][1], "CAGR") == -3.80
-    assert b.labelled(CELLS[3][1], "arithmetic") == -3.57
+    assert b.numbers(CELLS[17][1]) == [94.0, 92.0, 95.0]
+    assert b.with_se(CELLS[5][1]) == (3.46, 1.41)
+    assert b.with_se(CELLS[6][1]) == (0.012, 0.030)
+    assert b.labelled(CELLS[3][1], "CAGR") == 7.00
+    assert b.labelled(CELLS[3][1], "arithmetic") == 6.86
     assert b.labelled(CELLS[3][2], "arithmetic") == 7.27
-    assert b.labelled(CELLS[14][1], "avg") == 273.0
-    assert b.labelled(CELLS[17][1], "without") == 107.0
+    assert b.labelled(CELLS[14][1], "avg") == 314.2
+    assert b.labelled(CELLS[17][1], "build") == 94.0
 
 
 # Cells with no such number raise rather than guess.
 def test_cells_refuse_what_is_not_there():
     with pytest.raises(ValueError):
-        b.first("n/a")
+        b.with_se("3.46")
     with pytest.raises(ValueError):
-        b.with_se("-6.25")
-    with pytest.raises(ValueError):
-        b.labelled("avg 273.0", "CAGR")
+        b.labelled("avg 314.2", "CAGR")
 
 
-# The hurdle is each month's first daily bill x 252 / 12, plus 4% / 12.
-def test_hurdle_formula():
-    m = b.fund_months(daily_frame())
-    assert str(m.index[0]) == "2021-01"
-    assert m["bill"].to_numpy() == pytest.approx(0.0003 * 252 / 12)
-    assert m["hurdle"].to_numpy() == pytest.approx(0.0003 * 252 / 12 + 0.04 / 12)
-    rf = pd.Series(
-        [0.0002, 0.0009, 0.0004], index=pd.to_datetime(["2021-02-01", "2021-02-02", "2021-03-01"])
-    )
-    assert b.monthly_bill(rf).tolist() == pytest.approx([0.0002 * 21, 0.0004 * 21])
+# A rebuilt number that strays from the pack's stops the build.
+def test_agree_stops_on_a_gap():
+    b.agree("close", 0.0700, 0.0702)
+    with pytest.raises(SystemExit, match="far"):
+        b.agree("far", 0.07, 0.08)
 
 
-# The race compounds the fund, hurdle and S&P 500 month by month.
-def test_race_compounds_each_month(made):
-    daily, race = daily_frame(), made["race"]
-    m = b.fund_months(daily)
-    assert len(race["book"]) == len(made["months"]) + 1 == len(m) + 1
+# The hurdle is the month's bill plus 4% / 12; a missing bill stops.
+def test_hurdle_is_the_bill_plus_four():
+    m = b.fund_months(daily_frame(), bills())
+    assert str(m.index[0]) == "2021-01" and len(m) == 15
+    assert m["hurdle"].to_numpy() == pytest.approx(0.03 / 12 + 0.04 / 12)
+    with pytest.raises(SystemExit, match="TB3MS"):
+        b.fund_months(daily_frame(), bills().iloc[:5])
+
+
+# The race compounds each series month by month from $1.
+def test_race_compounds_each_month():
+    daily = daily_frame()
+    m = b.fund_months(daily, bills())
+    market = pd.Series(0.01, index=m.index)
+    race = b.race(m, market)
+    assert len(race["book"]) == len(m) + 1 and race["book"][0] == 1.0
     assert race["book"][-1] == pytest.approx(daily["nav"].iloc[-1] / 1e9, abs=1e-4)
     assert race["hurdle"][-1] == pytest.approx((1 + m["hurdle"]).prod(), abs=1e-4)
-    close = closes()
-    end = close[close.index <= "2022-03-31"].iloc[-1] / close[close.index <= "2020-12-31"].iloc[-1]
-    assert race["market"][-1] == pytest.approx(end, abs=1e-4)
-    assert made["years"]["2022"]["months"] == 3
-    year = made["years"]["2021"]
+    assert race["market"][-1] == pytest.approx(1.01**15, abs=1e-4)
+
+
+# Each year compounds its months; active is fund less hurdle.
+def test_years_compound_and_count_months():
+    m = b.fund_months(daily_frame(), bills())
+    got = b.years(m, pd.Series(0.01, index=m.index))
+    assert got["2022"]["months"] == 3 and got["2021"]["months"] == 12
+    year = got["2021"]
     assert year["active"] == pytest.approx(year["strategy"] - year["benchmark"], abs=2e-4)
-    assert made["window"] == "2021-01 to 2022-03" and made["code"] == COMMIT
+    assert year["market"] == pytest.approx(1.01**12 - 1, abs=1e-4)
 
 
-# The headline numbers are the table's rows, scaled to fractions.
-def test_headline_reads_each_row(made):
-    head = made["headline"]
-    assert head["ir"] == -1.39
-    assert head["ir_gross"] == -1.19
-    assert head["sharpe"] == -0.879
-    assert head["cagr"] == -0.038
-    assert head["vol"] == 0.078
-    assert head["alpha"] == -0.0625
-    assert head["alpha_t"] == round(-6.25 / 3.18, 2)
-    assert (head["beta"], head["beta_se"]) == (-0.031, 0.012)
-    assert (head["beta_monthly"], head["beta_monthly_se"]) == (-0.056, 0.041)
-    assert head["drawdown"] == -0.2926
-    assert head["correlation"] == -0.092
-    assert head["positions"] == 273.0
-    assert head["turnover"] == round(1.07 / 12, 3)
-    assert head["cumulative"] == -0.055
-    assert head["net"] == round((-3.57 - 7.27) / 100 + 0.04, 4)
-    m = b.fund_months(daily_frame())
-    assert head["hit"] == round(float((m["ret"] > m["hurdle"]).mean()), 3)
+# Costs are rows 21 and 22, with cash and the break-even multiple.
+def test_costs_from_rows_21_and_22():
+    c = b.costs(table())
+    assert c["parts"] == dict(trading=0.00136, borrow=0.00288)
+    assert c["total"] == pytest.approx(0.00136215 + 0.00287569, abs=1e-5)
+    assert (c["net"], c["hurdle"]) == (0.0686, 0.0727)
+    assert c["gross"] == pytest.approx(c["net"] + c["total"], abs=1e-5)
+    assert c["cash"] == pytest.approx(0.0727 - 0.04, abs=1e-5)
+    even = (c["gross"] - c["hurdle"]) / c["total"]
+    assert c["break_even"] == pytest.approx(even, abs=2e-3)
+    assert c["turnover"] == 0.94 and c["ir_gross"] == 0.003
 
 
-# Costs are rows 21 and 22; returns and the hurdle are row 3's means.
-def test_costs_from_rows_21_and_22(made):
-    c = made["costs"]
-    assert c["parts"] == dict(trading=0.01284, borrow=0.00446)
-    assert c["total"] == round(0.012844 + 0.004464, 5)
-    assert (c["net"], c["hurdle"]) == (-0.0357, 0.0727)
-    assert c["gross"] == pytest.approx(c["net"] + c["total"], abs=1e-4)
-    assert c["ir_gross"] == -1.19
+# Months up, the worst 12 months and the captures, checked to the pack.
+def test_monthly_measures():
+    index = pd.period_range("2021-01", periods=24, freq="M")
+    ret = pd.Series(np.where(np.arange(24) % 4 == 0, -0.01, 0.01), index=index)
+    market = pd.Series(np.where(np.arange(24) % 2 == 0, -0.02, 0.03), index=index)
+    m = pd.DataFrame({"ret": ret})
+    pack = dict(
+        hit_rate=dict(monthly_hit_rate_pct=75.0, months=24),
+        headline=dict(max_one_month_loss_pct=-1.0),
+    )
+    got = b.monthly(pack, m, market)
+    assert got["months_up"] == 18
+    assert got["worst_12"]["value"] == pytest.approx(1.01**9 * 0.99**3 - 1, abs=1e-4)
+    down = ret[market < 0].mean() / market[market < 0].mean()
+    up = ret[market > 0].mean() / market[market > 0].mean()
+    assert (got["down_capture"], got["up_capture"]) == (round(down, 3), round(up, 3))
+    pack["hit_rate"]["monthly_hit_rate_pct"] = 50.0
+    with pytest.raises(SystemExit, match="months up"):
+        b.monthly(pack, m, market)
 
 
 # Holdings are each month's last date, named from the Arcana file.
-def test_holdings_last_date_and_tickers(made):
-    s = made["stocks"]
+def test_holdings_last_date_and_tickers(tmp_path):
+    arcana = tmp_path / "own.csv"
+    pd.DataFrame(
+        dict(
+            Date=["2021-01-04", "2021-06-01", "2021-01-04", "2021-01-04"],
+            Ticker=["OLD US Equity", "NEW US Equity", "BRK/A US Equity", ""],
+            PERMNO=[1, 1, 2, 3],
+            Name=["Old Name Inc", "NEW NAME INC", "BERKSHIRE HATHAWAY INC", ""],
+        )
+    ).to_csv(arcana, index=False)
+    known = b.names(arcana)
+    assert known[1] == ("NEW", "NEW NAME INC") and known[3] == ("", "")
+    daily = daily_frame()
+    last = daily.index[daily.index <= "2021-01-31"][-1]
+    mid = daily.index[10]
+    positions = pd.DataFrame(
+        [(mid, 1, 1e6), (last, 1, 2e7), (last, 2, -1e7), (last, 3, 5e6), (last, 4, 0.0)],
+        columns=["date", "permno", "value"],
+    )
+    s = b.holdings(positions, daily["nav"], known, ["2021-01"])
     assert s["ticker"] == ["NEW", "BRK/A", ""]
     assert s["name"] == ["New Name Inc", "Berkshire Hathaway Inc", ""]
-    nav = daily_frame()["nav"]
-    last = nav[nav.index <= "2022-03-31"].iloc[-1]
-    assert s["book"][-1] == [
-        0,
-        round(2e7 / last * 1e5),
-        1,
-        round(-1e7 / last * 1e5),
-        2,
-        round(5e6 / last * 1e5),
+    nav = daily["nav"][last]
+    assert s["book"] == [
+        [0, round(2e7 / nav * 1e5), 1, round(-1e7 / nav * 1e5), 2, round(5e6 / nav * 1e5)]
     ]
-    assert len(s["book"]) == len(made["months"])
 
 
-# The rolling beta starts once a full window of days exists.
-def test_rolling_beta_months(made):
-    rolling = made["beta"]["rolling"]
+# The rolling beta waits for a full window; months before show so far.
+def test_beta_block_fills_the_early_months():
+    daily = daily_frame()
+    market = pd.Series(0.003 * np.cos(np.arange(len(daily)) * 0.7), index=daily.index)
+    got = b.beta_block(daily, market)
+    rolling, since = got["rolling"], got["since"]
     assert rolling and min(rolling) >= "2021-12"
     assert all(band > 0 for _, band in rolling.values())
+    assert since and min(since) == "2021-01" and max(since) < min(rolling)
 
 
-# Months before the rolling beta show the beta measured so far.
-def test_beta_so_far_fills_the_months_before(made):
-    since, rolling = made["beta"]["since"], made["beta"]["rolling"]
-    assert since and min(since) == made["months"][0]
-    assert max(since) < min(rolling)
-    assert sorted(since) + sorted(rolling) == made["months"][: len(since) + len(rolling)]
+# The inputs are the organisers' sets and our three signals by name.
+def test_signals_are_sets_and_ours(tmp_path):
+    folder = tmp_path / "src" / "forecast" / "plus"
+    folder.mkdir(parents=True)
+    theirs = [f"c{i:03d}" for i in range(20)]
+    cols = [*b.KEYS, *theirs, *b.OURS]
+    pd.DataFrame(columns=cols, dtype=float).to_parquet(folder / "features.parquet")
+    got, families = b.signals(tmp_path)
+    assert sum(s["count"] for s in got) == 23
+    assert [s["code"] for s in got if s["family"] == "ours"] == list(b.OURS)
+    assert len([s for s in got if s["family"] == "theirs"]) == b.BUNDLES
+    assert families["theirs"] == "The organisers' 20 characteristics"
+    pd.DataFrame(columns=[*b.KEYS, *theirs], dtype=float).to_parquet(folder / "features.parquet")
+    with pytest.raises(SystemExit, match="three signals"):
+        b.signals(tmp_path)
 
 
-# The ten signals are syy.py's own parts and signs, by name.
-def test_signals_are_syy_parts():
-    text = (Path(b.ROOT) / "fiam" / "vfinal" / "signals" / "syy.py").read_text(encoding="utf-8")
-    tree = ast.parse(text)
-    parts = next(
-        ast.literal_eval(n.value)
-        for n in tree.body
-        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PARTS"
+# Writes a JSON file, making its folder first.
+def put(path: Path, data: dict) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+# A small AI folder: each agent's own output and the findings file.
+def write_ai(pack: Path, rules_matched: int = 13) -> None:
+    ai = pack / "ai"
+    sources = {
+        "rules": put(ai / "rules" / "rules_check.json", dict(matched=13, rules_read=15, m="Gemma")),
+        "analyst": put(
+            ai / "analyst" / "analyst_final.json",
+            dict(
+                balance_by_side=dict(
+                    long=dict(supports=7, mixed=3, challenges=0),
+                    short=dict(supports=1, mixed=9, challenges=0),
+                ),
+                model="gemma",
+            ),
+        ),
+        "explainer": put(ai / "explanations.json", dict(positions=[{}] * 40)),
+        "advocate": put(
+            ai / "desk" / "critic_final.json",
+            dict(verdicts={"stands": 3, "partly stands": 4, "does not stand": 2}, model="Gemma"),
+        ),
+        "desk": put(ai / "desk" / "risk_note.json", dict(levels=dict(watch=5), model="Gemma")),
+        "crowd": put(
+            ai / "crowd_aug" / "crowd_where_we_sit.json",
+            dict(
+                round=dict(beta=0.09, long_pct=57, short_pct=51),
+                live_run=dict(
+                    manifests=dict(
+                        retail=dict(model_file="gemma-4-26B-A4B-it-UD-IQ4_XS.gguf"),
+                        copycat=dict(model_file="gemma-4-26B-A4B-it-UD-IQ4_XS.gguf"),
+                    )
+                ),
+            ),
+        ),
+        "triage": put(
+            ai / "triage" / "triage_final.json",
+            dict(filings=dict(labelled=991), share_for_our_side=0.4394, model="gemma"),
+        ),
+        "memo": put(ai / "desk" / "letter.json", dict(model="Gemma")),
+    }
+    numbers = {
+        "rules": f"{rules_matched} of 15",
+        "analyst": "8 of 20",
+        "explainer": "40 positions",
+        "advocate": "7 of 9",
+        "desk": "5 watch",
+        "crowd": "crowd beta 0.09",
+        "memo": "IR -0.11",
+        "triage": "991 8-Ks",
+    }
+    findings = {
+        "triage": "Labelled 991 8-Ks and 44% of the non-neutral news favoured our side",
+        "crowd": "On the final book our longs sit at the AI crowd's 57th percentile "
+        "and shorts at the 51st, crowd beta 0.09",
+    }
+    found = {}
+    for key, path in sources.items():
+        found[b.AGENT_NAMES[key]] = dict(
+            finding=findings.get(key, f"{key} found something"),
+            key_number=numbers[key],
+            date="2026-10-29",
+            source=str(path),
+        )
+    put(ai / "agents_found.json", dict(agents_count=8, agents=found, pending=[]))
+
+
+# The slide's eight agents as the base file holds them.
+def base_agents() -> list[dict]:
+    return [
+        dict(
+            key=k, name=n, model="old", does="does", facts=[["Tested against", "100 random desks"]]
+        )
+        for k, n in b.AGENT_NAMES.items()
+    ]
+
+
+# Each agent gets its finding, and its old facts go.
+def test_agents_take_their_findings(tmp_path):
+    write_ai(tmp_path)
+    got = {a["key"]: a for a in b.agents(base_agents(), tmp_path)}
+    assert len(got) == 8
+    assert got["rules"]["finding"] == "rules found something"
+    assert (got["rules"]["number"], got["rules"]["date"]) == ("13 of 15", "2026-10-29")
+    assert got["triage"]["number"] == "991 8-Ks"
+    assert got["memo"]["does"] == b.DOES["memo"] and got["memo"]["model"] == b.MODELS["gemma"]
+    assert all("facts" not in a for a in got.values())
+    assert got["crowd"]["model"] == b.MODELS["gemma"]
+    assert got["triage"]["does"] == b.DOES["triage"]
+
+
+# An older fact kept beside a finding needs a file that backs it.
+def test_unbacked_standing_facts_stop_the_build(tmp_path, monkeypatch):
+    write_ai(tmp_path)
+    monkeypatch.setattr(b, "STANDING", {"desk": "desk/desk_test.json"})
+    with pytest.raises(SystemExit, match="no backing file"):
+        b.agents(base_agents(), tmp_path)
+    put(tmp_path / "ai" / "desk" / "desk_test.json", dict(random=100))
+    got = {a["key"]: a for a in b.agents(base_agents(), tmp_path)}
+    assert "facts" in got["desk"] and "facts" not in got["rules"]
+
+
+# The crowd's model comes from its run manifests; an unknown one stops.
+def test_crowd_model_from_its_manifests(tmp_path):
+    write_ai(tmp_path)
+    assert b.crowd_models(tmp_path) == b.MODELS["gemma"]
+    path = tmp_path / "ai" / "crowd_aug" / "crowd_where_we_sit.json"
+    study = json.loads(path.read_text())
+    study["live_run"]["manifests"]["copycat"]["model_file"] = "Qwen3.8-27B.gguf"
+    put(path, study)
+    with pytest.raises(SystemExit, match="cannot name"):
+        b.crowd_models(tmp_path)
+
+
+# Any count but eight agents, or other names, stops the build.
+def test_agents_must_be_eight(tmp_path):
+    write_ai(tmp_path)
+    with pytest.raises(SystemExit, match="exactly 8"):
+        b.agents(base_agents()[:7], tmp_path)
+    path = tmp_path / "ai" / "agents_found.json"
+    file = json.loads(path.read_text())
+    file["agents_count"] = 9
+    put(path, file)
+    with pytest.raises(SystemExit, match="exactly 8"):
+        b.agents(base_agents(), tmp_path)
+
+
+# A finding still pending stops the build; all eight must be filled.
+def test_a_pending_finding_stops_the_build(tmp_path):
+    write_ai(tmp_path)
+    path = tmp_path / "ai" / "agents_found.json"
+    file = json.loads(path.read_text())
+    file["agents"]["Triage"] = "pending"
+    put(path, file)
+    with pytest.raises(SystemExit, match="pending"):
+        b.agents(base_agents(), tmp_path)
+
+
+# Triage's share or the crowd's percentile drifting stops the build.
+def test_findings_words_checked_against_their_files(tmp_path):
+    write_ai(tmp_path)
+    put(
+        tmp_path / "ai" / "triage" / "triage_final.json",
+        dict(filings=dict(labelled=991), share_for_our_side=0.47),
     )
-    assert {c: s for c, s, _, _ in b.SIGNALS_FINAL} == parts
-    assert {f for _, _, f, _ in b.SIGNALS_FINAL} == set(b.FAMILIES_FINAL)
+    with pytest.raises(SystemExit, match="Triage.*47%"):
+        b.agents(base_agents(), tmp_path)
+    write_ai(tmp_path / "two")
+    put(
+        tmp_path / "two" / "ai" / "crowd_aug" / "crowd_where_we_sit.json",
+        dict(round=dict(beta=0.09, long_pct=58, short_pct=51)),
+    )
+    with pytest.raises(SystemExit, match="AI crowd.*58th"):
+        b.agents(base_agents(), tmp_path / "two")
 
 
-# A what-if must carry the in-sample label and a plain name.
-def test_whatifs_need_label_and_name(tmp_path, monkeypatch):
-    folder = tmp_path / "whatif" / "styles_free"
-    write_folder(folder)
-    monkeypatch.setattr(b, "V4", tmp_path)
-    with pytest.raises(FileNotFoundError):
-        b.whatifs(COMMIT)
-    (folder / "LABEL.txt").write_text("not the strategy", encoding="utf-8")
-    with pytest.raises(SystemExit, match="unlabelled"):
-        b.whatifs(COMMIT)
-    (folder / "LABEL.txt").write_text(f"In-sample what-if: {b.IN_SAMPLE}.", encoding="utf-8")
-    got = b.whatifs(COMMIT)
-    assert [(x["key"], x["label"], x["ir"]) for x in got] == [
-        ("styles_free", b.WHATIFS["styles_free"], -1.39)
+# Ordinals read as English writes them.
+def test_ordinals():
+    assert [b.ordinal(n) for n in (1, 2, 3, 4, 11, 12, 13, 21, 51, 57, 112)] == [
+        "1st",
+        "2nd",
+        "3rd",
+        "4th",
+        "11th",
+        "12th",
+        "13th",
+        "21st",
+        "51st",
+        "57th",
+        "112th",
     ]
-    other = tmp_path / "whatif" / "new_idea"
-    write_folder(other)
-    (other / "LABEL.txt").write_text(b.IN_SAMPLE, encoding="utf-8")
-    with pytest.raises(SystemExit, match="WHATIFS"):
-        b.whatifs(COMMIT)
 
 
-# The risk desk joins the agents once, however often the build runs.
-def test_risk_desk_is_the_eighth_agent():
-    seven = [dict(key=f"a{i}") for i in range(7)]
-    test = dict(none=-0.72, rule=-0.73, ai=-0.73, random=100, memory=True)
-    once = b.agents_v4(seven, dict(early=test, late=test))
-    assert len(once) == 8 and once[-1]["key"] == "desk"
-    crowd = [*seven[:6], dict(key="crowd")]
-    assert [a["key"] for a in b.agents_v4(crowd, dict(early=test, late=test))][-2:] == [
-        "desk",
-        "crowd",
-    ]
-    assert b.agents_v4(once, dict(early=test, late=test)) == once
-    assert b.minus(-0.734) == "−0.73" and b.minus(0.5, 1) == "0.5"
+# A key number its own file does not back stops the build.
+def test_findings_checked_against_their_files(tmp_path):
+    write_ai(tmp_path, rules_matched=14)
+    with pytest.raises(SystemExit, match="Rules reader"):
+        b.agents(base_agents(), tmp_path)
 
 
-# A value's shape: dict keys, list element shapes and leaf types.
-def shape(x):
-    if isinstance(x, dict):
-        # Dicts keyed by year or month compare their values' shapes only.
-        if x and all(re.fullmatch(r"\d{4}(-\d{2})?", k) for k in x):
-            return ("by date", frozenset(shape(v) for v in x.values()))
-        return tuple(sorted((k, shape(v)) for k, v in x.items()))
-    if isinstance(x, list):
-        return ("list", frozenset(shape(v) for v in x))
-    return type(x).__name__
+# The crowd drops its stale numbers and takes the study's rounded ones.
+def test_crowd_takes_the_rounded_study(tmp_path):
+    study = dict(
+        herding=dict(retail=dict(all_months=dict(agents=30))),
+        round=dict(
+            avg_long_pct=66, avg_short_pct=56, beta=0.09, voters=3.9, lsv=0.054, sell_10bn_pct=-0.11
+        ),
+        spliced_retail=dict(average=dict(long_in_top_decile=0.2577)),
+    )
+    path = put(tmp_path / "crowd.json", study)
+    base = dict(agents=30, copycats=30, personas=[], picks=265590, crowd_beta=0.299, correlation=1)
+    got = b.crowd(base, path)
+    assert not set(b.STALE) & set(got)
+    assert (got["long_pct"], got["short_pct"], got["beta"]) == (66, 56, 0.09)
+    assert (got["effective_voters"], got["lsv"], got["sell_10bn_pct"]) == (3.9, 0.054, -0.11)
+    assert got["favourites_pct"] == 26
+    with pytest.raises(SystemExit, match="crowd count"):
+        b.crowd(base | dict(agents=20), path)
 
 
-# The filled keys have the bundled file's key names and value types.
-def test_same_keys_and_types_as_the_site(made, base):
-    assert set(made) == set(base)
-    for key in FILLED:
-        assert shape(made[key]) == shape(base[key]), key
-    for key in set(base) - set(FILLED):
-        assert made[key] == base[key], key
+# The hype check keeps totals only, never a ticker or a name's figure.
+def test_hype_keeps_totals_only(tmp_path):
+    card = dict(
+        longs_vs_shorts=dict(longs=31, shorts=60, long_wmean=0.0538, short_wmean=0.0545),
+        crowd_favourites=dict(favourites_with_growth=37, in_hype=10),
+        flags=[dict(ticker="ABCD", growth=0.1)],
+    )
+    got = b.hype(put(tmp_path / "results.json", dict(card=card)))
+    assert got == dict(
+        long_growth=0.0538, short_growth=0.0545, longs=31, shorts=60, favourites=37, in_hype=10
+    )
+    assert "ABCD" not in json.dumps(got)

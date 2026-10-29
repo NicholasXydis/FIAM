@@ -69,6 +69,10 @@ export class Gimbal {
   private hand = new THREE.Group();
   private figure: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private ink: CanvasRenderingContext2D;
+  // The gauge's scale labels, on a layer that does not spin.
+  private scale: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+  private marks: CanvasRenderingContext2D;
+  private labelled = "";
   // The text last drawn, so the figure redraws only on a change.
   private shown = "";
 
@@ -141,11 +145,24 @@ export class Gimbal {
         color: 0xffffff,
       }),
     );
-    // The figure lies on the lower half of the dial, below the hub.
+    // The figure lies on the upper half of the dial, above the hub.
     this.figure.rotation.x = -Math.PI / 2;
-    this.figure.position.set(0, 0.084, 0.62);
-    this.disc.add(this.hand, this.figure);
-    this.hand.visible = this.figure.visible = false;
+    this.figure.position.set(0, 0.084, -0.62);
+    // The scale, a 1024 px square over the whole face, under the figure.
+    const sheet = document.createElement("canvas");
+    sheet.width = sheet.height = 1024;
+    this.marks = sheet.getContext("2d")!;
+    const marks = new THREE.CanvasTexture(sheet);
+    marks.colorSpace = THREE.SRGBColorSpace;
+    marks.anisotropy = 8;
+    this.scale = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.6, 3.6),
+      new THREE.MeshBasicMaterial({ map: marks, transparent: true, depthWrite: false }),
+    );
+    this.scale.rotation.x = -Math.PI / 2;
+    this.scale.position.y = 0.082;
+    this.disc.add(this.hand, this.figure, this.scale);
+    this.hand.visible = this.figure.visible = this.scale.visible = false;
     this.outer.add(this.inner);
     this.base.add(this.stand, this.outer);
     this.group.add(this.base);
@@ -155,9 +172,19 @@ export class Gimbal {
   }
 
   // The dial as a gauge, its hand and figure counting up to value.
-  read(value: number, top: number, show: number, label = "", format = (v: number) => v.toFixed(2)) {
+  read(
+    value: number,
+    top: number,
+    show: number,
+    label = "",
+    format = (v: number) => v.toFixed(2),
+    ticks: number[] = [],
+  ) {
     this.hand.visible = this.figure.visible = show > 0;
+    this.scale.visible = show > 0 && ticks.length > 0;
     if (!show) return;
+    this.scale.material.opacity = show;
+    this.label(top, ticks);
     // Show fades both in, and the hand turns 270 degrees at the top value.
     this.hand.rotation.y = (-value / top) * Math.PI * 1.5;
     for (const m of [this.figure.material, (this.hand.children[0] as THREE.Mesh).material as THREE.Material])
@@ -177,6 +204,25 @@ export class Gimbal {
     g.letterSpacing = "36px";
     g.fillText(label, 1024, 840);
     this.figure.material.map!.needsUpdate = true;
+  }
+
+  // Writes each tick's value where the hand points at it, once per scale.
+  private label(top: number, ticks: number[]) {
+    const key = `${top}:${ticks.join(",")}`;
+    if (key === this.labelled) return;
+    this.labelled = key;
+    const g = this.marks;
+    g.clearRect(0, 0, 1024, 1024);
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = "#8a6418";
+    g.font = "500 40px 'Geist Mono'";
+    // The hand turns clockwise from 12 o'clock, 270 degrees at the top.
+    for (const v of ticks) {
+      const a = (v / top) * Math.PI * 1.5;
+      g.fillText(v.toFixed(1), 512 + Math.sin(a) * 318, 512 - Math.cos(a) * 318);
+    }
+    this.scale.material.map!.needsUpdate = true;
   }
 
   // The dial's height above the floor when the base is level.

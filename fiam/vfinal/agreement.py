@@ -103,7 +103,7 @@ def leavers() -> pd.DataFrame:
     p = upto(CLEAN / "panel.parquet", ["permno", "eom", "me", "company_name"], "eom")
     last = p.sort_values("eom").groupby("permno").tail(1)
     named = []
-    # Names on any row, letters and digits only ("G N C" is GNC) (M3).
+    # Names on any row, letters and digits only ("G N C" is GNC).
     squash = p["company_name"].fillna("").str.upper().str.replace(r"[^A-Z0-9]", "", regex=True)
     for label, text in NAMED.items():
         key = "".join(ch for ch in text if ch.isalnum())
@@ -176,7 +176,7 @@ def source_test(have: set, p: pd.DataFrame, gone: pd.DataFrame) -> dict:
     return out
 
 
-# The PDF test on 2000-2014 over CRSP's large common stocks (audit M4).
+# The PDF test on 2000-2014 over CRSP's large common stocks.
 def survivorship_early() -> dict:
     cols = ["PERMNO", "MthCalDt", "MthCap", "MthRet", "ShareType", "SecurityType", "PrimaryExch"]
     cols += ["USIncFlg", "IssuerType"]
@@ -194,7 +194,7 @@ def survivorship_early() -> dict:
     m["month"] = m["eom"].dt.to_period("M")
     panel = set(pd.read_parquet(CLEAN / "panel.parquet", columns=["permno"])["permno"])
     first = m.assign(leaver=~m["permno"].isin(panel))
-    # Main test: a panel-like universe, leavers are CRSP delistings (M2).
+    # Main test: a panel-like universe, leavers are CRSP delistings.
     dl = pd.read_parquet(CLEAN / "crsp_delistings.parquet", columns=["permno", "delistingdt"])
     dead = set(dl.loc[pd.to_datetime(dl["delistingdt"]) <= "2014-12-31", "permno"])
     like = (m["USIncFlg"] == "Y") & (m["IssuerType"] == "CORP")

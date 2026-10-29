@@ -4,9 +4,9 @@ import { Costs } from "./costs";
 import { Crowd } from "./crowd";
 import { Edge } from "./edge";
 import { Finale } from "./finale";
-import { Honesty } from "./honesty";
 import { Idea } from "./idea";
 import { Intro } from "./intro";
+import { Months } from "./months";
 import { Neutral } from "./neutral";
 import { Race } from "./race";
 import { September } from "./september";
@@ -26,6 +26,6 @@ export const scenes = (w: World): Scene[] => [
   new Crowd(w),
   new Agents(w),
   new September(w),
-  new Honesty(w),
+  new Months(w),
   new Finale(w),
 ];

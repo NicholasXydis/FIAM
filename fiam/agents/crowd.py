@@ -9,7 +9,7 @@ from fiam import paths
 from fiam.agents import harness as H
 from fiam.ml import crowd as C
 
-PROMPT = H.ROOT / "prompts" / "agents" / "crowd.md"
+PROMPT = H.ROOT / "fiam" / "agents" / "prompts" / "crowd.md"
 # Decisions Dec 2015 to Nov 2020: the 60 holding months of 2016-2020.
 FIRST, LAST = "2015-12-31", "2020-11-30"
 BATCH, PICKS, SEED = 40, 8, 42

@@ -322,16 +322,6 @@ def test_compact_keeps_values_whatever_the_row_groups(tmp_path, monkeypatch):
     assert pq.ParquetFile(small).metadata.num_row_groups == 5
 
 
-# Without the CRSP daily extract, replays are N/A and say so.
-def test_stress_replays_are_missing_not_guessed(tmp_path, monkeypatch, capsys):
-    from fiam.exhibits import stress
-
-    monkeypatch.setattr(stress, "CACHE", tmp_path / "none.parquet")
-    monkeypatch.setattr(stress, "DAILY", tmp_path / "crsp_daily")
-    assert stress.episode_returns() is None
-    assert "replays are N/A" in capsys.readouterr().err
-
-
 # A month keeps the description in force on its date, never a later one.
 def test_dedupe_keeps_the_description_known_on_the_date(tmp_path):
     stock = tool("stock_data")
@@ -349,22 +339,6 @@ def test_dedupe_keeps_the_description_known_on_the_date(tmp_path):
     assert kept == {"1": "OLD", "2": "LATER"}
 
 
-# The audit records each result and finds 13F members in any layout.
-def test_audit_records_results_and_finds_members(tmp_path):
-    spec = importlib.util.spec_from_file_location("audit", ROOT / "tools" / "audit.py")
-    audit = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(audit)
-    audit.zero(0, "s", "clean", "fail", "fix")
-    audit.zero(3, "s", "dirty", "warn", "fix", 10)
-    assert [f["level"] for f in audit.FINDINGS] == ["pass", "warn"]
-    assert audit.FINDINGS[1]["evidence"] == "3 of 10 rows"
-    path = tmp_path / "q.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        zf.writestr("2013q2_form13f/SUBMISSION.tsv", "x")
-    with zipfile.ZipFile(path) as zf:
-        assert audit.member(zf, "SUBMISSION.TSV") == "2013q2_form13f/SUBMISSION.tsv"
-
-
 # MAIN.py's header names the four ways and every rerun stage only.
 def test_main_py_header_is_the_final_fund():
     from fiam.vfinal import cli
@@ -373,14 +347,14 @@ def test_main_py_header_is_the_final_fund():
     build = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(build)
     text = build.description()
-    for args in [*cli.RERUN, ("pick",)]:
-        assert f"#   {' '.join(args)} " in text, args
+    for stage in cli.STAGES:
+        assert f"#   {stage} " in text, stage
     for way in ("uv run fiam setup", "uv run fiam verify", "uv run fiam rerun", "fiam compare"):
         assert way in text, way
     assert "v1" not in text and "submission" not in text
 
 
-# MAIN.py never carries the two plan files, though git tracks them.
+# MAIN.py never carries the two docs files, though git tracks them.
 def test_main_py_leaves_out_the_plan_files(monkeypatch):
     spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
     build = importlib.util.module_from_spec(spec)
@@ -388,3 +362,14 @@ def test_main_py_leaves_out_the_plan_files(monkeypatch):
     listing = type("Listing", (), {"stdout": "docs/PLAN.md\0docs/TEAM.md\0run.py\0"})()
     monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
     assert set(build.carried(with_edgar=False)) == {"run.py"}
+
+
+# MAIN.py never carries the two tables derived from WRDS data.
+def test_main_py_never_carries_the_wrds_tables(monkeypatch):
+    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    names = "frozen/v1/submission/models/borrow.parquet\0x/book_inputs.parquet\0run.py\0"
+    listing = type("Listing", (), {"stdout": names})()
+    monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
+    assert set(build.carried(with_edgar=True)) == {"run.py"}

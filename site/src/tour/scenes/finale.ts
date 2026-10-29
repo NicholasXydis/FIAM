@@ -8,13 +8,17 @@ import { chip, screen } from "../ui";
 import { C, dust, header, Scene, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
-// Code size in world units, modules a side, and an odd logo, 20% wide.
+// The code's size in world units.
 const SIZE = 8;
+// Modules along each side of the code.
 const M = CODE.length;
+// The logo's width in modules: odd, about 20% of the side.
 const LOGO = Math.round(M * 0.2) | 1;
-// Whether a module is dark, in the logo, or in an eye.
+// Whether a module is dark.
 const dark = (x: number, y: number) => +CODE[y][x] % 2 === 1;
+// Whether a module falls in the square kept for the logo.
 const inLogo = (x: number, y: number) => Math.abs(x - (M - 1) / 2) <= LOGO / 2 && Math.abs(y - (M - 1) / 2) <= LOGO / 2;
+// Whether a module is part of one of the three eyes.
 const isEye = (x: number, y: number) => +CODE[y][x] >= 2;
 
 // Printable SVG: purple dots and eyes on light card, our mark centred.
@@ -24,6 +28,7 @@ function svg() {
   const dots: string[] = [];
   // One round dot per dark module, skipping the eyes and the logo.
   for (let y = 0; y < M; y++) {
+    // Walk the row, module by module.
     for (let x = 0; x < M; x++) {
       if (!dark(x, y) || isEye(x, y) || inLogo(x, y)) continue;
       dots.push(`<circle cx="${x + q + 0.5}" cy="${y + q + 0.5}" r="0.46"/>`);
@@ -54,14 +59,16 @@ function save(name: string, blob: Blob) {
   const a = h("a", { href: URL.createObjectURL(blob), download: name });
   document.body.append(a);
   a.click();
+  // Free the link a second later, once the download has begun.
   setTimeout(() => {
     URL.revokeObjectURL(a.href);
     a.remove();
   }, 1000);
 }
 
-// Reused screen spots for the card's corners, read every frame.
+// Reused screen spot for the card's top left, read every frame.
 const topLeft = { x: 0, y: 0, front: true };
+// Reused screen spot for the card's bottom right corner.
 const bottomRight = { x: 0, y: 0, front: true };
 
 // Thank you: every particle flies into the QR code, which can be saved.
@@ -118,6 +125,7 @@ export class Finale extends Scene {
   // Saves the code as a 2048 px PNG, drawn from the SVG on a canvas.
   png() {
     const image = new Image();
+    // Once the SVG loads, draw it large and save it as a PNG.
     image.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 2048;
@@ -137,13 +145,16 @@ export class Finale extends Scene {
     const tint = new THREE.Color();
     let k = 0;
     const per = 9;
+    // Each dark module outside the logo becomes a ring of dots.
     for (let y = 0; y < M; y++) {
+      // Walk the row, module by module.
       for (let x = 0; x < M; x++) {
         if (!dark(x, y) || inLogo(x, y)) continue;
         const cx = -SIZE / 2 + (x + 0.5) * cell;
         const cy = SIZE / 2 - (y + 0.5) * cell + 0.6;
         const eye = isEye(x, y);
         tint.copy(a).lerp(b, (x + y) / (2 * M));
+        // One dot at the centre and the rest on a small ring round it.
         for (let j = 0; j < per && k < N; j++, k++) {
           const t = (j / per) * Math.PI * 2;
           const d = j === 0 ? 0 : cell * 0.28;
@@ -159,6 +170,7 @@ export class Finale extends Scene {
         }
       }
     }
+    // 1400 gold dots on a circle round the logo.
     for (let i = 0; i < 1400 && k < N; i++, k++) {
       const t = (i / 1400) * Math.PI * 2;
       const rr = (LOGO / 2) * cell * (0.75 + 0.25 * r());

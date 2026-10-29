@@ -13,7 +13,7 @@ from fiam.vfinal import daily_book, lock
 from fiam.vfinal.report import table_9_1 as table
 
 ROOT = Path(__file__).resolve().parents[2]
-FINAL = ROOT / "final"
+FINAL = ROOT / "frozen" / "vfinal" / "final"
 BENCH = ROOT / "data" / "benchmarks"
 # The organisers' files, in data/organisers/ or beside MAIN.py.
 DSF, CHARS = "dsf_mini_from_2014.csv", "chars_final_with_names.parquet"
@@ -65,7 +65,7 @@ def by_day(positions: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out | {"top": g["size"].max()})
 
 
-# The session a formation's information lands on: its month's last.
+# The session a decision's information lands on: the close it is dated.
 def eom_sessions(days: pd.DatetimeIndex, formed: pd.Series) -> pd.Series:
     place = days.searchsorted(pd.DatetimeIndex(formed), side="right") - 1
     return pd.Series(place, index=formed.index)
@@ -93,7 +93,7 @@ def limits(c: dict, rules: dict) -> list[Check]:
         mark(
             f"trades {rules['lag_days']} session after",
             on_time == len(formed),
-            f"{on_time} of {len(formed)} formations traded the session after month end",
+            f"{on_time} of {len(formed)} decisions traded from the session after",
         )
     )
     names = day["names"]
@@ -203,8 +203,8 @@ def headline(daily: pd.DataFrame, rf: pd.Series, sp: pd.Series) -> dict:
     daily = daily.assign(rf=rf)
     start = float(daily["nav"].iloc[0] / (1 + daily["ret"].iloc[0]))
     d = daily.iloc[1:].loc[: table.END]
+    # The month's bill compounds the daily bill, as the 23 rows do.
     m = daily_book.monthly(d)
-    m["rf"] = table.monthly_bill(m, (rf * 252 / 12).groupby(rf.index.to_period("M")).first())
     m["excess"] = m["ret"] - m["rf"]
     active = m["ret"] - (m["rf"] + table.PREMIUM / 12)
     end = start * float((1 + d["ret"]).prod())
@@ -222,6 +222,16 @@ def headline(daily: pd.DataFrame, rf: pd.Series, sp: pd.Series) -> dict:
         11: table.drawdown(d["ret"]) * 100,
         23: table.with_se(table.annual_ratio(active), table.ratio_se(active), 2),
     }
+
+
+# Sharpe and IR on the PDF's monthly bill, TB3MS / 1200, as a note.
+def pdf_bill(c: dict, rf: pd.Series) -> list[str]:
+    d = c["daily"].assign(rf=rf).iloc[1:].loc[: table.END]
+    m = daily_book.monthly(d)
+    bill = (rf * 252 / 12).groupby(rf.index.to_period("M")).first().reindex(m.index)
+    sharpe = table.annual_ratio(m["ret"] - bill)
+    ir = table.annual_ratio(m["ret"] - bill - table.PREMIUM / 12)
+    return [f"  on the PDF's monthly bill (TB3MS / 1200): Sharpe {sharpe:.3f}, IR {ir:.2f}"]
 
 
 # Each recomputed row against the table carried in metrics.json.
@@ -248,7 +258,7 @@ def lock_checks(root: Path = lock.ROOT) -> tuple[list[Check], list[str]]:
     present = [(w, n) for w, _, n in lines if (root / n).is_file()]
     absent = [n for _, _, n in lines if not (root / n).is_file()]
     changed = [n for w, n in present if lock.digest(root / n) != w]
-    code = [n for n in absent if not n.startswith("out/")]
+    code = absent
     unlisted = sorted(set(lock.code()) - {n for _, _, n in lines})
     detail = f"{len(present) - len(changed)} of {len(present)} code and settings files match"
     out = [mark("code against the lock", not changed and not code, detail)]
@@ -257,18 +267,17 @@ def lock_checks(root: Path = lock.ROOT) -> tuple[list[Check], list[str]]:
     notes = [f"  changed since the lock: {n}" for n in changed]
     notes += [f"  missing here: {n}" for n in code]
     notes += [f"  not in the lock: {n}" for n in unlisted]
-    pinned = len(absent) - len(code)
-    notes.append(f"  {pinned} pinned data files are absent here, as expected without the kit")
     return out, notes
 
 
 # The carried files name the locked run and its file digests.
 def provenance(metrics: dict) -> Check:
     record = json.loads(lock.OUTPUTS.read_text())
-    same = metrics["run_at"] == record["run_at"]
+    tree = hashlib.sha256(json.dumps(record["files"], sort_keys=True).encode()).hexdigest()
+    same = metrics["tree_sha256"] == tree
     same = same and all(record["files"].get(n) == d for n, d in metrics["sources"].items())
     detail = f"{len(metrics['sources'])} source digests of run {metrics['run_at']} match"
-    return mark("final/ is the locked run", same, detail)
+    return mark("frozen/vfinal/final/ is the locked run", same, detail)
 
 
 # The folder holding the organisers' daily file, if any.
@@ -385,14 +394,16 @@ def replay_report(r: pd.DataFrame) -> tuple[list[str], Check]:
     return lines, mark("stock P&L on their returns", ok, detail)
 
 
-# Shorts' caps at each formation from the organisers' panel.
+# Shorts' caps at each decision close: the panel's latest month end.
 def short_caps(daily: pd.DataFrame, positions: pd.DataFrame, path: Path, floor: float) -> Check:
     import pyarrow.parquet as pq
 
     formed = daily.loc[daily["formed"] != "", "formed"]
-    eoms = pd.to_datetime(formed)
     panel = pq.read_table(path, columns=["permno", "eom", "me"]).to_pandas()
-    panel["eom"] = pd.to_datetime(panel["eom"]).astype("datetime64[ns]")
+    panel["eom"] = (pd.to_datetime(panel["eom"]) + pd.offsets.MonthEnd(0)).astype("datetime64[ns]")
+    ends = pd.DatetimeIndex(sorted(panel["eom"].unique()))
+    asof = ends[ends.searchsorted(pd.to_datetime(formed), side="right") - 1]
+    eoms = pd.Series(asof, index=formed.index)
     panel = panel[panel["eom"].isin(set(eoms))]
     short = positions[(positions["weight"] < 0) & positions["date"].isin(formed.index)]
     short = short.assign(eom=short["date"].map(eoms))
@@ -435,15 +446,15 @@ def with_organisers(c: dict, folder: Path, rules: dict) -> list[Check]:
 # Runs every check and prints PASS or FAIL for each; 1 on any FAIL.
 def main(root: Path = ROOT) -> int:
     rules = daily_book.mandate()
-    c = load(root / "final")
-    print("The final fund (vfinal), checked from the files MAIN.py carries in final/")
+    c = load(root / "frozen" / "vfinal" / "final")
+    print("The final fund, checked from the files MAIN.py carries in frozen/vfinal/final/")
     print(f"Run {c['metrics']['run_at']}, limits from {daily_book.MANDATE.relative_to(ROOT)}")
     checks = [provenance(c["metrics"]), *limits(c, rules)]
     show("The carried book against every PDF rule", checks)
     rf = daily_bill(c["daily"].index, root / "data" / "benchmarks" / "TB3MS.csv")
     got = headline(c["daily"], rf, sp500(root / "data" / "benchmarks" / "SP500.csv"))
     head = headline_checks(got, c["metrics"]["table_9_1"])
-    show("Headline recomputed from daily.csv, TB3MS.csv and SP500.csv", head)
+    show("Headline recomputed from daily.csv, TB3MS.csv and SP500.csv", head, pdf_bill(c, rf))
     locked, notes = lock_checks(root)
     show("Code against frozen/vfinal/vfinal.sha256", locked, notes)
     checks = [*checks, *head, *locked]

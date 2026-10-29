@@ -10,40 +10,51 @@ import { asButton, box, fold, Label, rayAt, slider, stat } from "../ui";
 import { C, dust, header, Scene, stats, type World } from "./scene";
 import { seeded } from "../../shared/math";
 
-// 2022's returns, the 60/40 steps, and a return axis of -25% to +25%.
+// The scene's numbers from the build.
 const E = D.edge;
+// The 2022 return behind each ball.
 const Y = E.year_2022;
+// The 60/40 with each share moved from bonds to the fund.
 const STEPS = E.steps;
+// The return at the axis' left end.
 const LO = -0.25;
+// The return at the axis' right end.
 const HI = 0.25;
+// The axis' length in world units.
 const SPAN = 19;
 // The axis' marked returns, from -20% up to zero.
 const TICKS = [-0.2, -0.15, -0.1, -0.05, 0];
-// A return to x, and the four balls, the fund last and gold.
+// A return to x along the axis.
 const X = (v: number) => -SPAN / 2 + ((v - LO) / (HI - LO)) * SPAN;
+// The four balls, the fund last and in gold.
 const ROWS = [
   { label: "S&P 500", value: Y.sp500, kind: "alt", color: C.purple },
   { label: "Bonds (AGG)", value: Y.bonds, kind: "alt", color: C.cyan },
   { label: "60/40", value: Y.sixty_forty, kind: "alt", color: C.ice },
   { label: "Our fund", value: Y.fund, kind: "ours", color: C.gold },
 ];
+// The fund's row, the last one.
 const OURS = ROWS.length - 1;
 // SE-size screens: too small for ball labels, a 2x2 grid lists them.
 const tiny = () => Math.min(innerWidth, innerHeight) < 400 && Math.max(innerWidth, innerHeight) < 700;
 // Each ball's label height, so the three close together never overlap.
 const LIFT = [1.4, 2.6, 2.0, 1.9];
+// Each kind of bar's colour, the fund in its own.
 const COLOR: Record<string, string> = {
   alt: "var(--m-brand)",
   ours: "var(--m-ours)",
 };
-// The bars' span, and where zero sits across it.
+// The bars' left end, a return of -25%.
 const BAR_LO = -0.25;
+// The bars' right end, a return of +5%.
 const BAR_HI = 0.05;
+// Where a return sits across the bars, in percent.
 const at = (v: number) => ((v - BAR_LO) / (BAR_HI - BAR_LO)) * 100;
 
 // The 2022 bars: one per row, each from the zero line.
 function bars(point: (row: number) => void) {
-  const zero = `position:absolute;top:0;bottom:0;left:${at(0)}%;width:1px;background:rgb(237 233 246 / .28)`;
+  const zero = `position:absolute;top:-3px;bottom:-3px;left:${at(0)}%;width:1px;background:rgb(237 233 246 / .28)`;
+  // One row per ball on one line: its name, a bar from zero, its return.
   const rows = ROWS.map((row, i) => {
     const a = at(Math.min(0, row.value));
     const b = at(Math.max(0, row.value));
@@ -51,16 +62,17 @@ function bars(point: (row: number) => void) {
       "div",
       { class: "bar-row", "aria-label": `${row.label}, 2022 ${signed(row.value)}` },
       h("span", { class: row.kind === "ours" ? "text-ink" : "" }, row.label),
-      h("b", { class: "figure text-right text-ink font-medium" }, signed(row.value)),
       h(
         "div",
         { class: "track" },
+        h("i", { style: zero }),
         h("i", {
           "data-bar": true,
           "data-side": row.value < 0 ? "left" : "right",
           style: `left:${a}%;width:${b - a}%;background:${COLOR[row.kind]}`,
         }),
       ),
+      h("b", { class: "figure text-right text-ink font-medium" }, signed(row.value)),
     );
     // Hover or focus marks a row's ball; leaving clears it.
     el.addEventListener("pointerenter", () => point(i));
@@ -71,14 +83,9 @@ function bars(point: (row: number) => void) {
   });
   return h(
     "div",
-    { class: "flex flex-col gap-2" },
-    h(
-      "div",
-      { class: "flex justify-between eyebrow", style: "position:relative" },
-      h("span", {}, "2022 · return"),
-      h("span", { style: `position:absolute;left:${at(0)}%;transform:translateX(-50%)` }, "0%"),
-    ),
-    h("div", { class: "flex flex-col gap-2", style: "position:relative" }, h("i", { style: zero }), ...rows),
+    { class: "flex flex-col gap-1.5" },
+    h("p", { class: "eyebrow" }, "2022 · return with dividends"),
+    h("div", { class: "flex flex-col gap-1.5" }, ...rows),
   );
 }
 
@@ -91,10 +98,10 @@ export class Edge extends Scene {
   private flash: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
   private names: Label[] = [];
   private ticks: Label[] = [];
-  private bars = h("div", { class: "border-t border-line pt-2" });
+  private bars = h("div", { class: "border-t border-line pt-1.5" });
   private grid = h("div", { class: "border-t border-line pt-2 flex flex-col gap-1.5" });
   private input: HTMLInputElement;
-  private share = h("b", { class: "figure text-[24px] text-ink font-medium" });
+  private share = h("b", { class: "figure text-[20px] text-ink font-medium" });
   private readout = {
     cagr: stat("", "Return a year"),
     vol: stat("", "Volatility"),
@@ -113,6 +120,7 @@ export class Edge extends Scene {
     const colors = ROWS.map((row) => new THREE.Color(row.color).multiplyScalar(row.kind === "ours" ? 1.6 : 0.9));
     const radii = ROWS.map((_, i) => (i === OURS ? 0.42 : 0.32));
     this.pile = new Pile(rests, radii, starts, colors);
+    // The fund's landing gets the flash; the others just tick.
     this.pile.onLand = (i) => {
       if (i === OURS) this.landed();
       else this.w.sound.tick(1.2 + i * 0.2, 0.4);
@@ -121,6 +129,7 @@ export class Edge extends Scene {
     this.flash.userData.keep = true;
     this.flash.position.copy(rests[OURS]!);
     this.group.add(this.pile.mesh, this.flash);
+    // A label under the axis at each marked return.
     for (const v of TICKS) {
       // Zero sits below the glow; small screens skip the odd ticks.
       const tick = this.addLabel(new Label(v === 0 ? "0%" : pct(v, 0), [X(v), v === 0 ? -1.5 : -0.55, 1.2], "center"));
@@ -154,7 +163,7 @@ export class Edge extends Scene {
     // The slider comes first, so it shows on a phone held sideways.
     const ends = h("div", { class: "flex justify-between eyebrow" }, h("span", {}, "0%"), h("span", {}, `${last}%`));
     const glass = box(
-      "w-[min(420px,calc(100vw-32px))] gap-2",
+      "w-[min(340px,calc(100vw-32px))] gap-1.5",
       h(
         "div",
         { class: "flex items-baseline justify-between gap-3" },
@@ -165,18 +174,14 @@ export class Edge extends Scene {
       ends,
       this.grid,
       this.bars,
-      h(
-        "p",
-        { class: "text-[11px] text-ink-3" },
-        "2021 to 2026, monthly. Data from SPY, AGG and FRED. S&P 500 without dividends.",
-      ),
+      h("p", { class: "text-[11px] text-ink-3" }, "Monthly data from SPY, AGG and FRED, dividends in."),
     );
     this.controls.append(glass);
     this.bars.append(this.rows);
     // SE-size screens: the four 2022 returns as a grid, the fund first.
     const order = [OURS, ...ROWS.keys()].filter((i, j, all) => all.indexOf(i) === j);
     this.grid.append(
-      h("p", { class: "eyebrow" }, "2022 · return"),
+      h("p", { class: "eyebrow" }, "2022 · return with dividends"),
       h(
         "div",
         {
@@ -216,11 +221,13 @@ export class Edge extends Scene {
     const f = blank();
     let k = 0;
     for (let i = 0; i <= 380; i++, k++) f.put(k, -SPAN / 2 + (i / 380) * SPAN, 0, 1.2, 0.2, C.ink, 0.5);
+    // A short post down from the axis at each tick.
     for (const v of TICKS) {
       for (let j = 0; j < 14; j++, k++) f.put(k, X(v), -0.05 - j * 0.02, 1.2, 0.2, C.ink, 0.6);
     }
     for (let j = 0; j < 160; j++, k++) f.put(k, X(0), j * 0.05, 0, 0.18, C.cyan, 0.45);
     const r = seeded(77);
+    // A dusty floor of 3000 dots, faded toward front and back.
     for (let i = 0; i < 3000; i++, k++) {
       const z = (r() - 0.5) * 9;
       f.put(k, (r() - 0.5) * SPAN * 1.3, -0.06, z, 0.18 + r() * 0.12, C.dust, 0.28 * (1 - Math.abs(z) / 5));

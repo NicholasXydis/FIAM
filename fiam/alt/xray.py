@@ -52,33 +52,30 @@ BOOK_LABELS = {"september_final.csv": "Research book, September 2026"}
 # Where each card's ticker came from, in words.
 TICKER_NOTES = {
     "book": "Ticker as the book file gives it",
-    "none": "No ticker in the book and the dated links after 2020 stay sealed until the "
-    "unseal, so no Carbon Arc or news match",
+    "none": "No ticker in the book and the dated links after 2020 stay hidden, so no "
+    "Carbon Arc or news match",
 }
-# Why the NOAA weather headwind is skipped for now.
+# Why the NOAA weather headwind is skipped.
 WEATHER_SKIPPED = (
-    "Skipped. The protocol defines the headwind (drought for farm and food industries, "
-    "temperature for utilities and a warm winter for retail, footprint weighted) but no NOAA "
-    "climate table is registered and the footprint and industry codes after 2020 stay sealed "
-    "until the unseal, so a read now would rest on stale inputs"
+    "Skipped. The headwind (drought for farm and food industries, temperature for "
+    "utilities and a warm winter for retail, footprint weighted) needs a NOAA climate table, "
+    "none is registered and the footprint and industry codes after 2020 stay hidden, so a "
+    "read now would rest on stale inputs"
 )
 # I/B/E/S is shown only, never used in a read or a trim.
 IBES_NOTE = (
-    "Shown with its date only. It feeds neither the read nor the trim (PLAN 1.2, B20, B27) "
-    "and I/B/E/S ends 2025-12"
+    "Shown with its date only. It feeds neither the read nor the trim and I/B/E/S ends 2025-12"
 )
 # The rules each run states beside its cards.
 RULES = [
-    "Live only on the final book (PLAN Appendix B). Nothing here enters a forecast, gate or "
+    "Live only on the final book. Nothing here enters a forecast, gate or "
     "backtest and no scored month changes",
-    "Carbon Arc is current vintage (PLAN 1.2, B29). Growth rates only leave this tool, never raw "
-    "values (PLAN 12.5)",
-    "Each month counts only after its stated lag and only once complete (A14)",
-    "Benzinga is counts by type and week only, never traded (B29)",
-    "The next print is the registry's projection known by the as-of date (B22), read through "
-    "blind mode",
+    "Carbon Arc is current vintage. Growth rates only leave this tool, never raw values",
+    "Each month counts only after its stated lag and only once complete",
+    "Benzinga is counts by type and week only, never traded",
+    "The next print is the registry's projection known by the as-of date, read through blind mode",
     "The trim is shrink only, from the desk's set, logged and never applied",
-    "I/B/E/S appears only if a file is given, as the last consensus with its date (B20)",
+    "I/B/E/S appears only if a file is given, as the last consensus with its date",
 ]
 
 
@@ -198,7 +195,7 @@ def load_news(snapshot: Path = SNAPSHOT) -> tuple[pd.DataFrame, str]:
     return pd.concat(frames, ignore_index=True), max(pulls)
 
 
-# Projected print dates for these stocks, through the registry's seal.
+# Projected print dates for these stocks, up to the registry's cutoff.
 def load_calendar(permnos) -> pd.DataFrame:
     cols = ["projected", "basis", "known_from"]
     return data.table("earnings_calendar", cols, where={"permno": set(int(p) for p in permnos)})
@@ -348,8 +345,8 @@ def next_print(calendar: pd.DataFrame, permno: int, as_of, seal: pd.Timestamp, o
         # Only blind mode hides projections, so with the gate open none is.
         if as_of > seal and not opened:
             why = (
-                f"Sealed. Blind mode hides projections made after {seal.date()} until the "
-                "unseal, so none is known here"
+                f"Hidden. Blind mode hides projections made after {seal.date()}, so none is "
+                "known here"
             )
             return {"status": "sealed", "why": why}
         return {"status": "none known", "why": "No projection known by the as-of date"}
@@ -490,7 +487,7 @@ def coverage(cards: list) -> dict:
     return out
 
 
-# Tickers the book lacks, from the dated links once they are unsealed.
+# Tickers the book lacks, from the dated links once the gate opens.
 def fill_tickers(book: pd.DataFrame, as_of, seal: pd.Timestamp, unsealed: bool) -> pd.DataFrame:
     book = book.copy()
     given = book["ticker"].map(lambda t: isinstance(t, str) and bool(t.strip()))
@@ -499,7 +496,7 @@ def fill_tickers(book: pd.DataFrame, as_of, seal: pd.Timestamp, unsealed: bool) 
     book["ticker_source"] = np.where(given, "book", "none").astype(object)
     if given.all() or not unsealed:
         return book
-    # The link in force at the as-of date, or at the seal if that is sooner.
+    # The link in force at the as-of date, or at the cutoff if sooner.
     when = min(pd.Timestamp(as_of), seal)
     gaps = book.index[~given]
     links = data.table("links", None, purpose=None)
@@ -583,8 +580,8 @@ def run(path: Path, as_of, top: int = TOP, label: str | None = None, ibes=None) 
         "as_of": as_of.date().isoformat(),
         "top": top,
         "run_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "blind_mode": "on, rows public after 2020-12-31 are sealed" if sealed else "unsealed",
-        "acts_on": "Nothing. Suggestions are logged for the leader and no scored month changes",
+        "blind_mode": "on, rows public after 2020-12-31 are hidden" if sealed else "off",
+        "acts_on": "Nothing. Suggestions are only logged and no scored month changes",
         "sources": source_notes(inputs, ibes),
         "credit": CREDIT,
         "rules": RULES,

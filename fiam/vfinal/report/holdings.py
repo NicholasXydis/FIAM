@@ -77,7 +77,7 @@ def trade_days(trades: pd.DataFrame) -> pd.DatetimeIndex:
     return pd.DatetimeIndex(sorted(stamps(trades["date"]).unique()))
 
 
-# Each month's formation, dated by its first trade day (reading).
+# Each month's formation, dated by its first trade day (our reading).
 def monthly_days(trades: pd.DataFrame) -> pd.DatetimeIndex:
     first = rebalances(trades).sort_index()
     last = first.groupby(pd.DatetimeIndex(first.index).to_period("M")).last()
@@ -126,7 +126,7 @@ def positions_file(positions, ledger, ids, daily=None, dates=None):
     both = held.merge(pnl, on=["date", "permno"], how="outer")
     both["Net Invested"] = both.pop("value").fillna(0.0)
     both["PNL"] = both["PNL"].fillna(0.0)
-    # A name closed today keeps its day's P&L on a zero position (reading).
+    # A name closed today keeps its day's P&L on a zero position.
     both = both[(both["Net Invested"] != 0) | (both["PNL"] != 0)]
     if dates is not None:
         both = both[both["date"].isin(stamps(pd.Series(dates)))]

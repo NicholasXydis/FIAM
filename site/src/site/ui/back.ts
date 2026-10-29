@@ -1,5 +1,6 @@
 // The page of this site the visitor came from, or null from outside.
 export function cameFrom() {
+  // A blank referrer throws, which counts as coming from outside.
   try {
     const from = new URL(document.referrer);
     return from.origin === location.origin ? from.pathname : null;

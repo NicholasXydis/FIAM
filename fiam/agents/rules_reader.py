@@ -60,13 +60,14 @@ def chunks(text: str, size: int = 12_000) -> list[str]:
 
 # A rule stays only if its quote is in the rules verbatim, spaces aside.
 def verified(answer: dict, text: str) -> dict:
-    flat = " ".join(text.split())
+    # PDF text can split "capital, measured" as "capital , measured".
+    flat = "".join(text.split())
     out = {}
     for name in (*NUMBERS, *FLAGS, *LISTS):
         value, quote = answer.get(name), answer.get(f"{name}_quote")
         if value is None or value == [] or not quote:
             continue
-        if " ".join(quote.split()) in flat:
+        if "".join(quote.split()) in flat:
             out[name] = dict(value=value, quote=quote)
     return out
 

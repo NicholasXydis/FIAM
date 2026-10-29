@@ -7,7 +7,7 @@ from functools import cache
 import numpy as np
 import pandas as pd
 
-# Every entry here seals the older reader too, whatever is set.
+# Every entry here turns blind mode on for the older reader too.
 os.environ["FIAM_BLIND"] = "1"
 
 from fiam.vfinal import clock, sources  # noqa: E402
@@ -24,7 +24,7 @@ def card_sha(name: str) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "none"
 
 
-# Every engine read goes through the registry's gate: bans, uses, seal.
+# Every engine read goes through the registry: bans, uses, cutoff.
 def table(name: str, columns=None, purpose=None, where=None) -> pd.DataFrame:
     # A set and a (low, high) range never share a cache key.
     frozen = (
@@ -104,7 +104,7 @@ def rf_daily(days, by=None) -> pd.Series:
         bills = bills[bills["first_close"] <= pd.Timestamp(by)]
     bills = bills.set_index("month")["tb3ms"].sort_index()
     month = pd.DatetimeIndex(days).to_period("M").to_timestamp()
-    # A month still sealed takes the last rate public by the seal (stated).
+    # A month past the cutoff takes the last rate public by it (stated).
     known = bills.reindex(bills.index.union(month.unique())).ffill()
     return pd.Series(known.reindex(month).to_numpy(), index=pd.DatetimeIndex(days)) / 252
 

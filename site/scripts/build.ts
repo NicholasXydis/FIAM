@@ -19,6 +19,7 @@ export function build() {
   bundle();
 }
 
+// Run as a script: build both and say where they went.
 if (process.argv[1] === import.meta.filename) {
   build();
   console.log("built dist/ and out/site/fiam.html");

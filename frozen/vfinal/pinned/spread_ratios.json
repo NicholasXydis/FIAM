@@ -1,0 +1,44 @@
+{
+ "what": "median of half the TAQ dollar-weighted effective spread over the panel's bidaskhl_21d, universe stock-months of $500m+, by JKP size group, 2015-2020",
+ "key": {
+  "calibration": [
+   "2015-01-01",
+   "2020-12-31"
+  ],
+  "groups": [
+   [
+    0.8,
+    "mega"
+   ],
+   [
+    0.5,
+    "large"
+   ],
+   [
+    0.2,
+    "small"
+   ],
+   [
+    0.01,
+    "micro"
+   ],
+   [
+    0.0,
+    "nano"
+   ]
+  ],
+  "ratio": "half TAQ EffectiveSpread_Percent_DW / bidaskhl_21d, me >= 500"
+ },
+ "ratio_by_size_group": {
+  "large": 0.05380999039414574,
+  "mega": 0.037847497220352154,
+  "micro": 0.13359916261947302,
+  "small": 0.08769675085004813
+ },
+ "rows": {
+  "large": 43705,
+  "mega": 25377,
+  "micro": 8002,
+  "small": 61393
+ }
+}

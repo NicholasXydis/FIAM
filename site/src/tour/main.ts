@@ -23,9 +23,10 @@ const layer = h("div", { class: "ui" });
 document.body.append(canvas, layer);
 if (params.has("present")) document.body.classList.add("present");
 
-// What the note says when the tour cannot start, or stops midway.
+// What the note says when the tour cannot start.
 const CANNOT =
   "This screen cannot run the 3D tour. Open this page in a recent Chrome, Edge, Safari or Firefox with hardware acceleration on.";
+// What the note says when the tour stops midway.
 const STOPPED = "The 3D tour stopped. Reload the page to start it again.";
 
 // Says so in plain words instead of a blank page; the reason is logged.
@@ -48,6 +49,7 @@ function fail(words: string, reason: string): never {
 // The renderer and the particles; either failing shows the note.
 let stage: Stage;
 let sim: Sim;
+// Build both; an error here means this screen cannot run it.
 try {
   stage = new Stage(canvas);
   sim = new Sim(stage.renderer);
@@ -68,9 +70,11 @@ await document.fonts.ready;
 
 // Shared sound, silent until the viewer turns it on.
 const sound = new Sound();
-// The scene shown (-1 before the first), tour, seconds dwelt.
+// The scene shown, -1 before the first.
 let index = -1;
+// Whether the guided tour is playing.
 let touring = false;
+// Seconds spent on this scene during the tour.
 let dwelt = 0;
 // What scenes may use; their go and next end the tour like a key press.
 const world: World = { stage, sim, layer, sound, go: (i) => go(i, true), next: () => go(index + 1, true) };
@@ -86,6 +90,7 @@ layer.append(tip);
 // The layout follows the window, titles shrink to one line if small.
 setMode();
 titles(list);
+// On resize, refit the layout and the titles.
 addEventListener("resize", () => {
   // A new layout reshapes the scene, as some pack tall screens apart.
   if (setMode() && index >= 0) sim.show(list[index]!.formation(), 0.6, 0.9);
@@ -190,6 +195,7 @@ addEventListener("keydown", (e) => {
 
 // Scrolling builds past 60 to turn one scene, then waits 1.1 s.
 let wheelLock = 0;
+// Scroll built up since the last turn.
 let wheelSum = 0;
 addEventListener(
   // The wheel turns scenes, but not while a sheet is open or over UI.
@@ -200,6 +206,7 @@ addEventListener(
     const now = performance.now();
     if (now < wheelLock) return;
     wheelSum += e.deltaY + e.deltaX;
+    // Past 60 of scroll, turn one scene and lock for 1.1 s.
     if (Math.abs(wheelSum) > 60) {
       go(index + Math.sign(wheelSum), true);
       wheelSum = 0;
@@ -209,10 +216,28 @@ addEventListener(
   { passive: false },
 );
 
+// A sideways touch flick that starts on a 3D label turns scenes too.
+let flick: { x: number; y: number; t: number } | null = null;
+// Note a touch press on a label; the canvas notes its own below.
+layer.addEventListener("pointerdown", (e) => {
+  const on = (e.target as Element).closest?.(".label3d");
+  flick = on && e.pointerType !== "mouse" ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
+});
+// On release, a 60 px flick in 0.7 s moves; a tap stays the label's.
+layer.addEventListener("pointerup", (e) => {
+  if (!flick) return;
+  const dx = e.clientX - flick.x;
+  const dy = e.clientY - flick.y;
+  const quick = performance.now() - flick.t < 700;
+  flick = null;
+  if (quick && Math.abs(dx) > 60 && Math.abs(dx) > 1.2 * Math.abs(dy)) go(index - Math.sign(dx), true);
+});
+
 // The timer that clears a tap's tooltip after a few seconds.
 let tapTip = 0;
 // Where and when the last press on the canvas began.
 let press: { x: number; y: number; t: number } | null = null;
+// Note each press, to tell a tap from a swipe on release.
 canvas.addEventListener("pointerdown", (e) => {
   press = { x: e.clientX, y: e.clientY, t: performance.now() };
 });
@@ -242,10 +267,13 @@ canvas.addEventListener("pointerup", (e) => {
   }
 });
 
-// Pointer: last move, moved this frame, over the canvas, and its place.
+// When the pointer last moved, 0 once it has left.
 let pointerAt = 0;
+// Whether it moved since the last frame.
 let pointerMoved = false;
+// Whether it is over the canvas, not the page layer.
 let overCanvas = false;
+// Where it is on screen, in pixels.
 const mouse = { x: -1, y: -1 };
 // Feeds hover, the particles' push and the camera's parallax.
 addEventListener("pointermove", (e) => {
@@ -261,11 +289,13 @@ document.documentElement.addEventListener("mouseleave", () => (pointerAt = 0));
 
 // A dragged slider frees the arrows on release; a keyed one keeps them.
 let dragged: EventTarget | null = null;
+// Note what each press lands on.
 addEventListener("pointerdown", (e) => {
   dragged = e.target;
   // A new tap clears the last tap's tooltip.
   if (e.pointerType !== "mouse") hideTip();
 });
+// A slider let go after a drag gives up focus.
 addEventListener("change", (e) => {
   if (e.target instanceof HTMLInputElement && e.target.type === "range" && e.target === dragged) e.target.blur();
 });
@@ -274,17 +304,25 @@ addEventListener("change", (e) => {
 const fixedQuality = params.get("q");
 stage.setQuality(fixedQuality !== null ? +fixedQuality : matchMedia("(max-width: 760px)").matches ? 1 : 2);
 
-// Loop state: clock, 2.5 s fps windows, a quality trial, hover recheck.
+// When the last frame ran.
 let last = performance.now();
+// The tour's clock in seconds.
 let time = 0;
 // The particles' and camera's clock, slowed to a tenth during a hover.
 let calm = 0;
+// Whether a hover tip is holding the pointer.
 let holding = false;
+// Frames counted in this window.
 let frames = 0;
+// Slow windows in a row.
 let slow = 0;
+// A step down in quality on trial, and the fps before it.
 let trial: { from: number; fps: number } | null = null;
+// Whether quality has settled for good.
 let settled = false;
+// When this frame rate window began.
 let windowStart = last;
+// Seconds since hover was last checked.
 let hoverAge = 0;
 // The scene the camera last fitted on small screens.
 let fitted = -1;
@@ -299,6 +337,7 @@ function loop() {
   const scene = list[index];
   // The pointer counts for 2.5 s after it moves, or while it holds a tip.
   const live = pointerAt > 0 && (holding || stamp - pointerAt < 2500);
+  // A moved pointer casts a fresh ray for the particles' push.
   if (live && pointerMoved) {
     const ray = rayAt(mouse.x, mouse.y, stage.camera).ray;
     sim.u.uRayO.value.copy(ray.origin);
@@ -319,6 +358,7 @@ function loop() {
   scene.place(stage.camera);
   // Rechecks hover as the pointer moves, or every 0.15 s while it rests.
   hoverAge += dt;
+  // Ask the scene what is under the pointer and show its tip.
   if (live && !chrome.open && (pointerMoved || hoverAge > 0.15)) {
     hoverAge = 0;
     const html = overCanvas ? scene.hover(mouse.x, mouse.y) : null;
@@ -337,6 +377,7 @@ function loop() {
   if (touring && !chrome.open) {
     dwelt += dt;
     chrome.tourProgress(dwelt / scene.dwell);
+    // The dwell is up: next scene, or stop at the end.
     if (dwelt >= scene.dwell) {
       if (index < list.length - 1) go(index + 1);
       else setTour(false);
@@ -355,6 +396,7 @@ function loop() {
     trial = null;
     // Two slow windows in a row (under 38 fps) try one level lower.
     slow = fps < 38 ? slow + 1 : 0;
+    // Two slow windows step quality down one, if it may.
     if (slow >= 2 && !settled && fixedQuality === null && stage.quality > 0) {
       trial = { from: stage.quality, fps };
       stage.setQuality(stage.quality - 1);

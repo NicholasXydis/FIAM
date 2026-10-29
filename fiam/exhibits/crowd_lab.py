@@ -14,7 +14,7 @@ from fiam import data, paths, stats
 from fiam.agents import crowd_lab as L
 from fiam.paths import FROZEN
 
-EMULATOR = FROZEN / "crowd_emulator.json"
+EMULATOR = FROZEN / "agents" / "crowd_emulator.json"
 OUT = paths.RESEARCH / "crowd_lab.json"
 HISTORICAL = paths.EXHIBITS / "agents" / "crowd_picks.parquet"
 CROWD_SIZES = (10e9, 50e9, 100e9)
@@ -324,7 +324,7 @@ def book(name: str) -> None:
 
 # Every crowd measure on answers so far, and the crowd model frozen.
 def main() -> None:
-    report = dict(protocol="docs/protocols/crowd.md")
+    report = dict(protocol="frozen/v1/protocols/crowd.md")
     live = crowds()
     for name, picks in live.items():
         report[name] = dict(
@@ -344,7 +344,7 @@ def main() -> None:
     saved.to_parquet(paths.RESEARCH / "crowd_consensus.parquet", index=False)
     targets = [v for k, v in votes.items() if k in ("retail", "historical")]
     model = fit_emulator(frame, pd.concat(targets, ignore_index=True))
-    FROZEN.mkdir(exist_ok=True)
+    EMULATOR.parent.mkdir(parents=True, exist_ok=True)
     EMULATOR.write_text(json.dumps(model) + "\n", encoding="utf-8")
     report["emulator"] = {k: model[k] for k in ("alpha", "r2_by_year_block", "canaries")}
     scored = frame[[*data.KEYS, "ret_exc_lead1m", "vol_raw", "dolvol_raw"]].copy()

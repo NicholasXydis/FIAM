@@ -22,7 +22,7 @@ import {
   TITLES,
   VOICE,
 } from "./cut";
-import { ROLES, VOLATILITY } from "./data";
+import { ROLES, SHARPE } from "./data";
 import { clamp, halton, inOut, mix, out, ramp, span } from "../shared/math";
 import { Gimbal } from "./gimbal";
 import { Lattice } from "./lattice";
@@ -245,7 +245,7 @@ function set(t: number, jitter = [0, 0], lens = [0, 0], soft = [0, 0]) {
     look.renderer.toneMappingExposure = mix(1, 0.92, day);
     vignette = mix(mix(0.65, 0.22, day), 0.75, night);
   } else if (inSea) {
-    // The sea, the gimbal floating on the shocks and showing volatility.
+    // The sea, the gimbal floating on the shocks and showing the Sharpe.
     scene.environment = look.night;
     scene.environmentIntensity = 1;
     const sea = 1 - ramp(t, AT.outro + 1.2, AT.outro + 3);
@@ -259,7 +259,7 @@ function set(t: number, jitter = [0, 0], lens = [0, 0], soft = [0, 0]) {
     gimbal.stand.visible = false;
     gimbal.tilt(dz * 0.06, -dx * 0.06, t * 0.12);
     gimbal.group.position.set(0, 0.6 - Gimbal.centre + water.height(0, 0, t) * 0.12, 0);
-    gimbal.read(VOLATILITY * inOut(ramp(t, 46.2, 48.3)), VOLATILITY, stats, "VOLATILITY", (v) => `${v.toFixed(1)}%`);
+    gimbal.read(SHARPE * inOut(ramp(t, 46.2, 48.3)), SCALE.top, stats, "SHARPE RATIO", undefined, SCALE.ticks);
     water.follow(camera);
     // The outro, agents back round the gimbal as the world spreads again.
     if (outro) {
@@ -293,7 +293,9 @@ function set(t: number, jitter = [0, 0], lens = [0, 0], soft = [0, 0]) {
   look.grade.uniforms.uDim.value = 0.62 * inOut(ramp(t, END.name + 0.3, END.name + 1.6));
 }
 
-// The moon's cool light, warmed while the volatility shows.
+// The dial's scale for the Sharpe ratio, 0 to 1.2, labelled every 0.3.
+const SCALE = { top: 1.2, ticks: [0, 0.3, 0.6, 0.9, 1.2] };
+// The moon's cool light, warmed while the Sharpe ratio shows.
 const MOON = new THREE.Color(0xc9c0ff);
 const WARM = new THREE.Color(0xfff1dc);
 

@@ -4,8 +4,9 @@ import path from "node:path";
 import sharp from "sharp";
 import { bin, REPO, run, SITE } from "./lib.ts";
 
-// The icons' drawing size, and the PurpleFunds purple behind the mark.
+// The icons' drawing size in SVG units.
 const S = 512;
+// The deep purple behind the mark.
 const BG = "#2a0839";
 // Detail per size: ray counts and widths, ray start, disc and pupil.
 const LEVELS = {
@@ -28,14 +29,18 @@ function page() {
 function burst(level: Level) {
   const L = LEVELS[level];
   const rays: [number, number, number][] = [];
+  // The left fan of rays, spread evenly from 98 to 262 degrees.
   for (let k = 0; k < L.left; k++) rays.push([((98 + (k * 164) / (L.left - 1)) * Math.PI) / 180, 0.255, L.wl]);
+  // The right fan of rays, a little longer toward the middle.
   for (let k = 0; k < L.right; k++) {
     const a = ((90 - (k * 180) / (L.right - 1)) * Math.PI) / 180;
     rays.push([a, 0.36 + 0.03 * Math.cos(a), L.wr]);
   }
   const corners = [-1, 1].flatMap((i) => [-1, 1].map((j) => [i * L.disc, j * L.disc] as const));
+  // Each ray as a line, its four corners noted for the fit.
   const lines = rays.map(([a, r, w]) => {
     const [c, s] = [Math.cos(a), Math.sin(a)];
+    // Note both edges at the ray's start and at its end.
     for (const q of [L.start, r])
       for (const side of [-1, 1]) corners.push([q * c + (side * w * s) / 2, -q * s + (side * w * c) / 2]);
     return `<line x1="${L.start * c}" y1="${-L.start * s}" x2="${r * c}" y2="${-r * s}" stroke-width="${w}"/>`;
@@ -70,6 +75,7 @@ function ico(pngs: [number, Buffer][]) {
   head.writeUInt16LE(1, 2);
   head.writeUInt16LE(pngs.length, 4);
   let offset = head.length;
+  // One 16 byte directory entry per PNG, pointing at its data.
   pngs.forEach(([size, data], i) => {
     const e = 6 + 16 * i;
     head.writeUInt8(size % 256, e);
@@ -130,6 +136,7 @@ if (what === "page" || what === "all") page();
 if (what === "icons" || what === "all") await icons();
 if (what === "video") run("uv", ["run", path.join("site", "ad", "make.py"), ...rest], { cwd: REPO, show: true });
 if (what === "web") run("uv", ["run", path.join("site", "ad", "web.py")], { cwd: REPO, show: true });
+// Anything else prints the usage and fails.
 if (!["all", "page", "icons", "video", "web"].includes(what)) {
   console.log("pnpm media [page | icons | video [--preview | --smooth] | web]");
   process.exit(1);

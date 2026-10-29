@@ -32,6 +32,7 @@ export function points(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl2", { premultipliedAlpha: true, alpha: true, antialias: false });
   if (!gl) return null;
   const program = gl.createProgram();
+  // Compile both shaders and attach them to the program.
   for (const [type, source] of [
     [gl.VERTEX_SHADER, VERTEX],
     [gl.FRAGMENT_SHADER, FRAGMENT],

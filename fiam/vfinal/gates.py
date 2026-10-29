@@ -26,8 +26,8 @@ from fiam.vfinal.signals import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "out" / "vfinal" / "gates"
-PROTOCOL = ROOT / "versions" / "vfinal" / "protocol.md"
+OUT = ROOT / "out" / "audit" / "engine" / "gates"
+PROTOCOL = ROOT / "frozen" / "vfinal" / "protocol.md"
 CHAR_LIST = ROOT / "data" / "organisers" / "factor_char_list.csv"
 # The stages in order; each needs the ones before it at HEAD.
 STAGES = ("check", "power", "controls", "gates")
@@ -585,7 +585,7 @@ def reversal(ms: list[Month], chars: list[str]) -> dict:
     return test_series(pd.Series(ic))
 
 
-# Writes one stage's result with its stamp to out/vfinal/gates/.
+# Writes one stage's result with its stamp to out/audit/engine/gates/.
 def write(stage: str, result: dict, head: str, seeds: dict, nulls: dict) -> Path:
     OUT.mkdir(parents=True, exist_ok=True)
     for n, a in nulls.items():
