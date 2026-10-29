@@ -1,0 +1,38 @@
+/* The palette and font stacks the tour's pages share, as variables. */
+:root {
+  color-scheme: dark;
+  --bg: #040309;
+  --ink: #ede9f6;
+  --ink-2: #b6afcb;
+  --ink-3: #7e7798;
+  --line: rgb(237 233 246 / 0.12);
+  --glass: rgb(13 10 27 / 0.58);
+  --purple: #a98bff;
+  --gold: #f2c14e;
+  --cyan: #5cc8e0;
+  --orange: #f08a4b;
+  /* Darker swatch colours for legend marks, one per accent colour. */
+  --m-long: #2fa3bd;
+  --m-short: #e0703a;
+  --m-ours: #bc8a22;
+  --m-brand: #8f6fea;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* The same variables as Tailwind theme keys, for the tour's classes. */
+@theme {
+  --font-display: var(--display);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-glass: var(--glass);
+  --color-purple: var(--purple);
+  --color-gold: var(--gold);
+  --color-cyan: var(--cyan);
+  --color-orange: var(--orange);
+}

@@ -1,0 +1,16 @@
+{
+  "lights": {
+    "wide": [0.5008, 0.4384],
+    "tall": [0.4986, 0.4091],
+    "side": [0.4994, 0.4394]
+  },
+  "wide": "film-wide-4d4d1d863e.mp4",
+  "wide-lite": "film-wide-lite-f992756118.mp4",
+  "poster-wide": "poster-wide-504696693d.jpg",
+  "tall": "film-tall-5f78321d63.mp4",
+  "tall-lite": "film-tall-lite-f672ab2b15.mp4",
+  "poster-tall": "poster-tall-8bf5d8bef1.jpg",
+  "side": "film-side-10c0f8736d.mp4",
+  "side-lite": "film-side-lite-80099778cb.mp4",
+  "poster-side": "poster-side-08780488e5.jpg"
+}

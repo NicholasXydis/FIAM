@@ -1,4 +1,4 @@
-# Runs an agent on a pinned local model, on any machine, and writes its transcript.
+# Runs an agent on a pinned local model and writes its transcript.
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable
 
 from fiam import paths
@@ -27,7 +27,7 @@ TRANSCRIPTS = ROOT / paths.EXHIBITS / "agents"
 # A rehearsal keeps its logs apart, so it never resumes into a real run.
 RUNS = ROOT / "cache" / ("smoke/agents" if paths.SMOKE else "agents")
 
-# The pinned llama.cpp build: one download per kind of machine, each checked against its SHA-256.
+# Pinned llama.cpp builds, one per machine kind, each SHA-256 checked.
 RELEASE = "https://github.com/ggml-org/llama.cpp/releases/download/b11132/"
 BUILDS = {
     "windows": [
@@ -72,7 +72,7 @@ BUILDS = {
     ],
 }
 
-# Two vendors for the real runs, so agreement means something; a tiny one for the rehearsal.
+# Two vendors so agreement means something, and a tiny one to rehearse.
 MODELS = {
     "qwen": (
         "unsloth/Qwen3.8-27B-GGUF",
@@ -84,6 +84,12 @@ MODELS = {
         "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
         "babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf",
     ),
+    # The time-cutoff model: the Pile only, data through 2020.
+    "pythia": (
+        "CheeseCoder/pythia-12b-deduped-Q4_K_M-GGUF",
+        "pythia-12b-deduped.Q4_K_M.gguf",
+        "75cb02b26ee0d9beb56e4f51410d8b2ed229465e19c25ae19f64a731311d64e5",
+    ),
     "tiny": (
         "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
         "qwen2.5-0.5b-instruct-q4_k_m.gguf",
@@ -91,18 +97,27 @@ MODELS = {
     ),
 }
 
-# Repeatability, not correctness: the same prompt gives the same answer, right or wrong.
+# Repeatable by design: one prompt always gives the same answer.
 SEED, TEMPERATURE = 42, 0.0
 CONTEXT, PORT = 65536, 8081
-# Qwen at 64K fits 16 GB only with a compressed cache; thinking off, so its plan is readable.
+# Models trained on shorter windows get their own context length.
+CONTEXTS = {"pythia": 2048}
+# The address a server listens on; the Tailscale one serves the Mac.
+HOST = os.environ.get("FIAM_LLM_HOST", "127.0.0.1")
+# A server elsewhere, a cloud GPU on finals day, stands in. No download.
+REMOTE = os.environ.get("FIAM_LLM_URL", "").rstrip("/")
+# Compressed cache so 64K Qwen fits 16 GB; no thinking, readable plan.
 COMPRESSED = {"qwen": ("-fa", "on", "-ctk", "q8_0", "-ctv", "q4_0")}
 NO_THINKING = ("--chat-template-kwargs", '{"enable_thinking": false}')
+# 2048-token batches cut Gemma's call on long cards from 9.0 s to 7.8 s.
+LONG_PROMPTS = ("-ub", "2048", "-b", "2048")
 
-# Calls left when only final_answer is accepted, the cap on one tool result, and nudges allowed.
+# Calls left when only final_answer counts, a result's size cap, nudges.
 WARN_AT, RESULT_CHARS, NUDGES = 5, 6000, 2
 NUDGE = "Continue: call a tool, or call final_answer with what you have."
 
 
+# A tool offered to the agent: its schema and the function it calls.
 @dataclass
 class Tool:
     name: str
@@ -111,6 +126,7 @@ class Tool:
     run: Callable[..., object]
 
 
+# One agent run: its model, prompts and the tool-call budget it gets.
 @dataclass
 class Run:
     agent: str
@@ -120,12 +136,13 @@ class Run:
     budget: int
     tag: str = ""
 
+    # The transcript name: agent plus tag, so tagged reruns keep their own.
     @property
     def name(self) -> str:
         return f"{self.agent}{'_' + self.tag if self.tag else ''}"
 
 
-# Which build this machine takes; FIAM_LLAMA_BUILD picks another, windows-cpu say.
+# This machine's build; FIAM_LLAMA_BUILD picks another, say windows-cpu.
 def machine() -> str:
     if os.environ.get("FIAM_LLAMA_BUILD"):
         return os.environ["FIAM_LLAMA_BUILD"]
@@ -138,12 +155,12 @@ def machine() -> str:
     return "linux-vulkan" if shutil.which("vulkaninfo") else "linux-cpu"
 
 
-# A model's name on this run: the rehearsal swaps every model for the tiny one.
+# A model's name on this run; the rehearsal swaps all for the tiny one.
 def resolve(model: str) -> str:
     return "tiny" if paths.SMOKE else model
 
 
-# Hashing 14 GB takes a while, so each file's hash is kept beside it, keyed on size and date.
+# A file's hash, cached beside it by size and date since 14 GB is slow.
 def file_hash(path: Path) -> str:
     stamp = path.with_name(path.name + ".sha256.json")
     key = dict(bytes=path.stat().st_size, modified=path.stat().st_mtime)
@@ -154,7 +171,7 @@ def file_hash(path: Path) -> str:
     return value
 
 
-# Downloads once, resuming if broken, and refuses a file whose SHA-256 is not the pinned one.
+# Downloads once, resuming a broken one, and refuses a bad SHA-256.
 def fetch(url: str, target: Path, sha256: str) -> Path:
     if target.exists() and file_hash(target) == sha256:
         return target
@@ -177,7 +194,7 @@ def fetch(url: str, target: Path, sha256: str) -> Path:
     return target
 
 
-# The llama-server binary for this machine, downloaded and unpacked once.
+# This machine's llama-server binary, downloaded and unpacked once.
 def server_binary() -> Path:
     build = machine()
     home = MODELS_DIR / "llama.cpp" / build
@@ -200,7 +217,7 @@ def server_binary() -> Path:
     return found[0]
 
 
-# The model file, downloaded once from Hugging Face and checked against its pinned SHA-256.
+# The model file from Hugging Face, fetched once and SHA-256 checked.
 def model_file(model: str) -> Path:
     repo, name, sha = MODELS[model]
     target = MODELS_DIR / name
@@ -215,17 +232,24 @@ def model_file(model: str) -> Path:
     return fetch(f"https://huggingface.co/{repo}/resolve/main/{name}", target, sha)
 
 
-# One llama-server at the pinned settings, started and stopped around a block of runs.
+# A served model file's name, from a Windows or a Unix path alike.
+def served_name(path: str | None) -> str:
+    return PureWindowsPath(path or "").name if "\\" in (path or "") else Path(path or "").name
+
+
+# A llama-server at pinned settings, started and stopped around runs.
 class Server:
     # The model this server will load, resolved for a rehearsal.
-    def __init__(self, model: str):
+    def __init__(self, model: str, extra: tuple = ()):
         self.name = resolve(model)
-        self.path, self.process = model_file(self.name), None
+        self.path = None if REMOTE else model_file(self.name)
+        self.url = REMOTE or f"http://127.0.0.1:{PORT}"
+        self.process, self.extra = None, extra
 
-    # What a running server reports about itself, or None if nothing answers.
+    # What a running server says about itself, or None if nothing answers.
     def props(self) -> dict | None:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/props", timeout=5) as r:
+            with urllib.request.urlopen(f"{self.url}/props", timeout=5) as r:
                 p = json.loads(r.read())
         except OSError:
             return None
@@ -237,23 +261,27 @@ class Server:
     # Starts llama-server, or reuses one already serving this model.
     def __enter__(self) -> Server:
         running = self.props()
+        if REMOTE and not running:
+            raise RuntimeError(f"nothing answers at FIAM_LLM_URL={REMOTE}")
         if running:
-            if Path(running["model_path"]).name != self.path.name:
-                raise RuntimeError(f"port {PORT} serves another model; stop it first")
+            # Checked by file name; a remote file's hash cannot be checked here.
+            if served_name(running["model_path"]) != MODELS[self.name][1]:
+                raise RuntimeError(f"{self.url} serves another model; stop it first")
             return self
         binary = server_binary()
-        args = [str(binary), "-m", str(self.path), "--alias", self.name, "-c", str(CONTEXT)]
+        args = [str(binary), "-m", str(self.path), "--alias", self.name]
+        args += ["-c", str(CONTEXTS.get(self.name, CONTEXT))]
         args += ["-np", "1", "--seed", str(SEED), "--temp", str(TEMPERATURE), "--jinja"]
-        # Context checkpoints crash this build on Qwen's hybrid attention, so they stay off.
-        args += ["-ctxcp", "0", "-cram", "0", "--host", "127.0.0.1", "--port", str(PORT)]
-        args += [*COMPRESSED.get(self.name, ()), *NO_THINKING]
+        # Context checkpoints crash this build on Qwen's hybrid attention: off.
+        args += ["-ctxcp", "0", "-cram", "0", "--host", HOST, "--port", str(PORT)]
+        args += [*COMPRESSED.get(self.name, ()), *NO_THINKING, *self.extra]
         if os.environ.get("LLAMA_DEVICE"):
             args += ["--device", os.environ["LLAMA_DEVICE"]]
         env = os.environ | {"LD_LIBRARY_PATH": str(binary.parent)}
         RUNS.mkdir(parents=True, exist_ok=True)
-        log = (RUNS / f"server_{self.name}.log").open("w", encoding="utf-8")
+        log = (RUNS / f"server_{self.name}.log").open("a", encoding="utf-8")
         self.process = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, env=env)
-        # Loading 14 GB into memory takes a minute or two. Poll until the server answers.
+        # Loading 14 GB takes a minute or two, so poll until the server answers.
         for _ in range(900):
             if self.props():
                 return self
@@ -268,9 +296,16 @@ class Server:
             self.process.terminate()
             self.process.wait(timeout=60)
 
-    # One completion from the served model, with tools offered or a JSON shape required.
-    def chat(self, messages: list, tools: list | None = None, schema: dict | None = None) -> dict:
-        body = dict(model=self.name, messages=messages, temperature=TEMPERATURE, seed=SEED)
+    # One completion from the model, with tools offered or a JSON shape set.
+    def chat(
+        self,
+        messages: list,
+        tools: list | None = None,
+        schema: dict | None = None,
+        temperature: float = TEMPERATURE,
+        seed: int = SEED,
+    ) -> dict:
+        body = dict(model=self.name, messages=messages, temperature=temperature, seed=seed)
         body["max_tokens"] = 2048
         if tools:
             body["tools"] = tools
@@ -279,7 +314,7 @@ class Server:
                 type="json_schema", json_schema=dict(name="answer", schema=schema)
             )
         request = urllib.request.Request(
-            f"http://127.0.0.1:{PORT}/v1/chat/completions",
+            f"{self.url}/v1/chat/completions",
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json"},
         )
@@ -287,12 +322,32 @@ class Server:
             return json.loads(r.read())["choices"][0]["message"]
 
 
-# A plan is any numbered list the agent writes. Each new one is a revision, kept in order.
+# A run's model, server, settings and prompt hashes, so answers replay.
+def stamp(server: Server, log: str, prompts: tuple = ()) -> None:
+    props = server.props() or {}
+    manifest = dict(
+        model=server.name,
+        model_file=MODELS[server.name][1],
+        model_sha256=MODELS[server.name][2],
+        build=props.get("build"),
+        context=props.get("context"),
+        temperature=TEMPERATURE,
+        seed=SEED,
+        server_args=list(server.extra),
+        server="remote" if REMOTE else "local",
+        prompts={Path(p).name: paths.sha256(Path(p)) for p in prompts},
+        written=time.strftime("%Y-%m-%dT%H:%M:%S"),
+    )
+    target = RUNS / f"{log}.manifest.json"
+    target.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+
+
+# A plan is any numbered list the agent writes; each new one a revision.
 def plan_in(text: str) -> list[str]:
     return re.findall(r"^\s*\d+[.)]\s+(.+)$", text or "", flags=re.M)
 
 
-# The oldest tool results are shortened when the conversation nears the context window.
+# Shortens the oldest tool results as the chat nears the context window.
 def trim(messages: list) -> None:
     while sum(len(json.dumps(m)) for m in messages) / 3.5 > CONTEXT * 0.8:
         old = next(
@@ -303,7 +358,7 @@ def trim(messages: list) -> None:
         old["content"] = "[trimmed]"
 
 
-# Runs one agent to its answer or its budget, and writes its transcript. No clock time is kept.
+# Runs an agent to its answer or budget; the transcript keeps no clock.
 def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
     offered = {t.name: t for t in tools}
     specs = [
@@ -320,7 +375,7 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
         try:
             reply = server.chat(messages, specs)
         except urllib.error.HTTPError as exc:
-            # A reply the server cannot parse, say bad JSON in a tool call, costs a nudge.
+            # A reply the server cannot parse, say bad tool JSON, costs a nudge.
             nudges += 1
             reason = json.loads(exc.read() or b"{}").get("error", {}).get("message", str(exc))
             note = f"Your last reply could not be read: {reason[:300]}. Use valid JSON arguments."
@@ -342,7 +397,7 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
                 arguments = json.loads(tc["function"].get("arguments") or "{}")
                 if name not in offered:
                     raise KeyError(f"no tool named {name}")
-                # Near the end of the budget only the answer is accepted, so a run always closes.
+                # Near the budget's end only the answer counts, so a run always closes.
                 if run.budget - used <= WARN_AT and name != "final_answer":
                     raise RuntimeError(
                         f"{max(run.budget - used, 0)} calls left: call final_answer now"
@@ -371,8 +426,8 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
         agent=run.agent,
         tag=run.tag,
         model=server.name,
-        model_file=server.path.name,
-        model_sha256=file_hash(server.path),
+        model_file=MODELS[server.name][1],
+        model_sha256=file_hash(server.path) if server.path else "remote, not checked",
         build=machine(),
         server=server.props(),
         seed=SEED,
@@ -404,7 +459,7 @@ def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
     )
 
 
-# A reply's JSON answer, or an empty one when the model's reply was cut off or unreadable.
+# A reply's JSON answer, or an empty one if cut off or unreadable.
 def parse(reply: dict) -> dict:
     try:
         answer = json.loads(reply.get("content") or "{}")
@@ -413,7 +468,7 @@ def parse(reply: dict) -> dict:
     return answer if isinstance(answer, dict) else {}
 
 
-# An agent's answers so far, keyed, and a way to save each new one at once, so a stop resumes.
+# Saved answers by key and a saver for each new one, so a stop resumes.
 @contextmanager
 def answers(name: str, key):
     log = RUNS / f"{name}.jsonl"
@@ -421,7 +476,7 @@ def answers(name: str, key):
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
     done = {key(row): row for row in map(json.loads, lines)}
     with log.open("a", encoding="utf-8", newline="\n") as fh:
-        # One answer to the log and to what is done, with a line every 50 so progress shows.
+        # Logs one answer and marks it done, printing a line every 50.
         def save(row: dict) -> None:
             fh.write(json.dumps(row) + "\n")
             fh.flush()
@@ -432,7 +487,7 @@ def answers(name: str, key):
         yield done, save
 
 
-# Two runs of one agent, compared call by call. Identical means repeatable, never correct.
+# Two runs compared call by call. Identical means repeatable, not right.
 def repeatable(first: Path, second: Path) -> dict:
     # Each call in a transcript as its tool and arguments.
     def calls(path: Path) -> list:
@@ -448,7 +503,7 @@ def repeatable(first: Path, second: Path) -> dict:
     return dict(calls_first=len(a), calls_second=len(b), identical_prefix=same, identical=a == b)
 
 
-# Downloads and checks every model and this machine's build, so a long run never waits on one.
+# Fetches and checks all models and this build, so long runs never wait.
 def prepare() -> None:
     server_binary()
     for model in {resolve(m) for m in ("qwen", "gemma")}:
@@ -456,7 +511,7 @@ def prepare() -> None:
     print(f"ready: llama.cpp build {machine()}, models in {MODELS_DIR}")
 
 
-# Every agent's tools exactly as the model sees them, for the appendix the rules ask for.
+# Every agent's tools as the model sees them, for the rules' appendix.
 def export() -> None:
     from fiam.agents import critic
 
@@ -471,7 +526,7 @@ def export() -> None:
 
 
 if __name__ == "__main__":
-    # uv run -m fiam.agents.harness [prepare | export | serve qwen|gemma]
+    # uv run -m fiam.agents.harness [prepare | export | qwen|gemma [--long]]
     if "prepare" in sys.argv:
         prepare()
         sys.exit()
@@ -479,7 +534,8 @@ if __name__ == "__main__":
         export()
         sys.exit()
     name = next((a for a in sys.argv[1:] if a in MODELS), "qwen")
-    with Server(name) as running:
-        print(f"{running.name} at http://127.0.0.1:{PORT}/v1, {CONTEXT:,} tokens. Ctrl+C stops it.")
+    # --long serves as the desk's cache keys record (2048-token batches).
+    with Server(name, LONG_PROMPTS if "--long" in sys.argv else ()) as running:
+        print(f"{running.name} at {running.url}/v1, {CONTEXT:,} tokens. Ctrl+C stops it.")
         if running.process:
             running.process.wait()

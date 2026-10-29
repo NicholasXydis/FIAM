@@ -1,4 +1,4 @@
-# Checks the submitted files against the brief's rules and recomputes the headline, no data needed.
+# Checks the brief's rules and recomputes the headline, with no data.
 
 import json
 import sys
@@ -13,7 +13,7 @@ COLUMNS = ["Date", "PERMNO", "TICKER", "COMPANY NAME", "WEIGHT"]
 FIRST, LAST, MONTHS = "2021-01-01", "2026-08-01", 68
 
 
-# Each rule from the brief's Trading Criteria and Final Submission Package, as (name, ok, detail).
+# The brief's Trading Criteria and Final Submission Package rules.
 def rules(holdings: pd.DataFrame, returns: pd.DataFrame) -> list[tuple[str, bool, str]]:
     if holdings.empty:
         return [("holdings.csv has rows", False, "empty")]
@@ -39,9 +39,9 @@ def rules(holdings: pd.DataFrame, returns: pd.DataFrame) -> list[tuple[str, bool
     ]
 
 
-# IR against T-bill + 4%, Sharpe over T-bill and beta to the S&P 500, as the brief defines them.
+# IR vs T-bill + 4%, Sharpe vs T-bill and S&P 500 beta, per the brief.
 def headline(returns: pd.DataFrame) -> dict:
-    # The cash rate comes from the pinned FRED series, not the file, so the check is independent.
+    # Cash rate from pinned FRED, not the file, so the check is independent.
     df = returns.drop(columns=["rf"], errors="ignore")
     df = df.assign(month=pd.to_datetime(df["holding_month"])).merge(
         B.benchmarks()[["month", "rf", "mkt_rf"]], on="month", how="left"

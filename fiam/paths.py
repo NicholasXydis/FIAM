@@ -1,4 +1,4 @@
-# Where every step reads and writes: submission/ on an official run, out/ (FIAM_OUT) otherwise.
+# Where steps write: frozen/v1/submission/, else under FIAM_OUT.
 
 import hashlib
 import json
@@ -10,15 +10,17 @@ import numpy as np
 import pandas as pd
 
 OUT_ROOT = Path(os.environ.get("FIAM_OUT", "."))
-SUBMISSION = OUT_ROOT / "submission"
+SUBMISSION = OUT_ROOT / "frozen" / "v1" / "submission"
 EXHIBITS = SUBMISSION / "exhibits"
 HOLDINGS = SUBMISSION / "holdings.csv"
 RETURNS = SUBMISSION / "returns.csv"
 METRICS = SUBMISSION / "metrics.json"
-RESULTS = OUT_ROOT / "RESULTS.md"
-BRIEF = OUT_ROOT / "BRIEF.md"
+# Small frozen inputs, so git holds them. Relative like cache/.
+FROZEN = Path("frozen")
+# Saved research runs and their exhibits, read and written in place.
+RESEARCH = Path("out") / "research"
 
-# The small-run switch: every slow step shrinks to a slice, so the whole chain is tested in minutes.
+# Small-run switch: slow steps shrink, so the chain tests in minutes.
 SMOKE = os.environ.get("FIAM_SMOKE") == "1"
 
 
@@ -32,7 +34,7 @@ def exhibit(name: str) -> dict:
     return read_json(EXHIBITS / name)
 
 
-# Six decimals on write. The maths runs at full precision; only the saved file is rounded.
+# Six decimals on write only. The maths keeps full precision.
 def round_floats(obj, places: int = 6):
     if isinstance(obj, dict):
         return {k: round_floats(v, places) for k, v in obj.items()}
@@ -40,19 +42,19 @@ def round_floats(obj, places: int = 6):
         return [round_floats(v, places) for v in obj]
     if isinstance(obj, (float, np.floating)):
         return round(float(obj), places)
-    # A bool is an int to Python, so it is let through before it turns into 1.
+    # A bool is an int to Python, so it passes before it turns into 1.
     if isinstance(obj, (int, np.integer)) and not isinstance(obj, bool):
         return int(obj)
     return obj
 
 
-# Every JSON file the pipeline writes: indented, LF line endings, rounded unless told otherwise.
+# Every pipeline JSON: indented, LF endings, rounded unless told not to.
 def write_json(path: Path, obj, rounded: bool = True, end: str = "", default=None) -> None:
     text = json.dumps(round_floats(obj) if rounded else obj, indent=2, default=default)
     path.write_text(text + end, encoding="utf-8", newline="\n")
 
 
-# Unpacks a zip, refusing it whole if any entry would land outside the folder it belongs in.
+# Unzips, refusing the whole zip if any entry lands outside its folder.
 def safe_unzip(source: Path, target: Path, inside: Path | None = None) -> None:
     root = (inside or target).resolve()
     with zipfile.ZipFile(source) as zf:
@@ -82,6 +84,6 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-# A file still matches its recorded hash, byte for byte. Every text file here is written with LF.
+# A file still matches its recorded hash byte for byte. All text is LF.
 def matches(path: Path, digest: str) -> bool:
     return path.exists() and sha256(path) == digest

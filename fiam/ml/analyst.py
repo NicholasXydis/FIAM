@@ -1,5 +1,4 @@
-# The analyst's verdicts up to November 2020 learned from what it read, then applied to every
-# month, so no language model's reading of 2021-2026 reaches the book.
+# Learns the analyst to Nov 2020, so no 2021-26 LLM read hits the book.
 
 import lightgbm as lgb
 import numpy as np
@@ -13,7 +12,7 @@ from fiam.ml import text as T
 
 OUT = paths.EXHIBITS / "analyst_learned.json"
 CACHE = P.CACHE / "analyst.parquet"
-# The last decision whose verdict may teach: the month before the evaluation's first decision.
+# Last decision a verdict may teach: the month before evaluation starts.
 LAST_TAUGHT = pd.Timestamp("2020-11-30")
 PARAMS = dict(
     objective="regression",
@@ -30,12 +29,12 @@ PARAMS = dict(
 ROUNDS, FOLDS = 20 if paths.SMOKE else 300, 5
 
 
-# The verdicts a model may learn from: answered, and dated before the evaluation's decisions.
+# Verdicts a model may learn from: answered, dated before evaluation.
 def taught(verdicts: pd.DataFrame) -> pd.DataFrame:
     return verdicts[verdicts["analyst_conviction"].notna() & (verdicts["eom"] <= LAST_TAUGHT)]
 
 
-# What the analyst read, as numbers: its material filings' FinBERT vectors and the stock's card.
+# What the analyst read: material filings' FinBERT vectors, stock card.
 def features(vectors: pd.DataFrame) -> pd.DataFrame:
     filings = A.material()[["document_id", *data.KEYS]]
     joined = filings.merge(vectors, on="document_id").drop(columns="document_id")
@@ -43,7 +42,7 @@ def features(vectors: pd.DataFrame) -> pd.DataFrame:
     return monthly.merge(C.cards(), on=data.KEYS, how="left")
 
 
-# Mean monthly rank correlation of a score with next month's return, t over months of 10 or more.
+# Mean monthly rank IC with next return, t over months of 10 or more.
 def against_returns(frame: pd.DataFrame, score: str) -> dict:
     both = frame[["eom", score, "active"]].dropna()
     monthly = both.groupby("eom")[[score, "active"]].apply(
@@ -59,6 +58,7 @@ def against_returns(frame: pd.DataFrame, score: str) -> dict:
     )
 
 
+# Learns pre-2021 verdicts, scores every month and runs the recall test.
 def main() -> None:
     vectors = T.saved_vectors()
     if not A.CONVICTIONS.exists() or vectors is None:
@@ -68,7 +68,7 @@ def main() -> None:
     verdicts = data.read(A.CONVICTIONS)
     table = features(vectors)
     del vectors
-    # Text components fitted on the months that teach, so later filings never shape them.
+    # Text components fit on taught months; later filings never shape them.
     columns = [f"v{i}" for i in range(T.WIDTH)]
     early = (table["eom"] <= LAST_TAUGHT).to_numpy()
     parts = T.components(table[columns].to_numpy(dtype=np.float32), early)
@@ -90,7 +90,7 @@ def main() -> None:
     table["analyst_hat"] = model.predict(table[cols], num_threads=PARAMS["num_threads"])
     table[[*data.KEYS, "analyst_hat"]].to_parquet(CACHE, index=False)
 
-    # The recall test: the analyst's own verdicts beside the small model's, on the same months.
+    # Recall test: analyst and small-model verdicts on the same months.
     returns = data.panel(["ret_exc_lead1m"])
     returns["active"] = returns["ret_exc_lead1m"] - returns.groupby("eom")[
         "ret_exc_lead1m"

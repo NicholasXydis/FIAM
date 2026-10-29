@@ -13,6 +13,8 @@ matplotlib==3.11.0     # every chart
 scikit-learn==1.9.1    # ElasticNet and the template models
 lightgbm==4.7.0        # the teachers, the scorer and the comparison trees
 transformers==5.17.0   # FinBERT, which reads the 8-K filings
+exchange-calendars==4.13.2  # the NYSE calendar and its 1 pm early closes
+numba==0.68.0          # vfinal0's E-LASSO walk-forward (glmnet port)
 
 # CPU-only on purpose; macOS needs Apple silicon and macOS 14, older Macs lose only --ml.
 torch==2.14.0+cpu; sys_platform != "darwin"

@@ -1,0 +1,53 @@
+{
+  "name": "finals_2026",
+  "source": "Built from mandates/rules_2026.json (first challenge) and updated to the Final Challenge Instructions PDF, which governs (data/organisers)",
+  "nav_start": 1000000000.0,
+  "compound": true,
+  "names_min": 200,
+  "names_max": 500,
+  "gross": 2.0,
+  "net_band": 0.5,
+  "name_cap": 0.05,
+  "short_min_market_cap": 500.0,
+  "lag_days": 1,
+  "window": [
+    "2021-01-01",
+    "2026-08-31"
+  ],
+  "benchmark_path": "data/v4/clean/tb3ms.parquet",
+  "benchmark_premium": 0.04,
+  "holdings_spec": "date, identifier, weight for every rebalancing date (Arcana's file guide sets the layout)",
+  "turnover_annual": null,
+  "turnover_monthly": null,
+  "participation": null,
+  "style_cap": null,
+  "sector_cap": null,
+  "beta_cap": null,
+  "liquidity_floor": null,
+  "adv_days": null,
+  "exclude_sectors": [],
+  "min_market_cap": null,
+  "units": {
+    "nav_start": "US$",
+    "short_min_market_cap": "US$ millions, as the panel's me",
+    "gross": "fraction of NAV",
+    "net_band": "fraction of NAV",
+    "name_cap": "fraction of NAV",
+    "lag_days": "trading sessions",
+    "benchmark_premium": "per year, over the 3-month bill"
+  },
+  "quotes": {
+    "nav_start": "p4: US$1 billion endowed at the start of the out-of-sample period; the fund compounds from there",
+    "names_min": "p4: At least 200 and at most 500 names, long and short legs combined",
+    "names_max": "p4: At least 200 and at most 500 names, long and short legs combined",
+    "gross": "p4: Up to 200% of capital (leverage of at most 2×)",
+    "net_band": "p4: Within −50% to +50% at all times; dollar neutrality is the natural centre",
+    "short_min_market_cap": "p4: Only names with market capitalisation ≥ US$500m, measured at the formation date",
+    "name_cap": "p4: Maximum 5% of capital in any one name",
+    "window": "p4: Out-of-sample window 01/2021 – 08/2026",
+    "lag_days": "p15: information dated through day t forms the book at the close of day t+1, and the first return you earn on it is the close of t+1 to the close of t+2",
+    "holdings_spec": "p24: Holdings file: date, identifier, weight, for every rebalancing date in the out-of-sample period",
+    "benchmark_path": "p20: b_t = TB3MS_t / 1200 + 0.04 / 12 ... the daily equivalent is b_t = TB3MS_t / 25200 + 0.04 / 252",
+    "benchmark_premium": "p4: 3-month U.S. Treasury bill + 4% per year, computed month by month"
+  }
+}

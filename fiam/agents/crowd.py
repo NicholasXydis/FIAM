@@ -1,4 +1,4 @@
-# The crowd agent: local models pick stocks for retail clients from anonymous cards, 2016-2020.
+# Crowd agent: local models pick for retail clients from masked cards.
 
 from operator import itemgetter
 
@@ -9,14 +9,14 @@ from fiam import paths
 from fiam.agents import harness as H
 from fiam.ml import crowd as C
 
-PROMPT = H.ROOT / "prompts" / "agents" / "crowd.md"
-# Decisions from December 2015 to November 2020: every holding month of 2016-2020, sixty in all.
+PROMPT = H.ROOT / "fiam" / "agents" / "prompts" / "crowd.md"
+# Decisions Dec 2015 to Nov 2020: the 60 holding months of 2016-2020.
 FIRST, LAST = "2015-12-31", "2020-11-30"
 BATCH, PICKS, SEED = 40, 8, 42
 MODELS = ("gemma", "qwen")
 
 
-# One batch as the agent reads it: a code per stock, then its percentiles and this month's filings.
+# A batch as the agent sees it: codes, percentiles, the month's filings.
 def table(batch: pd.DataFrame, codes: list[str]) -> str:
     header = ["code", *C.CARD, "filings this month"]
     lines = [" | ".join(header)]
@@ -26,7 +26,7 @@ def table(batch: pd.DataFrame, codes: list[str]) -> str:
     return "\n".join(lines)
 
 
-# Each month's stocks shuffled with a fixed seed and cut into batches, so a rerun asks the same.
+# Each month's stocks shuffled by a set seed, so reruns ask the same.
 def batches(frame: pd.DataFrame, month: pd.Timestamp) -> list[pd.DataFrame]:
     part = frame[frame["eom"] == month]
     order = np.random.default_rng([SEED, month.year, month.month]).permutation(len(part))
@@ -34,7 +34,7 @@ def batches(frame: pd.DataFrame, month: pd.Timestamp) -> list[pd.DataFrame]:
     return [part.iloc[i : i + BATCH] for i in range(0, len(part), BATCH)]
 
 
-# One model through every month and batch. Each answer is saved as it comes, so a stop resumes.
+# One model through every month and batch, saving each answer to resume.
 def pick(model: str, frame: pd.DataFrame, months: list) -> list[dict]:
     system = PROMPT.read_text(encoding="utf-8")
     saved = H.answers(f"crowd_{model}", itemgetter("eom", "batch"))
@@ -73,7 +73,7 @@ def pick(model: str, frame: pd.DataFrame, months: list) -> list[dict]:
     return list(done.values())
 
 
-# Every model through every month, then one table of picks for the crowd model.
+# Every model through every month, then one table of the crowd's picks.
 def main() -> None:
     frame = C.cards(FIRST, LAST)
     months = sorted(frame["eom"].unique())

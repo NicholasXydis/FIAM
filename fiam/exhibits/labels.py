@@ -1,4 +1,4 @@
-# Every held label against a dated source, unconfirmed ones flagged. Writes labels.csv and .json.
+# Checks each held label on a dated source. Writes labels.csv and .json.
 
 import json
 import os
@@ -17,35 +17,35 @@ SOURCES = P.CACHE / "label_sources.parquet"
 EDGAR = P.CACHE / "edgar"
 OUT = paths.EXHIBITS
 
-# Endings that differ between sources without changing who the company is.
+# Endings that differ by source without changing who the company is.
 SUFFIXES = "|".join(
     ["INC", "CORP", "CORPORATION", "CO", "COMPANY", "LTD", "PLC", "LP", "LLC", "paths.HOLDINGS"]
     + ["HLDGS", "HLDG", "GROUP", "THE", "NV", "SA", "AG", "NEW", "DE"]
 )
 
-# CRSP's last month. Up to here CRSP decides; after it, public filings do.
+# CRSP's last month. Until then CRSP decides; after, public filings do.
 CRSP_END = pd.Timestamp("2025-12-31")
 
 
-# Upper case, no punctuation, no legal suffix, no spaces, so "S I G A" and "SIGA" match.
+# Upper case, no punctuation, suffix or spaces, so "S I G A" is "SIGA".
 def normalise(name) -> str:
     text = re.sub(r"[^A-Z0-9 ]", " ", str(name).upper())
     return re.sub(r"\s+", "", re.sub(rf"\b({SUFFIXES})\b", " ", text))
 
 
-# Share-class dots and Compustat's inactive suffix differ by source, so only letters count.
+# Class dots and Compustat's inactive suffix vary; only letters count.
 def symbol(ticker) -> str:
     return re.sub(r"[^A-Z]", "", re.sub(r"\.\d+$", "", str(ticker).upper()))
 
 
-# Same name, or ours cut short as the panel's 32-character names are: same start, letters in order.
+# Same name, or ours cut at 32 characters: same start, letters in order.
 def same_name(ours, theirs) -> bool:
     a, b = normalise(ours), normalise(theirs)
     rest = iter(b)
     return a == b or (a[:4] == b[:4] and all(letter in rest for letter in a))
 
 
-# Every holding row with its decision month, and whether its label was borrowed or is on show.
+# Holding rows by decision month, flagging borrowed and on-show labels.
 def holdings() -> pd.DataFrame:
     book = paths.holdings()
     book["eom"] = (book["Date"] - pd.offsets.MonthEnd(1)).astype("datetime64[ns]")
@@ -53,7 +53,7 @@ def holdings() -> pd.DataFrame:
     book = book.merge(borrowed, on=["Date", "PERMNO"], how="left")
     book["borrowed"] = book["label_month"].notna()
 
-    # The names the charts and tables show: top ten each side by weight and by P&L.
+    # Names the charts and tables show: top ten a side by weight and by P&L.
     earned = P.universe()[["permno", "eom", "ret_exc_lead1m"]]
     earned = earned.assign(eom=earned["eom"].astype("datetime64[ns]"))
     pnl = book.merge(earned, left_on=["PERMNO", "eom"], right_on=["permno", "eom"], how="left")
@@ -65,13 +65,13 @@ def holdings() -> pd.DataFrame:
     return book
 
 
-# CRSP's ticker and issuer in effect at the decision month-end, or nothing without WRDS.
+# CRSP's ticker and issuer at decision month-end, or none without WRDS.
 def crsp(book: pd.DataFrame) -> pd.DataFrame:
     names = data.wrds("crsp_monthly", ["PERMNO", "YYYYMM", "Ticker", "IssuerNm", "SecInfoStartDt"])
     if names is None:
         return pd.DataFrame(index=book.index, columns=["crsp_ticker", "crsp_name"])
     names["start"] = pd.to_datetime(names["SecInfoStartDt"]).astype("datetime64[ns]")
-    # A month can hold two records when a name changes inside it; the later one is in force.
+    # A name change inside a month gives two records; the later is in force.
     names = names.sort_values("start").drop_duplicates(["PERMNO", "YYYYMM"], keep="last")
     key = book["eom"].dt.year * 100 + book["eom"].dt.month
     found = pd.DataFrame(dict(PERMNO=book["PERMNO"], YYYYMM=key)).merge(
@@ -98,7 +98,7 @@ def filings(book: pd.DataFrame) -> pd.DataFrame:
     return matched.rename(columns=renamed)[[*renamed.values(), "cik", "document_id"]]
 
 
-# SEC's filer record: the name in force on a date from its dated former names, and its tickers.
+# SEC's filer record: the name in force on a date, and its tickers.
 def edgar(cik, eom: pd.Timestamp) -> tuple[str | None, list[str]]:
     path = None if pd.isna(cik) else EDGAR / f"CIK{int(cik):010d}.json"
     if path is None or not path.exists():
@@ -110,13 +110,13 @@ def edgar(cik, eom: pd.Timestamp) -> tuple[str | None, list[str]]:
     return record["name"], record.get("tickers", [])
 
 
-# Compustat's company header by gvkey. Current, not dated, so it is the weakest source.
+# Compustat's header by gvkey. Current, undated, so the weakest source.
 def compustat(book: pd.DataFrame) -> pd.DataFrame:
     header = data.wrds("compustat_quarterly", ["gvkey", "datadate", "tic", "conm", "cik"])
     if header is None:
         return pd.DataFrame(index=book.index, columns=["comp_ticker", "comp_name", "comp_cik"])
     header = header.sort_values("datadate").drop_duplicates("gvkey", keep="last")
-    # The gvkey the panel carries in the decision month itself, never an undated one.
+    # The panel's gvkey in the decision month itself, never an undated one.
     keys = data.features(["gvkey"]).dropna()
     keys["eom"] = keys["eom"].astype("datetime64[ns]")
     dated = book[["PERMNO", "eom"]].merge(
@@ -128,16 +128,16 @@ def compustat(book: pd.DataFrame) -> pd.DataFrame:
     return found.rename(columns={"tic": "comp_ticker", "conm": "comp_name", "cik": "comp_cik"})
 
 
-# The first source that agrees on both ticker and name, in order of how dated it is.
+# The first source agreeing on ticker and name, best-dated first.
 def verdict(row) -> str:
     ticker, name = symbol(row["TICKER"]), row["COMPANY NAME"]
-    # A name corrected from SEC's dated record is confirmed by it, even where CRSP has the typo.
+    # An SEC-dated name correction counts, even where CRSP has the typo.
     if (row.get("PERMNO"), name) in {(fix[0], fix[3]) for fix in P.LABEL_FIXES}:
         return "EDGAR, dated correction"
     if row["eom"] <= CRSP_END:
         if pd.isna(row["crsp_ticker"]):
             return "unconfirmed: no CRSP record that month"
-        # CRSP keeps the class letter in a separate field, so BF plus B is our BFB.
+        # CRSP keeps the class letter apart, so BF plus B is our BFB.
         root = symbol(row["crsp_ticker"])
         agree = ticker == root or (len(ticker) == len(root) + 1 and ticker.startswith(root))
         named = same_name(name, row["crsp_name"])
@@ -157,7 +157,7 @@ def verdict(row) -> str:
     return "unconfirmed: no public source agrees on both"
 
 
-# One EDGAR record per filer, fetched once with the contact SEC asks for, then read from cache.
+# One EDGAR record per filer, fetched once with a contact, then cached.
 def fetch(ciks: set) -> None:
     contact = (
         os.environ.get("SEC_CONTACT")
@@ -190,7 +190,7 @@ def main() -> None:
     book = holdings()
     book = book.join(crsp(book)).join(filings(book)).join(compustat(book))
     late = book["eom"] > CRSP_END
-    # A name with no 8-K still has a filer number in Compustat, which is enough to ask EDGAR.
+    # A name with no 8-K still has a Compustat filer number to ask EDGAR.
     book["cik"] = pd.to_numeric(book["cik"].fillna(book.pop("comp_cik")), errors="coerce")
     if "--fetch" in sys.argv:
         fetch(set(book.loc[late, "cik"].dropna().astype(int)))
@@ -202,7 +202,7 @@ def main() -> None:
     book["source"] = book.apply(verdict, axis=1)
     book["confirmed"] = ~book["source"].str.startswith(("unconfirmed", "differs"))
 
-    # Written out: every unconfirmed row, every borrowed label, every name on show.
+    # Written out: every unconfirmed row, borrowed label and name on show.
     listed = book[~book["confirmed"] | book["borrowed"] | book["shown"]].copy()
     listed["edgar_tickers"] = listed["edgar_tickers"].str.join(" ")
     listed["why_listed"] = (
@@ -210,7 +210,7 @@ def main() -> None:
         + listed["shown"].map({True: "shown ", False: ""})
         + (~listed["confirmed"]).map({True: "unconfirmed", False: ""})
     ).str.strip()
-    # Public evidence only. CRSP and Compustat values stay out of the committed file.
+    # Public evidence only. No CRSP or Compustat value is committed.
     keep = ["Date", "PERMNO", "TICKER", "COMPANY NAME", "why_listed", "source", "label_month"]
     keep += ["filing_ticker", "filing_company", "filed", "cik", "edgar_name", "edgar_tickers"]
     OUT.mkdir(parents=True, exist_ok=True)

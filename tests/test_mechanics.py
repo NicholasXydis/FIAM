@@ -1,7 +1,8 @@
-# Mechanics tests on small synthetic data. No organizer data, no WRDS, no network needed.
+# Mechanics tests on small synthetic data, with no real data or network.
 
 import hashlib
 import importlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -48,7 +49,7 @@ def test_drift_of_an_empty_book_is_nothing():
     assert P.drift(pd.Series(dtype=float), pd.DataFrame(), {}, 0.0) is None
 
 
-# One month's quotes for the cost model, with a known spread ratio for every size group.
+# One month's cost-model quotes, a known spread ratio per size group.
 def quotes(prc, spread, vol, volume, borrow, index) -> pd.DataFrame:
     return pd.DataFrame(
         dict(
@@ -63,7 +64,7 @@ def quotes(prc, spread, vol, volume, borrow, index) -> pd.DataFrame:
     )
 
 
-# The cost lines match a hand calculation; a name sold out is priced on last month's quotes.
+# Cost lines match a hand count. A sold-out name uses last month's data.
 def test_costs_match_a_hand_calculation(held, monkeypatch):
     monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.5})
     weights, _ = held
@@ -78,7 +79,7 @@ def test_costs_match_a_hand_calculation(held, monkeypatch):
         "cost_borrow",
         "cost_financing",
     }
-    # Name 1 unchanged, 2 and 3 bought back ($100k each at $20), 4 sold short ($200k at $50).
+    # Name 1 kept, 2 and 3 bought $100k each at $20, 4 shorted $200k at $50.
     assert turnover == pytest.approx(0.02)
     fees = 27.80e-6 * 200e3 + 0.000195 * 4000 + 0.000003 * 14000
     assert parts["cost_commission"] == pytest.approx((25 + 25 + 20 + fees) / 1e7)
@@ -97,7 +98,7 @@ def test_first_month_is_a_full_entry(monkeypatch):
     assert turnover == pytest.approx(0.01)
 
 
-# IBKR's minimum and 1% cap, FINRA's per-trade cap, and the borrow tiers.
+# IBKR's minimum and 1% cap, FINRA's per-trade cap and the borrow tiers.
 def test_commission_caps_and_borrow_tiers(monkeypatch):
     monkeypatch.setattr(C, "spread_ratios", lambda: {"large": 0.0})
     tiny = C.month_costs(
@@ -112,7 +113,7 @@ def test_commission_caps_and_borrow_tiers(monkeypatch):
     assert rates.tolist() == [0.003, 0.003, 0.01, 0.03, 0.08, 0.003]
 
 
-# The spread calibration reads only quotes from before the record starts.
+# Spread calibration reads only quotes from before the record starts.
 def test_spread_calibration_stops_in_2020(monkeypatch):
     asked = []
     monkeypatch.setattr(C.data, "research", lambda name, cols, filters=None: asked.append(filters))
@@ -120,7 +121,7 @@ def test_spread_calibration_stops_in_2020(monkeypatch):
     assert max(v for c, op, v in asked[0] if op == "<=") == pd.Timestamp("2020-12-31")
 
 
-# Truncation can leave net exposure, and the repair adds shares back, so one share is the bound.
+# Truncation and the repair each move shares, so one share is the bound.
 def test_whole_shares_land_within_one_share_and_near_neutral():
     weights = pd.Series([0.015, 0.012, -0.013, -0.014], index=list("abcd"))
     prices = pd.Series([123.4, 87.1, 250.0, 33.3], index=list("abcd"))
@@ -130,7 +131,7 @@ def test_whole_shares_land_within_one_share_and_near_neutral():
     assert abs(held.sum()) < 1e-4
 
 
-# A tiny panel and exits table: one name gone before the decision, one leaving next month.
+# Tiny panel and exits: one name dead by decision, one exits next month.
 def test_settle_screens_dead_names_and_books_payouts(monkeypatch):
     eom = pd.Timestamp("2024-03-31")
     panel = pd.DataFrame(
@@ -183,7 +184,7 @@ def test_missing_returns_are_booked_at_zero_and_recorded():
     assert record["missing_long_weight"] == 0
 
 
-# Importing any module must not run it or write anything, so a bundler can pull in just the code.
+# Importing a module must not run or write, so a bundler can take code.
 def test_every_module_imports_without_side_effects(tmp_path):
     files = sorted((ROOT / "fiam").rglob("*.py"))
     names = [".".join(p.relative_to(ROOT).with_suffix("").parts) for p in files]
@@ -200,7 +201,7 @@ def test_benchmarks_refuse_to_download_on_their_own(tmp_path, monkeypatch):
         benchmarks.pinned("SP500.csv")
 
 
-# The label rules: a cut-short panel name matches, a typo or a renamed company does not.
+# Label rules: a cut-short panel name matches, typos or renames do not.
 def test_label_names_allow_abbreviation_but_not_a_different_name():
     labels = importlib.import_module("fiam.exhibits.labels")
     assert labels.same_name("KULICKE & SOFFA INDS INC", "Kulicke & Soffa Industries, Inc.")
@@ -209,7 +210,7 @@ def test_label_names_allow_abbreviation_but_not_a_different_name():
     assert not labels.same_name("CONTANGO ORE INC", "Contango Silver & Gold Inc.")
 
 
-# CRSP keeps the share class apart, so BFB is BF class B, but BFXY is a different security.
+# CRSP keeps share class apart: BFB is BF class B, BFXY is not the same.
 def test_crsp_share_class_letter_is_accepted_once():
     labels = importlib.import_module("fiam.exhibits.labels")
     row = dict(eom=pd.Timestamp("2023-03-31"), crsp_ticker="BF", crsp_name="BROWN FORMAN CORP")
@@ -226,7 +227,7 @@ def test_saved_numbers_keep_booleans():
     assert P.round_floats(dict(passed=True, share=0.1234567)) == dict(passed=True, share=0.123457)
 
 
-# Display names lose only SEC's state tag, so AT&T keeps its ampersand and nothing is renamed.
+# Display names lose only SEC's state tag, so AT&T keeps its ampersand.
 def test_display_name_drops_only_the_state_tag():
     assert P.display_name("APPLIED MATERIALS INC /DE") == "APPLIED MATERIALS INC"
     assert (
@@ -235,7 +236,7 @@ def test_display_name_drops_only_the_state_tag():
     assert P.display_name("AT&T INC") == "AT&T INC"
 
 
-# A file matches its recorded hash only byte for byte, and a missing file never matches.
+# A file matches its hash only byte for byte. A missing file never does.
 def test_hashes_match_byte_for_byte(tmp_path):
     paths = importlib.import_module("fiam.paths")
     lf, crlf = tmp_path / "a.csv", tmp_path / "b.csv"
@@ -246,12 +247,12 @@ def test_hashes_match_byte_for_byte(tmp_path):
     assert not paths.matches(tmp_path / "missing.csv", digest)
 
 
-# A book inside every limit passes; one name short or 60% net fails exactly that rule.
+# A book within limits passes. One name short or 60% net fails its rule.
 def test_submission_rules_catch_each_breach():
     verify = importlib.import_module("fiam.checks.verify")
     months = pd.date_range("2021-01-01", "2026-08-01", freq="MS")
 
-    # Longs and shorts as % of NAV: 95/95 is neutral, 125/65 is 60% net inside 190% gross.
+    # Long/short % of NAV: 95/95 neutral, 125/65 is 60% net in 190% gross.
     def book(names: int, long: float = 95, short: float = 95) -> pd.DataFrame:
         half = names // 2
         weight = np.r_[np.full(half, long / half), np.full(names - half, -short / (names - half))]
@@ -274,7 +275,7 @@ def test_submission_rules_catch_each_breach():
     assert failed(book(200).iloc[:0]) == {"holdings.csv has rows"}
 
 
-# The comparison reads results, not run details such as the date or commit.
+# The comparison reads results, not run details like the date or commit.
 def test_comparison_ignores_run_details(tmp_path):
     compare = importlib.import_module("fiam.checks.compare")
     a, b = tmp_path / "a.json", tmp_path / "b.json"
@@ -286,7 +287,7 @@ def test_comparison_ignores_run_details(tmp_path):
     assert key == "ir" and compare.verdict(gap) == "differs"
 
 
-# --import copies the organizer's files by name and leaves everything else, a CV say, alone.
+# --import copies the organizer's files by name and leaves a CV alone.
 def test_import_takes_only_organizer_files(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location("run", ROOT / "run.py")
     run = importlib.util.module_from_spec(spec)
@@ -301,7 +302,7 @@ def test_import_takes_only_organizer_files(tmp_path, monkeypatch):
     assert sorted(p.name for p in (tmp_path / "data").iterdir()) == ["factor_char_list.csv"]
 
 
-# A number on one side and nothing on the other is a difference, never a match.
+# A number on one side and nothing on the other differs, never matches.
 def test_comparison_counts_a_value_missing_on_one_side(tmp_path):
     compare = importlib.import_module("fiam.checks.compare")
     a, b = tmp_path / "a.json", tmp_path / "b.json"
@@ -312,7 +313,7 @@ def test_comparison_counts_a_value_missing_on_one_side(tmp_path):
     assert compare.verdict(compare.difference(a, b)[0]) == "identical"
 
 
-# A score that is one risk bet cannot be neutral at its extremes; the optimizer reaches deeper.
+# A one-bet score can't be neutral at extremes, so the optimizer digs.
 def test_optimizer_reaches_deeper_rather_than_trading_nothing():
     rng = np.random.default_rng(0)
     risk = rng.normal(size=1000)
@@ -331,7 +332,7 @@ def test_optimizer_reaches_deeper_rather_than_trading_nothing():
     assert abs(weights.sum()) < 1e-6
 
 
-# A share worth more than its target rounds to nothing. Its gap is spread, not piled on one name.
+# A share dearer than its target rounds to zero. Its gap gets spread.
 def test_rounding_spreads_the_gap_of_a_name_too_dear_to_hold():
     weights = pd.Series([0.015] + [0.0015] * 10 + [-0.005] * 6, index=range(17))
     prices = pd.Series([700_000.0] + [1_000.0] * 16, index=range(17))

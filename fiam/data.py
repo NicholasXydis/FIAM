@@ -1,4 +1,4 @@
-# The data bundle, data/fiam_v1 or FIAM_DATA_DIR, the only place any step reads data from.
+# The data bundle, data/fiam_v1 or FIAM_DATA_DIR, the only data source.
 
 import json
 import os
@@ -15,13 +15,17 @@ LABELS = DIR / "labels_monthly.parquet"
 FILINGS = DIR / "filings.parquet"
 MANIFEST = DIR / "manifest.json"
 WRDS = DIR / "wrds"
+# Our WRDS extracts (tools/data/stock_data.py), never the raw archive.
+EXTRACTS = ROOT / "data" / "v4" / "extracts"
 
-# What every step needs. The WRDS tables and the research layers are extras a judge will not have.
+# What every step needs. A run without WRDS or research layers works.
 CORE = (FEATURES, LABELS, FILINGS, MANIFEST)
 KEYS = ["permno", "eom"]
 TARGET = "ret_exc_lead1m"
+# Under FIAM_BLIND=1 this reader drops rows with eom after this month.
+SEAL_EOM = pd.Timestamp("2020-12-31")
 
-# The SHA-256 the organizer's readme publishes. The manifest records what the bundle was built from.
+# The organizer readme's SHA-256s. The manifest records the build.
 PUBLISHED = {
     "chars_final_with_names.parquet": (
         "797c01ebd59f7a14585cb2e0290aa0b2c43b9188b7ac16384762d3df615215ca"
@@ -37,27 +41,34 @@ def manifest() -> dict:
     return json.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
-# The 147 characteristics the rules name, in their order. The only list a predictor may come from.
+# The 147 characteristics the rules name, the only list for predictors.
 def characteristics() -> list[str]:
     return manifest()["organizer_characteristics"]
 
 
-# Dates in whole seconds, the unit the organizer's panel uses, so every join lines up.
+# Dates in whole seconds, the organizer panel's unit, so joins line up.
 def read(path: Path, columns: list[str] | None = None, filters=None) -> pd.DataFrame:
     frame = pq.read_table(path, columns=columns, filters=filters).to_pandas()
     for column in ("eom", "holding_month"):
         if column in frame:
             frame[column] = pd.to_datetime(frame[column]).astype("datetime64[s]")
+    if blind() and "eom" in frame:
+        frame = frame[frame["eom"] <= SEAL_EOM].reset_index(drop=True)
     return frame
 
 
-# Predictors only. The label lives in its own file and never comes back from here.
+# Whether blind mode is on, which withholds rows after SEAL_EOM.
+def blind() -> bool:
+    return os.environ.get("FIAM_BLIND") == "1"
+
+
+# Predictors only. The label lives in its own file, never read here.
 def features(columns: list[str]) -> pd.DataFrame:
     assert TARGET not in columns, f"{TARGET} is a label, read it with panel()"
     return read(FEATURES, sorted({*KEYS, *columns}))
 
 
-# Predictors with next month's return beside them, for backtests and training only.
+# Predictors with next month's return, for backtests and training only.
 def panel(columns: list[str]) -> pd.DataFrame:
     wanted = sorted({*KEYS, *columns})
     frame = features([c for c in wanted if c != TARGET])
@@ -65,6 +76,9 @@ def panel(columns: list[str]) -> pd.DataFrame:
         label = read(LABELS, [*KEYS, "next_month_excess_return"])
         label = label.rename(columns={"next_month_excess_return": TARGET})
         frame = frame.merge(label, on=KEYS, how="left", validate="one_to_one")
+        # December 2020's label is January 2021: its row drops, never cut.
+        if blind():
+            frame = frame[frame["eom"] < SEAL_EOM - pd.offsets.MonthBegin(1)]
     return frame[wanted]
 
 
@@ -79,25 +93,25 @@ def wrds(name: str, columns: list[str] | None = None) -> pd.DataFrame | None:
     return pd.read_parquet(path, columns=columns) if path.exists() else None
 
 
-# A research layer, which stops in 2025, or None when the bundle does not carry it.
+# A research layer, which stops in 2025, or None if the bundle lacks it.
 def research(name: str, columns: list[str] | None = None, filters=None) -> pd.DataFrame | None:
     path = DIR / f"{name}.parquet"
     return read(path, columns, filters) if path.exists() else None
 
 
-# Size and date of every file a result depends on, so a cache key changes when the data does.
+# Size and date of each input file, so a cache key moves with the data.
 def signature() -> str:
     files = [*CORE, WRDS / "exits.parquet"]
     return "".join(f"{p.name}{p.stat().st_size}{p.stat().st_mtime_ns}" for p in files if p.exists())
 
 
-# The organizer files whose recorded SHA-256 differs from the published one.
+# The organizer files whose recorded SHA-256 differs from the published.
 def checksum_mismatches() -> list[str]:
     sources = manifest().get("sources", {})
     return [n for n, digest in PUBLISHED.items() if sources.get(n, {}).get("sha256") != digest]
 
 
-# Stops with the fix if the bundle is incomplete, carries the label, or has the wrong months.
+# Stops with the remedy if the bundle is missing, labelled or misdated.
 def validate() -> dict:
     missing = [p.name for p in CORE if not p.is_file()]
     if missing:

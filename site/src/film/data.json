@@ -1,0 +1,35 @@
+{
+  "roles": [
+    "Rules reader",
+    "Triage",
+    "Analyst",
+    "Devil's advocate",
+    "Memo writer",
+    "Explainer",
+    "AI crowd",
+    "Risk desk"
+  ],
+  "investors": 60,
+  "beta": 0.012,
+  "sharpe": 0.9121,
+  "eyebrow": "150 signals · 2,238 US stocks · $1 billion",
+  "shocks": [
+    { "first": "2000-03-10", "market": -0.1296 },
+    { "first": "2001-09-10", "market": -0.1216 },
+    { "first": "2002-07-01", "market": -0.2067 },
+    { "first": "2007-07-24", "market": -0.0596 },
+    { "first": "2008-03-03", "market": -0.0454 },
+    { "first": "2008-09-12", "market": -0.3614 },
+    { "first": "2009-03-09", "market": 0.3215 },
+    { "first": "2011-07-22", "market": -0.18 },
+    { "first": "2013-05-22", "market": -0.0534 },
+    { "first": "2015-08-18", "market": -0.1146 },
+    { "first": "2016-01-04", "market": -0.1178 },
+    { "first": "2018-01-26", "market": -0.0915 },
+    { "first": "2018-10-03", "market": -0.222 },
+    { "first": "2020-02-19", "market": -0.3834 },
+    { "first": "2020-11-06", "market": 0.0193 },
+    { "first": "2022-01-03", "market": -0.2619 },
+    { "first": "2024-07-31", "market": -0.0522 }
+  ]
+}

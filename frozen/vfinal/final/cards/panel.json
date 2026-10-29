@@ -1,0 +1,51 @@
+{
+ "source": "panel",
+ "use": "backtest",
+ "raw": {
+  "organisers/chars_final_with_names.parquet": "797c01ebd59f7a14585cb2e0290aa0b2c43b9188b7ac16384762d3df615215ca"
+ },
+ "rows_out": 529082,
+ "key": [
+  "permno",
+  "eom"
+ ],
+ "ids": "permno",
+ "clock": "eom",
+ "banned_dropped": [],
+ "restricted": {
+  "ticker": [
+   "label"
+  ],
+  "company_name": [
+   "label"
+  ]
+ },
+ "labels": {
+  "ret_exc_lead1m": 1
+ },
+ "rules": {
+  "chars_missing": [],
+  "duplicate_keys": 0,
+  "rows_without_first_close": 0
+ },
+ "rows_by_year": {
+  "2015": 44751,
+  "2016": 43472,
+  "2017": 42657,
+  "2018": 42662,
+  "2019": 42693,
+  "2020": 42891,
+  "2021": 48668,
+  "2022": 52424,
+  "2023": 49516,
+  "2024": 46603,
+  "2025": 44292,
+  "2026": 28453
+ },
+ "answers": {
+  "history_start": "2015-01 (eom)",
+  "lag": "known at eom, as the organisers define it; accounting release dates not verified by them (readme \u00a75, \u00a77)",
+  "vintage": "built from WRDS today, so restated Compustat values; SYY-10 inputs checked against SEC as-filed (\u00a76.7)",
+  "coverage": "every common stock in their US universe; coverage independent of later exit (audit: 98.6% of CRSP common stock-months)"
+ }
+}

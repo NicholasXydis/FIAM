@@ -1,0 +1,35 @@
+/* Back sits top left; the tour's name moves over to make room. */
+.tour-back {
+  position: fixed;
+  z-index: 60;
+  top: max(10px, env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px));
+}
+/* Under 360 px Back is its arrow alone, its word kept for readers. */
+@media (max-width: 359px) {
+  /* A square button that holds only the arrow. */
+  .tour-back {
+    width: 44px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+  /* The word hidden from sight but still read aloud. */
+  .tour-back .pill-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+/* Shift the tour's name right so Back has room. */
+html:has(.tour-back) .brand {
+  translate: 116px 0;
+}
+/* The tour fades in from the site, as the site's pages do. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.45s;
+  }
+}

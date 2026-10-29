@@ -1,0 +1,3 @@
+# pnpm runs no install scripts unless named; puppeteer's fetches Chrome.
+allowBuilds:
+  puppeteer: true

@@ -1,4 +1,4 @@
-# The seven performance charts the rules list, and the style every chart shares.
+# The seven performance charts the rules list, and their shared style.
 
 import matplotlib
 
@@ -27,7 +27,7 @@ ALT = "#7FA7BD"  # a second view of the strategy, a lighter petrol
 MUTED = "#6B7280"  # labels and axis furniture
 INK = "#0B1F33"  # titles
 
-# One clean sans-serif everywhere, with fallbacks so any machine draws the same charts.
+# One sans-serif with fallbacks, so any machine draws the same charts.
 matplotlib.rcParams.update(
     {
         "font.family": "sans-serif",
@@ -40,7 +40,7 @@ matplotlib.rcParams.update(
     }
 )
 
-# Two sizes, both in the slides' proportions. WIDE for date axes, SQUARE for distributions.
+# Two sizes in slide proportions: WIDE for dates, SQUARE for spreads.
 WIDE, SQUARE = (9, 4.6), (7.5, 4.6)
 
 # A line break inside a label.
@@ -48,28 +48,27 @@ BR = chr(10)
 PERIOD = "Jan 2021 to Aug 2026, after all modelled costs"
 
 
-# A month-keyed series from an exhibit, "2024-03": value, as a dated series.
+# A month-keyed exhibit dict, "2024-03": value, as a dated series.
 def monthly(values: dict) -> pd.Series:
     return pd.Series(list(values.values()), index=pd.to_datetime(list(values)), dtype=float)
 
 
 # Loads our monthly returns and works out the benchmark we have to beat.
 def load() -> pd.DataFrame:
-    # The file already has the T-bill rate, so just add the 4% a year the rules require.
+    # The file has the T-bill rate, so add the 4% a year the rules require.
     df = paths.returns()
     df["benchmark"] = df["rf"] + 0.04 / 12
     return df
 
 
-# The overall stock market return, month by month, to compare ourselves against.
+# The whole stock market's monthly return, to compare ourselves with.
 def market_series(index: pd.DatetimeIndex) -> pd.Series:
     bm = benchmarks().set_index("month")
-    # The source gives the market return above cash, so add cash back to get the full return.
+    # The source gives the market over cash, so add cash back for the total.
     return (bm["mkt_rf"] + bm["rf"]).reindex(index)
 
 
-# Every chart goes through style() and save(), so they share one look: a short title, a grey line
-# under it with the period, faint horizontal gridlines and nothing else.
+# One look for all: short title, grey period line, faint gridlines only.
 def style(ax, title: str, ylabel: str = "", dates: bool = False, subtitle: str = "") -> None:
     ax.set_title(title, loc="left", weight="bold", color=INK, pad=24 if subtitle else 10)
     if subtitle:
@@ -91,18 +90,18 @@ def xlabel(ax, text: str) -> None:
     ax.set_xlabel(text, color=MUTED)
 
 
-# A note under a research chart: the period and basis the rules ask every exhibit to state.
+# A research chart's note: the period and basis the rules ask for.
 def caption(ax, text: str) -> None:
     wrapped = textwrap.fill(text, width=110)
     ax.text(0, -0.16, wrapped, transform=ax.transAxes, fontsize=8, color=MUTED, va="top")
 
 
-# The note under a two-panel chart, on the figure so it cannot push the panels apart.
+# A two-panel note, on the figure so it cannot push the panels apart.
 def figure_caption(fig, text: str) -> None:
     fig.text(0.01, 0.0, textwrap.fill(text, width=160), fontsize=8, color=MUTED, va="top")
 
 
-# A label at the right end of a line, in the line's colour, instead of a legend box.
+# A label at a line's right end, in its colour, instead of a legend box.
 def end_label(ax, series: pd.Series, text: str, colour: str) -> None:
     last = series.dropna()
     ax.annotate(
@@ -128,7 +127,7 @@ def save(fig, name: str) -> None:
     print(f"  {name}.png")
 
 
-# Shows what $1 would have grown to, for us, the benchmark, and the market.
+# What $1 would have grown to, for us, the benchmark and the market.
 def cumulative(df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=WIDE)
     for series, label, colour, width, dash in [
@@ -136,7 +135,7 @@ def cumulative(df: pd.DataFrame) -> None:
         (df["benchmark"], "T-bill + 4%", BENCH, 1.6, ()),
         (df["portfolio_total_return"], "Strategy", OURS, 2.6, ()),
     ]:
-        # Market data arrives a month late, so the line stops rather than faking a zero.
+        # Market data arrives a month late, so the line stops, not a fake zero.
         growth = (1 + series.dropna()).cumprod()
         ax.plot(growth.index, growth, color=colour, linewidth=width, dashes=dash)
         end_label(ax, growth, f"{label}  {growth.iloc[-1]:.2f}", colour)
@@ -168,12 +167,12 @@ def underwater(df: pd.DataFrame) -> None:
     save(fig, "drawdown")
 
 
-# How the book's beta to the market moved, against the range a zero-beta book would wander in.
+# The book's market beta over time, against a zero-beta book's range.
 def rolling_beta(df: pd.DataFrame) -> None:
     market = market_series(df.index)
     excess, market_excess = df["portfolio_total_return"] - df["rf"], market - df["rf"]
     both = pd.concat([excess, market_excess], axis=1).dropna()
-    # The same HAC regression as the headline table, so the two can never disagree.
+    # The headline table's HAC regression, so the two can never disagree.
     full = regress(both.iloc[:, 0], both.iloc[:, 1])
     now, se = float(full.params.iloc[1]), float(full.bse.iloc[1])
     window = paths.exhibit("pack.json")["beta_drift"]["rolling_12m"]
@@ -202,7 +201,7 @@ def rolling_beta(df: pd.DataFrame) -> None:
     save(fig, "rolling_beta")
 
 
-# A rolling 12-month line with its losing stretches shaded, for IR and active return alike.
+# A rolling 12-month line, losing stretches shaded, for IR or active.
 def rolling(series: pd.Series, title: str, name: str) -> None:
     fig, ax = plt.subplots(figsize=WIDE)
     ax.fill_between(series.index, series, 0, where=series < 0, color=NEG, alpha=0.18, linewidth=0)
@@ -221,7 +220,7 @@ def rolling_ir(df: pd.DataFrame) -> None:
     rolling(ir, "Rolling 12-Month Information Ratio", "rolling_ir")
 
 
-# How much we beat the benchmark by, over rolling 12-month windows, compounded.
+# How much we beat the benchmark by, over rolling 12 months, compounded.
 def rolling_active(df: pd.DataFrame) -> None:
     portfolio = (1 + df["portfolio_total_return"]).rolling(12).apply(np.prod, raw=True) - 1
     benchmark = (1 + df["benchmark"]).rolling(12).apply(np.prod, raw=True) - 1
@@ -229,7 +228,7 @@ def rolling_active(df: pd.DataFrame) -> None:
     rolling(rolled, "Rolling 12-Month Return Over T-bill + 4% (%)", "rolling_active_return")
 
 
-# The spread of monthly returns, with the benchmark's monthly hurdle marked.
+# The spread of monthly returns, with the benchmark's hurdle marked.
 def histogram(df: pd.DataFrame) -> None:
     total = df["portfolio_total_return"] * 100
     fig, ax = plt.subplots(figsize=SQUARE)
@@ -243,18 +242,18 @@ def histogram(df: pd.DataFrame) -> None:
     save(fig, "return_histogram")
 
 
-# Shows the ten stocks that made us the most money and the ten that cost us the most.
+# The ten stocks that made us the most money and the ten that cost most.
 def contributors() -> None:
     holdings = paths.holdings()
-    # Holdings are dated the first, returns the month-end before. Step back to line up.
+    # Holdings are dated the first, returns the month-end before. Step back.
     holdings["eom"] = holdings["Date"] - pd.offsets.MonthEnd(1)
-    # The book's own universe, so delisting payouts count here exactly as they did in the book.
+    # The book's own universe, so delisting payouts count as in the book.
     earned = universe()[["permno", "eom", "ret_exc_lead1m"]]
     merged = holdings.merge(earned, left_on=["PERMNO", "eom"], right_on=["permno", "eom"])
-    # Weight is stored as a percentage, so divide by 100 before multiplying by the return.
+    # Weight is a percentage, so divide by 100 before applying the return.
     merged["pnl"] = merged["WEIGHT"] / 100 * merged["ret_exc_lead1m"].fillna(0)
 
-    # By security across all 68 months, labelled as it was last held, as the rules ask.
+    # By security over all 68 months, labelled as last held, per the rules.
     total = (merged.groupby("PERMNO")["pnl"].sum() * 100).sort_values()
     both = pd.concat([total.head(10), total.tail(10)])
     label = merged.sort_values("Date").groupby("PERMNO")[["TICKER", "COMPANY NAME"]].last()
@@ -266,10 +265,10 @@ def contributors() -> None:
     ax.set_yticklabels(label.loc[both.index, "TICKER"], fontsize=9)
     ax.axvline(0, color=INK, linewidth=0.8)
     ax.grid(axis="y", visible=False)
-    # Room both sides for the full names, or the longest one runs into the ticker axis.
+    # Room on both sides, or the longest name runs into the ticker axis.
     span = max(abs(both.values.min()), abs(both.values.max()))
     ax.set_xlim(-span * 1.75, span * 1.75)
-    # The full company name, uncut, beside its bar on the far side from the axis.
+    # The full company name, uncut, beside its bar away from the axis.
     for y, (permno, value) in enumerate(both.items()):
         ax.annotate(
             display_name(label.loc[permno, "COMPANY NAME"]),
@@ -281,7 +280,7 @@ def contributors() -> None:
             va="center",
             ha="left" if value > 0 else "right",
         )
-    # Before costs. We charge fees on the portfolio as a whole, not company by company.
+    # Before costs. Fees are charged on the whole book, not per company.
     style(
         ax,
         "Largest Winners and Losers",
@@ -290,9 +289,9 @@ def contributors() -> None:
     save(fig, "pnl_contributors")
 
 
-# Clears the folder, then draws the performance charts. research_charts.py runs after this.
+# Clears the folder, draws the charts. research_charts.py runs after.
 def main() -> None:
-    # Cleared first, so a renamed or retired chart never lingers beside the current ones.
+    # Cleared first, so the folder holds only the charts drawn here.
     for stale in FIGURES.glob("*.png"):
         stale.unlink()
     df = load()

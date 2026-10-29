@@ -1,0 +1,18 @@
+// The live site: built files only, no Worker code, on Cloudflare.
+{
+  "name": "quarcc-purple",
+  "compatibility_date": "2026-10-01",
+  // dist/ as built, with its _headers; unknown paths get 404.html.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash",
+  },
+  // The site answers on its own domain, claimed on the first deploy.
+  "routes": [{ "pattern": "quarccpurple.ca", "custom_domain": true }],
+  // No second copy on workers.dev, but previews live there, unlisted.
+  "workers_dev": false,
+  "preview_urls": true,
+  // Previews need nothing of their own, so the block stays empty.
+  "previews": {},
+}

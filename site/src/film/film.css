@@ -1,0 +1,312 @@
+@import "../shared/fonts.css";
+
+/* Sizes in vmin, so a wide screen and an upright phone read alike. */
+:root {
+  color-scheme: dark;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --lift: 0.035;
+  --big: 7.6vmin;
+  --eyebrow: 2.1vmin;
+  --sub: 2.4vmin;
+}
+
+/* A black page that never scrolls. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One picture, edge to edge. */
+canvas#gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Layers over the picture that never catch the pointer. */
+.titles,
+.marks,
+.end {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A title card, centred low or just over the gold line. */
+.card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6vmin;
+  padding-inline: 7vw;
+  text-align: center;
+  color: var(--ink);
+}
+.card.low {
+  bottom: 9vh;
+}
+/* A tall card sits lower and a little smaller, clear of the picture. */
+.card.low.tall {
+  bottom: 5vh;
+}
+.card.tall .big {
+  font-size: calc(var(--big) * 0.88);
+}
+.card.line {
+  bottom: calc(50vh + var(--lift) * 100vh + 3.4vmin);
+}
+/* Ink and accent colours for each tone, red for the storm. */
+.card.light,
+.end {
+  --ink: #f4f1fa;
+  --em: #f2c14e;
+}
+.card.dark {
+  --ink: #16111f;
+  --em: #8c6214;
+}
+/* Light text keeps a dark halo, so it reads over any picture. */
+.card.light .big,
+.card.light .eyebrow,
+.card.light .sub,
+.card.storm .big,
+.end {
+  text-shadow: 0 0 0.12em rgb(4 3 9 / 0.75);
+}
+
+/* The logo and name as the site shows them, Purple in violet. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+}
+.brand em {
+  color: #a98bff;
+}
+.brand-mark {
+  width: 1.05em;
+  height: 1.05em;
+  flex: none;
+}
+/* Above a title the name is the eyebrow, larger than small caps. */
+.eyebrow .brand {
+  font-size: 2.7em;
+}
+/* On the white studio the mark, ink and violet darken so they read. */
+.card.dark .brand em {
+  color: #5b3fc4;
+}
+.card.dark .brand-mark line {
+  stroke: #16111f;
+}
+.card.dark .brand-mark circle[fill="#fff"] {
+  fill: #16111f;
+}
+.card.dark .brand-mark circle[fill="#1b1240"] {
+  fill: #fff;
+}
+.card.storm {
+  --ink: #f4f1fa;
+  --em: #ff6a4d;
+}
+
+/* The big line in the display serif, balanced over its lines. */
+.big {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: var(--big);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+/* Each word animates alone, so it is hinted to the browser. */
+.w {
+  display: inline-block;
+  will-change: transform, filter, opacity;
+}
+/* Starred words, italic in the tone's accent. */
+.gold {
+  font-style: italic;
+  color: var(--em);
+}
+/* The small capitals above, and the sub line below. */
+.eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--eyebrow);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.sub {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--sub);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* Year marks on the water, red for a fall, cyan for a rise. */
+.mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--mono);
+  font-size: calc(var(--eyebrow) * 0.9);
+  letter-spacing: 0.14em;
+  color: rgb(255 128 102 / 0.92);
+  text-shadow: 0 0 1.2vmin rgb(255 74 38 / 0.6);
+}
+.mark.up {
+  color: rgb(120 220 240 / 0.92);
+  text-shadow: 0 0 1.2vmin rgb(79 208 234 / 0.6);
+}
+
+/* An agent's role, riding beside its light with a lilac glow. */
+.tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: calc(var(--eyebrow) * 0.82);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(244 241 250 / 0.88);
+  text-shadow: 0 0 1.4vmin rgb(169 139 255 / 0.7);
+}
+
+/* The end card, centred and lifted a little above the middle. */
+.end {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+.end-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.8vmin;
+  padding-inline: 7vw;
+  text-align: center;
+  transform: translateY(-4vh);
+}
+/* The name on the end card, a little smaller than its closing line. */
+.end-name {
+  margin: 0;
+  font-size: calc(var(--big) * 0.62);
+}
+/* The closing line, larger than any title. */
+.end-tag {
+  margin: 0;
+  font-family: var(--display);
+  font-size: calc(var(--big) * 1.18);
+  line-height: 1.02;
+}
+/* Its words do not move alone, so they need no layer hint. */
+.end-tag .w {
+  will-change: auto;
+}
+/* A short gold rule that fades out at both ends. */
+.end-rule {
+  width: 24vmin;
+  height: max(1px, 0.16vmin);
+  margin-block: 0.8vmin;
+  background: linear-gradient(90deg, transparent, #f2c14e 20%, #f2c14e 80%, transparent);
+}
+/* The event and the team in quieter ink. */
+.end-event {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: calc(var(--sub) * 0.82);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.end-team {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: calc(var(--sub) * 0.76);
+  color: var(--ink);
+}
+
+/* Upright screens get larger type, with cards and end card raised. */
+@media (max-aspect-ratio: 1/1) {
+  :root {
+    --big: 9.6vmin;
+    --eyebrow: 2.7vmin;
+    --sub: 3.5vmin;
+  }
+  .card.low,
+  .card.low.tall {
+    bottom: 15vh;
+  }
+  .card.tall .big {
+    font-size: var(--big);
+  }
+  .eyebrow {
+    letter-spacing: 0.2em;
+  }
+  .end-stack {
+    gap: 2.6vmin;
+    transform: translateY(-9vh);
+  }
+}
+
+/* The player's seek bar, a thin gold fill along the bottom. */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  cursor: pointer;
+}
+.bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgb(242 193 78 / 0.7);
+  transform-origin: left;
+}
+/* The player's hint, which fades once clicked. */
+.hint {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 241 250 / 0.6);
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.hint.off {
+  opacity: 0;
+}

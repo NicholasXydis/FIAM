@@ -1,0 +1,196 @@
+{
+ "run_at": "792a476c1586",
+ "tree_sha256": "792a476c1586d07ce929f59ec629f3faf302c5f0a4db85a86ee1488660fdf315",
+ "headline": "out/vfinal/bw_fresh_lag",
+ "table_9_1": [
+  {
+   "row": "1",
+   "name": "Ending value (US$ bn)",
+   "strategy": "1.4670739361597087",
+   "benchmark": "1.5078395313016442",
+   "note": "start to the last session, endowment row not counted"
+  },
+  {
+   "row": "2",
+   "name": "Cumulative return (%)",
+   "strategy": "46.70739361597087",
+   "benchmark": "50.78395313016442",
+   "note": ""
+  },
+  {
+   "row": "3",
+   "name": "Annualised return (%)",
+   "strategy": "arithmetic 6.86, CAGR 7.00",
+   "benchmark": "arithmetic 7.27, CAGR 7.52",
+   "note": "monthly mean x 12, and CAGR over the months"
+  },
+  {
+   "row": "4",
+   "name": "Annualised volatility (%)",
+   "strategy": "3.95992866589032",
+   "benchmark": "0.5646051443003003",
+   "note": "monthly sd x sqrt 12"
+  },
+  {
+   "row": "5",
+   "name": "Alpha vs S&P 500 (%, s.e.)",
+   "strategy": "3.46 (1.41)",
+   "benchmark": "n/a",
+   "note": "monthly OLS, intercept x 12, Newey-West 3 lags"
+  },
+  {
+   "row": "6",
+   "name": "Beta monthly (s.e.)",
+   "strategy": "0.012 (0.030)",
+   "benchmark": "n/a",
+   "note": "same regression"
+  },
+  {
+   "row": "7",
+   "name": "Beta daily (s.e.)",
+   "strategy": "0.018 (0.007)",
+   "benchmark": "n/a",
+   "note": "HAC 5 lags; Dimson beta 0.008"
+  },
+  {
+   "row": "8",
+   "name": "Sharpe ratio",
+   "strategy": "0.9156151421639169",
+   "benchmark": "undefined, constant excess",
+   "note": "monthly excess over the bill, mean / sd x sqrt 12"
+  },
+  {
+   "row": "9",
+   "name": "IR vs T-bill + 4%, before costs",
+   "strategy": "0.0031552465531865435",
+   "benchmark": "n/a",
+   "note": "cost and borrow added back over the last NAV; no financing cost is booked apart from these"
+  },
+  {
+   "row": "10",
+   "name": "Tracking error (%)",
+   "strategy": "3.919296294350943",
+   "benchmark": "n/a",
+   "note": "sd of monthly net return less the hurdle x sqrt 12"
+  },
+  {
+   "row": "11",
+   "name": "Max drawdown (%)",
+   "strategy": "-2.992757069444263",
+   "benchmark": "0.0",
+   "note": "daily compounded NAV from the start"
+  },
+  {
+   "row": "12",
+   "name": "Max one-month loss (%)",
+   "strategy": "-1.434909076978652",
+   "benchmark": "0.334920646888618",
+   "note": "worst calendar-month return"
+  },
+  {
+   "row": "13",
+   "name": "Max one-day loss (%)",
+   "strategy": "-1.36798861927655",
+   "benchmark": "0.01595238095238095",
+   "note": "worst daily return"
+  },
+  {
+   "row": "14",
+   "name": "Positions held",
+   "strategy": "avg 314.2, min 246, max 357",
+   "benchmark": "n/a",
+   "note": "daily, from the first trade day"
+  },
+  {
+   "row": "15",
+   "name": "Gross exposure (%)",
+   "strategy": "avg 136.5, max 192.9",
+   "benchmark": "n/a",
+   "note": "daily, from the first trade day, drifted"
+  },
+  {
+   "row": "16",
+   "name": "Net exposure (%)",
+   "strategy": "avg -0.3, min -3.1, max 2.2",
+   "benchmark": "n/a",
+   "note": "daily, from the first trade day"
+  },
+  {
+   "row": "17",
+   "name": "One-way turnover (%)",
+   "strategy": "with build 94, without 92; all trade days 95",
+   "benchmark": "n/a",
+   "note": "half the sum of |w - w carried| a day; each traded day goes to the last rebalance formed before it (spills and trades between rebalances added); 136 rebalances in 68 months, 3.9% each, x 24 a year; first one is the build"
+  },
+  {
+   "row": "18",
+   "name": "Average holding period (sessions)",
+   "strategy": "819.1547169790873",
+   "benchmark": "n/a",
+   "note": "runs of one name and side, weighted by mean weight; plain mean 651.8; runs cut by the window count as seen"
+  },
+  {
+   "row": "19",
+   "name": "Average position size (US$ m)",
+   "strategy": "5.525897913145019",
+   "benchmark": "n/a",
+   "note": "mean |value| over names and days"
+  },
+  {
+   "row": "20",
+   "name": "Short book median market cap (US$ m)",
+   "strategy": "23473",
+   "benchmark": "n/a",
+   "note": "median over trade days of each day's median; minimum 526; 127370 of 127370 short rows had a cap"
+  },
+  {
+   "row": "21",
+   "name": "Trading cost (% NAV a year)",
+   "strategy": "0.13621542530788167",
+   "benchmark": "n/a",
+   "note": "fees, spread and impact as booked; flat variant is a separate run"
+  },
+  {
+   "row": "22",
+   "name": "Borrow cost (% NAV a year)",
+   "strategy": "0.2875693901339393",
+   "benchmark": "n/a",
+   "note": "tiers as booked; the flat variant is a separate run"
+  },
+  {
+   "row": "23",
+   "name": "IR net of all costs",
+   "strategy": "-0.10 (0.42); at 100% gross IR -0.48, Sharpe 0.92",
+   "benchmark": "n/a",
+   "note": "s.e. from independent months (Lo 2002); average gross 136% scales the excess"
+  }
+ ],
+ "book": {
+  "breach_days": 0,
+  "names_min": 246,
+  "names_max": 357,
+  "gross_max": 1.928698010451773
+ },
+ "finals_check": {
+  "breaches": 0,
+  "violations": [],
+  "rebalances": 136
+ },
+ "input_cards_sha256": {
+  "dsf": "0681363a861fca13f4aa7c09c45aefd891ca7a9e31150acc2cc1f5976b8c4207",
+  "panel": "1a83764fc6cd17b1b25100ba7c4cb5b2a2857ca4296ec7c8daae93f65fce34e4"
+ },
+ "char_list_sha256": "066c783d8bae211643197c23c1474143384409976e38c5f010ea901e53f3904b",
+ "sources": {
+  "bw_fresh_lag/daily.parquet": "5ca218689d8ef37fd74654067bd62f476783c3c1318441a3cdea3bb2efd665c8",
+  "bw_fresh_lag/positions.parquet": "471e9365c218b91e827cb1e8a958571ad9418f211ea6b83a2ea04ce37efc6ec5",
+  "bw_fresh_lag/ledger.parquet": "f210310ee06ef98be6b9af42f15ef33908befe5104ac026f897731aa701e0c5b",
+  "bw_fresh_lag/compliance.parquet": "c34d0e4de110afb02a6a60b75b8ec88cc02a003790f435ec1448f76e713e3410",
+  "bw_fresh_lag/trades.parquet": "f7b2b488c756bca195283fec0bbb9f1e2e14873da2dac199133930bf7130fb49",
+  "bw_fresh_lag/table_9_1.csv": "5cf3767adf982848696d4a30a765887d27b4dfa2679abd2778bfbc0cc5e3883f",
+  "bw_fresh_lag/result.json": "450c7956b577afbd8a2f5edca4f6b0d7501e4b6c3f851e950cd5151b86df3b70",
+  "bw_fresh_lag/compliance_check.json": "e8aed633191e53cd0d7b90baa7c4ad8ba4dafe2d24fabd63eeaa9c0f9aa6c33a",
+  "bw_fresh_lag/arcana_weights_monthly.csv": "2639d98c2e1038928f9c4bfb1bee32dd033c76607ea55ecb470b413ccf68d9f0",
+  "bw_fresh_lag/arcana_weights_monthly_own.csv": "46d7dd10a649dd6d5989b6a492fcc2505b3dd415aca1114e418302e84aed751c"
+ }
+}

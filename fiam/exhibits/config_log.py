@@ -1,4 +1,4 @@
-# Everything we tried, by family, with its attempts: the deflated Sharpe counts them all.
+# Each experiment family and its trial count, for the deflated Sharpe.
 
 import csv
 
@@ -6,7 +6,7 @@ from fiam import paths
 
 OUT = paths.EXHIBITS
 
-# Eligible means it could have shipped had it won. The deflated Sharpe in book.py reads both.
+# Eligible means it could be the final book. book.py reads both counts.
 LEDGER = """
 28 candidate portfolios: signal sets, hedges, trading rules | candidates | yes | 27 | When chosen: 12-signal score 0.70, with the predicted-beta hedge 0.72, others -0.28 to 0.72. Final run 0.74 | Shipped, with the hedge
 A yearly rule to switch between candidates | candidates | no | 1 | IR 0.34 or 0.67, unstable between runs | Dropped
@@ -27,7 +27,7 @@ Signal-discovery agent and random search | control | no | 95 | Unseen IR -1.18 t
 Robustness: shuffles, delays, 2016-20, lags | control | no | 241 | Shuffled scores earn nothing, a day's delay costs nothing | Check
 """
 
-COLUMNS = ["experiment", "family", "eligible_for_deployment", "attempts", "result", "verdict"]
+COLUMNS = ["experiment", "family", "eligible_for_deployment", "fits", "result", "verdict"]
 
 
 # The table above as rows, attempts as numbers.
@@ -36,7 +36,7 @@ def rows() -> list[list]:
     return [[*row[:3], int(row[3]), *row[4:]] for row in parsed]
 
 
-# The two counts the deflated Sharpe divides by: attempts that could have shipped, and every fit.
+# The deflated Sharpe's two counts: eligible attempts and every fit.
 def attempts() -> tuple[int, int]:
     table = rows()
     return sum(r[3] for r in table if r[2] == "yes"), sum(r[3] for r in table)
@@ -48,7 +48,7 @@ def main() -> None:
     with (OUT / "config_log.csv").open("w", newline="", encoding="utf-8") as fh:
         csv.writer(fh, lineterminator="\n").writerows([COLUMNS, *rows()])
     eligible, everything = attempts()
-    print(f"{len(rows())} families, {eligible} eligible attempts, {everything} in all")
+    print(f"{len(rows())} families, {eligible} eligible fits, {everything} in all")
 
 
 if __name__ == "__main__":

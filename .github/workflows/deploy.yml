@@ -1,0 +1,136 @@
+# A preview of every pull request, and the live site once approved.
+name: deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The film streams from R2, and wrangler sends no usage reports.
+env:
+  VITE_MEDIA: https://media.quarccpurple.ca
+  WRANGLER: wrangler@4.148.0
+  WRANGLER_SEND_METRICS: "false"
+  PUPPETEER_SKIP_DOWNLOAD: "true"
+
+jobs:
+  # Each open pull request gets its own unlisted copy on workers.dev.
+  preview:
+    # Only branches of this repo, since forks get no secrets.
+    if: >-
+      github.repository == 'NicholasXydis/FIAM' &&
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    # The link shows on the pull request, with a View button.
+    environment:
+      name: preview
+      url: ${{ steps.preview.outputs.url }}
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: site/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vite build --logLevel warn
+      # Uploads dist/ as pr-<number>, then reads its address from the log.
+      - id: preview
+        run: |
+          pnpm --silent dlx "$WRANGLER" preview --name "pr-$PR"
+          url="$(jq -er 'select(.type == "preview") | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler.ndjson
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # It answers with the site's policy; a new address may take a moment.
+      - run: >-
+          curl -fsS --retry 6 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$URL"
+          | grep -i '^content-security-policy:'
+        env:
+          URL: ${{ steps.preview.outputs.url }}
+
+  # A closed pull request's preview is deleted with its deployments.
+  cleanup:
+    if: >-
+      github.repository == 'NicholasXydis/FIAM' &&
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: site/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: pnpm --silent dlx "$WRANGLER" preview delete --name "pr-$PR" --skip-confirmation
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # The live site, from main only, after a reviewer approves it.
+  production:
+    if: >-
+      github.repository == 'NicholasXydis/FIAM' &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # One deploy at a time; a newer one waits rather than cutting in.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    # The production environment's required reviewer is the approval.
+    environment:
+      name: production
+      url: https://quarccpurple.ca
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: site/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vite build --logLevel warn
+      # Uploads dist/ and claims quarccpurple.ca, as wrangler.jsonc says.
+      - run: pnpm --silent dlx "$WRANGLER" deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
