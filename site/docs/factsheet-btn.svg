@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="370" height="100" viewBox="0 0 370 100">
+  <rect width="370" height="100" rx="50" fill="#040309"/>
+  <rect x="2" y="2" width="366" height="96" rx="48" fill="none" stroke="#a98bff" stroke-width="3"/>
+  <g transform="translate(-16 0)" fill="none" stroke="#f2c14e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 78 32 H 95 L 104 41 V 68 H 78 Z"/>
+    <path d="M 95 32 V 41 H 104"/>
+    <path d="M 84 50 H 98 M 84 57 H 98 M 84 64 H 92"/>
+  </g>
+  <text x="214" y="61" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="30" font-weight="700" letter-spacing="2" fill="#f4f1fa" text-anchor="middle">FUND FACTS</text>
+</svg>

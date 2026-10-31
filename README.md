@@ -7,7 +7,7 @@ Finalist · McGill-FIAM Asset Management Hackathon 2026
 
 <a href="https://quarccpurple.ca"><img src="site/docs/site-btn.svg" alt="Visit quarccpurple.ca" width="560"></a>
 
-**[Fact sheet](finals/QUARCC_Purple_Fact_Sheet.pdf) · [Deck](finals/QUARCC_Purple_Finals.pdf)**
+<a href="finals/QUARCC_Purple_Fact_Sheet.pdf"><img src="site/docs/factsheet-btn.svg" alt="Fund facts" width="272"></a> <a href="finals/QUARCC_Purple_Finals.pdf"><img src="site/docs/deck-btn.svg" alt="Deck" width="272"></a>
 
 </div>
 
@@ -76,7 +76,7 @@ A rerun on an Apple Silicon Mac matches the lock byte for byte. The deck build n
 
 | Folder | Holds |
 |---|---|
-| `finals/` | The fact sheet, the deck, every figure they show and the AI agents' records |
+| `finals/` | The fund facts, the deck, every figure they show and the AI agents' records |
 | `fiam/` | The fund in `fiam/vfinal/`, the AI agents in `fiam/agents/` and the shared stock and file helpers |
 | `frozen/` | The lock and the fund's locked results, the mandate templates and the agents' frozen inputs |
 | `tools/` | The deck builder, the numbers pack, the site data builder, the data tools and the one-file builder |

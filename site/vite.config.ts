@@ -141,7 +141,9 @@ const launch = (): Plugin => {
       const hashes = new Set<string>();
       for (const page of readdirSync(outDir, { recursive: true }).map(String)) {
         if (!page.endsWith(".html")) continue;
-        for (const m of readFileSync(join(outDir, page), "utf8").matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+        for (const m of readFileSync(join(outDir, page), "utf8").matchAll(
+          /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi,
+        )) {
           if (/\bsrc=|application\/json/.test(m[1] ?? "")) continue;
           hashes.add(
             `'sha256-${createHash("sha256")

@@ -149,7 +149,7 @@ async function extras() {
   for (const page of BUILT) {
     const html = read(page);
     // Every inline script the page runs must be allowed by its hash.
-    for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+    for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
       if (/\bsrc=|application\/json/.test(m[1] ?? "")) continue;
       const hash = createHash("sha256")
         .update(m[2] ?? "")
