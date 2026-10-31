@@ -7,7 +7,7 @@ Finalist · McGill-FIAM Asset Management Hackathon 2026
 
 <a href="https://quarccpurple.ca"><img src="site/docs/site-btn.svg" alt="Visit quarccpurple.ca" width="560"></a>
 
-**[Fact sheet](finals/QUARCC_Purple_Fact_Sheet.pdf) · [Deck](finals/QUARCC_Purple_Finals.pdf) · [Deck as PowerPoint](finals/QUARCC_Purple_Finals.pptx?raw=true)**
+**[Fact sheet](finals/QUARCC_Purple_Fact_Sheet.pdf) · [Deck](finals/QUARCC_Purple_Finals.pdf)**
 
 </div>
 
