@@ -180,7 +180,7 @@ def test_beta_block_fills_the_early_months():
 
 # The inputs are the organisers' sets and our three signals by name.
 def test_signals_are_sets_and_ours(tmp_path):
-    folder = tmp_path / "src" / "forecast" / "plus"
+    folder = tmp_path / "plus"
     folder.mkdir(parents=True)
     theirs = [f"c{i:03d}" for i in range(20)]
     cols = [*b.KEYS, *theirs, *b.OURS]
@@ -203,8 +203,7 @@ def put(path: Path, data: dict) -> Path:
 
 
 # A small AI folder: each agent's own output and the findings file.
-def write_ai(pack: Path, rules_matched: int = 13) -> None:
-    ai = pack / "ai"
+def write_ai(ai: Path, rules_matched: int = 13) -> None:
     sources = {
         "rules": put(ai / "rules" / "rules_check.json", dict(matched=13, rules_read=15, m="Gemma")),
         "analyst": put(
@@ -297,7 +296,7 @@ def test_unbacked_standing_facts_stop_the_build(tmp_path, monkeypatch):
     monkeypatch.setattr(b, "STANDING", {"desk": "desk/desk_test.json"})
     with pytest.raises(SystemExit, match="no backing file"):
         b.agents(base_agents(), tmp_path)
-    put(tmp_path / "ai" / "desk" / "desk_test.json", dict(random=100))
+    put(tmp_path / "desk" / "desk_test.json", dict(random=100))
     got = {a["key"]: a for a in b.agents(base_agents(), tmp_path)}
     assert "facts" in got["desk"] and "facts" not in got["rules"]
 
@@ -306,7 +305,7 @@ def test_unbacked_standing_facts_stop_the_build(tmp_path, monkeypatch):
 def test_crowd_model_from_its_manifests(tmp_path):
     write_ai(tmp_path)
     assert b.crowd_models(tmp_path) == b.MODELS["gemma"]
-    path = tmp_path / "ai" / "crowd_aug" / "crowd_where_we_sit.json"
+    path = tmp_path / "crowd_aug" / "crowd_where_we_sit.json"
     study = json.loads(path.read_text())
     study["live_run"]["manifests"]["copycat"]["model_file"] = "Qwen3.8-27B.gguf"
     put(path, study)
@@ -319,7 +318,7 @@ def test_agents_must_be_eight(tmp_path):
     write_ai(tmp_path)
     with pytest.raises(SystemExit, match="exactly 8"):
         b.agents(base_agents()[:7], tmp_path)
-    path = tmp_path / "ai" / "agents_found.json"
+    path = tmp_path / "agents_found.json"
     file = json.loads(path.read_text())
     file["agents_count"] = 9
     put(path, file)
@@ -330,7 +329,7 @@ def test_agents_must_be_eight(tmp_path):
 # A finding still pending stops the build; all eight must be filled.
 def test_a_pending_finding_stops_the_build(tmp_path):
     write_ai(tmp_path)
-    path = tmp_path / "ai" / "agents_found.json"
+    path = tmp_path / "agents_found.json"
     file = json.loads(path.read_text())
     file["agents"]["Triage"] = "pending"
     put(path, file)
@@ -342,14 +341,14 @@ def test_a_pending_finding_stops_the_build(tmp_path):
 def test_findings_words_checked_against_their_files(tmp_path):
     write_ai(tmp_path)
     put(
-        tmp_path / "ai" / "triage" / "triage_final.json",
+        tmp_path / "triage" / "triage_final.json",
         dict(filings=dict(labelled=991), share_for_our_side=0.47),
     )
     with pytest.raises(SystemExit, match="Triage.*47%"):
         b.agents(base_agents(), tmp_path)
     write_ai(tmp_path / "two")
     put(
-        tmp_path / "two" / "ai" / "crowd_aug" / "crowd_where_we_sit.json",
+        tmp_path / "two" / "crowd_aug" / "crowd_where_we_sit.json",
         dict(round=dict(beta=0.09, long_pct=58, short_pct=51)),
     )
     with pytest.raises(SystemExit, match="AI crowd.*58th"):

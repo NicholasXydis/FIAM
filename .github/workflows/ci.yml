@@ -1,4 +1,4 @@
-# Windows, macOS and Linux: lint, test, then the one command with no data, from the repo and MAIN.py.
+# Windows, macOS and Linux: lint, test, then the no-data checks from the repo and from MAIN.py.
 # The website gets its own job, the same checks as pnpm check on a laptop.
 name: ci
 
@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# The lock file is the truth: a pyproject change without uv lock fails here, not on a judge's PC.
+# The lock file is the truth: a pyproject change without uv lock fails here first.
 env:
   UV_LOCKED: "1"
 
@@ -38,8 +38,8 @@ jobs:
       - name: MAIN.py alone in an empty folder
         shell: bash
         run: |
-          uv run python tools/build_main.py --out "$RUNNER_TEMP/judge/MAIN.py"
-          cd "$RUNNER_TEMP/judge" && uv run MAIN.py
+          uv run python tools/build_main.py --out "$RUNNER_TEMP/alone/MAIN.py"
+          cd "$RUNNER_TEMP/alone" && uv run MAIN.py
 
   # Whether this push or pull request touches the site or this workflow.
   changes:

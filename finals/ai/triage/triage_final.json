@@ -1,0 +1,203 @@
+{
+  "what": "A local model labelled every 8-K that the final book's companies filed from 2026-06-01 to 2026-08-31, using only filings accepted by the book's date. It reads text and sets no weight.",
+  "book": {
+    "date": "2026-08-31",
+    "names": 326,
+    "longs": 140,
+    "shorts": 186
+  },
+  "filings": {
+    "in_window": 995,
+    "accepted_after_book_date_left_out": 4,
+    "labelled": 991,
+    "passed_format_check": 991,
+    "failed": 0,
+    "failures": []
+  },
+  "accounting": {
+    "model": "gemma",
+    "model_file": "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
+    "servers_at_call_time": [
+      {
+        "build": "b11132-633733d0a",
+        "context": 65536,
+        "model_path": "models\\gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
+        "slots": 4,
+        "url": "http://127.0.0.1:8082",
+        "calls": 991
+      }
+    ],
+    "temperature": 0.0,
+    "seed": 42,
+    "max_tokens": 2048,
+    "reply_shape": "JSON schema enforced by the server",
+    "threads": "one per server slot, at most four",
+    "system_prompt_sha256": "6d2314d071003823786ec5c347b532ac1fbd9928947297560b426534f47fe09e",
+    "prompts": 991,
+    "calls_made_this_run": 0,
+    "answers_reused_from_log": 991,
+    "server_failures": 0,
+    "retried": 0,
+    "http_attempts": 991,
+    "calls_in_log": 991,
+    "format_failures": 0
+  },
+  "by_side": {
+    "long": {
+      "names_in_book": 140,
+      "names_with_8k": 140,
+      "filings": 412,
+      "good": 185,
+      "bad": 27,
+      "neutral": 200,
+      "share_good": 0.449,
+      "share_bad": 0.0655,
+      "share_neutral": 0.4854,
+      "event_types": {
+        "earnings_results": 148,
+        "executive_or_director_change": 67,
+        "financing_or_debt": 65,
+        "shareholder_vote": 35,
+        "merger_or_acquisition": 33,
+        "other": 16,
+        "dividend_or_buyback": 13,
+        "legal_or_regulatory": 10,
+        "investor_presentation": 6,
+        "governance_or_bylaws": 5,
+        "guidance_or_outlook": 4,
+        "accounting_or_auditor": 3,
+        "asset_sale_or_spin_off": 3,
+        "restructuring_or_impairment": 2,
+        "material_contract": 2
+      },
+      "materiality": {
+        "high": 168,
+        "medium": 132,
+        "low": 112
+      }
+    },
+    "short": {
+      "names_in_book": 186,
+      "names_with_8k": 186,
+      "filings": 579,
+      "good": 255,
+      "bad": 36,
+      "neutral": 288,
+      "share_good": 0.4404,
+      "share_bad": 0.0622,
+      "share_neutral": 0.4974,
+      "event_types": {
+        "earnings_results": 197,
+        "executive_or_director_change": 105,
+        "financing_or_debt": 104,
+        "shareholder_vote": 41,
+        "merger_or_acquisition": 32,
+        "other": 28,
+        "dividend_or_buyback": 19,
+        "investor_presentation": 12,
+        "governance_or_bylaws": 10,
+        "asset_sale_or_spin_off": 9,
+        "legal_or_regulatory": 7,
+        "material_contract": 6,
+        "guidance_or_outlook": 4,
+        "restructuring_or_impairment": 4,
+        "accounting_or_auditor": 1
+      },
+      "materiality": {
+        "high": 247,
+        "medium": 172,
+        "low": 160
+      }
+    }
+  },
+  "non_neutral_filings": 503,
+  "share_for_our_side": 0.4394,
+  "share_for_our_side_means": "good news on a long or bad news on a short, of non-neutral",
+  "labels_matching_item_codes": {
+    "checked": 734,
+    "share": 0.9469
+  },
+  "top_five": [
+    {
+      "ticker": "IBKR",
+      "company": "INTERACTIVE BROKERS GROUP INC",
+      "side": "long",
+      "weight": 0.040191,
+      "filing_date": "2026-07-21",
+      "accepted": "2026-07-22T00:11:00.000Z",
+      "accession": "0001381197-26-000118",
+      "items": "2.02,9.01",
+      "event_type": "earnings_results",
+      "tone": "good",
+      "materiality": "high",
+      "summary": "Interactive Brokers reported Q2 2026 earnings with diluted EPS of $0.69 and net revenues of $1.90 billion, both increasing significantly compared to the previous year.",
+      "for_our_side": true,
+      "url": "https://www.sec.gov/Archives/edgar/data/1381197/000138119726000118/ibkr-20260721.htm"
+    },
+    {
+      "ticker": "EXPD",
+      "company": "EXPEDITORS INTERNATIONAL WA INC",
+      "side": "long",
+      "weight": 0.038947,
+      "filing_date": "2026-08-04",
+      "accepted": "2026-08-04T16:59:36.000Z",
+      "accession": "0001193125-26-332198",
+      "items": "2.02,9.01",
+      "event_type": "earnings_results",
+      "tone": "good",
+      "materiality": "high",
+      "summary": "Expeditors International reported strong second quarter 2026 results, with diluted EPS increasing 51% to $2.03 and revenues rising 32% to $3.5 billion.",
+      "for_our_side": true,
+      "url": "https://www.sec.gov/Archives/edgar/data/746515/000119312526332198/expd-20260804.htm"
+    },
+    {
+      "ticker": "MET",
+      "company": "METLIFE INC",
+      "side": "long",
+      "weight": 0.037814,
+      "filing_date": "2026-08-05",
+      "accepted": "2026-08-06T00:31:29.000Z",
+      "accession": "0001099219-26-000048",
+      "items": "2.02,7.01,8.01,9.01",
+      "event_type": "earnings_results",
+      "tone": "good",
+      "materiality": "high",
+      "summary": "MetLife reported strong second quarter 2026 results with adjusted earnings per share increasing 20% and announced a new $3.0 billion stock repurchase authorization.",
+      "for_our_side": true,
+      "url": "https://www.sec.gov/Archives/edgar/data/1099219/000109921926000048/met-20260805.htm"
+    },
+    {
+      "ticker": "PRU",
+      "company": "PRUDENTIAL FINANCIAL INC",
+      "side": "long",
+      "weight": 0.036788,
+      "filing_date": "2026-08-04",
+      "accepted": "2026-08-05T00:24:19.000Z",
+      "accession": "0001137774-26-000170",
+      "items": "2.02,7.01,9.01",
+      "event_type": "earnings_results",
+      "tone": "good",
+      "materiality": "high",
+      "summary": "Prudential Financial reported strong second quarter 2026 results, with net income rising to $985 million compared to $533 million in the prior year's quarter.",
+      "for_our_side": true,
+      "url": "https://www.sec.gov/Archives/edgar/data/1137774/000113777426000170/pru-20260804.htm"
+    },
+    {
+      "ticker": "LRCX",
+      "company": "LAM RESH CORP",
+      "side": "long",
+      "weight": 0.035819,
+      "filing_date": "2026-07-29",
+      "accepted": "2026-07-29T20:07:10.000Z",
+      "accession": "0000707549-26-000033",
+      "items": "2.02,9.01",
+      "event_type": "earnings_results",
+      "tone": "good",
+      "materiality": "high",
+      "summary": "Lam Research reported record fiscal quarter revenue of $6.72 billion and non-GAAP diluted EPS of $1.82, driven by AI-related semiconductor demand.",
+      "for_our_side": true,
+      "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000033/lrcx-20260729.htm"
+    }
+  ],
+  "top_five_rule": "highest materiality first, then the largest absolute weight"
+}

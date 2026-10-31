@@ -1,4 +1,4 @@
-# Builds MAIN.py, the brief's one file: build_main.py [--with-edgar].
+# Builds MAIN.py, the repo in one file: build_main.py [--with-edgar].
 
 import base64
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# What git ships except tests, tools, the site and two docs files.
+# What git ships except tests, tools, the site and the finals folder.
 LEAVE_OUT = (
     "tests/",
     "tools/",
@@ -17,15 +17,12 @@ LEAVE_OUT = (
     ".gitattributes",
     ".gitignore",
     ".env.example",
-    "docs/PLAN.md",
-    "docs/TEAM.md",
+    "finals/",
 )
 # The fund's own test file, which the lock hashes beside its code.
 CARRIED_TESTS = {"tests/test_vfinal.py"}
 BUILT = {"MAIN.py"}
 LARGE = {"data/edgar_cache.zip"}
-# Tables derived from WRDS data, which MAIN.py never carries.
-NEVER = {"book_inputs.parquet", "borrow.parquet"}
 # Ignores later packages, so a new release never changes a rerun.
 EXCLUDE_NEWER = "2026-10-14T00:00:00Z"
 
@@ -175,8 +172,6 @@ def carried(with_edgar: bool, with_new: bool = False) -> dict[str, tuple[str, st
         path = ROOT / name
         left_out = name.startswith(LEAVE_OUT) and name not in CARRIED_TESTS
         if not name or name in BUILT or left_out or not path.is_file():
-            continue
-        if Path(name).name in NEVER:
             continue
         if name in LARGE and not with_edgar:
             continue

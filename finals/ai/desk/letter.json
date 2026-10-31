@@ -1,0 +1,130 @@
+{
+ "what": "The memo writer's August 2026 investor letter. A local model wrote it from numbers.json alone. Code kept a sentence only if every number in it is printed in the facts, rounded at most, and it breaks no honesty or advice rule. It sets no weight.",
+ "as_of": "2026-08-31",
+ "model": "Gemma 4 26B (gemma-4-26B-A4B-it-UD-IQ4_XS.gguf)",
+ "settings": {
+  "temperature": 0.0,
+  "seed": 42
+ },
+ "source": "out/pack/numbers.json",
+ "calls_log": "finals/ai/desk/calls.jsonl",
+ "calls": [
+  {
+   "key": "memo_letter_2026-08_p2",
+   "error": null,
+   "unsupported_numbers": []
+  }
+ ],
+ "prompt_number": 2,
+ "earlier_prompts_note": "the first prompt gave the facts as JSON only and its answer quoted raw decimals and left out the information ratio; it stays in the log, unused",
+ "letter": {
+  "performance": "We fell short of the hurdle in this simulated record. The fund ended at $1.467 billion, which is $41.6 million below the hurdle of $1.509 billion. Our information ratio after costs was -0.11 with a standard error of 0.42, which suggests the results are not statistically significant. Year to date, the fund returned 3.62% against a hurdle of 5.21%.",
+  "drivers": "The long leg made $859.0 million, while the short leg lost $601.3 million because the stocks we shorted rose 73.5%. Stocks before costs made $257.7 million. We earned $239.5 million in interest. Trading costs and borrow totaled $30.1 million. Our best year was 2023, when we beat the hurdle by 5.65 points, and our worst was 2025, when we fell behind by 6.30 points.",
+  "risk": "The record was relatively calm with an annual volatility of 3.96%. Our largest drawdown was -2.99% on 2024-07-30, and our worst month was -1.43%. We moved very little with the S&P 500, showing a monthly correlation of 0.06. We had 0 limit breaches over 136 rebalances.",
+  "watch": "We are watching the 63-day volatility, which peaked at 6.68% on 2026-07-28. We also monitor our exposure, which averaged 136.5%.",
+  "closing": "The simulated record shows we did not meet our target. We remain focused on improving our results."
+ },
+ "words": 206,
+ "check": {
+  "numbers_checked": 33,
+  "numbers_kept": 33,
+  "sentences_kept": 17,
+  "sentences_dropped": 0,
+  "dropped": [],
+  "overlap_with_explainer": 0.071,
+  "overlap_means": "largest share of one letter sentence's word triplets found in any explainer answer; 0 means no shared triplet"
+ },
+ "facts": {
+  "period": "January 2021 to August 2026, 68 months, simulated, start $1 billion",
+  "ending_value_billion": 1.4671,
+  "hurdle_ending_value_billion": 1.5087,
+  "hurdle_definition": "3-month T-bill plus 4% a year, as the competition sets it",
+  "shortfall_to_hurdle_million": 41.64,
+  "hurdle_cumulative_return_pct": 50.8714,
+  "cumulative_return_pct": 46.7074,
+  "compound_annual_return_pct": 6.9976,
+  "information_ratio_after_costs": -0.1075,
+  "information_ratio_standard_error": 0.4202,
+  "information_ratio_before_costs": 0.0005,
+  "sharpe_ratio": 0.9121,
+  "alpha_vs_sp500_pct_a_year": 3.4569,
+  "alpha_standard_error_pct": 1.4143,
+  "year_to_date_2026_through_august": {
+   "fund_pct": 3.6217,
+   "hurdle_pct": 5.2065,
+   "fund_less_hurdle_pts": -1.5849
+  },
+  "calendar_years": [
+   {
+    "year": 2021,
+    "fund_pct": 6.9755,
+    "hurdle_pct": 4.12,
+    "sp500_pct": 26.8918,
+    "fund_less_hurdle_pts": 2.8555
+   },
+   {
+    "year": 2022,
+    "fund_pct": 1.3357,
+    "hurdle_pct": 6.1897,
+    "sp500_pct": -19.4433,
+    "fund_less_hurdle_pts": -4.854
+   },
+   {
+    "year": 2023,
+    "fund_pct": 15.1023,
+    "hurdle_pct": 9.4549,
+    "sp500_pct": 24.2295,
+    "fund_less_hurdle_pts": 5.6474
+   },
+   {
+    "year": 2024,
+    "fund_pct": 11.1592,
+    "hurdle_pct": 9.3444,
+    "sp500_pct": 23.3083,
+    "fund_less_hurdle_pts": 1.8148
+   },
+   {
+    "year": 2025,
+    "fund_pct": 2.0764,
+    "hurdle_pct": 8.3717,
+    "sp500_pct": 16.3876,
+    "fund_less_hurdle_pts": -6.2953
+   },
+   {
+    "year": 2026,
+    "fund_pct": 3.6217,
+    "hurdle_pct": 5.2065,
+    "sp500_pct": 12.2802,
+    "fund_less_hurdle_pts": -1.5849
+   }
+  ],
+  "money_million": {
+   "long_leg": 859.028,
+   "short_leg": -601.332,
+   "stocks_before_costs": 257.7053,
+   "interest": 239.5001,
+   "trading_costs": 9.5102,
+   "borrow": 20.6213,
+   "trading_costs_and_borrow": 30.1315
+  },
+  "shorted_stocks_cumulative_rise_pct": 73.533,
+  "months_up_pct": 70.588,
+  "months_beating_hurdle": 31,
+  "months": 68,
+  "volatility_pct_a_year": 3.9599,
+  "volatility_63_day_highest_pct": 6.676,
+  "volatility_63_day_highest_date": "2026-07-28",
+  "volatility_ceiling_pct": 12,
+  "max_drawdown_pct": -2.9928,
+  "max_drawdown_date": "2024-07-30",
+  "worst_month_pct": -1.4349,
+  "beta_to_sp500_monthly": 0.0125,
+  "correlation_with_sp500_monthly": 0.0617,
+  "sp500_ending_value_billion": 2.0463,
+  "names_held_min": 246.0,
+  "names_held_max": 357.0,
+  "gross_exposure_average_pct": 136.4733,
+  "limit_breaches": 0.0,
+  "rebalances": 136.0
+ }
+}

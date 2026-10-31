@@ -44,7 +44,12 @@ export function Profile({ person, before, after }: Props) {
               ))}
             </ul>
           )}
-          {person.linkedin && <Pill label="LinkedIn" icon="out" trailing external href={person.linkedin} />}
+          {(person.linkedin || person.github) && (
+            <div className="profile-links">
+              {person.linkedin && <Pill label="LinkedIn" icon="linkedin" external href={person.linkedin} />}
+              {person.github && <Pill label="GitHub" icon="github" external href={person.github} />}
+            </div>
+          )}
         </div>
       </section>
       <nav aria-label="Other people" className="grid w-full max-w-120 grid-cols-2 gap-3 max-[34rem]:grid-cols-1">

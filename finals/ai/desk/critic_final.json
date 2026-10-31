@@ -1,0 +1,258 @@
+{
+ "what": "The devil's advocate on the final book. A local model wrote the attacks from the evidence below. Code checked every number in them and wrote every answer and verdict from the same evidence. Carbon Arc appears as counts only. No agent sets a weight.",
+ "as_of": "2026-08-31",
+ "model": "Gemma 4 26B (gemma-4-26B-A4B-it-UD-IQ4_XS.gguf)",
+ "settings": {
+  "temperature": 0.0,
+  "seed": 42
+ },
+ "calls_log": "finals/ai/desk/calls.jsonl",
+ "call": {
+  "key": "devil_2026-08-31_p2",
+  "error": null,
+  "seconds": 33.0
+ },
+ "prompt_number": 2,
+ "earlier_prompts_note": "prompt 1 gave the evidence as JSON only and let the model pick 5 to 8 topics; it quoted field names and put attacks under the wrong topics, so the code answers did not match. It stays in the log, unused",
+ "topics_asked": [
+  "hurdle",
+  "short_leg",
+  "costs",
+  "crowding",
+  "crowd_sell_off",
+  "card_spend",
+  "hype",
+  "concentration",
+  "liquidity",
+  "market_beta",
+  "news",
+  "reports"
+ ],
+ "verdict_rules": "stands, partly stands or does not stand, set in fiam/agents/devil.py",
+ "attacks": [
+  {
+   "topic": "hurdle",
+   "severity": "high",
+   "claim": "The fund failed to meet its target, ending at $1.467 billion against a hurdle of $1.509 billion, leaving it $41.6 million short. The information ratio is a negative -0.11, and trading and borrow costs consumed 72% of the gap.",
+   "facts_shown": "The record ended at $1.467 billion against the hurdle's $1.509 billion, $41.6 million short. The information ratio is -0.11 with a standard error of 0.42, and 0.00 before trading costs and borrow. Those costs are 72% of the gap. Sharpe ratio 0.91.",
+   "answer": "The record ends at $1.467 billion against the hurdle's $1.509 billion, an information ratio of -0.11 with a standard error of 0.42. Before trading costs and borrow the ratio is 0.00, and those costs are 72% of the $41.6 million gap.",
+   "verdict": "stands"
+  },
+  {
+   "topic": "short_leg",
+   "severity": "high",
+   "claim": "The short leg is a massive drag, losing $601.3 million while the stocks shorted rose 73.5%. This follows a disastrous 2025 where the fund made only 2.08% against a hurdle of 8.37%.",
+   "facts_shown": "The short leg lost $601.3 million and the long leg made $859.0 million. The stocks we shorted rose 73.5% over the record. In 2025, the worst year against the hurdle, the fund made 2.08% against 8.37%.",
+   "answer": "The short leg lost $601.3 million while the long leg made $859.0 million, and the stocks we shorted rose 73.5% over the record.",
+   "verdict": "stands"
+  },
+  {
+   "topic": "reports",
+   "severity": "high",
+   "claim": "The short conviction is extremely weak, as the latest reports for the 10 largest shorts are mixed on 9 and only support our side for 1.",
+   "facts_shown": "Of the 10 largest longs the latest report supports our side for 7, is mixed on 3 and challenges 0. Of the 10 largest shorts the latest report supports our side for 1, is mixed on 9 and challenges 0.",
+   "answer": "Of the longs read, the latest report supports 7, is mixed on 3 and challenges 0. Of the shorts read, the latest report supports 1, is mixed on 9 and challenges 0.",
+   "verdict": "partly stands"
+  },
+  {
+   "topic": "costs",
+   "severity": "medium",
+   "claim": "The fund's efficiency is poor. When using competitive flat conservative costs, the information ratio drops to -0.27.",
+   "facts_shown": "Trading costs were $9.5 million and borrow $20.6 million. On the competition's flat conservative costs the information ratio is -0.27.",
+   "answer": "Trading costs were $9.5 million and borrow $20.6 million. On the flat conservative costs the information ratio is -0.27 instead of -0.11.",
+   "verdict": "partly stands"
+  },
+  {
+   "topic": "crowding",
+   "severity": "medium",
+   "claim": "The fund is heavily reliant on following the crowd, making $550.6 million when agreeing with them but losing $285.3 million when disagreeing. The return loads 0.09 on the crowd factor with a t of 2.66.",
+   "facts_shown": "On 2026-08-31 our longs sit at the AI crowd's 58th percentile and our shorts at the 57th. From 2021-01 to 2026-08 the averages are the 66th and 56th. The fund's return loads 0.09 on the crowd factor, t 2.66. Over the record the book made $550.6 million where it agreed with the crowd and lost $285.3 million where it disagreed.",
+   "answer": "On 2026-08-31 our longs sat at the AI crowd's 58th percentile and our shorts at the 57th. The fund's return loads 0.09 on the crowd factor (t 2.66). Over the record, where the book agreed with the crowd it made $550.6 million and where it disagreed it lost $285.3 million.",
+   "verdict": "partly stands"
+  },
+  {
+   "topic": "hype",
+   "severity": "medium",
+   "claim": "The book has exposure to problematic areas, including 6 longs in Hype where 1 has seen spend fall by 10% or more, and 21 shorts in Hidden gems where 12 have seen spend grow by 10% or more.",
+   "facts_shown": "6 longs sit in Hype, in the AI crowd's top half while card spend falls, 1 of them by 10% or more. 21 shorts sit in Hidden gems, in its bottom half while spend grows, 12 of them by 10% or more. 10 of 37 crowd favourites with data sit in Hype.",
+   "answer": "6 longs sit in Hype and 21 shorts in Hidden gems on card spend. 10 of the 37 AI crowd favourites with data sit in Hype.",
+   "verdict": "partly stands"
+  },
+  {
+   "topic": "concentration",
+   "severity": "medium",
+   "claim": "The long side is highly concentrated, with the ten largest longs accounting for 35.4% of the long side.",
+   "facts_shown": "The book holds 326 names, 140 long and 186 short. The largest long is 4.02% of capital and the largest short 1.16%. The ten largest longs are 35.4% of the long side. The largest sector net is 1.75%.",
+   "answer": "The book holds 326 names. The largest long is 4.02% and the largest short 1.16% of capital, under the 5% cap and the ten largest longs are 35.4% of the long side.",
+   "verdict": "does not stand"
+  },
+  {
+   "topic": "news",
+   "severity": "medium",
+   "claim": "The news edge is non-existent, as only 43.94% of non-neutral filings were news for our side.",
+   "facts_shown": "991 8-Ks filed by the book's names from June to the book's date were labelled. On the long side 185 were good news, 27 bad and 200 neutral. On the short side 255 were good news, 36 bad and 288 neutral. Of the 503 that were not neutral, 43.94% were news for our side.",
+   "answer": "991 8-Ks filed by the book's names were labelled. Of the 503 that were not neutral, 43.94% were news for our side, good news on a long or bad news on a short.",
+   "verdict": "stands"
+  },
+  {
+   "topic": "market_beta",
+   "severity": "low",
+   "claim": "The fund's current weights carry a beta of 0.025 over the last year, which is higher than the record's monthly beta of 0.012.",
+   "facts_shown": "The record's monthly beta to the S&P 500 is 0.012. Today's weights carry 0.025 over the last year. Gross exposure is 185.99% and net 0.66%.",
+   "answer": "The record's monthly beta to the S&P 500 is 0.012 and today's weights carry 0.025 over the last year. Gross exposure is 185.99% against the finals limit of 200%, with net 0.66%.",
+   "verdict": "does not stand"
+  }
+ ],
+ "verdicts": {
+  "stands": 3,
+  "partly stands": 4,
+  "does not stand": 2
+ },
+ "triage_ready": true,
+ "analyst_ready": true,
+ "check": {
+  "sentences_dropped": 0,
+  "dropped": []
+ },
+ "not_attacked": [
+  "crowd_sell_off",
+  "card_spend",
+  "liquidity"
+ ],
+ "no_case_or_repeat": [
+  {
+   "topic": "crowd_sell_off",
+   "text": "none"
+  },
+  {
+   "topic": "card_spend",
+   "text": "none"
+  },
+  {
+   "topic": "liquidity",
+   "text": "none"
+  }
+ ],
+ "evidence": {
+  "fund": {
+   "ending_value_billion": 1.467,
+   "hurdle_ending_value_billion": 1.509,
+   "shortfall_million": 41.6,
+   "information_ratio": -0.11,
+   "information_ratio_standard_error": 0.42,
+   "information_ratio_before_costs": 0.0,
+   "information_ratio_flat_costs": -0.27,
+   "sharpe": 0.91,
+   "long_leg_million": 859.0,
+   "short_leg_million": -601.3,
+   "shorted_stocks_rise_pct": 73.5,
+   "interest_million": 239.5,
+   "trading_costs_million": 9.5,
+   "borrow_million": 20.6,
+   "costs_share_of_shortfall_pct": 72,
+   "worst_year": 2025,
+   "worst_year_fund_pct": 2.08,
+   "worst_year_hurdle_pct": 8.37,
+   "beta_monthly": 0.012,
+   "worst_month_pct": -1.43,
+   "max_drawdown_pct": -2.99,
+   "limit_breach_days": 0
+  },
+  "book": {
+   "date": "2026-08-31",
+   "names": 326,
+   "longs": 140,
+   "shorts": 186,
+   "gross_pct": 185.99,
+   "gross_limit_pct": 200,
+   "net_pct": 0.66,
+   "largest_long_pct": 4.02,
+   "largest_short_pct": -1.16,
+   "top10_long_share_pct": 35.4,
+   "largest_sector_net_pct": 1.75,
+   "beta_of_weights": 0.025,
+   "volatility_63_day_pct": 5.55,
+   "sessions_to_exit_max": 3.68,
+   "sessions_limit": 5
+  },
+  "ai_crowd": {
+   "long_percentile_2026_08": 58,
+   "short_percentile_2026_08": 57,
+   "long_percentile_average": 66,
+   "short_percentile_average": 56,
+   "average_from": "2021-01",
+   "average_to": "2026-08",
+   "crowd_factor_beta": 0.09,
+   "crowd_factor_t": 2.66,
+   "sell_off_worst_pct_of_capital": -0.34,
+   "sell_off_worst_case": "crowd model selling $100bn",
+   "pnl_where_book_agreed_with_crowd_million": 550.6,
+   "pnl_where_book_disagreed_million": -285.3
+  },
+  "carbon_arc_counts": {
+   "longs_with_growth": 31,
+   "shorts_with_growth": 60,
+   "long_spend_growth_pct": 5.38,
+   "short_spend_growth_pct": 5.45,
+   "split_p_value": 0.99,
+   "longs_in_hype": 6,
+   "longs_in_hype_strong": 1,
+   "shorts_in_hidden_gems": 21,
+   "shorts_in_hidden_gems_strong": 12,
+   "crowd_favourites_with_growth": 37,
+   "crowd_favourites_in_hype": 10,
+   "never_an_input": "Carbon Arc is never an input to the fund, its weights or its backtest"
+  },
+  "news_8k": {
+   "filings_labelled": 991,
+   "passed_format_check": 991,
+   "by_side": {
+    "long": {
+     "names_in_book": 140,
+     "names_with_8k": 140,
+     "filings": 412,
+     "good": 185,
+     "bad": 27,
+     "neutral": 200
+    },
+    "short": {
+     "names_in_book": 186,
+     "names_with_8k": 186,
+     "filings": 579,
+     "good": 255,
+     "bad": 36,
+     "neutral": 288
+    }
+   },
+   "non_neutral_filings": 503,
+   "share_for_our_side_pct": 43.94,
+   "for_our_side_means": "good news on a long or bad news on a short"
+  },
+  "analyst_reports": {
+   "names_read": 20,
+   "answers_passed_checks": 20,
+   "points_kept": 120,
+   "points_dropped": 0,
+   "balance_by_side": {
+    "long": {
+     "supports": 7,
+     "mixed": 3,
+     "challenges": 0,
+     "no answer": 0
+    },
+    "short": {
+     "supports": 1,
+     "mixed": 9,
+     "challenges": 0,
+     "no answer": 0
+    }
+   },
+   "what": "latest 10-Q or 10-K of the 10 largest longs and 10 largest shorts"
+  },
+  "rules": {
+   "rules_read": 15,
+   "matched": 13,
+   "mismatch_reason": "the reader filed the net band as a fixed net; the band matched"
+  }
+ }
+}

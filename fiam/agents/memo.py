@@ -45,8 +45,8 @@ TASK = (
     "hurdle. risk, how calm the record was, the worst drawdown and month, how little it moved "
     "with the S&P 500 and the limits kept. watch, two or three things we are watching, each "
     "tied to a number in the facts. closing, one or two sentences that end honestly. Call the "
-    "record a simulation or the record. Never mention how the fund was chosen, other designs, "
-    "versions or tries. Quote numbers as the READABLE block prints them, never with more "
+    "record a simulation or the record, and write only about this fund and its record. "
+    "Quote numbers as the READABLE block prints them, never with more "
     "decimals. Answer in JSON with the keys performance, drivers, risk, watch and closing."
 )
 PROMPT_NUMBER = 2
@@ -255,8 +255,8 @@ def run() -> dict:
         as_of="2026-08-31",
         model=f"Gemma 4 26B ({account['model_file']})",
         settings=dict(temperature=account["temperature"], seed=account["seed"]),
-        source=str(D.NUMBERS),
-        calls_log=str(D.LOG),
+        source=D.rel(D.NUMBERS),
+        calls_log=D.rel(D.LOG),
         calls=got["calls"],
         prompt_number=PROMPT_NUMBER,
         earlier_prompts_note="the first prompt gave the facts as JSON only and its answer "

@@ -55,7 +55,6 @@ export function Roster({ people }: { people: Person[] }) {
             <span className="person-name" style={morph("name", p)}>
               {p.name}
             </span>
-            {p.role && <span className="person-role">{p.role}</span>}
           </button>
         </li>
       ))}

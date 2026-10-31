@@ -1,0 +1,841 @@
+{
+ "rule_sha256": "21391ba57fb285992262d4c67963666206c72ab85ca1960d2e509538a44586c5",
+ "as_of_book": "2026-08-31",
+ "windows": {
+  "current": [
+   "2026-07",
+   "2026-08",
+   "2026-09"
+  ],
+  "base": [
+   "2025-07",
+   "2025-08",
+   "2025-09"
+  ]
+ },
+ "tokens": {
+  "paid_calls": 66,
+  "ledger_lines": 68,
+  "total": 330.69
+ },
+ "book": {
+  "longs": 140,
+  "shorts": 186
+ },
+ "card": {
+  "coverage": {
+   "pulled": 240,
+   "pulled_book": 172,
+   "pulled_crowd_tails": 68,
+   "status_counts": {
+    "ok": 136,
+    "under the floor": 72,
+    "no rows": 21,
+    "no usable rows": 11
+   },
+   "with_growth_book_longs": 31,
+   "with_growth_book_shorts": 60,
+   "with_growth_crowd_tails": 45
+  },
+  "panel_median_growth": 0.0277,
+  "zone_counts_all": {
+   "Consensus": 55,
+   "Faded": 32,
+   "Hidden gems": 31,
+   "Hype": 18
+  },
+  "zone_shares": {
+   "long": {
+    "side_gross_pct_nav": 93.324,
+    "names_with_growth": 31,
+    "covered_share_of_side_gross": 0.3293,
+    "Hype": {
+     "of_covered": 0.1571,
+     "of_side": 0.0517,
+     "names": 6
+    },
+    "Consensus": {
+     "of_covered": 0.5214,
+     "of_side": 0.1717,
+     "names": 15
+    },
+    "Hidden gems": {
+     "of_covered": 0.2827,
+     "of_side": 0.0931,
+     "names": 4
+    },
+    "Faded": {
+     "of_covered": 0.0388,
+     "of_side": 0.0128,
+     "names": 6
+    },
+    "not_covered_or_no_growth_of_side": 0.6707
+   },
+   "short": {
+    "side_gross_pct_nav": 92.665,
+    "names_with_growth": 60,
+    "covered_share_of_side_gross": 0.3673,
+    "Hype": {
+     "of_covered": 0.1217,
+     "of_side": 0.0447,
+     "names": 6
+    },
+    "Consensus": {
+     "of_covered": 0.3564,
+     "of_side": 0.1309,
+     "names": 22
+    },
+    "Hidden gems": {
+     "of_covered": 0.3688,
+     "of_side": 0.1355,
+     "names": 21
+    },
+    "Faded": {
+     "of_covered": 0.1531,
+     "of_side": 0.0562,
+     "names": 11
+    },
+    "not_covered_or_no_growth_of_side": 0.6327
+   }
+  },
+  "zone_shares_drift_adjusted": {
+   "long": {
+    "side_gross_pct_nav": 93.324,
+    "names_with_growth": 31,
+    "covered_share_of_side_gross": 0.3293,
+    "Hype": {
+     "of_covered": 0.3391,
+     "of_side": 0.1117,
+     "names": 10
+    },
+    "Consensus": {
+     "of_covered": 0.3394,
+     "of_side": 0.1118,
+     "names": 11
+    },
+    "Hidden gems": {
+     "of_covered": 0.2827,
+     "of_side": 0.0931,
+     "names": 4
+    },
+    "Faded": {
+     "of_covered": 0.0388,
+     "of_side": 0.0128,
+     "names": 6
+    },
+    "not_covered_or_no_growth_of_side": 0.6707
+   },
+   "short": {
+    "side_gross_pct_nav": 92.665,
+    "names_with_growth": 60,
+    "covered_share_of_side_gross": 0.3673,
+    "Hype": {
+     "of_covered": 0.1615,
+     "of_side": 0.0593,
+     "names": 9
+    },
+    "Consensus": {
+     "of_covered": 0.3166,
+     "of_side": 0.1163,
+     "names": 19
+    },
+    "Hidden gems": {
+     "of_covered": 0.3058,
+     "of_side": 0.1123,
+     "names": 18
+    },
+    "Faded": {
+     "of_covered": 0.2161,
+     "of_side": 0.0794,
+     "names": 14
+    },
+    "not_covered_or_no_growth_of_side": 0.6327
+   }
+  },
+  "crowd_favourites": {
+   "favourites_with_growth": 37,
+   "in_hype": 10,
+   "share_in_hype": 0.2703,
+   "in_book": 13,
+   "in_book_in_hype": 4,
+   "median_growth": 0.0595
+  },
+  "crowd_favourites_drift_adjusted": {
+   "favourites_with_growth": 37,
+   "in_hype": 15,
+   "share_in_hype": 0.4054,
+   "in_book": 13,
+   "in_book_in_hype": 5,
+   "median_growth": 0.0595
+  },
+  "crowd_rejects": {
+   "rejects_with_growth": 25,
+   "median_growth": -0.0435
+  },
+  "longs_vs_shorts": {
+   "longs": 31,
+   "shorts": 60,
+   "long_wmean": 0.0538,
+   "short_wmean": 0.0545,
+   "long_median": 0.0274,
+   "short_median": 0.0614,
+   "long_minus_short_wmean": -0.0007,
+   "permutation_p_two_sided": 0.9888,
+   "draws": 10000
+  },
+  "longs_vs_shorts_drift_adjusted": {
+   "longs": 31,
+   "shorts": 60,
+   "long_wmean": 0.0261,
+   "short_wmean": 0.0268,
+   "long_median": -0.0002,
+   "short_median": 0.0337,
+   "long_minus_short_wmean": -0.0007,
+   "permutation_p_two_sided": 0.9888,
+   "draws": 10000
+  },
+  "flags": [
+   {
+    "ticker": "ABBV",
+    "side": "long",
+    "weight_pct_nav": 2.564,
+    "crowd_pct": 0.753,
+    "growth": -0.0602,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "DELL",
+    "side": "long",
+    "weight_pct_nav": 1.643,
+    "crowd_pct": 0.857,
+    "growth": -0.3675,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "JPM",
+    "side": "short",
+    "weight_pct_nav": -1.041,
+    "crowd_pct": 0.399,
+    "growth": 0.1015,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "SBUX",
+    "side": "short",
+    "weight_pct_nav": -1.015,
+    "crowd_pct": 0.485,
+    "growth": 0.0579,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "DIS",
+    "side": "short",
+    "weight_pct_nav": -0.934,
+    "crowd_pct": 0.467,
+    "growth": 0.0494,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "CVS",
+    "side": "short",
+    "weight_pct_nav": -0.91,
+    "crowd_pct": 0.198,
+    "growth": 0.0062,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "TTWO",
+    "side": "short",
+    "weight_pct_nav": -0.844,
+    "crowd_pct": 0.426,
+    "growth": 0.5,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "WFC",
+    "side": "short",
+    "weight_pct_nav": -0.843,
+    "crowd_pct": 0.372,
+    "growth": 0.195,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "INTC",
+    "side": "short",
+    "weight_pct_nav": -0.826,
+    "crowd_pct": 0.438,
+    "growth": 0.1836,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "C",
+    "side": "short",
+    "weight_pct_nav": -0.806,
+    "crowd_pct": 0.435,
+    "growth": 0.1842,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "PYPL",
+    "side": "short",
+    "weight_pct_nav": -0.799,
+    "crowd_pct": 0.241,
+    "growth": 0.0476,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "HD",
+    "side": "short",
+    "weight_pct_nav": -0.768,
+    "crowd_pct": 0.392,
+    "growth": 0.0083,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "BAC",
+    "side": "short",
+    "weight_pct_nav": -0.603,
+    "crowd_pct": 0.321,
+    "growth": 0.5,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "CI",
+    "side": "short",
+    "weight_pct_nav": -0.576,
+    "crowd_pct": 0.267,
+    "growth": 0.0414,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "MTB",
+    "side": "short",
+    "weight_pct_nav": -0.54,
+    "crowd_pct": 0.394,
+    "growth": 0.4218,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "WBD",
+    "side": "short",
+    "weight_pct_nav": -0.47,
+    "crowd_pct": 0.172,
+    "growth": 0.0738,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "FISV",
+    "side": "short",
+    "weight_pct_nav": -0.468,
+    "crowd_pct": 0.167,
+    "growth": 0.0108,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "RBLX",
+    "side": "short",
+    "weight_pct_nav": -0.317,
+    "crowd_pct": 0.488,
+    "growth": 0.1347,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "GM",
+    "side": "short",
+    "weight_pct_nav": -0.299,
+    "crowd_pct": 0.085,
+    "growth": 0.1224,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "T",
+    "side": "long",
+    "weight_pct_nav": 0.209,
+    "crowd_pct": 0.505,
+    "growth": -0.078,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "DPZ",
+    "side": "long",
+    "weight_pct_nav": 0.199,
+    "crowd_pct": 0.754,
+    "growth": -0.0085,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "XYZ",
+    "side": "short",
+    "weight_pct_nav": -0.187,
+    "crowd_pct": 0.375,
+    "growth": 0.1004,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "DXCM",
+    "side": "long",
+    "weight_pct_nav": 0.108,
+    "crowd_pct": 0.969,
+    "growth": -0.0875,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "ALL",
+    "side": "long",
+    "weight_pct_nav": 0.105,
+    "crowd_pct": 0.835,
+    "growth": -0.0255,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "ALK",
+    "side": "short",
+    "weight_pct_nav": -0.104,
+    "crowd_pct": 0.035,
+    "growth": 0.2587,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "MGM",
+    "side": "short",
+    "weight_pct_nav": -0.101,
+    "crowd_pct": 0.11,
+    "growth": 0.065,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "TNL",
+    "side": "short",
+    "weight_pct_nav": -0.101,
+    "crowd_pct": 0.32,
+    "growth": 0.122,
+    "flag": "short in Hidden gems",
+    "strong": true
+   }
+  ]
+ },
+ "web": {
+  "coverage": {
+   "pulled": 214,
+   "pulled_book": 151,
+   "pulled_crowd_tails": 63,
+   "status_counts": {
+    "ok": 157,
+    "under the floor": 56,
+    "no usable rows": 1
+   },
+   "with_growth_book_longs": 46,
+   "with_growth_book_shorts": 71,
+   "with_growth_crowd_tails": 40
+  },
+  "panel_median_growth": -0.1385,
+  "zone_counts_all": {
+   "Hype": 58,
+   "Faded": 53,
+   "Consensus": 35,
+   "Hidden gems": 11
+  },
+  "zone_shares": {
+   "long": {
+    "side_gross_pct_nav": 93.324,
+    "names_with_growth": 46,
+    "covered_share_of_side_gross": 0.4789,
+    "Hype": {
+     "of_covered": 0.4536,
+     "of_side": 0.2172,
+     "names": 18
+    },
+    "Consensus": {
+     "of_covered": 0.3462,
+     "of_side": 0.1658,
+     "names": 15
+    },
+    "Hidden gems": {
+     "of_covered": 0.0458,
+     "of_side": 0.0219,
+     "names": 2
+    },
+    "Faded": {
+     "of_covered": 0.1545,
+     "of_side": 0.074,
+     "names": 11
+    },
+    "not_covered_or_no_growth_of_side": 0.5211
+   },
+   "short": {
+    "side_gross_pct_nav": 92.665,
+    "names_with_growth": 71,
+    "covered_share_of_side_gross": 0.4666,
+    "Hype": {
+     "of_covered": 0.3529,
+     "of_side": 0.1647,
+     "names": 24
+    },
+    "Consensus": {
+     "of_covered": 0.2009,
+     "of_side": 0.0938,
+     "names": 13
+    },
+    "Hidden gems": {
+     "of_covered": 0.055,
+     "of_side": 0.0257,
+     "names": 5
+    },
+    "Faded": {
+     "of_covered": 0.3912,
+     "of_side": 0.1825,
+     "names": 29
+    },
+    "not_covered_or_no_growth_of_side": 0.5334
+   }
+  },
+  "zone_shares_drift_adjusted": {
+   "long": {
+    "side_gross_pct_nav": 93.324,
+    "names_with_growth": 46,
+    "covered_share_of_side_gross": 0.4789,
+    "Hype": {
+     "of_covered": 0.2271,
+     "of_side": 0.1088,
+     "names": 10
+    },
+    "Consensus": {
+     "of_covered": 0.5726,
+     "of_side": 0.2743,
+     "names": 23
+    },
+    "Hidden gems": {
+     "of_covered": 0.0784,
+     "of_side": 0.0376,
+     "names": 5
+    },
+    "Faded": {
+     "of_covered": 0.1218,
+     "of_side": 0.0583,
+     "names": 8
+    },
+    "not_covered_or_no_growth_of_side": 0.5211
+   },
+   "short": {
+    "side_gross_pct_nav": 92.665,
+    "names_with_growth": 71,
+    "covered_share_of_side_gross": 0.4666,
+    "Hype": {
+     "of_covered": 0.2301,
+     "of_side": 0.1074,
+     "names": 15
+    },
+    "Consensus": {
+     "of_covered": 0.3238,
+     "of_side": 0.1511,
+     "names": 22
+    },
+    "Hidden gems": {
+     "of_covered": 0.1291,
+     "of_side": 0.0602,
+     "names": 11
+    },
+    "Faded": {
+     "of_covered": 0.3171,
+     "of_side": 0.1479,
+     "names": 23
+    },
+    "not_covered_or_no_growth_of_side": 0.5334
+   }
+  },
+  "crowd_favourites": {
+   "favourites_with_growth": 42,
+   "in_hype": 26,
+   "share_in_hype": 0.619,
+   "in_book": 19,
+   "in_book_in_hype": 10,
+   "median_growth": -0.0686
+  },
+  "crowd_favourites_drift_adjusted": {
+   "favourites_with_growth": 42,
+   "in_hype": 14,
+   "share_in_hype": 0.3333,
+   "in_book": 19,
+   "in_book_in_hype": 5,
+   "median_growth": -0.0686
+  },
+  "crowd_rejects": {
+   "rejects_with_growth": 22,
+   "median_growth": -0.2497
+  },
+  "longs_vs_shorts": {
+   "longs": 46,
+   "shorts": 71,
+   "long_wmean": -0.0658,
+   "short_wmean": -0.1015,
+   "long_median": -0.0761,
+   "short_median": -0.1497,
+   "long_minus_short_wmean": 0.0358,
+   "permutation_p_two_sided": 0.5722,
+   "draws": 10000
+  },
+  "longs_vs_shorts_drift_adjusted": {
+   "longs": 46,
+   "shorts": 71,
+   "long_wmean": 0.0727,
+   "short_wmean": 0.0369,
+   "long_median": 0.0624,
+   "short_median": -0.0112,
+   "long_minus_short_wmean": 0.0358,
+   "permutation_p_two_sided": 0.5722,
+   "draws": 10000
+  },
+  "flags": [
+   {
+    "ticker": "IBKR",
+    "side": "long",
+    "weight_pct_nav": 4.019,
+    "crowd_pct": 0.756,
+    "growth": -0.0519,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "COST",
+    "side": "long",
+    "weight_pct_nav": 3.825,
+    "crowd_pct": 0.873,
+    "growth": -0.0585,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "ABBV",
+    "side": "long",
+    "weight_pct_nav": 2.564,
+    "crowd_pct": 0.753,
+    "growth": -0.3045,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "PM",
+    "side": "long",
+    "weight_pct_nav": 2.352,
+    "crowd_pct": 0.677,
+    "growth": -0.5,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "DELL",
+    "side": "long",
+    "weight_pct_nav": 1.643,
+    "crowd_pct": 0.857,
+    "growth": -0.3491,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "MA",
+    "side": "long",
+    "weight_pct_nav": 1.572,
+    "crowd_pct": 0.942,
+    "growth": -0.5,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "AMZN",
+    "side": "long",
+    "weight_pct_nav": 1.519,
+    "crowd_pct": 0.953,
+    "growth": -0.0688,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "ROKU",
+    "side": "long",
+    "weight_pct_nav": 1.209,
+    "crowd_pct": 0.994,
+    "growth": -0.2004,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "TTWO",
+    "side": "short",
+    "weight_pct_nav": -0.844,
+    "crowd_pct": 0.426,
+    "growth": 0.2287,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "NOC",
+    "side": "short",
+    "weight_pct_nav": -0.65,
+    "crowd_pct": 0.448,
+    "growth": 0.2617,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "MTB",
+    "side": "short",
+    "weight_pct_nav": -0.54,
+    "crowd_pct": 0.394,
+    "growth": 0.5,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "PG",
+    "side": "long",
+    "weight_pct_nav": 0.232,
+    "crowd_pct": 0.732,
+    "growth": -0.3338,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "TEAM",
+    "side": "long",
+    "weight_pct_nav": 0.228,
+    "crowd_pct": 0.784,
+    "growth": -0.0861,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "CIEN",
+    "side": "long",
+    "weight_pct_nav": 0.221,
+    "crowd_pct": 0.967,
+    "growth": -0.5,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "T",
+    "side": "long",
+    "weight_pct_nav": 0.209,
+    "crowd_pct": 0.505,
+    "growth": -0.1263,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "XYZ",
+    "side": "short",
+    "weight_pct_nav": -0.187,
+    "crowd_pct": 0.375,
+    "growth": 0.0552,
+    "flag": "short in Hidden gems",
+    "strong": false
+   },
+   {
+    "ticker": "CPNG",
+    "side": "short",
+    "weight_pct_nav": -0.157,
+    "crowd_pct": 0.267,
+    "growth": 0.3181,
+    "flag": "short in Hidden gems",
+    "strong": true
+   },
+   {
+    "ticker": "MCD",
+    "side": "long",
+    "weight_pct_nav": 0.139,
+    "crowd_pct": 0.689,
+    "growth": -0.2798,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "GDDY",
+    "side": "long",
+    "weight_pct_nav": 0.112,
+    "crowd_pct": 0.637,
+    "growth": -0.0892,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "MTCH",
+    "side": "long",
+    "weight_pct_nav": 0.112,
+    "crowd_pct": 0.72,
+    "growth": -0.1559,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "NDAQ",
+    "side": "long",
+    "weight_pct_nav": 0.108,
+    "crowd_pct": 0.581,
+    "growth": -0.2225,
+    "flag": "long in Hype",
+    "strong": true
+   },
+   {
+    "ticker": "TMUS",
+    "side": "long",
+    "weight_pct_nav": 0.105,
+    "crowd_pct": 0.573,
+    "growth": -0.0279,
+    "flag": "long in Hype",
+    "strong": false
+   },
+   {
+    "ticker": "JNJ",
+    "side": "long",
+    "weight_pct_nav": 0.104,
+    "crowd_pct": 0.926,
+    "growth": -0.1004,
+    "flag": "long in Hype",
+    "strong": true
+   }
+  ]
+ },
+ "live_crowd": {
+  "cards_answered_august": {
+   "retail": 31,
+   "copycat": 24
+  },
+  "cards_needed_each": 270,
+  "used": false,
+  "note": "not finished when this ran, so the live crowd version was not drawn"
+ },
+ "deviations_from_rule": [
+  "None in the computation. Windows, floors, clip, cut-offs and flags ran as fixed.",
+  "Server rate-limit rejections (no data, no charge) were resent and noted in the ledger note of the call, not given their own ledger lines.",
+  "web_w25 failed twice around the midnight reset (no charge, logged with 0 tokens) and ran on the third try, one more try than the rule's single retry.",
+  "card_c32 was priced 6.34 tokens, not 4.99."
+ ],
+ "fund_fact_line": "Card spend of our longs grew 5.38% and of our shorts 5.45%, no clear split",
+ "headline": "Real card spend shows no clear split between our longs and shorts, and 10 of 37 AI crowd favourites sit in Hype"
+}

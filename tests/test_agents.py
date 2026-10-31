@@ -1,12 +1,11 @@
-# The rules reader, honesty test, mandate checks and film helpers.
+# The rules reader, mandate checks and film helpers.
 
 import json
 
-import pandas as pd
 import pytest
 
 from fiam import mandate as M
-from fiam.agents import honesty, rules_reader
+from fiam.agents import rules_reader
 
 
 # Impossible mandates are named, and an unknown rule field is refused.
@@ -47,17 +46,3 @@ def test_directional_draft_drops_neutral_limits():
     assert draft["sector"] is None and draft["beta"] is None
     assert M.check(M.Mandate(**draft)) == []
     assert "sector" not in rules_reader.drafted(dict(gross=dict(value=2.0, quote="q")), "t")
-
-
-# The reversed text swaps direction words and flips percent signs.
-def test_honesty_reversal_flips_words_and_signs():
-    row = pd.Series(
-        dict(
-            excerpt="[COMPANY] said revenue increased 12% and costs fell.",
-            company_name="Acme",
-            filing_date=pd.Timestamp("2024-05-01"),
-        )
-    )
-    texts = honesty.conditions(row)
-    assert texts["reversed"] == "[COMPANY] said revenue decreased -12% and costs rose."
-    assert texts["named"].startswith("Acme said")

@@ -1,12 +1,12 @@
-# Rules as a file: the shipped book's by default, or a finals mandate.
+# Rules as a file: the default limits, or a mandate from a template.
 
 import json
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from fiam import book as P
-
-TEMPLATES = Path("frozen") / "v1" / "mandates"
+TEMPLATES = Path("frozen") / "mandates"
+# The default limits; `pool` is the candidates per side.
+LIMITS = dict(gross=1.6, beta=0.02, risk=0.02, sector=0.01, name=0.015, pool=200, ridge=30.0)
 # GICS sectors by two-digit code, so a mandate may name one either way.
 SECTORS = {
     "energy": "10", "materials": "15", "industrials": "20", "consumer discretionary": "25",
@@ -19,15 +19,15 @@ SECTORS = {
 # Every optimizer rule. None turns a band off: long-only is not neutral.
 @dataclass(frozen=True)
 class Mandate:
-    name: str = "v1"
-    gross: float = P.LIMITS["gross"]
+    name: str = "default"
+    gross: float = LIMITS["gross"]
     net: float = 0.0
-    name_cap: float = P.LIMITS["name"]
-    sector: float | None = P.LIMITS["sector"]
-    beta: float | None = P.LIMITS["beta"]
-    risk: float | None = P.LIMITS["risk"]
-    pool: int = P.LIMITS["pool"]
-    ridge: float = P.LIMITS["ridge"]
+    name_cap: float = LIMITS["name"]
+    sector: float | None = LIMITS["sector"]
+    beta: float | None = LIMITS["beta"]
+    risk: float | None = LIMITS["risk"]
+    pool: int = LIMITS["pool"]
+    ridge: float = LIMITS["ridge"]
     names_min: int = 100
     names_max: int = 500
     long_only: bool = False

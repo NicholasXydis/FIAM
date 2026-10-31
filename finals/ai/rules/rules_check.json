@@ -1,0 +1,321 @@
+{
+ "what": "Gemma 4 26B rules reader on the Final Challenge Instructions PDF and Part 2. A rule is kept only if its quote is in the PDF word for word. Each is then compared in code with mandates/finals_2026.json and the fund's hard limits (fiam/vfinal/config.py HARD, checked every day by fiam/vfinal/checks.py).",
+ "rules_read": 15,
+ "matched": 13,
+ "all_match": false,
+ "fields_read": [
+  "countries",
+  "gross",
+  "name_cap",
+  "names_max",
+  "names_min",
+  "net",
+  "net_band",
+  "sector"
+ ],
+ "reader_fields_not_returned": [
+  "long_only"
+ ],
+ "rules": [
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "gross",
+   "value": 2,
+   "quote": "Up to 200% of capital (leverage of at most 2×)",
+   "page": 4,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json gross": 2.0,
+    "HARD gross": 2.0
+   },
+   "agreeing": [
+    "finals_2026.json gross",
+    "HARD gross"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "net",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 4,
+   "status": "no_fund_limit",
+   "fund": null,
+   "why": "The reader filed the -50% to +50% band as a fixed net. The fund fixes no net. Its net band is 0.5 (finals_2026.json net_band and HARD net), which the same quote also set as net_band, and that matched."
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "net_band",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 4,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json net_band": 0.5,
+    "HARD net": 0.5
+   },
+   "agreeing": [
+    "finals_2026.json net_band",
+    "HARD net"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "name_cap",
+   "value": 0.05,
+   "quote": "Maximum 5% of capital in any one name",
+   "page": 4,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json name_cap": 0.05,
+    "HARD name_cap": 0.05
+   },
+   "agreeing": [
+    "finals_2026.json name_cap",
+    "HARD name_cap"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "names_min",
+   "value": 200,
+   "quote": "At least 200 and at most 500 names, long and short legs combined",
+   "page": 4,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json names_min": 200,
+    "HARD names_min": 200
+   },
+   "agreeing": [
+    "finals_2026.json names_min",
+    "HARD names_min"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "names_max",
+   "value": 500,
+   "quote": "At least 200 and at most 500 names, long and short legs combined",
+   "page": 4,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json names_max": 500,
+    "HARD names_max": 500
+   },
+   "agreeing": [
+    "finals_2026.json names_max",
+    "HARD names_max"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "countries",
+   "value": [
+    "USA"
+   ],
+   "quote": "The universe is U.S. public equities.",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "panel universe": [
+     "USA"
+    ]
+   },
+   "agreeing": [
+    "panel universe"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "gross",
+   "value": 2,
+   "quote": "Up to 200% of capital (leverage of at most 2×)",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json gross": 2.0,
+    "HARD gross": 2.0
+   },
+   "agreeing": [
+    "finals_2026.json gross",
+    "HARD gross"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "net",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 2,
+   "status": "no_fund_limit",
+   "fund": null,
+   "why": "The reader filed the -50% to +50% band as a fixed net. The fund fixes no net. Its net band is 0.5 (finals_2026.json net_band and HARD net), which the same quote also set as net_band, and that matched."
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "net_band",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json net_band": 0.5,
+    "HARD net": 0.5
+   },
+   "agreeing": [
+    "finals_2026.json net_band",
+    "HARD net"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "name_cap",
+   "value": 0.05,
+   "quote": "Maximum 5% of capital in any one name",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json name_cap": 0.05,
+    "HARD name_cap": 0.05
+   },
+   "agreeing": [
+    "finals_2026.json name_cap",
+    "HARD name_cap"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "sector",
+   "value": 0.2,
+   "quote": "Net exposure to any single GICS sector must not exceed 20% of capital, measured as the absolute value of long minus short weights within that sector, at every rebalancing date.",
+   "page": 3,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json sector_cap": null,
+    "HARD sector_net": 0.2
+   },
+   "agreeing": [
+    "HARD sector_net"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "names_min",
+   "value": 200,
+   "quote": "At least 200 and at most 500 names, long and short legs combined",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json names_min": 200,
+    "HARD names_min": 200
+   },
+   "agreeing": [
+    "finals_2026.json names_min",
+    "HARD names_min"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "names_max",
+   "value": 500,
+   "quote": "At least 200 and at most 500 names, long and short legs combined",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "finals_2026.json names_max": 500,
+    "HARD names_max": 500
+   },
+   "agreeing": [
+    "finals_2026.json names_max",
+    "HARD names_max"
+   ]
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "countries",
+   "value": [
+    "USA"
+   ],
+   "quote": "U.S. equity strategy",
+   "page": 2,
+   "status": "matched",
+   "fund": {
+    "panel universe": [
+     "USA"
+    ]
+   },
+   "agreeing": [
+    "panel universe"
+   ]
+  }
+ ],
+ "beyond_reader_fields": {
+  "note": "Part 2 constraints 8 and 10 and the short floor have no field in the reader's schema. They are quoted here by hand, found in the PDF by code, and compared with the fund's hard limits by code. They are not counted in rules_read.",
+  "rules": [
+   {
+    "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+    "field": "sectors_min",
+    "pdf_value": 5,
+    "quote": "at least five of these eleven sectors",
+    "page": 3,
+    "fund": "HARD sectors_min = 5",
+    "status": "matched"
+   },
+   {
+    "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+    "field": "sector_net",
+    "pdf_value": 0.2,
+    "quote": "Net exposure to any single GICS sector must not exceed 20% of capital",
+    "page": 3,
+    "fund": "HARD sector_net = 0.2",
+    "status": "matched"
+   },
+   {
+    "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+    "field": "vol",
+    "pdf_value": 0.12,
+    "quote": "Annualised realised volatility of the portfolio must not exceed 12–14%",
+    "page": 3,
+    "fund": "HARD vol = 0.12",
+    "status": "matched"
+   },
+   {
+    "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+    "field": "short_floor_musd",
+    "pdf_value": 500.0,
+    "quote": "Only names with market capitalisation ≥ US$500m, measured at the formation date",
+    "page": 4,
+    "fund": "HARD short_floor_musd = 500.0",
+    "status": "matched"
+   }
+  ]
+ },
+ "mismatches": [
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon 2026 — Final Challenge Instructions.pdf",
+   "field": "net",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 4,
+   "status": "no_fund_limit",
+   "fund": null,
+   "why": "The reader filed the -50% to +50% band as a fixed net. The fund fixes no net. Its net band is 0.5 (finals_2026.json net_band and HARD net), which the same quote also set as net_band, and that matched."
+  },
+  {
+   "pdf": "McGill-FIAM Asset Management Hackathon Final Challenge 2026 - Part 2_FINAL.pdf",
+   "field": "net",
+   "value": 0.5,
+   "quote": "Within −50% to +50% at all times; dollar neutrality is the natural centre",
+   "page": 2,
+   "status": "no_fund_limit",
+   "fund": null,
+   "why": "The reader filed the -50% to +50% band as a fixed net. The fund fixes no net. Its net band is 0.5 (finals_2026.json net_band and HARD net), which the same quote also set as net_band, and that matched."
+  }
+ ],
+ "locked_mandate_note": "mandates/finals_2026.json does not carry Part 2. Its sector_cap is null and it has no sector breadth or volatility field. The fund enforces Part 2's three limits in fiam/vfinal/config.py HARD (sectors_min 5, sector_net 0.20, vol 0.12).",
+ "reader_errors": 1,
+ "fund_limits_all_match": true,
+ "fund_fact_line": "15 rules read, every fund limit matches",
+ "headline": "The rules reader read 15 rules from both finals PDFs and every fund limit matches, after one misfiled net band",
+ "locked_mandate_unchanged": true
+}

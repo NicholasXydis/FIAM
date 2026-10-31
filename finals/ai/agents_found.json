@@ -1,0 +1,56 @@
+{
+ "what": "What each of the fund's AI agents found, one line each, built by code from the agent's own output file. pending means that file was not ready.",
+ "agents_count": 8,
+ "agents": {
+  "Rules reader": {
+   "finding": "Read 15 rules in the finals PDFs and 13 match the fund's limits, 2 misfile the net band",
+   "key_number": "13 of 15",
+   "date": "2026-10-29",
+   "source": "finals/ai/rules/rules_check.json"
+  },
+  "Triage": {
+   "finding": "Labelled 991 8-Ks from the book's names and 44% of the non-neutral news favoured our side",
+   "key_number": "991 8-Ks",
+   "date": "2026-10-29",
+   "source": "finals/ai/triage/triage_final.json"
+  },
+  "Analyst": {
+   "finding": "Read the latest report of 20 top names, 8 support our side, 12 are mixed and 0 challenge it",
+   "key_number": "8 of 20",
+   "date": "2026-10-29",
+   "source": "finals/ai/analyst/analyst_final.json"
+  },
+  "Explainer": {
+   "finding": "Explained 40 top positions in 33 answers and 33 of 33 traced every number",
+   "key_number": "40 positions",
+   "date": "2026-10-28",
+   "source": "finals/ai/explanations.json"
+  },
+  "Memo writer": {
+   "finding": "The August letter reports $1.467bn against the $1.509bn hurdle and an IR of -0.11",
+   "key_number": "IR -0.11",
+   "date": "2026-10-29",
+   "source": "finals/ai/desk/letter.json"
+  },
+  "Devil's advocate": {
+   "finding": "Made 9 attacks on the final book and the data shows 7 stand in whole or in part",
+   "key_number": "7 of 9",
+   "date": "2026-10-29",
+   "source": "finals/ai/desk/critic_final.json"
+  },
+  "Risk desk": {
+   "finding": "Raised 13 flags on the final book, 0 alert and 5 watch, with no finals limit broken",
+   "key_number": "5 watch",
+   "date": "2026-10-29",
+   "source": "finals/ai/desk/risk_note.json"
+  },
+  "AI crowd": {
+   "finding": "On the final book our longs sit at the AI crowd's 58th percentile and shorts at the 57th, crowd beta 0.09",
+   "key_number": "crowd beta 0.09",
+   "date": "2026-10-29",
+   "source": "finals/ai/crowd_aug/crowd_where_we_sit.json"
+  }
+ },
+ "pending": [],
+ "fund_fact_line": "8 AI agents read and check the fund and none sets a trade"
+}

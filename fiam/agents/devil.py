@@ -488,7 +488,7 @@ def run() -> dict:
         as_of=F.AS_OF,
         model=f"Gemma 4 26B ({account['model_file']})",
         settings=dict(temperature=account["temperature"], seed=account["seed"]),
-        calls_log=str(D.LOG),
+        calls_log=D.rel(D.LOG),
         call=dict(key=first["key"], error=first["error"], seconds=first["seconds"]),
         prompt_number=PROMPT_NUMBER,
         earlier_prompts_note="prompt 1 gave the evidence as JSON only and let the model pick "

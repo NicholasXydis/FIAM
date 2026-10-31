@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -15,15 +13,12 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
-from typing import Callable
 
 from fiam import paths
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = ROOT / "models"
-TRANSCRIPTS = ROOT / paths.EXHIBITS / "agents"
 # A rehearsal keeps its logs apart, so it never resumes into a real run.
 RUNS = ROOT / "cache" / ("smoke/agents" if paths.SMOKE else "agents")
 
@@ -115,31 +110,6 @@ LONG_PROMPTS = ("-ub", "2048", "-b", "2048")
 # Calls left when only final_answer counts, a result's size cap, nudges.
 WARN_AT, RESULT_CHARS, NUDGES = 5, 6000, 2
 NUDGE = "Continue: call a tool, or call final_answer with what you have."
-
-
-# A tool offered to the agent: its schema and the function it calls.
-@dataclass
-class Tool:
-    name: str
-    description: str
-    parameters: dict
-    run: Callable[..., object]
-
-
-# One agent run: its model, prompts and the tool-call budget it gets.
-@dataclass
-class Run:
-    agent: str
-    model: str
-    system: str
-    task: str
-    budget: int
-    tag: str = ""
-
-    # The transcript name: agent plus tag, so tagged reruns keep their own.
-    @property
-    def name(self) -> str:
-        return f"{self.agent}{'_' + self.tag if self.tag else ''}"
 
 
 # This machine's build; FIAM_LLAMA_BUILD picks another, say windows-cpu.
@@ -342,123 +312,6 @@ def stamp(server: Server, log: str, prompts: tuple = ()) -> None:
     target.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
 
-# A plan is any numbered list the agent writes; each new one a revision.
-def plan_in(text: str) -> list[str]:
-    return re.findall(r"^\s*\d+[.)]\s+(.+)$", text or "", flags=re.M)
-
-
-# Shortens the oldest tool results as the chat nears the context window.
-def trim(messages: list) -> None:
-    while sum(len(json.dumps(m)) for m in messages) / 3.5 > CONTEXT * 0.8:
-        old = next(
-            (m for m in messages if m["role"] == "tool" and m["content"] != "[trimmed]"), None
-        )
-        if old is None:
-            return
-        old["content"] = "[trimmed]"
-
-
-# Runs an agent to its answer or budget; the transcript keeps no clock.
-def run_agent(server: Server, run: Run, tools: list[Tool]) -> dict:
-    offered = {t.name: t for t in tools}
-    specs = [
-        dict(
-            type="function",
-            function=dict(name=t.name, description=t.description, parameters=t.parameters),
-        )
-        for t in tools
-    ]
-    messages = [dict(role="system", content=run.system), dict(role="user", content=run.task)]
-    records, calls, answers, used, nudges = [], [], [], 0, 0
-    while used < run.budget + WARN_AT and nudges <= NUDGES and not answers:
-        trim(messages)
-        try:
-            reply = server.chat(messages, specs)
-        except urllib.error.HTTPError as exc:
-            # A reply the server cannot parse, say bad tool JSON, costs a nudge.
-            nudges += 1
-            reason = json.loads(exc.read() or b"{}").get("error", {}).get("message", str(exc))
-            note = f"Your last reply could not be read: {reason[:300]}. Use valid JSON arguments."
-            messages.append(dict(role="user", content=note))
-            continue
-        content, wanted = reply.get("content") or "", reply.get("tool_calls") or []
-        messages.append(
-            dict(role="assistant", content=content, tool_calls=wanted)
-            if wanted
-            else dict(role="assistant", content=content)
-        )
-        record = dict(step=len(records) + 1, content=content, calls=[])
-        if not wanted:
-            nudges += 1
-            messages.append(dict(role="user", content=NUDGE))
-        for tc in wanted:
-            name, arguments = tc["function"]["name"], {}
-            try:
-                arguments = json.loads(tc["function"].get("arguments") or "{}")
-                if name not in offered:
-                    raise KeyError(f"no tool named {name}")
-                # Near the budget's end only the answer counts, so a run always closes.
-                if run.budget - used <= WARN_AT and name != "final_answer":
-                    raise RuntimeError(
-                        f"{max(run.budget - used, 0)} calls left: call final_answer now"
-                    )
-                text, failed = json.dumps(offered[name].run(**arguments), default=str), False
-            except Exception as exc:
-                text, failed = json.dumps(dict(error=f"{type(exc).__name__}: {exc}")), True
-            text = text[:RESULT_CHARS]
-            used += 1
-            call = dict(
-                tool=name,
-                arguments=arguments,
-                result=text,
-                result_sha256=hashlib.sha256(text.encode()).hexdigest(),
-                error=failed,
-            )
-            calls.append(call)
-            record["calls"].append(call)
-            messages.append(dict(role="tool", tool_call_id=tc.get("id", name), content=text))
-            if name == "final_answer" and not failed:
-                answers.append(arguments)
-        records.append(record)
-
-    schemas = [dict(name=t.name, parameters=t.parameters) for t in tools]
-    header = dict(
-        agent=run.agent,
-        tag=run.tag,
-        model=server.name,
-        model_file=MODELS[server.name][1],
-        model_sha256=file_hash(server.path) if server.path else "remote, not checked",
-        build=machine(),
-        server=server.props(),
-        seed=SEED,
-        temperature=TEMPERATURE,
-        budget=run.budget,
-        system_sha256=hashlib.sha256(run.system.encode()).hexdigest(),
-        task_sha256=hashlib.sha256(run.task.encode()).hexdigest(),
-        tools_sha256=hashlib.sha256(json.dumps(schemas, sort_keys=True).encode()).hexdigest(),
-    )
-    records = [r for r in records if r["content"] or r["calls"]]
-    plans = [
-        dict(step=r["step"], plan=plan_in(r["content"])) for r in records if plan_in(r["content"])
-    ]
-    status = "answered" if answers else "no answer within the budget"
-    TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
-    path = TRANSCRIPTS / f"{run.name}.jsonl"
-    with path.open("w", encoding="utf-8", newline="\n") as fh:
-        fh.write(json.dumps(dict(header=header, plans=plans, status=status)) + "\n")
-        for record in records:
-            fh.write(json.dumps(record, default=str) + "\n")
-    return dict(
-        answer=answers[-1] if answers else None,
-        status=status,
-        steps=len(records),
-        plans=plans,
-        calls=calls,
-        seen=[c["result"] for c in calls],
-        transcript=path,
-    )
-
-
 # A reply's JSON answer, or an empty one if cut off or unreadable.
 def parse(reply: dict) -> dict:
     try:
@@ -487,22 +340,6 @@ def answers(name: str, key):
         yield done, save
 
 
-# Two runs compared call by call. Identical means repeatable, not right.
-def repeatable(first: Path, second: Path) -> dict:
-    # Each call in a transcript as its tool and arguments.
-    def calls(path: Path) -> list:
-        lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()[1:]]
-        return [
-            (c["tool"], json.dumps(c.get("arguments"), sort_keys=True))
-            for r in lines
-            for c in r["calls"]
-        ]
-
-    a, b = calls(first), calls(second)
-    same = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
-    return dict(calls_first=len(a), calls_second=len(b), identical_prefix=same, identical=a == b)
-
-
 # Fetches and checks all models and this build, so long runs never wait.
 def prepare() -> None:
     server_binary()
@@ -511,27 +348,10 @@ def prepare() -> None:
     print(f"ready: llama.cpp build {machine()}, models in {MODELS_DIR}")
 
 
-# Every agent's tools as the model sees them, for the rules' appendix.
-def export() -> None:
-    from fiam.agents import critic
-
-    agents = dict(critic=critic.tools(critic.Evidence()))
-    out = {
-        name: [dict(name=t.name, description=t.description, parameters=t.parameters) for t in tools]
-        for name, tools in agents.items()
-    }
-    TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
-    paths.write_json(TRANSCRIPTS / "tools.json", out, rounded=False)
-    print(f"tool definitions for {len(out)} agents written")
-
-
 if __name__ == "__main__":
-    # uv run -m fiam.agents.harness [prepare | export | qwen|gemma [--long]]
+    # uv run -m fiam.agents.harness [prepare | qwen|gemma [--long]]
     if "prepare" in sys.argv:
         prepare()
-        sys.exit()
-    if "export" in sys.argv:
-        export()
         sys.exit()
     name = next((a for a in sys.argv[1:] if a in MODELS), "qwen")
     # --long serves as the desk's cache keys record (2048-token batches).

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import threading
 import time
 import urllib.error
@@ -14,6 +15,7 @@ import urllib.request
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from pathlib import Path
 
 import numpy as np
@@ -24,9 +26,11 @@ from fiam.vfinal import clock
 from fiam.vfinal import text as T
 
 EDGAR = H.ROOT / "data" / "edgar"
-WORK = Path(os.environ.get("FIAM_WORK", str(Path.home() / "FIAM_work")))
-BOOK = WORK / "ai_ca_plan" / "final_book_2026-08-31.csv"
-PACK = WORK / "vfinal_pack" / "ai"
+# The agents' records, committed; FIAM_AI moves a fresh run elsewhere.
+PACK = Path(os.environ.get("FIAM_AI", str(H.ROOT / "finals" / "ai")))
+BOOK = PACK / "final_book_2026-08-31.csv"
+# The numbers pack tools/pack builds from the fund's outputs.
+NUMBERS_PACK = H.ROOT / "out" / "pack"
 # The book's date: a filing counts only if accepted by its last minute.
 AS_OF = "2026-08-31"
 ARCHIVE = "https://www.sec.gov/Archives/edgar/data"
@@ -58,9 +62,12 @@ def public_by(accepted, filing_date, day: str = AS_OF) -> pd.Series:
 
 # The repo's SEC fetcher: paced, with the contact header SEC asks for.
 def sec(url: str) -> bytes:
-    from fiam.alt import sixty_first
+    folder = str(H.ROOT / "tools" / "data")
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+    import edgar
 
-    return sixty_first.edgar().fetch(url)
+    return edgar.fetch(url)
 
 
 # A document's bytes, read once from SEC and kept gzipped in a cache.
@@ -91,14 +98,59 @@ def main_text(cik: int, accession: str, document: str, cache: Path) -> str:
     return T.html_text(raw.decode("utf-8", "replace"))
 
 
+# Plain text of one cell, spaces squeezed.
+def squeeze(text: str) -> str:
+    return " ".join(text.replace("\xa0", " ").split())
+
+
+# HTML tables as lists of rows of cell text, standard library only.
+class Tables(HTMLParser):
+    # An empty parser.
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tables, self.stack, self.row, self.cell = [], [], None, None
+
+    # Opens a table, row or cell.
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.stack.append([])
+        elif tag == "tr" and self.stack:
+            self.row = []
+        elif tag in ("td", "th") and self.row is not None:
+            self.cell = []
+        elif tag in ("br", "p", "div") and self.cell is not None:
+            self.cell.append(" ")
+
+    # Closes a cell, row or table, keeping what it held.
+    def handle_endtag(self, tag):
+        if tag in ("td", "th") and self.cell is not None and self.row is not None:
+            self.row.append(squeeze("".join(self.cell)))
+            self.cell = None
+        elif tag == "tr" and self.row is not None and self.stack:
+            self.stack[-1].append(self.row)
+            self.row = None
+        elif tag == "table" and self.stack:
+            self.tables.append(self.stack.pop())
+
+    # Text inside a cell.
+    def handle_data(self, data):
+        if self.cell is not None:
+            self.cell.append(data)
+
+
+# Every table in a document.
+def tables(text: str) -> list[list[list[str]]]:
+    parser = Tables()
+    parser.feed(text)
+    return parser.tables
+
+
 # A filing's exhibit 99 documents, 99.1 first, from its index page.
 def exhibit_urls(cik: int, accession: str, cache: Path) -> list[str]:
-    from fiam.alt import sixty_first
-
     base = folder(cik, accession)
     page = cached(f"{base}/{accession}-index.htm", cache / str(int(cik)) / f"{accession}_index.gz")
     out = []
-    for row in (r for t in sixty_first.tables(page.decode("utf-8", "replace")) for r in t):
+    for row in (r for t in tables(page.decode("utf-8", "replace")) for r in t):
         kinds = [c for c in row if re.fullmatch(r"EX-99(\.0?1)?\S*", c)]
         docs = [c.split()[0] for c in row if re.search(r"\.html?\b", c)]
         if kinds and docs:

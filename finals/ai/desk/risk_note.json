@@ -1,0 +1,255 @@
+{
+ "what": "The risk desk's note on the final book. Code computed every number and set every level. A local model wrote the summary and reasons, and code kept a sentence only if its numbers trace to the facts and it gives no trade or weight advice. The desk never changes or suggests a weight.",
+ "as_of": "2026-08-31",
+ "model": "Gemma 4 26B (gemma-4-26B-A4B-it-UD-IQ4_XS.gguf)",
+ "settings": {
+  "temperature": 0.0,
+  "seed": 42
+ },
+ "calls_log": "finals/ai/desk/calls.jsonl",
+ "calls": [
+  {
+   "key": "risk_note_2026-08-31_p3",
+   "error": null,
+   "unsupported_numbers": []
+  }
+ ],
+ "prompt_number": 3,
+ "earlier_prompts_note": "prompt 1 gave each rule without saying above or below, and its answer called a 1.75% sector net within a 1% band. Prompt 2 parroted field names and set a 0.09 loading above a t level of 2. Both stay in the log, unused",
+ "summary": "The book has several watch flags regarding gross exposure, individual position sizes, beta and crowd factor loading. All other risk metrics remain within their respective limits.",
+ "levels": {
+  "alert": 0,
+  "watch": 5,
+  "ok": 7,
+  "info": 1
+ },
+ "flags": [
+  {
+   "id": "gross",
+   "level": "watch",
+   "measure": "gross exposure, % of capital",
+   "value": 185.99,
+   "rule": "below the finals PDF limit of 200%, below the fund guard of 190%, above which the fund trims gross back to 185%, so the book uses 93% of the PDF limit",
+   "says": "Gross exposure is 185.99% of capital, below the finals PDF limit of 200%, below the fund guard of 190%, above which the fund trims gross back to 185%, so the book uses 93% of the PDF limit.",
+   "reason": "Gross exposure is 185.99% of capital, which is below the fund guard of 190% but triggers a watch status.",
+   "reason_by": "model"
+  },
+  {
+   "id": "net",
+   "level": "ok",
+   "measure": "net exposure, % of capital",
+   "value": 0.66,
+   "rule": "inside the finals PDF band of minus 50% to plus 50%",
+   "says": "Net exposure is 0.66% of capital, inside the finals PDF band of minus 50% to plus 50%.",
+   "reason": "Net exposure is 0.66% of capital, which is inside the allowed band.",
+   "reason_by": "model"
+  },
+  {
+   "id": "names",
+   "level": "ok",
+   "measure": "names held, longs and shorts",
+   "value": 326,
+   "rule": "inside the finals PDF range of 200 to 500 names",
+   "says": "The book holds 326 names, inside the finals PDF range of 200 to 500 names.",
+   "reason": "The book holds 326 names, which is within the required range.",
+   "reason_by": "model"
+  },
+  {
+   "id": "largest_long",
+   "level": "watch",
+   "measure": "largest long (IBKR), % of capital",
+   "value": 4.02,
+   "rule": "below the finals PDF cap of 5%, above the fund's 3.9% cap that applies when the book is set, below the 4.4% level at which the fund trims a long back",
+   "says": "The largest long, IBKR, is 4.02% of capital, below the finals PDF cap of 5%, above the fund's 3.9% cap that applies when the book is set, below the 4.4% level at which the fund trims a long back.",
+   "reason": "The largest long is 4.02% of capital, which is above the 3.9% cap that applies when the book is set.",
+   "reason_by": "model"
+  },
+  {
+   "id": "largest_short",
+   "level": "watch",
+   "measure": "largest short (SNPS), % of capital",
+   "value": -1.16,
+   "rule": "below the finals PDF cap of 5%, above the fund's 1.08% short cap that applies when the book is set",
+   "says": "The largest short, SNPS, is 1.16% of capital, below the finals PDF cap of 5%, above the fund's 1.08% short cap that applies when the book is set.",
+   "reason": "The largest short is 1.16% of capital, which is above the 1.08% short cap that applies when the book is set.",
+   "reason_by": "model"
+  },
+  {
+   "id": "concentration",
+   "level": "ok",
+   "measure": "ten largest longs, share of long gross %",
+   "value": 35.4,
+   "rule": "below the desk's watch level of 50%, the book is as spread as 140 equal names",
+   "says": "The ten largest longs are 35.4% of the long side, below the desk's watch level of 50%, the book is as spread as 140 equal names.",
+   "reason": "The ten largest longs represent 35.4% of the long side, which is below the watch level.",
+   "reason_by": "model"
+  },
+  {
+   "id": "sector_net",
+   "level": "ok",
+   "measure": "largest sector net (Industrials), % of capital",
+   "value": 1.75,
+   "rule": "below the finals PDF limit of 20%, above the fund's 1% band that applies when the book is set, 11 sectors held where the PDF asks for at least 5",
+   "says": "The largest sector net, Industrials, is 1.75% of capital, below the finals PDF limit of 20%, above the fund's 1% band that applies when the book is set, 11 sectors held where the PDF asks for at least 5.",
+   "reason": "The largest sector net is 1.75% of capital, which is below the 20% limit.",
+   "reason_by": "model"
+  },
+  {
+   "id": "beta",
+   "level": "watch",
+   "measure": "beta to the S&P 500 of today's weights, 252 sessions",
+   "value": 0.025,
+   "rule": "above the fund's band of 0.02 that applies when the book is set, below the desk's alert level of 0.1, while the fund's own returns over the same 252 sessions show a beta of -0.010",
+   "says": "Today's weights carry a beta of 0.025 to the S&P 500 over 252 sessions, above the fund's band of 0.02 that applies when the book is set, below the desk's alert level of 0.1, while the fund's own returns over the same 252 sessions show a beta of -0.010.",
+   "reason": "The beta is 0.025, which is above the 0.02 band that applies when the book is set.",
+   "reason_by": "model"
+  },
+  {
+   "id": "volatility",
+   "level": "ok",
+   "measure": "realised volatility, 63 sessions, % a year",
+   "value": 5.55,
+   "rule": "below the finals PDF ceiling of 12%, and today's weights on past returns give 5.24%",
+   "says": "Realised volatility over 63 sessions is 5.55% a year, below the finals PDF ceiling of 12% and today's weights on past returns give 5.24%.",
+   "reason": "Realised volatility is 5.55% a year, which is below the ceiling of 12%.",
+   "reason_by": "model"
+  },
+  {
+   "id": "liquidity",
+   "level": "ok",
+   "measure": "most sessions to exit one name at 10% of volume",
+   "value": 3.68,
+   "rule": "below the fund's limit of 5 sessions, the largest holding is 0.37 days of volume",
+   "says": "The slowest name takes 3.68 sessions to exit at 10% of daily volume, below the fund's limit of 5 sessions, the largest holding is 0.37 days of volume.",
+   "reason": "The slowest name takes 3.68 sessions to exit, which is below the 5 session limit.",
+   "reason_by": "model"
+  },
+  {
+   "id": "crowd_exposure",
+   "level": "watch",
+   "measure": "return loading on the AI crowd factor",
+   "value": 0.09,
+   "rule": "small but measurable, its t statistic of 2.66 is above the desk's watch level of 2, longs sit at the crowd's 58th percentile and shorts at the 57th",
+   "says": "The fund's return loads 0.09 on the AI crowd factor, small but measurable, its t statistic of 2.66 is above the desk's watch level of 2, longs sit at the crowd's 58th percentile and shorts at the 57th.",
+   "reason": "The return load on the AI crowd factor is 0.09, with a t statistic of 2.66 which is above the watch level of 2.",
+   "reason_by": "model"
+  },
+  {
+   "id": "crowd_sell_off",
+   "level": "ok",
+   "measure": "loss if the AI crowd dumps its favourites, % of capital",
+   "value": -0.34,
+   "rule": "worst of the tests (crowd model selling $100bn), less than half the record's worst month of minus 1.43%",
+   "says": "If the AI crowd dumped its favourites the book would lose 0.34% of capital, worst of the tests (crowd model selling $100bn), less than half the record's worst month of minus 1.43%.",
+   "reason": "A crowd sell-off would result in a loss of 0.34% of capital, which is within acceptable bounds.",
+   "reason_by": "model"
+  },
+  {
+   "id": "carbon_arc",
+   "level": "info",
+   "measure": "longs in Hype and shorts in Hidden gems on card spend, names",
+   "value": "6 and 21",
+   "rule": "counts only, card spend of 31 longs grew 5.38% and of 60 shorts 5.45%, 10 of 37 crowd favourites in Hype, never a fund input",
+   "says": "On card spend 6 longs sit in Hype and 21 shorts in Hidden gems, counts only, card spend of 31 longs grew 5.38% and of 60 shorts 5.45%, 10 of 37 crowd favourites in Hype, never a fund input.",
+   "reason": "The carbon arc data shows 6 longs in Hype and 21 shorts in Hidden gems.",
+   "reason_by": "model"
+  }
+ ],
+ "desk_thresholds": {
+  "beta_alert": 0.1,
+  "crowd_t_watch": 2.0,
+  "top10_long_share_watch": 0.5,
+  "exit_sessions_watch_share": 0.8,
+  "limit_watch_share": 0.75
+ },
+ "check": {
+  "sentences_dropped": 0,
+  "dropped": []
+ },
+ "facts": {
+  "date": "2026-08-31",
+  "source": "finals/ai/final_book_2026-08-31.csv",
+  "names": 326,
+  "longs": 140,
+  "shorts": 186,
+  "gross_pct": 185.98973661936614,
+  "net_pct": 0.6588327628853863,
+  "largest_long": {
+   "ticker": "IBKR",
+   "weight_pct": 4.01914481607276
+  },
+  "largest_short": {
+   "ticker": "SNPS",
+   "weight_pct": -1.1550436806359201
+  },
+  "top10_long_share_of_long_gross": 0.35417123104217296,
+  "top10_short_share_of_short_gross": 0.11794073373165496,
+  "effective_names": 139.5130170639776,
+  "sector_net_pct": {
+   "Materials": -1.6298739817077599,
+   "Communication Services": -1.03677327210467,
+   "Health Care": -0.5024477902990704,
+   "Utilities": -0.17169157488212003,
+   "Real Estate": -0.11967194812481,
+   "Consumer Discretionary": 0.06501307608698027,
+   "Information Technology": 0.20102705929211984,
+   "Energy": 0.32209373341503994,
+   "Consumer Staples": 0.4990430231191001,
+   "Financials": 1.2818821904444895,
+   "Industrials": 1.7502322476460899
+  },
+  "sector_net_max": {
+   "sector": "Industrials",
+   "net_pct": 1.7502322476460899
+  },
+  "sectors_held": 11,
+  "unknown_sector_names": 0,
+  "history": {
+   "beta": 0.025210621541857395,
+   "beta_long": 0.8621440191689976,
+   "beta_short": -0.8369333976271403,
+   "vol_pct": 5.239396948026743,
+   "first_day": "2025-08-29",
+   "last_day": "2026-08-31",
+   "names_without_returns": 0,
+   "realised_beta_252d": -0.00995466,
+   "realised_vol_63d_pct": 5.55445482
+  },
+  "liquidity": {
+   "date": "2026-08-31",
+   "names": 326,
+   "days_of_volume_max": 0.368422,
+   "days_of_volume_median": 0.013433,
+   "participation": 0.1,
+   "sessions_to_exit_max": 3.6842200000000003,
+   "sessions_limit": 5,
+   "names_over_limit": 0
+  },
+  "crowd": {
+   "source": "finals/ai/crowd_aug/crowd_where_we_sit.json",
+   "long_percentile": 58,
+   "short_percentile": 57,
+   "crowd_beta": 0.0940165520797186,
+   "crowd_beta_t": 2.658658178599448,
+   "sell_off_worst_pct_nav": -0.3377351330177275,
+   "sell_off_worst_case": "crowd model selling $100bn",
+   "sell_off_note": "The crowd sells its top decile over 5 days, square-root impact."
+  },
+  "carbon_arc": {
+   "source": "finals/ai/hype_map/results.json",
+   "longs_with_growth": 31,
+   "shorts_with_growth": 60,
+   "long_spend_growth_pct": 5.38,
+   "short_spend_growth_pct": 5.45,
+   "split_p_value": 0.9888,
+   "longs_in_hype": 6,
+   "longs_in_hype_strong": 1,
+   "shorts_in_hidden_gems": 21,
+   "shorts_in_hidden_gems_strong": 12,
+   "crowd_favourites_with_growth": 37,
+   "crowd_favourites_in_hype": 10,
+   "never_an_input": "Carbon Arc is never an input to the fund, its weights or its backtest"
+  },
+  "worst_month_pct": -1.434909
+ }
+}

@@ -1,0 +1,687 @@
+{
+ "what": "Where the final fund sits in the AI crowd, month ends 2021-01 to 2026-08, final book (2026-08-31) included. 2021 to 2024 is the crowd model (a frozen ridge of the AI crowd's consensus on the 147 characteristics, no AI calls). 2025 to 2026 is the live AI crowd (Gemma 4 26B, 30 retail and 30 copycat agents, 9 cards of 40 anonymous stocks a month each). Percentiles are within that month's screened universe; chance is 0.5 for the mean, 0.1 for each decile share and 0.5 for the share above random books. Weights are shares of each leg's gross.",
+ "segments": {
+  "crowd_model": "2021-01 to 2024-12 (48 month ends)",
+  "live_crowd": "2025-01 to 2026-08 (20 month ends), August 2026 asked live"
+ },
+ "checks": {
+  "crowd_model_recompute_max_abs_diff_vs_saved": 8.881784197001252e-16,
+  "crowd_model_rows_compared": 159449,
+  "crowd_model_names_2026_08": 2176,
+  "live_consensus_max_abs_diff_vs_saved_before_2026_08": {
+   "retail": 0.0,
+   "copycat": 0.0
+  },
+  "live_answers": {
+   "retail": 600,
+   "copycat": 600
+  },
+  "live_cards_2026_08": {
+   "retail": 270,
+   "copycat": 270
+  },
+  "live_names_scored_2026_08": {
+   "retail": 2171,
+   "copycat": 2165
+  }
+ },
+ "live_bottom_decile": {
+  "note": "The live retail crowd gives about half the names the same lowest vote (no pick), so its lowest in-month percentile sits far above 0.1 and a bottom decile does not exist. Bottom decile shares are left empty in any month where that happens, and averages skip those months.",
+  "retail": {
+   "share_of_names_at_lowest_vote_mean": 0.5035799385359365,
+   "lowest_percentile_mean": 0.25201955310591706,
+   "months_without_bottom_decile": 20
+  },
+  "copycat": {
+   "share_of_names_at_lowest_vote_mean": 0.03927429671250413,
+   "lowest_percentile_mean": 0.019866844200509125,
+   "months_without_bottom_decile": 0
+  }
+ },
+ "live_run": {
+  "manifests": {
+   "retail": {
+    "model": "gemma",
+    "model_file": "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
+    "model_sha256": "babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf",
+    "build": "b11132-633733d0a",
+    "context": 65536,
+    "temperature": 0.0,
+    "seed": 42,
+    "server_args": [
+     "-ub",
+     "2048",
+     "-b",
+     "2048"
+    ],
+    "server": "remote",
+    "prompts": {
+     "crowd_lab.md": "fd62a59c783b27ca824e200180cb2ca55ce9cb5989d1c5de67e887b714a0c26b",
+     "crowd_lab_copycat.md": "9621f1621a8f2c0d1e0c978bbf19e097f543a6abbe8b66048ec9c2387fce83fd"
+    },
+    "written": "2026-10-28T23:46:04"
+   },
+   "copycat": {
+    "model": "gemma",
+    "model_file": "gemma-4-26B-A4B-it-UD-IQ4_XS.gguf",
+    "model_sha256": "babd1e389d386352f71600765d37390f7dc993fbfad6725caccf996ffe34aecf",
+    "build": "b11132-633733d0a",
+    "context": 65536,
+    "temperature": 0.0,
+    "seed": 42,
+    "server_args": [
+     "-ub",
+     "2048",
+     "-b",
+     "2048"
+    ],
+    "server": "remote",
+    "prompts": {
+     "crowd_lab.md": "fd62a59c783b27ca824e200180cb2ca55ce9cb5989d1c5de67e887b714a0c26b",
+     "crowd_lab_copycat.md": "9621f1621a8f2c0d1e0c978bbf19e097f543a6abbe8b66048ec9c2387fce83fd"
+    },
+    "written": "2026-10-28T23:46:04"
+   }
+  },
+  "calls_logs": [
+   "calls_retail.jsonl",
+   "calls_copycat.jsonl"
+  ],
+  "note": "August 2026 was asked on the PC's Gemma with 4 parallel slots, temperature 0 and seed 42. Batched requests are not bit-repeatable. In a replay check of 7 August cards the picks were identical on 3 or 4 of 7, so August's live numbers carry that answer noise. Months before August are the saved answers."
+ },
+ "spliced_retail": {
+  "months": 68,
+  "first": "2021-01",
+  "last": "2026-08",
+  "average": {
+   "longs": 131.98529411764707,
+   "shorts": 180.86764705882354,
+   "unscored": 0.5882352941176471,
+   "long_mean_pct": 0.6631444431406914,
+   "short_mean_pct": 0.564792751688154,
+   "long_in_top_decile": 0.257033603849046,
+   "long_in_bottom_decile": 0.025810251912334558,
+   "short_in_top_decile": 0.13478022025419073,
+   "short_in_bottom_decile": 0.06129043105689358,
+   "above_random": 0.7343823529411764
+  },
+  "by_year": {
+   "2021": {
+    "longs": 112.16666666666667,
+    "shorts": 159.25,
+    "unscored": 0.4166666666666667,
+    "long_mean_pct": 0.6842057217904598,
+    "short_mean_pct": 0.5942079230900481,
+    "long_in_top_decile": 0.31903620666616656,
+    "long_in_bottom_decile": 0.02839294373869701,
+    "short_in_top_decile": 0.15871495541825784,
+    "short_in_bottom_decile": 0.07893649817607916,
+    "above_random": 0.9013333333333332
+   },
+   "2022": {
+    "longs": 122.58333333333333,
+    "shorts": 183.91666666666666,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6988992235091733,
+    "short_mean_pct": 0.5841677608963295,
+    "long_in_top_decile": 0.2710702242879646,
+    "long_in_bottom_decile": 0.0220314696142669,
+    "short_in_top_decile": 0.1733290248699826,
+    "short_in_bottom_decile": 0.06196408938197603,
+    "above_random": 0.9744999999999999
+   },
+   "2023": {
+    "longs": 131.58333333333334,
+    "shorts": 178.75,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6978000402676402,
+    "short_mean_pct": 0.5868887541063195,
+    "long_in_top_decile": 0.27589715536097065,
+    "long_in_bottom_decile": 0.037456991753927325,
+    "short_in_top_decile": 0.1247117898557125,
+    "short_in_bottom_decile": 0.053629303121478435,
+    "above_random": 0.8908333333333333
+   },
+   "2024": {
+    "longs": 137.5,
+    "shorts": 183.25,
+    "unscored": 0.08333333333333333,
+    "long_mean_pct": 0.7215004706962965,
+    "short_mean_pct": 0.5838615540572234,
+    "long_in_top_decile": 0.3090029028126447,
+    "long_in_bottom_decile": 0.015359602542446992,
+    "short_in_top_decile": 0.12133122069250546,
+    "short_in_bottom_decile": 0.050631833548040704,
+    "above_random": 0.9786666666666667
+   },
+   "2025": {
+    "longs": 148.0,
+    "shorts": 195.75,
+    "unscored": 1.5,
+    "long_mean_pct": 0.5803649199947097,
+    "short_mean_pct": 0.5010774510930835,
+    "long_in_top_decile": 0.16994314521537315,
+    "long_in_bottom_decile": NaN,
+    "short_in_top_decile": 0.09844417250220243,
+    "short_in_bottom_decile": NaN,
+    "above_random": 0.2806666666666667
+   },
+   "2026": {
+    "longs": 144.125,
+    "shorts": 186.0,
+    "unscored": 1.25,
+    "long_mean_pct": 0.5625722023084575,
+    "short_mean_pct": 0.525433224484803,
+    "long_in_top_decile": 0.1673611812022119,
+    "long_in_bottom_decile": NaN,
+    "short_in_top_decile": 0.13083512715262988,
+    "short_in_bottom_decile": NaN,
+    "above_random": 0.20325
+   }
+  },
+  "final_book_2026_08": {
+   "longs": 140.0,
+   "shorts": 186.0,
+   "unscored": 1.0,
+   "long_mean_pct": 0.5778274309061888,
+   "short_mean_pct": 0.5667597021275479,
+   "long_in_top_decile": 0.2774150692607765,
+   "long_in_bottom_decile": NaN,
+   "short_in_top_decile": 0.19316643854032073,
+   "short_in_bottom_decile": NaN,
+   "above_random": 0.138
+  }
+ },
+ "spliced_copycat": {
+  "months": 68,
+  "first": "2021-01",
+  "last": "2026-08",
+  "average": {
+   "longs": 131.98529411764707,
+   "shorts": 180.86764705882354,
+   "unscored": 0.5441176470588235,
+   "long_mean_pct": 0.679821109869554,
+   "short_mean_pct": 0.5830346730166243,
+   "long_in_top_decile": 0.2686830621442169,
+   "long_in_bottom_decile": 0.02640265997818631,
+   "short_in_top_decile": 0.14279430540106466,
+   "short_in_bottom_decile": 0.05438159710964981,
+   "above_random": 0.8729705882352942
+  },
+  "by_year": {
+   "2021": {
+    "longs": 112.16666666666667,
+    "shorts": 159.25,
+    "unscored": 0.4166666666666667,
+    "long_mean_pct": 0.6842057217904598,
+    "short_mean_pct": 0.5942079230900481,
+    "long_in_top_decile": 0.31903620666616656,
+    "long_in_bottom_decile": 0.02839294373869701,
+    "short_in_top_decile": 0.15871495541825784,
+    "short_in_bottom_decile": 0.07893649817607916,
+    "above_random": 0.9013333333333332
+   },
+   "2022": {
+    "longs": 122.58333333333333,
+    "shorts": 183.91666666666666,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6988992235091733,
+    "short_mean_pct": 0.5841677608963295,
+    "long_in_top_decile": 0.2710702242879646,
+    "long_in_bottom_decile": 0.0220314696142669,
+    "short_in_top_decile": 0.1733290248699826,
+    "short_in_bottom_decile": 0.06196408938197603,
+    "above_random": 0.9744999999999999
+   },
+   "2023": {
+    "longs": 131.58333333333334,
+    "shorts": 178.75,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6978000402676402,
+    "short_mean_pct": 0.5868887541063195,
+    "long_in_top_decile": 0.27589715536097065,
+    "long_in_bottom_decile": 0.037456991753927325,
+    "short_in_top_decile": 0.1247117898557125,
+    "short_in_bottom_decile": 0.053629303121478435,
+    "above_random": 0.8908333333333333
+   },
+   "2024": {
+    "longs": 137.5,
+    "shorts": 183.25,
+    "unscored": 0.08333333333333333,
+    "long_mean_pct": 0.7215004706962965,
+    "short_mean_pct": 0.5838615540572234,
+    "long_in_top_decile": 0.3090029028126447,
+    "long_in_bottom_decile": 0.015359602542446992,
+    "short_in_top_decile": 0.12133122069250546,
+    "short_in_bottom_decile": 0.050631833548040704,
+    "above_random": 0.9786666666666667
+   },
+   "2025": {
+    "longs": 148.0,
+    "shorts": 195.75,
+    "unscored": 1.5,
+    "long_mean_pct": 0.6336335516996611,
+    "short_mean_pct": 0.5576701651281603,
+    "long_in_top_decile": 0.20132209553405345,
+    "long_in_bottom_decile": 0.024091886174304983,
+    "short_in_top_decile": 0.12118869654853259,
+    "short_in_bottom_decile": 0.046877232363855596,
+    "above_random": 0.7599999999999999
+   },
+   "2026": {
+    "longs": 144.125,
+    "shorts": 186.0,
+    "unscored": 0.875,
+    "long_mean_pct": 0.624420921946364,
+    "short_mean_pct": 0.5956004847241863,
+    "long_in_top_decile": 0.2193131512331442,
+    "long_in_bottom_decile": 0.03342326907911881,
+    "short_in_top_decile": 0.16483806483156346,
+    "short_in_bottom_decile": 0.024185140544878473,
+    "above_random": 0.66225
+   }
+  },
+  "final_book_2026_08": {
+   "longs": 140.0,
+   "shorts": 186.0,
+   "unscored": 2.0,
+   "long_mean_pct": 0.6565010243017909,
+   "short_mean_pct": 0.6243053569581267,
+   "long_in_top_decile": 0.25961037076919585,
+   "long_in_bottom_decile": 0.03674945396706073,
+   "short_in_top_decile": 0.17640056781914001,
+   "short_in_bottom_decile": 0.016711591238798378,
+   "above_random": 0.736
+  }
+ },
+ "crowd_model_2021_2026": {
+  "months": 68,
+  "first": "2021-01",
+  "last": "2026-08",
+  "average": {
+   "longs": 131.98529411764707,
+   "shorts": 180.86764705882354,
+   "unscored": 0.23529411764705882,
+   "long_mean_pct": 0.7027429929441651,
+   "short_mean_pct": 0.587807106539466,
+   "long_in_top_decile": 0.31041519312788435,
+   "long_in_bottom_decile": 0.02599492890792979,
+   "short_in_top_decile": 0.13910539844447467,
+   "short_in_bottom_decile": 0.05501019735473381,
+   "above_random": 0.9509705882352941
+  },
+  "by_year": {
+   "2021": {
+    "longs": 112.16666666666667,
+    "shorts": 159.25,
+    "unscored": 0.4166666666666667,
+    "long_mean_pct": 0.6842057217904598,
+    "short_mean_pct": 0.5942079230900481,
+    "long_in_top_decile": 0.31903620666616656,
+    "long_in_bottom_decile": 0.02839294373869701,
+    "short_in_top_decile": 0.15871495541825784,
+    "short_in_bottom_decile": 0.07893649817607916,
+    "above_random": 0.9013333333333332
+   },
+   "2022": {
+    "longs": 122.58333333333333,
+    "shorts": 183.91666666666666,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6988992235091733,
+    "short_mean_pct": 0.5841677608963295,
+    "long_in_top_decile": 0.2710702242879646,
+    "long_in_bottom_decile": 0.0220314696142669,
+    "short_in_top_decile": 0.1733290248699826,
+    "short_in_bottom_decile": 0.06196408938197603,
+    "above_random": 0.9744999999999999
+   },
+   "2023": {
+    "longs": 131.58333333333334,
+    "shorts": 178.75,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6978000402676402,
+    "short_mean_pct": 0.5868887541063195,
+    "long_in_top_decile": 0.27589715536097065,
+    "long_in_bottom_decile": 0.037456991753927325,
+    "short_in_top_decile": 0.1247117898557125,
+    "short_in_bottom_decile": 0.053629303121478435,
+    "above_random": 0.8908333333333333
+   },
+   "2024": {
+    "longs": 137.5,
+    "shorts": 183.25,
+    "unscored": 0.08333333333333333,
+    "long_mean_pct": 0.7215004706962965,
+    "short_mean_pct": 0.5838615540572234,
+    "long_in_top_decile": 0.3090029028126447,
+    "long_in_bottom_decile": 0.015359602542446992,
+    "short_in_top_decile": 0.12133122069250546,
+    "short_in_bottom_decile": 0.050631833548040704,
+    "above_random": 0.9786666666666667
+   },
+   "2025": {
+    "longs": 148.0,
+    "shorts": 195.75,
+    "unscored": 0.25,
+    "long_mean_pct": 0.722015121512483,
+    "short_mean_pct": 0.59914682317278,
+    "long_in_top_decile": 0.3650460736685097,
+    "long_in_bottom_decile": 0.020435810924193287,
+    "short_in_top_decile": 0.12184416245234596,
+    "short_in_bottom_decile": 0.037506091635912155,
+    "above_random": 0.9841666666666667
+   },
+   "2026": {
+    "longs": 144.125,
+    "shorts": 186.0,
+    "unscored": 0.125,
+    "long_mean_pct": 0.6866845733613242,
+    "short_mean_pct": 0.5739511826014096,
+    "long_in_top_decile": 0.3284502973926327,
+    "long_in_bottom_decile": 0.03544166785710599,
+    "short_in_top_decile": 0.13249915684482816,
+    "short_in_bottom_decile": 0.04358495372000767,
+    "above_random": 0.989
+   }
+  },
+  "final_book_2026_08": {
+   "longs": 140.0,
+   "shorts": 186.0,
+   "unscored": 0.0,
+   "long_mean_pct": 0.678170639088372,
+   "short_mean_pct": 0.5821456936637376,
+   "long_in_top_decile": 0.3031407479319069,
+   "long_in_bottom_decile": 0.026998485610659415,
+   "short_in_top_decile": 0.13933777818289653,
+   "short_in_bottom_decile": 0.03740503500607707,
+   "above_random": 0.994
+  }
+ },
+ "crowd_model_2021_2024": {
+  "months": 48,
+  "first": "2021-01",
+  "last": "2024-12",
+  "average": {
+   "longs": 125.95833333333333,
+   "shorts": 176.29166666666666,
+   "unscored": 0.25,
+   "long_mean_pct": 0.7006013640658924,
+   "short_mean_pct": 0.5872814980374802,
+   "long_in_top_decile": 0.29375162228193663,
+   "long_in_bottom_decile": 0.02581025191233456,
+   "short_in_top_decile": 0.14452174770911458,
+   "short_in_bottom_decile": 0.061290431056893586,
+   "above_random": 0.9363333333333332
+  },
+  "by_year": {
+   "2021": {
+    "longs": 112.16666666666667,
+    "shorts": 159.25,
+    "unscored": 0.4166666666666667,
+    "long_mean_pct": 0.6842057217904598,
+    "short_mean_pct": 0.5942079230900481,
+    "long_in_top_decile": 0.31903620666616656,
+    "long_in_bottom_decile": 0.02839294373869701,
+    "short_in_top_decile": 0.15871495541825784,
+    "short_in_bottom_decile": 0.07893649817607916,
+    "above_random": 0.9013333333333332
+   },
+   "2022": {
+    "longs": 122.58333333333333,
+    "shorts": 183.91666666666666,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6988992235091733,
+    "short_mean_pct": 0.5841677608963295,
+    "long_in_top_decile": 0.2710702242879646,
+    "long_in_bottom_decile": 0.0220314696142669,
+    "short_in_top_decile": 0.1733290248699826,
+    "short_in_bottom_decile": 0.06196408938197603,
+    "above_random": 0.9744999999999999
+   },
+   "2023": {
+    "longs": 131.58333333333334,
+    "shorts": 178.75,
+    "unscored": 0.25,
+    "long_mean_pct": 0.6978000402676402,
+    "short_mean_pct": 0.5868887541063195,
+    "long_in_top_decile": 0.27589715536097065,
+    "long_in_bottom_decile": 0.037456991753927325,
+    "short_in_top_decile": 0.1247117898557125,
+    "short_in_bottom_decile": 0.053629303121478435,
+    "above_random": 0.8908333333333333
+   },
+   "2024": {
+    "longs": 137.5,
+    "shorts": 183.25,
+    "unscored": 0.08333333333333333,
+    "long_mean_pct": 0.7215004706962965,
+    "short_mean_pct": 0.5838615540572234,
+    "long_in_top_decile": 0.3090029028126447,
+    "long_in_bottom_decile": 0.015359602542446992,
+    "short_in_top_decile": 0.12133122069250546,
+    "short_in_bottom_decile": 0.050631833548040704,
+    "above_random": 0.9786666666666667
+   }
+  },
+  "final_book_2026_08": null
+ },
+ "live_retail_2025_2026": {
+  "months": 20,
+  "first": "2025-01",
+  "last": "2026-08",
+  "average": {
+   "longs": 146.45,
+   "shorts": 191.85,
+   "unscored": 1.4,
+   "long_mean_pct": 0.5732478329202089,
+   "short_mean_pct": 0.5108197604497713,
+   "long_in_top_decile": 0.16891035961010864,
+   "long_in_bottom_decile": NaN,
+   "short_in_top_decile": 0.1114005543623734,
+   "short_in_bottom_decile": NaN,
+   "above_random": 0.24969999999999995
+  },
+  "by_year": {
+   "2025": {
+    "longs": 148.0,
+    "shorts": 195.75,
+    "unscored": 1.5,
+    "long_mean_pct": 0.5803649199947097,
+    "short_mean_pct": 0.5010774510930835,
+    "long_in_top_decile": 0.16994314521537315,
+    "long_in_bottom_decile": NaN,
+    "short_in_top_decile": 0.09844417250220243,
+    "short_in_bottom_decile": NaN,
+    "above_random": 0.2806666666666667
+   },
+   "2026": {
+    "longs": 144.125,
+    "shorts": 186.0,
+    "unscored": 1.25,
+    "long_mean_pct": 0.5625722023084575,
+    "short_mean_pct": 0.525433224484803,
+    "long_in_top_decile": 0.1673611812022119,
+    "long_in_bottom_decile": NaN,
+    "short_in_top_decile": 0.13083512715262988,
+    "short_in_bottom_decile": NaN,
+    "above_random": 0.20325
+   }
+  },
+  "final_book_2026_08": {
+   "longs": 140.0,
+   "shorts": 186.0,
+   "unscored": 1.0,
+   "long_mean_pct": 0.5778274309061888,
+   "short_mean_pct": 0.5667597021275479,
+   "long_in_top_decile": 0.2774150692607765,
+   "long_in_bottom_decile": NaN,
+   "short_in_top_decile": 0.19316643854032073,
+   "short_in_bottom_decile": NaN,
+   "above_random": 0.138
+  }
+ },
+ "live_copycat_2025_2026": {
+  "months": 20,
+  "first": "2025-01",
+  "last": "2026-08",
+  "average": {
+   "longs": 146.45,
+   "shorts": 191.85,
+   "unscored": 1.25,
+   "long_mean_pct": 0.6299484997983423,
+   "short_mean_pct": 0.5728422929665709,
+   "long_in_top_decile": 0.20851851781368977,
+   "long_in_bottom_decile": 0.027824439336230515,
+   "short_in_top_decile": 0.13864844386174496,
+   "short_in_bottom_decile": 0.03780039563626474,
+   "above_random": 0.7209
+  },
+  "by_year": {
+   "2025": {
+    "longs": 148.0,
+    "shorts": 195.75,
+    "unscored": 1.5,
+    "long_mean_pct": 0.6336335516996611,
+    "short_mean_pct": 0.5576701651281603,
+    "long_in_top_decile": 0.20132209553405345,
+    "long_in_bottom_decile": 0.024091886174304983,
+    "short_in_top_decile": 0.12118869654853259,
+    "short_in_bottom_decile": 0.046877232363855596,
+    "above_random": 0.7599999999999999
+   },
+   "2026": {
+    "longs": 144.125,
+    "shorts": 186.0,
+    "unscored": 0.875,
+    "long_mean_pct": 0.624420921946364,
+    "short_mean_pct": 0.5956004847241863,
+    "long_in_top_decile": 0.2193131512331442,
+    "long_in_bottom_decile": 0.03342326907911881,
+    "short_in_top_decile": 0.16483806483156346,
+    "short_in_bottom_decile": 0.024185140544878473,
+    "above_random": 0.66225
+   }
+  },
+  "final_book_2026_08": {
+   "longs": 140.0,
+   "shorts": 186.0,
+   "unscored": 2.0,
+   "long_mean_pct": 0.6565010243017909,
+   "short_mean_pct": 0.6243053569581267,
+   "long_in_top_decile": 0.25961037076919585,
+   "long_in_bottom_decile": 0.03674945396706073,
+   "short_in_top_decile": 0.17640056781914001,
+   "short_in_bottom_decile": 0.016711591238798378,
+   "above_random": 0.736
+  }
+ },
+ "crowd_factor_beta": {
+  "beta": 0.0940165520797186,
+  "t": 2.658658178599448,
+  "months": 68
+ },
+ "crowd_factor_months": {
+  "first": "2021-01-01 00:00:00",
+  "last": "2026-08-01 00:00:00"
+ },
+ "crowd_factor_note": "Top minus bottom decile of the crowd model, equal weight, monthly.",
+ "sell_off_final_book_share_of_nav": {
+  "crowd_model": {
+   "10bn": -0.0010680122661959558,
+   "50bn": -0.002388148028017758,
+   "100bn": -0.003377351330177275
+  },
+  "live_retail": {
+   "10bn": -0.0007239543766112057,
+   "50bn": -0.00161881119871114,
+   "100bn": -0.002289344752138741
+  },
+  "live_copycat": {
+   "10bn": -0.0006336815099885358,
+   "50bn": -0.0014169549324190784,
+   "100bn": -0.0020038768826985127
+  }
+ },
+ "sell_off_note": "The crowd sells its top decile over 5 days, square-root impact.",
+ "live_agreement_with_crowd_model": {
+  "retail": {
+   "spearman_mean": 0.32267673573469846,
+   "spearman_2026_08": 0.4880151868843975,
+   "months": 20,
+   "names_2026_08": 2171
+  },
+  "copycat": {
+   "spearman_mean": 0.5759665251072466,
+   "spearman_2026_08": 0.6184703741096489,
+   "months": 20,
+   "names_2026_08": 2165
+  }
+ },
+ "herding": {
+  "retail": {
+   "all_months": {
+    "effective_voters": 3.816148274902502,
+    "mean_correlation": 0.23659757791238686,
+    "agents": 30,
+    "lsv": 0.05565738033701289,
+    "lsv_t": 73.98470178944378,
+    "cells": 39040
+   },
+   "to_2026_07": {
+    "effective_voters": 3.8869920899227766,
+    "mean_correlation": 0.2316569027649454,
+    "agents": 30,
+    "lsv": 0.05438130423054543,
+    "lsv_t": 70.84330194020457,
+    "cells": 37093
+   },
+   "2026_08": {
+    "effective_voters": 2.8181634614031257,
+    "mean_correlation": 0.33259415965914446,
+    "agents": 30,
+    "lsv": 0.07996836699196785,
+    "lsv_t": 21.88570361619719,
+    "cells": 1947
+   }
+  },
+  "copycat": {
+   "all_months": {
+    "effective_voters": 3.3419351789195413,
+    "mean_correlation": 0.2750632688265397,
+    "agents": 30,
+    "lsv": 0.06222691745871079,
+    "lsv_t": 78.26473824545629,
+    "cells": 39057
+   },
+   "to_2026_07": {
+    "effective_voters": 3.391517131015759,
+    "mean_correlation": 0.27053789103495934,
+    "agents": 30,
+    "lsv": 0.061560752306176386,
+    "lsv_t": 75.72562809606995,
+    "cells": 37104
+   },
+   "2026_08": {
+    "effective_voters": 2.628474551750411,
+    "mean_correlation": 0.35908496982917665,
+    "agents": 30,
+    "lsv": 0.07488303206169906,
+    "lsv_t": 19.867927518649275,
+    "cells": 1953
+   }
+  }
+ },
+ "round": {
+  "long_pct": 58,
+  "short_pct": 57,
+  "avg_long_pct": 66,
+  "avg_short_pct": 56,
+  "beta": 0.09,
+  "sell_10bn_pct": -0.11,
+  "voters": 3.8,
+  "lsv": 0.056
+ },
+ "fund_fact_line": "Our longs sit at the AI crowd's 58th percentile, crowd beta 0.09",
+ "headline": "Our longs average the AI crowd's 66th percentile and shorts the 56th, yet crowd beta is only 0.09"
+}
