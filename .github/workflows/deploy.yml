@@ -21,9 +21,9 @@ env:
 jobs:
   # Each open pull request gets its own unlisted copy on workers.dev.
   preview:
-    # Only branches of this repo, since forks get no secrets.
+    # Only this account's own branches, as forks get no secrets.
     if: >-
-      github.repository == 'NicholasXydis/FIAM' &&
+      github.repository_owner == 'NicholasXydis' &&
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
@@ -73,7 +73,7 @@ jobs:
   # A closed pull request's preview is deleted with its deployments.
   cleanup:
     if: >-
-      github.repository == 'NicholasXydis/FIAM' &&
+      github.repository_owner == 'NicholasXydis' &&
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
@@ -100,7 +100,7 @@ jobs:
   # The live site, from main only, after a reviewer approves it.
   production:
     if: >-
-      github.repository == 'NicholasXydis/FIAM' &&
+      github.repository_owner == 'NicholasXydis' &&
       github.event_name != 'pull_request' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
