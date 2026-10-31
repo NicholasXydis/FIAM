@@ -19,6 +19,7 @@ LEAVE_OUT = (
     ".env.example",
     "docs/PLAN.md",
     "docs/TEAM.md",
+    "finals/",
 )
 # The fund's own test file, which the lock hashes beside its code.
 CARRIED_TESTS = {"tests/test_vfinal.py"}

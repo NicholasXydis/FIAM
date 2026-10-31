@@ -119,6 +119,9 @@ Desktop.ini
 /deck/
 /docs/
 
+# The deck builder's frames and clip.
+/tools/deck/build/
+
 # Site packages, web build, wrangler scratch.
 /site/node_modules/
 /site/dist/

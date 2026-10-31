@@ -364,6 +364,17 @@ def test_main_py_leaves_out_the_plan_files(monkeypatch):
     assert set(build.carried(with_edgar=False)) == {"run.py"}
 
 
+# MAIN.py never carries the deck, the fact sheet or the numbers file.
+def test_main_py_leaves_out_the_finals_folder(monkeypatch):
+    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    names = "finals/QUARCC_Purple_Finals.pptx\0finals/numbers.json\0run.py\0"
+    listing = type("Listing", (), {"stdout": names})()
+    monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
+    assert set(build.carried(with_edgar=False)) == {"run.py"}
+
+
 # MAIN.py never carries the two tables derived from WRDS data.
 def test_main_py_never_carries_the_wrds_tables(monkeypatch):
     spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
