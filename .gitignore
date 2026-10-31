@@ -102,16 +102,11 @@ Desktop.ini
 .Trash-*
 *.kate-swp
 
-# Round one's record: only the submitted holdings, returns and exhibits.
-/frozen/v1/submission/figures/
-/frozen/v1/submission/*.csv
-!/frozen/v1/submission/holdings.csv
-!/frozen/v1/submission/returns.csv
-/frozen/v1/submission/*.pdf
-!/frozen/v1/submission/exhibits/agents/*.parquet
+# The triage agent's labelled 8-Ks, which back the film's filings line.
+!/frozen/agents/*.parquet
 # Drafts the rules reader writes; only the hand-made references are committed.
-/frozen/v1/mandates/*_draft*.json
-/frozen/v1/mandates/*_rules.txt
+/frozen/mandates/*_draft*.json
+/frozen/mandates/*_rules.txt
 
 # Run outputs, past research runs, the generated deck and local notes.
 /out/
@@ -131,3 +126,12 @@ Desktop.ini
 # Root notes stay local except README.md.
 /*.md
 !/README.md
+
+# The single-file copy tools/build_main.py writes for the USB kit.
+/MAIN.py
+
+# An agent rerun's call logs, SEC cache and run logs beside its record.
+/finals/ai/**/calls*.jsonl
+/finals/ai/**/sec_cache/
+/finals/ai/**/*.log
+/finals/ai/triage/labels_final.csv

@@ -13,7 +13,7 @@ from fiam.agents import harness as H
 from fiam.vfinal import config as C
 
 PANEL = H.ROOT / "data" / "organisers" / "chars_final_with_names.parquet"
-RETURNS = D.PACK / "src" / "cache" / "market_ret.parquet"
+RETURNS = H.ROOT / "out" / "vfinal" / "cache" / "market_ret.parquet"
 GICS = {
     "10": "Energy",
     "15": "Materials",
@@ -121,34 +121,20 @@ def liquidity() -> dict:
     )
 
 
-# The AI crowd's view of the book, live August run when present.
+# The AI crowd's view of the book, from the live August run.
 def crowd() -> dict:
     live = D.load(D.CROWD_LIVE)
-    if live:
-        sell = live["sell_off_final_book_share_of_nav"]
-        worst = min((v, k, s) for k, case in sell.items() for s, v in case.items())
-        return dict(
-            source=str(D.CROWD_LIVE),
-            long_percentile=live["round"]["long_pct"],
-            short_percentile=live["round"]["short_pct"],
-            crowd_beta=live["crowd_factor_beta"]["beta"],
-            crowd_beta_t=live["crowd_factor_beta"]["t"],
-            sell_off_worst_pct_nav=worst[0] * 100,
-            sell_off_worst_case=f"{worst[1].replace('_', ' ')} selling ${worst[2]}",
-            sell_off_note=live.get("sell_off_note"),
-        )
-    old = D.load(D.CROWD)
-    sell = old["sell_off_final_book_pct_nav"] if "sell_off_final_book_pct_nav" in old else {}
-    worst = min(sell.items(), key=lambda kv: kv[1]) if sell else ("none", 0.0)
+    sell = live["sell_off_final_book_share_of_nav"]
+    worst = min((v, k, s) for k, case in sell.items() for s, v in case.items())
     return dict(
-        source=str(D.CROWD),
-        long_percentile=round(old["final_book_2026_08"]["long_mean_pct"] * 100),
-        short_percentile=round(old["final_book_2026_08"]["short_mean_pct"] * 100),
-        crowd_beta=old["crowd_factor_beta"]["beta"],
-        crowd_beta_t=old["crowd_factor_beta"]["t"],
-        sell_off_worst_pct_nav=worst[1] * 100,
-        sell_off_worst_case=f"crowd model selling ${worst[0]}",
-        sell_off_note=None,
+        source=D.rel(D.CROWD_LIVE),
+        long_percentile=live["round"]["long_pct"],
+        short_percentile=live["round"]["short_pct"],
+        crowd_beta=live["crowd_factor_beta"]["beta"],
+        crowd_beta_t=live["crowd_factor_beta"]["t"],
+        sell_off_worst_pct_nav=worst[0] * 100,
+        sell_off_worst_case=f"{worst[1].replace('_', ' ')} selling ${worst[2]}",
+        sell_off_note=live.get("sell_off_note"),
     )
 
 
@@ -159,7 +145,7 @@ def carbon_arc() -> dict:
     lvs = card["longs_vs_shorts"]
     fav = card["crowd_favourites"]
     return dict(
-        source=str(D.HYPE),
+        source=D.rel(D.HYPE),
         longs_with_growth=card["coverage"]["with_growth_book_longs"],
         shorts_with_growth=card["coverage"]["with_growth_book_shorts"],
         long_spend_growth_pct=lvs["long_wmean"] * 100,
@@ -190,7 +176,7 @@ def book_facts() -> dict:
     share = w.abs() / gross
     return dict(
         date=F.AS_OF,
-        source=str(F.BOOK),
+        source=D.rel(F.BOOK),
         names=int(len(book)),
         longs=int(len(longs)),
         shorts=int(len(shorts)),
@@ -475,7 +461,7 @@ def run() -> dict:
         as_of=F.AS_OF,
         model=f"Gemma 4 26B ({account['model_file']})",
         settings=dict(temperature=account["temperature"], seed=account["seed"]),
-        calls_log=str(D.LOG),
+        calls_log=D.rel(D.LOG),
         calls=got["calls"],
         prompt_number=PROMPT_NUMBER,
         earlier_prompts_note="prompt 1 gave each rule without saying above or below, and its "

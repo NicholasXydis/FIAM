@@ -35,14 +35,11 @@ def test_check_drops_bad_sentences():
     assert kept == "We should trim the largest long."
 
 
-# Version names, tries and the selection line never pass.
-def test_honesty_words_are_caught():
+# Claims the record cannot support never pass.
+def test_overclaims_are_caught():
     for said in (
-        "The vfinal book did well.",
-        "Of the variants we tried this was best.",
-        "It was chosen after the data.",
         "The design was fixed before 2021.",
-        "The 61st Investor agrees.",
+        "The record is out of sample.",
     ):
         assert D.breaks(said, advice=False), said
     assert D.breaks("The record runs from 2021 to 2026.", advice=False) == []

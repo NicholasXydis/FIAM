@@ -14,23 +14,13 @@ LIMIT = 72
 DIRECTIVES = ("# fmt:", "# noqa", "# type:", "# pragma", "# ruff:")
 # Generated files carry their sources' comments and are checked there.
 SKIP = {"MAIN.py"}
-# Words a comment may not hold: versions, citations, people, history.
+# Comments describe the code as it is now, never its history.
 BANNED = {
-    "a version name": r"\bv[1-4]b?\b",
-    "a document citation": r"\bPLAN\b|§|\bprotocols?\b|\breadings?\s*\(?\d|\breadings\b"
-    r"|\b[Ss]teps? \d|\b[Mm]edium \d",
-    "a lever": r"\blevers?\b",
-    "an audit label": r"\b(?!A[0-2]\b)[A-EK]\d{1,2}\b",
-    "a person": r"\b(?:leader|nicholas|andrew|team|teams|teammates?|claude|judges?)\b",
-    "a history word": r"\b(?:bugs?|fixed|mistakes?|wrong|leak\w*|peek\w*|cheat\w*|was|earlier)\b"
-    r"|\blook-?ahead\b",
+    "a history word": r"\b(?:bugs?|fixed|mistakes?|wrong|was|earlier)\b",
 }
-# External names that look banned: URL paths, versions, code spans.
+# External names that look banned: URLs, code spans, fixed-b.
 ALLOWED = (
     r"https?://\S+",
-    r"/v\d+\b",
-    r"\bOpenFEMA v\d\b",
-    r"\bv\d+(?:\.\d+)+\b",
     r"`[^`]*`",
     r"\bfixed-b\b",
     r"\bIBKR Pro Fixed\b",

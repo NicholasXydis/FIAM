@@ -133,7 +133,7 @@ def entry(path: Path, read) -> dict | str:
         return "pending"
     if not D.screen_ok(finding, FINDING_CHARS):
         raise ValueError(f"finding breaks the on-screen rules: {finding}")
-    return dict(finding=finding, key_number=key, date=D.stamp(path), source=str(path))
+    return dict(finding=finding, key_number=key, date=D.stamp(path), source=D.rel(path))
 
 
 # The desk's fact line, checked against the on-screen rules.

@@ -6,7 +6,7 @@
 pyarrow==25.0.1        # reads the data bundle
 pandas==3.0.3          # the panel and every table
 numpy==2.5.1           # the arithmetic under pandas
-scipy==1.18.1          # the deflated Sharpe
+scipy==1.18.1          # statistics and the crowd study
 cvxpy==1.9.3           # the portfolio optimizer
 statsmodels==0.15.0    # alpha and beta with HAC standard errors
 matplotlib==3.11.0     # every chart
@@ -14,7 +14,7 @@ scikit-learn==1.9.1    # ElasticNet and the template models
 lightgbm==4.7.0        # the teachers, the scorer and the comparison trees
 transformers==5.17.0   # FinBERT, which reads the 8-K filings
 exchange-calendars==4.13.2  # the NYSE calendar and its 1 pm early closes
-numba==0.68.0          # vfinal0's E-LASSO walk-forward (glmnet port)
+numba==0.68.0          # the E-LASSO walk-forward (glmnet port)
 
 # CPU-only on purpose; macOS needs Apple silicon and macOS 14, older Macs lose only --ml.
 torch==2.14.0+cpu; sys_platform != "darwin"

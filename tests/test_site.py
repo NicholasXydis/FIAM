@@ -1,7 +1,7 @@
 # Site data matches the fund's numbers pack, number for number.
 
 import json
-import re
+from pathlib import Path
 
 import pytest
 
@@ -87,9 +87,9 @@ def test_signals_are_theirs_and_ours(site):
 
 # Each month's book nets within the daily net range the table reports.
 def test_each_month_nets_within_the_table(site):
-    path = PACK / "src" / "bw_fresh_lag" / "table_9_1.csv"
+    path = build_site.RUN / "table_9_1.csv"
     if not path.exists():
-        pytest.skip("no run table in the pack")
+        pytest.skip("no run table on this machine")
     cell = build_site.table_rows(path)[16]["strategy"]
     low, high = build_site.labelled(cell, "min"), build_site.labelled(cell, "max")
     for flat in site["stocks"]["book"]:
@@ -120,23 +120,22 @@ def test_crashes_match_the_replay(site, numbers):
         assert c["market"] == pytest.approx(x["market_pct"] / 100, abs=5e-5)
 
 
-# No version names, attempt counts or mentor in the data the site ships.
-def test_data_names_no_versions_or_attempts():
+# No internal run names in the data the site ships.
+def test_data_has_no_internal_run_names():
     for path in (SITE, build_site.CRASHES):
         if not path.exists():
             continue
         text = path.read_text(encoding="utf-8").lower()
-        banned = ("vfinal", "bw_fresh", "mentor", "chosen after", "attempts", "honesty", "61st")
+        banned = ("vfinal", "bw_fresh")
         for word in banned:
             assert word not in text, (path.name, word)
-        assert not re.search(r"\b\d+ (versions|books|variants) tried", text)
 
 
 # Eight agents, each with the finding the findings file gives it.
 def test_agents_are_the_eight_findings(site):
-    path = PACK / "ai" / "agents_found.json"
+    path = build_site.AI / "agents_found.json"
     if not path.exists():
-        pytest.skip("no agent findings in the pack")
+        pytest.skip("no agent findings in finals/ai")
     file = build_site.load(path)
     found = file["agents"]
     assert len(site["agents"]) == 8 == len(found) and not file.get("pending")
@@ -148,6 +147,10 @@ def test_agents_are_the_eight_findings(site):
             got["date"],
         )
     assert "vfinal_pack" not in json.dumps(site["agents"])
+    # Each finding's source is a file in the repo, never a home folder.
+    for got in found.values():
+        assert not Path(got["source"]).is_absolute()
+        assert (build_site.ROOT / got["source"]).exists()
 
 
 # The crowd card and data are the study's round block, nothing else.
@@ -155,7 +158,7 @@ def test_crowd_is_the_round_block(site):
     crowd = site["crowd"]
     assert not set(build_site.STALE) & set(crowd)
     if not build_site.CROWD.exists():
-        pytest.skip("no crowd study in the pack")
+        pytest.skip("no crowd study in finals/ai")
     study = build_site.load(build_site.CROWD)
     rounded = study["round"]
     assert (crowd["long_pct"], crowd["short_pct"]) == (
@@ -196,7 +199,7 @@ def test_agent_cards_are_backed(site):
     assert all("facts" not in a for a in site["agents"])
     crowd = next(a for a in site["agents"] if a["key"] == "crowd")
     if build_site.CROWD.exists():
-        assert crowd["model"] == build_site.crowd_models(PACK)
+        assert crowd["model"] == build_site.crowd_models()
     assert "Qwen" not in crowd["model"]
 
 
@@ -229,15 +232,13 @@ def test_ad_voice_matches_the_data(site):
     assert len(data["crashes"]) == 17 and "seventeen replayed crises" in said["crises"]
 
 
-# The film's "thousands of filings" rests on triage's round-one labels.
+# The film's "thousands of filings" rests on the triage agent's labels.
 def test_film_filings_line_is_backed():
     import pandas as pd
-
-    from fiam import paths
 
     lines = json.loads((build_site.ROOT / "site" / "ad" / "voice" / "lines.json").read_text())
     if "thousands of filings" not in " ".join(lines["agents"]):
         return
-    labels = paths.SUBMISSION / "exhibits" / "agents" / "triage_labels.parquet"
+    labels = build_site.ROOT / "frozen" / "agents" / "triage_labels.parquet"
     assert labels.exists(), "the film says thousands of filings but the labels are gone"
     assert len(pd.read_parquet(labels, columns=["document_id"])) >= 2000

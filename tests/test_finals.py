@@ -43,3 +43,12 @@ def test_shown_figure_matches_its_value(key):
     shown = re.search(r"\d+\.?\d*", n["shown"].replace(",", "")).group()
     places = len(shown.split(".")[1]) if "." in shown else 0
     assert f"{abs(n['value']):.{places}f}" == shown, key
+
+
+# Each agent the README names has its record in the repo.
+def test_readme_agents_have_their_records():
+    found = json.loads((FINALS / "ai" / "agents_found.json").read_text(encoding="utf-8"))
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for name, entry in found["agents"].items():
+        assert f"| {name} |" in readme, name
+        assert (ROOT / entry["source"]).is_file(), entry["source"]

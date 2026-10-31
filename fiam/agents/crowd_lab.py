@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from fiam import book as P
 from fiam import data
+from fiam import stocks as S
 from fiam.agents import harness as H
 from fiam.paths import FROZEN
 
@@ -36,7 +36,7 @@ def labels() -> dict:
     table = pd.read_csv(JKP, encoding="latin-1").dropna(subset=["abr_jkp"])
     names = table.drop_duplicates("abr_jkp").set_index("abr_jkp")["name_new"]
     names = names.str.replace("â€™", "'", regex=False).str.strip()
-    out = {c: str(names.get(c, c)) for c in P.characteristics()}
+    out = {c: str(names.get(c, c)) for c in S.characteristics()}
     out["intrinsic_value"] = "Intrinsic value to price"
     LABELS.parent.mkdir(parents=True, exist_ok=True)
     LABELS.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
@@ -48,16 +48,16 @@ def info_sets() -> list[list[str]]:
     if SETS.exists():
         return json.loads(SETS.read_text(encoding="utf-8"))
     rng = np.random.default_rng(SEED)
-    chars = P.characteristics()
+    chars = S.characteristics()
     sets = [sorted(rng.choice(chars, COLUMNS, replace=False).tolist()) for _ in range(N_SETS)]
     SETS.write_text(json.dumps(sets, indent=1) + "\n", encoding="utf-8")
     return sets
 
 
-# The shipped book's eligible stocks each month, traits as 0-100 ranks.
+# The screened stocks each month, their traits as 0-100 ranks.
 def universe() -> pd.DataFrame:
-    chars = P.characteristics()
-    frame = P.screen(P.load_panel(tuple(c for c in chars if c not in P.SIGNALS)), FIRST, LAST)
+    chars = S.characteristics()
+    frame = S.screen(S.load_panel(tuple(c for c in chars if c not in S.SIGNALS)), FIRST, LAST)
     for col in chars:
         frame[col] = (frame.groupby("eom")[col].rank(pct=True) * 100).round().fillna(50)
     frame[chars] = frame[chars].astype(int)
@@ -115,9 +115,9 @@ def retail_agents() -> list[dict]:
 def copycat_agents() -> list[dict]:
     from fiam import mandate as M
 
-    texts = [("v1", list(P.SIGNALS)), ("brief_2026", []), ("case_2025", [])]
+    texts = [("twelve_signals", list(S.SIGNALS)), ("brief_2026", []), ("case_2025", [])]
     template = COPYCAT.read_text(encoding="utf-8")
-    chars = P.characteristics()
+    chars = S.characteristics()
     out = []
     for t, (name, named) in enumerate(texts):
         strategy = M.load(M.TEMPLATES / f"{name}.json").strategy_text

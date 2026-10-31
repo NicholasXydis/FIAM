@@ -4,15 +4,37 @@ export interface Person {
   role?: string;
   photo?: string;
   linkedin?: string;
+  github?: string;
   about?: string;
   focus?: string[];
 }
 
 // Members in page order; each detail is added once confirmed.
 export const PEOPLE: Person[] = [
-  { name: "Nicholas Xydis", photo: "/people/nicholas-xydis.webp" },
-  { name: "Yohannah Ilieva", photo: "/people/yohannah-ilieva.webp" },
-  { name: "Andrew Koumoudjian", photo: "/people/andrew-koumoudjian.webp" },
-  { name: "Nicolas Romero", photo: "/people/nicolas-romero.webp" },
-  { name: "Nokto Lapointe", photo: "/people/nokto-lapointe.webp" },
+  {
+    name: "Nicholas Xydis",
+    role: "AI & Research",
+    photo: "/people/nicholas-xydis.webp",
+    linkedin: "https://www.linkedin.com/in/nicholasxydis/",
+    github: "https://github.com/NicholasXydis",
+  },
+  {
+    name: "Yohannah Ilieva",
+    role: "Risk Management",
+    photo: "/people/yohannah-ilieva.webp",
+    linkedin: "https://www.linkedin.com/in/yohannahilieva/",
+  },
+  {
+    name: "Andrew Koumoudjian",
+    role: "Portfolio Construction",
+    photo: "/people/andrew-koumoudjian.webp",
+    linkedin: "https://www.linkedin.com/in/andrewkoumoudjian/",
+  },
+  {
+    name: "Nicolas Romero",
+    role: "Data & Finance",
+    photo: "/people/nicolas-romero.webp",
+    linkedin: "https://www.linkedin.com/in/nicolasdavidromero/",
+  },
+  { name: "Nokto Lapointe", role: "Machine Learning", photo: "/people/nokto-lapointe.webp" },
 ];

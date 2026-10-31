@@ -16,8 +16,16 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "site" / "src" / "data" / "fiam.json"
 CRASHES = ROOT / "site" / "src" / "data" / "crashes.json"
 FILM = ROOT / "site" / "src" / "film" / "data.json"
-# The numbers and charts pack, the one source for every site number.
-PACK = Path.home() / "FIAM_work" / "vfinal_pack"
+# The numbers pack, the one source for every site number: tools/pack.
+PACK = ROOT / "out" / "pack"
+# The fund's run folder and its forecasts, read in place.
+RUN = ROOT / "out" / "vfinal" / "bw_fresh_lag"
+FORECAST = ROOT / "out" / "vfinal" / "forecast"
+# The PDF's bill, and the local Yahoo bars the 60/40 is built from.
+TB3MS = ROOT / "data" / "benchmarks" / "TB3MS.csv"
+MARKET = ROOT / "data" / "market"
+# The AI desk's committed records.
+AI = ROOT / "finals" / "ai"
 # The agents' model names, and the hurdle's yearly premium over bills.
 MODELS = {"gemma": "Gemma 4 26B-A4B", "qwen": "Qwen3.8-27B"}
 PREMIUM = 0.04
@@ -26,7 +34,7 @@ PANEL = ROOT / "data" / "organisers" / "chars_final_with_names.parquet"
 # The forecasts' months the universe average counts from.
 UNIVERSE_FROM = "2020-12-31"
 # The crisis replay run as its method is written, with peer fill.
-VARIANT = "new_peer_fill"
+VARIANT = "peer_fill"
 # Our three signals among the forecast's inputs, in plain words.
 OURS = {
     "syy": "SYY-10 mispricing score",
@@ -102,8 +110,8 @@ def table_rows(path: Path) -> dict[int, dict]:
 
 
 # The PDF's monthly bill, TB3MS / 1200, by month.
-def bill(pack: Path) -> pd.Series:
-    t = pd.read_csv(pack / "src" / "TB3MS.csv", parse_dates=["observation_date"])
+def bill(path: Path = TB3MS) -> pd.Series:
+    t = pd.read_csv(path, parse_dates=["observation_date"])
     return pd.Series(t["TB3MS"].to_numpy() / 1200, index=t["observation_date"].dt.to_period("M"))
 
 
@@ -335,8 +343,8 @@ def costs(t: dict[int, dict]) -> dict:
 
 
 # The forecast's inputs: the organisers' sets and our three signals.
-def signals(pack: Path) -> tuple[list[dict], dict]:
-    cols = pd.read_parquet(pack / "src" / "forecast" / "plus" / "features.parquet").columns
+def signals(forecast: Path = FORECAST) -> tuple[list[dict], dict]:
+    cols = pd.read_parquet(forecast / "plus" / "features.parquet").columns
     inputs = [c for c in cols if c not in KEYS]
     theirs = sorted(c for c in inputs if c not in OURS)
     if sorted(c for c in inputs if c in OURS) != sorted(OURS):
@@ -360,8 +368,8 @@ def signals(pack: Path) -> tuple[list[dict], dict]:
 
 
 # One real month: all stocks, the forecast universe and the final book.
-def journey(pack: Path, positions: pd.DataFrame) -> dict:
-    fc = pd.read_parquet(pack / "src" / "forecast" / "elasso_rho.parquet", columns=["eom"])
+def journey(positions: pd.DataFrame, forecast: Path = FORECAST) -> dict:
+    fc = pd.read_parquet(forecast / "elasso_rho.parquet", columns=["eom"])
     eoms = pd.to_datetime(fc["eom"])
     per = eoms[eoms >= UNIVERSE_FROM].value_counts().sort_index()
     last = per.index[-1]
@@ -400,9 +408,9 @@ def mix_stats(x: pd.Series) -> dict:
 
 
 # 2022 for the S&P 500, bonds, a 60/40 and the fund, and the steps.
-def edge(pack: Path, m: pd.DataFrame, yrs: dict, six: dict) -> dict:
-    stocks = yahoo(pack / "src" / "SPY.json", m.index)
-    bonds = yahoo(pack / "src" / "AGG.json", m.index)
+def edge(m: pd.DataFrame, yrs: dict, six: dict, market: Path = MARKET) -> dict:
+    stocks = yahoo(market / "SPY.json", m.index)
+    bonds = yahoo(market / "AGG.json", m.index)
     if stocks.isna().any() or bonds.isna().any():
         raise SystemExit("SPY or AGG misses a month of the run.")
     fund = m["ret"]
@@ -480,8 +488,7 @@ STANDING: dict[str, str] = {}
 
 
 # Each key number checked against the agent's own output file.
-def check_found(found: dict, pack: Path) -> None:
-    ai = pack / "ai"
+def check_found(found: dict, ai: Path) -> None:
     rules = load(ai / "rules" / "rules_check.json")
     want = {"Rules reader": f"{rules['matched']} of {rules['rules_read']}"}
     sides = load(ai / "analyst" / "analyst_final.json")["balance_by_side"]
@@ -517,8 +524,8 @@ def check_found(found: dict, pack: Path) -> None:
 
 
 # The models the live crowd ran on, read from its run manifests.
-def crowd_models(pack: Path) -> str:
-    runs = load(pack / "ai" / "crowd_aug" / "crowd_where_we_sit.json")["live_run"]["manifests"]
+def crowd_models(ai: Path = AI) -> str:
+    runs = load(ai / "crowd_aug" / "crowd_where_we_sit.json")["live_run"]["manifests"]
     files = {run["model_file"] for run in runs.values()}
     names = set()
     # Each model file must be one the site can name.
@@ -531,8 +538,8 @@ def crowd_models(pack: Path) -> str:
 
 
 # The base's eight agents with each one's finding on the final book.
-def agents(base: list[dict], pack: Path) -> list[dict]:
-    file = load(pack / "ai" / "agents_found.json")
+def agents(base: list[dict], ai: Path = AI) -> list[dict]:
+    file = load(ai / "agents_found.json")
     found = file["agents"]
     if file["agents_count"] != 8 or len(found) != 8 or len(base) != 8:
         raise SystemExit("The AI desk must have exactly 8 agents.")
@@ -541,13 +548,13 @@ def agents(base: list[dict], pack: Path) -> list[dict]:
     # Every agent must have its finding; none may still be pending.
     if file.get("pending") or any(not isinstance(v, dict) for v in found.values()):
         raise SystemExit("An agent's finding is still pending.")
-    check_found(found, pack)
+    check_found(found, ai)
     out = []
     for a in base:
         got = found[AGENT_NAMES[a["key"]]]
         a = {k: v for k, v in a.items() if k != "facts" or a["key"] in STANDING}
-        # A fact kept beside a finding needs its file in the pack's AI folder.
-        if a["key"] in STANDING and not (pack / "ai" / STANDING[a["key"]]).exists():
+        # A fact kept beside a finding needs its file in the AI folder.
+        if a["key"] in STANDING and not (ai / STANDING[a["key"]]).exists():
             raise SystemExit(f"{a['name']}: its older facts have no backing file.")
         a |= dict(
             does=DOES.get(a["key"], a["does"]),
@@ -556,9 +563,9 @@ def agents(base: list[dict], pack: Path) -> list[dict]:
             date=got["date"],
         )
         # A run on Gemma names that model; the crowd reads its run manifests.
-        source = Path(got["source"]).read_text(encoding="utf-8").lower()
+        source = (ROOT / got["source"]).read_text(encoding="utf-8").lower()
         if a["key"] == "crowd":
-            a["model"] = crowd_models(pack)
+            a["model"] = crowd_models(ai)
         elif "gemma" in source:
             a["model"] = MODELS["gemma"]
         out.append(a)
@@ -566,8 +573,8 @@ def agents(base: list[dict], pack: Path) -> list[dict]:
 
 
 # The one crowd study the site reads, and the hype map.
-CROWD = PACK / "ai" / "crowd_aug" / "crowd_where_we_sit.json"
-HYPE = PACK.parent / "hype_map" / "results.json"
+CROWD = AI / "crowd_aug" / "crowd_where_we_sit.json"
+HYPE = AI / "hype_map" / "results.json"
 # Crowd keys measured on older books, never shown for this fund.
 STALE = (
     "picks",
@@ -634,21 +641,20 @@ def hype(path: Path = HYPE) -> dict:
 
 
 # The final book on its last day, largest first, and the hype check.
-def now(stocks: dict, months: list[str], pack: Path) -> dict:
+def now(stocks: dict, months: list[str]) -> dict:
     flat = stocks["book"][-1]
     book = [[stocks["ticker"][i], stocks["name"][i], w] for i, w in zip(flat[::2], flat[1::2])]
     book.sort(key=lambda x: -x[2])
     return dict(month=months[-1], book=book, hype=hype())
 
 
-# Every site key rebuilt from the pack, on top of the base's crowd.
+# Every site key rebuilt from the pack and the run, on the base's crowd.
 def build(base: dict, pack: Path) -> dict:
-    src = pack / "src" / "bw_fresh_lag"
     n = load(pack / "numbers.json")
-    t = table_rows(src / "table_9_1.csv")
-    daily = pd.read_parquet(src / "daily.parquet")
-    positions = pd.read_parquet(src / "positions.parquet")
-    m = fund_months(daily, bill(pack))
+    t = table_rows(RUN / "table_9_1.csv")
+    daily = pd.read_parquet(RUN / "daily.parquet")
+    positions = pd.read_parquet(RUN / "positions.parquet")
+    m = fund_months(daily, bill())
     mkt_daily = market_daily(pack)
     market = market_months(mkt_daily, m.index)
     months = [str(p) for p in m.index]
@@ -661,9 +667,9 @@ def build(base: dict, pack: Path) -> dict:
     agree("ending value", ran["book"][-1], head["ending"])
     agree("hurdle ending", ran["hurdle"][-1], head["hurdle_ending"])
     stocks = holdings(
-        positions, daily["nav"], names(src / "arcana_weights_monthly_own.csv"), months
+        positions, daily["nav"], names(RUN / "arcana_weights_monthly_own.csv"), months
     )
-    sig, fams = signals(pack)
+    sig, fams = signals()
     sp = n["sp500_context"]
     return {k: v for k, v in base.items() if k in KEPT} | dict(
         window=f"{months[0]} to {months[-1]}",
@@ -675,23 +681,23 @@ def build(base: dict, pack: Path) -> dict:
         stocks=stocks,
         signals=sig,
         families=fams,
-        journey=journey(pack, positions),
+        journey=journey(positions),
         costs=costs(t),
-        edge=edge(pack, m, yrs, n["sixty_forty"]),
+        edge=edge(m, yrs, n["sixty_forty"]),
         sp500=dict(
             vol=r(sp["vol_monthly_pct"] / 100, 5), drawdown=r(sp["max_drawdown_pct"] / 100, 5)
         ),
         crises=crises(pack, n),
-        agents=agents(base["agents"], pack),
+        agents=agents(base["agents"]),
         crowd=crowd(base["crowd"]),
-        september=now(stocks, months, pack),
+        september=now(stocks, months),
     )
 
 
-# The film's Sharpe ratio and monthly beta, from the pack.
+# The film's Sharpe ratio and monthly beta, from the pack and the run.
 def film_numbers(pack: Path) -> dict[str, float]:
     n = load(pack / "numbers.json")
-    t = table_rows(pack / "src" / "bw_fresh_lag" / "table_9_1.csv")
+    t = table_rows(RUN / "table_9_1.csv")
     return dict(sharpe=r(n["headline"]["sharpe_pdf_bill"]), beta=with_se(t[6]["strategy"])[0])
 
 
@@ -710,7 +716,9 @@ def write_film(numbers: dict[str, float]) -> None:
 # A pack folder and a base site file, else the defaults.
 def options(args: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Writes the site's data files from the pack.")
-    parser.add_argument("--pack", type=Path, default=PACK, help="the numbers and charts pack")
+    parser.add_argument(
+        "--pack", type=Path, default=PACK, help="the numbers pack tools/pack writes"
+    )
     parser.add_argument("--base", type=Path, help="take the crowd and agents from this site file")
     return parser.parse_args(args)
 

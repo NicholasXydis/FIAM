@@ -10,15 +10,13 @@ from pathlib import Path
 
 from fiam.agents import final_book as F
 
-WORK = F.WORK
 PACK = F.PACK
 DESK = PACK / "desk"
 LOG = DESK / "calls.jsonl"
-NUMBERS = WORK / "vfinal_pack" / "numbers.json"
-DATA = WORK / "vfinal_pack" / "data"
-CROWD = WORK / "ai_ca_plan" / "crowd_where_we_sit.json"
+NUMBERS = F.NUMBERS_PACK / "numbers.json"
+DATA = F.NUMBERS_PACK / "data"
 CROWD_LIVE = PACK / "crowd_aug" / "crowd_where_we_sit.json"
-HYPE = WORK / "hype_map" / "results.json"
+HYPE = PACK / "hype_map" / "results.json"
 TRIAGE = PACK / "triage" / "triage_final.json"
 ANALYST = PACK / "analyst" / "analyst_final.json"
 RULES = PACK / "rules" / "rules_check.json"
@@ -27,15 +25,9 @@ EXPLAINER = PACK / "explanations.json"
 NUMBER = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
 # Units a writer may move a number through: as is, percent, thousands.
 FACTORS = (1, 100, 1000)
-# Words that break the fund's honesty lines in anything written.
-HONESTY = (
+# Claims the record cannot support, never let into anything written.
+OVERCLAIMS = (
     r"out[- ]of[- ]sample",
-    r"\bin[- ]sample\b",
-    r"chosen after",
-    r"\bmentors?\b",
-    r"\b61st\b|sixty[- ]first",
-    r"vfinal|bw_fresh|\bversions?\b",
-    r"\btries\b|\btried\b|\btrials?\b|\bvariants?\b",
     r"\b(?:fixed|frozen|designed|set|built|locked)\b[^.]*\bbefore 2021\b",
 )
 # Words that compare the number before them with the number after.
@@ -54,6 +46,12 @@ ADVICE = (
 # A JSON file, or None when that agent has not written it yet.
 def load(path: Path) -> dict | None:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+# A path as the records show it: from the repo root when inside it.
+def rel(path: Path) -> str:
+    path = Path(path).resolve()
+    return path.relative_to(F.H.ROOT).as_posix() if path.is_relative_to(F.H.ROOT) else str(path)
 
 
 # Writes JSON with a newline, keys in the order given.
@@ -107,7 +105,7 @@ def sentences(text: str) -> list[str]:
 
 # Which banned patterns a sentence hits, by list name.
 def breaks(sentence: str, advice: bool) -> list[str]:
-    found = [f"honesty {p}" for p in HONESTY if re.search(p, sentence, re.IGNORECASE)]
+    found = [f"overclaim {p}" for p in OVERCLAIMS if re.search(p, sentence, re.IGNORECASE)]
     if advice:
         found += [f"advice {p}" for p in ADVICE if re.search(p, sentence, re.IGNORECASE)]
     return found

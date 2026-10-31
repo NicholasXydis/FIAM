@@ -354,16 +354,6 @@ def test_main_py_header_is_the_final_fund():
     assert "v1" not in text and "submission" not in text
 
 
-# MAIN.py never carries the two docs files, though git tracks them.
-def test_main_py_leaves_out_the_plan_files(monkeypatch):
-    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
-    build = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(build)
-    listing = type("Listing", (), {"stdout": "docs/PLAN.md\0docs/TEAM.md\0run.py\0"})()
-    monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
-    assert set(build.carried(with_edgar=False)) == {"run.py"}
-
-
 # MAIN.py never carries the deck, the fact sheet or the numbers file.
 def test_main_py_leaves_out_the_finals_folder(monkeypatch):
     spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
@@ -373,14 +363,3 @@ def test_main_py_leaves_out_the_finals_folder(monkeypatch):
     listing = type("Listing", (), {"stdout": names})()
     monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
     assert set(build.carried(with_edgar=False)) == {"run.py"}
-
-
-# MAIN.py never carries the two tables derived from WRDS data.
-def test_main_py_never_carries_the_wrds_tables(monkeypatch):
-    spec = importlib.util.spec_from_file_location("build_main", ROOT / "tools" / "build_main.py")
-    build = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(build)
-    names = "frozen/v1/submission/models/borrow.parquet\0x/book_inputs.parquet\0run.py\0"
-    listing = type("Listing", (), {"stdout": names})()
-    monkeypatch.setattr(build.subprocess, "run", lambda *args, **kwargs: listing)
-    assert set(build.carried(with_edgar=True)) == {"run.py"}

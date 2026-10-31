@@ -1,4 +1,4 @@
-# Where steps write: frozen/v1/submission/, else under FIAM_OUT.
+# Shared file helpers: frozen inputs, hashes, safe unzips and JSON.
 
 import hashlib
 import json
@@ -7,31 +7,12 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-OUT_ROOT = Path(os.environ.get("FIAM_OUT", "."))
-SUBMISSION = OUT_ROOT / "frozen" / "v1" / "submission"
-EXHIBITS = SUBMISSION / "exhibits"
-HOLDINGS = SUBMISSION / "holdings.csv"
-RETURNS = SUBMISSION / "returns.csv"
-METRICS = SUBMISSION / "metrics.json"
 # Small frozen inputs, so git holds them. Relative like cache/.
 FROZEN = Path("frozen")
-# Saved research runs and their exhibits, read and written in place.
-RESEARCH = Path("out") / "research"
 
 # Small-run switch: slow steps shrink, so the chain tests in minutes.
 SMOKE = os.environ.get("FIAM_SMOKE") == "1"
-
-
-# A JSON file, or an empty dict if the step that writes it has not run.
-def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-
-
-# An exhibit by name, from wherever this run writes.
-def exhibit(name: str) -> dict:
-    return read_json(EXHIBITS / name)
 
 
 # Six decimals on write only. The maths keeps full precision.
@@ -65,16 +46,6 @@ def safe_unzip(source: Path, target: Path, inside: Path | None = None) -> None:
         zf.extractall(target)
 
 
-# The monthly returns file, indexed by holding month.
-def returns() -> pd.DataFrame:
-    return pd.read_csv(RETURNS, parse_dates=["holding_month"]).set_index("holding_month")
-
-
-# The holdings file, one row per stock and month.
-def holdings() -> pd.DataFrame:
-    return pd.read_csv(HOLDINGS, parse_dates=["Date"])
-
-
 # Read in blocks, so a multi-gigabyte file never has to fit in memory.
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -82,8 +53,3 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: fh.read(1 << 22), b""):
             digest.update(block)
     return digest.hexdigest()
-
-
-# A file still matches its recorded hash byte for byte. All text is LF.
-def matches(path: Path, digest: str) -> bool:
-    return path.exists() and sha256(path) == digest
