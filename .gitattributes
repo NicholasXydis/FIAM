@@ -8,3 +8,6 @@
 
 # Git breaks notebooks when merging them.
 *.ipynb merge=binary
+
+# The deck source carries its images inline, so it counts as no language.
+tools/deck/deck.html linguist-generated
